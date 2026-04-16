@@ -1,29 +1,32 @@
-import { useQuery } from '@tanstack/react-query'
-import { BellRing, CreditCard, TicketPercent, Workflow } from 'lucide-react'
-import { fetchOrders } from '../../../entities/order/model/orders-query'
-import { formatCurrency } from '../../../shared/lib/utils'
-import { useUiStore } from '../../../shared/store/ui-store'
+import { FolderKanban, GitBranch, PanelLeftOpen, SquareActivity } from 'lucide-react'
+import { useCatalogCategories } from '../../../shared/api/catalog'
 import { Card } from '../../../shared/ui/card'
 
 const metricMeta = [
-  { key: 'totalAmount', label: '총 집행 예산', icon: CreditCard },
-  { key: 'issuedCount', label: '즉시 발급 가능', icon: TicketPercent },
-  { key: 'reviewCount', label: '검수 대기', icon: Workflow },
-  { key: 'attentionCount', label: '리스크 알림', icon: BellRing },
+  { key: 'categoryCount', label: '사이드바 카테고리', icon: PanelLeftOpen },
+  { key: 'prototypeCount', label: 'GitHub 프로토타입', icon: GitBranch },
+  { key: 'readyCount', label: 'Ready 상태', icon: SquareActivity },
+  { key: 'customCount', label: '사용자 추가 카테고리', icon: FolderKanban },
 ] as const
 
 export function MetricsOverview() {
-  const filters = useUiStore((state) => state.filters)
-  const { data = [] } = useQuery({
-    queryKey: ['orders', filters],
-    queryFn: () => fetchOrders(filters),
-  })
+  const { data: categories = [] } = useCatalogCategories()
+  const prototypeCount = categories.reduce(
+    (sum, category) => sum + category.prototypes.length,
+    0,
+  )
+  const readyCount = categories.reduce(
+    (sum, category) =>
+      sum + category.prototypes.filter((prototype) => prototype.status === 'ready').length,
+    0,
+  )
+  const customCount = categories.filter((category) => category.iconKey === 'custom').length
 
   const metrics = {
-    totalAmount: formatCurrency(data.reduce((sum, item) => sum + item.amount, 0)),
-    issuedCount: `${data.filter((item) => item.status === 'issued').length}건`,
-    reviewCount: `${data.filter((item) => item.status === 'review').length}건`,
-    attentionCount: `${data.filter((item) => item.status === 'hold').length}건`,
+    categoryCount: `${categories.length}개`,
+    prototypeCount: `${prototypeCount}개`,
+    readyCount: `${readyCount}개`,
+    customCount: `${customCount}개`,
   }
 
   return (

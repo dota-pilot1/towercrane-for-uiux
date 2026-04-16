@@ -6,15 +6,13 @@ export async function fetchOrders(filters: WorkbenchFilters) {
 
   return mockOrders.filter((order) => {
     const matchesKeyword =
-      filters.keyword.length === 0 ||
+      filters.query.length === 0 ||
       [order.customer, order.title, order.id].some((value) =>
-        value.toLowerCase().includes(filters.keyword.toLowerCase()),
+        value.toLowerCase().includes(filters.query.toLowerCase()),
       )
 
-    const matchesTeam = filters.team === 'all' || order.team === filters.team
     const matchesStatus = filters.status === 'all' || order.status === filters.status
-    const matchesAmount = order.amount >= filters.minAmount
 
-    return matchesKeyword && matchesTeam && matchesStatus && matchesAmount
+    return matchesKeyword && matchesStatus
   })
 }

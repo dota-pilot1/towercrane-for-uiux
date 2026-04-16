@@ -1,6 +1,6 @@
 # towercrane-for-uiux-front
 
-내부 서버 프론트를 빠르게 구축하기 위한 Vite + React + TypeScript 기반 관리자형 스타터입니다.
+내부 관리자 패턴과 GitHub 프로토타입을 카탈로그처럼 관리하기 위한 Vite + React + TypeScript 기반 프런트입니다.
 
 ## Stack
 
@@ -42,16 +42,23 @@
   - `features`
   - `entities`
   - `shared`
-- 관리자형 샘플 화면
-  - 사이드바 메뉴
-  - KPI 카드
-  - 복잡한 검색 폼
-  - 탭 분할 영역
-  - TanStack Table 데이터 리스트
+- 관리자형 카탈로그 화면
+  - 왼쪽 사이드바 카테고리 목록
+  - 카테고리 추가 다이얼로그
+  - 선택 카테고리 설명 패널
+  - GitHub 프로토타입 검색/추가 폼
+  - TanStack Table 기반 프로토타입 리스트
+  - backend 탭을 통한 서버 역할 설명
 - 전역 상태와 서버 상태 연결
-  - Zustand로 메뉴/필터/탭 상태 관리
-  - React Query로 비동기 목록 로딩
-  - react-hook-form + zod로 검색 폼 검증
+  - Zustand persist로 카테고리/필터/탭 상태 관리
+  - react-hook-form + zod로 카테고리/프로토타입 입력 검증
+  - React Query provider 준비 완료
+
+## 핵심 UX
+
+- 20개 기본 시나리오는 시드일 뿐이고, 왼쪽 사이드바에 계속 카테고리를 추가할 수 있습니다.
+- 본문 오른쪽에서는 선택한 카테고리에 대한 설명, 체크리스트, 태그, GitHub 프로토타입 링크를 함께 관리합니다.
+- 프로토타입은 repo root, 특정 폴더, 브랜치 링크 형태로 공유할 수 있게 설계했습니다.
 
 ## 구현 계획 요약
 
