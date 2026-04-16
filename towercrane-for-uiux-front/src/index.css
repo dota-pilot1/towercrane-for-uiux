@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+:root {
+  font-family: "SUIT Variable", "Pretendard Variable", "Inter Tight", sans-serif;
+  color: #d7dee7;
+  background:
+    radial-gradient(circle at top, rgba(19, 78, 74, 0.4), transparent 32%),
+    linear-gradient(180deg, #081018 0%, #0d1722 58%, #101d2a 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(245, 158, 11, 0.18), transparent 22%),
+    radial-gradient(circle at 100% 0%, rgba(34, 197, 94, 0.14), transparent 28%),
+    linear-gradient(180deg, #081018 0%, #0d1722 58%, #101d2a 100%);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply border border-white/10 bg-white/6 backdrop-blur-xl;
+    box-shadow: 0 28px 60px rgba(3, 9, 17, 0.32);
+  }
+
+  .panel-grid {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
