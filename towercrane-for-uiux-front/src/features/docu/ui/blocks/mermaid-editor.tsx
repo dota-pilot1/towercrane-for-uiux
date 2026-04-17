@@ -4,11 +4,21 @@ import { Mermaid } from '../../../../shared/ui/mermaid'
 export function MermaidBlockEditor({
   content,
   onChange,
+  readOnly = false,
 }: {
   content: string
   onChange: (val: string) => void
+  readOnly?: boolean
 }) {
   const [mode, setMode] = useState<'edit' | 'preview'>(content.trim() ? 'preview' : 'edit')
+
+  if (readOnly) {
+    return (
+      <div className="p-4 bg-slate-900/40 min-h-[180px]">
+        <Mermaid chart={content} />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full min-h-[320px]">

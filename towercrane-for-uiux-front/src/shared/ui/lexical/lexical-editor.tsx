@@ -24,11 +24,20 @@ type LexicalEditorProps = {
   onChange: (state: string) => void
   placeholder?: string
   minHeight?: string
+  readOnly?: boolean
 }
 
 function CodeHighlightPlugin() {
   const [editor] = useLexicalComposerContext()
   useEffect(() => registerCodeHighlighting(editor), [editor])
+  return null
+}
+
+function EditablePlugin({ readOnly }: { readOnly: boolean }) {
+  const [editor] = useLexicalComposerContext()
+  useEffect(() => {
+    editor.setEditable(!readOnly)
+  }, [editor, readOnly])
   return null
 }
 
@@ -59,6 +68,7 @@ export function LexicalEditor({
   onChange,
   placeholder = '내용을 입력하세요...',
   minHeight = '200px',
+  readOnly = false,
 }: LexicalEditorProps) {
   const handleChange = useCallback(
     (editorState: EditorState) => {
@@ -70,6 +80,7 @@ export function LexicalEditor({
   const initialConfig = {
     namespace: 'DocuNoteEditor',
     theme: editorTheme,
+    editable: !readOnly,
     nodes: [
       HeadingNode,
       QuoteNode,
@@ -88,7 +99,7 @@ export function LexicalEditor({
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <div className="flex flex-col">
-        <LexicalToolbar onImageUpload={uploadImageToS3} />
+        {readOnly ? null : <LexicalToolbar onImageUpload={uploadImageToS3} />}
         <div className="relative">
           <RichTextPlugin
             contentEditable={
@@ -98,21 +109,24 @@ export function LexicalEditor({
               />
             }
             placeholder={
-              <div className="absolute top-4 left-5 text-sm text-slate-600 pointer-events-none">
-                {placeholder}
-              </div>
+              readOnly ? null : (
+                <div className="absolute top-4 left-5 text-sm text-slate-600 pointer-events-none">
+                  {placeholder}
+                </div>
+              )
             }
             ErrorBoundary={LexicalErrorBoundary}
           />
         </div>
-        <HistoryPlugin />
+        {readOnly ? null : <HistoryPlugin />}
         <ListPlugin />
         <LinkPlugin />
         <CodeHighlightPlugin />
-        <ImagePlugin />
-        <DragDropImagePlugin onUpload={uploadImageToS3} />
+        {readOnly ? null : <ImagePlugin />}
+        {readOnly ? null : <DragDropImagePlugin onUpload={uploadImageToS3} />}
         <OnChangePlugin onChange={handleChange} />
         <InitialContentPlugin initialState={initialState} />
+        <EditablePlugin readOnly={readOnly} />
       </div>
     </LexicalComposer>
   )

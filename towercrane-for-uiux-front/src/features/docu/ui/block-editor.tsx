@@ -14,7 +14,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2, Plus } from 'lucide-react'
+import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useReplaceBlocks, type DocBlock, type DocBlockType } from '../../../shared/api/docu'
 import { TYPE_META, createDraftBlock, type DraftBlock } from '../types/block'
 import { DbTableBlockEditor } from './blocks/dbtable-editor'
@@ -27,6 +27,9 @@ import { NoteBlockEditor } from './blocks/note-editor'
 type Props = {
   documentId: string
   initialBlocks: DocBlock[]
+  isEditing: boolean
+  onEnterEdit: () => void
+  onExitEdit: () => void
 }
 
 function toDraft(block: DocBlock): DraftBlock {
@@ -48,7 +51,13 @@ function areBlocksEqual(a: DraftBlock[], b: DraftBlock[]) {
   return true
 }
 
-export function BlockEditor({ documentId, initialBlocks }: Props) {
+export function BlockEditor({
+  documentId,
+  initialBlocks,
+  isEditing,
+  onEnterEdit,
+  onExitEdit,
+}: Props) {
   const initial = useMemo(() => initialBlocks.map(toDraft), [initialBlocks])
   const [blocks, setBlocks] = useState<DraftBlock[]>(initial)
 
@@ -63,19 +72,16 @@ export function BlockEditor({ documentId, initialBlocks }: Props) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   )
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event
-      if (!over || active.id === over.id) return
-      setBlocks((prev) => {
-        const oldIndex = prev.findIndex((b) => b.localId === active.id)
-        const newIndex = prev.findIndex((b) => b.localId === over.id)
-        if (oldIndex < 0 || newIndex < 0) return prev
-        return arrayMove(prev, oldIndex, newIndex)
-      })
-    },
-    [],
-  )
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setBlocks((prev) => {
+      const oldIndex = prev.findIndex((b) => b.localId === active.id)
+      const newIndex = prev.findIndex((b) => b.localId === over.id)
+      if (oldIndex < 0 || newIndex < 0) return prev
+      return arrayMove(prev, oldIndex, newIndex)
+    })
+  }, [])
 
   const updateBlock = (localId: string, patch: Partial<DraftBlock>) => {
     setBlocks((prev) => prev.map((b) => (b.localId === localId ? { ...b, ...patch } : b)))
@@ -96,53 +102,77 @@ export function BlockEditor({ documentId, initialBlocks }: Props) {
         blockTitle: b.blockTitle,
         content: b.content,
       })),
+      {
+        onSuccess: () => onExitEdit(),
+      },
     )
   }
 
-  const handleDiscard = () => {
+  const handleCancel = () => {
+    if (isDirty && !window.confirm('저장하지 않은 변경사항이 있습니다. 취소할까요?')) {
+      return
+    }
     setBlocks(initial)
+    onExitEdit()
   }
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Save bar */}
+      {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-2.5 border-b border-white/5 bg-slate-950/40 shrink-0">
         <div className="text-[11px] uppercase tracking-widest text-slate-500">
-          {blocks.length} 블록 ·{' '}
-          {isDirty ? (
-            <span className="text-amber-300">변경됨</span>
-          ) : (
-            <span className="text-emerald-300">저장됨</span>
-          )}
+          {blocks.length} 블록
+          {isEditing ? (
+            <>
+              {' · '}
+              {isDirty ? (
+                <span className="text-amber-300">변경됨</span>
+              ) : (
+                <span className="text-emerald-300">저장됨</span>
+              )}
+            </>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
-          {isDirty ? (
+          {isEditing ? (
+            <>
+              <button
+                onClick={handleCancel}
+                disabled={replaceMutation.isPending}
+                className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-slate-300 hover:bg-white/5 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={!isDirty || replaceMutation.isPending}
+                className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-semibold hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {replaceMutation.isPending ? '저장 중...' : '저장'}
+              </button>
+            </>
+          ) : (
             <button
-              onClick={handleDiscard}
-              disabled={replaceMutation.isPending}
-              className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-slate-300 hover:bg-white/5 disabled:opacity-50"
+              onClick={onEnterEdit}
+              className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-200 hover:bg-emerald-500/25 transition-colors font-semibold"
             >
-              되돌리기
+              <Pencil className="size-3" />
+              편집
             </button>
-          ) : null}
-          <button
-            onClick={handleSave}
-            disabled={!isDirty || replaceMutation.isPending}
-            className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-semibold hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {replaceMutation.isPending ? '저장 중...' : '저장'}
-          </button>
+          )}
         </div>
       </div>
 
-      {/* Scrollable block stack */}
+      {/* Block stack */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto px-6 py-5 space-y-3">
           {blocks.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/10 bg-white/2 py-14 text-center text-slate-500">
-              아래에서 블록 타입을 선택해 추가하세요.
+              {isEditing
+                ? '아래에서 블록 타입을 선택해 추가하세요.'
+                : '등록된 블록이 없습니다. 상단의 편집 버튼을 눌러 추가하세요.'}
             </div>
-          ) : (
+          ) : isEditing ? (
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -156,6 +186,7 @@ export function BlockEditor({ documentId, initialBlocks }: Props) {
                   <InlineBlockCard
                     key={block.localId}
                     block={block}
+                    readOnly={false}
                     onChangeTitle={(title) =>
                       updateBlock(block.localId, { blockTitle: title || null })
                     }
@@ -167,9 +198,20 @@ export function BlockEditor({ documentId, initialBlocks }: Props) {
                 ))}
               </SortableContext>
             </DndContext>
+          ) : (
+            blocks.map((block) => (
+              <InlineBlockCard
+                key={block.localId}
+                block={block}
+                readOnly
+                onChangeTitle={() => {}}
+                onChangeContent={() => {}}
+                onDelete={() => {}}
+              />
+            ))
           )}
 
-          <AddBlockBar onAdd={addBlock} />
+          {isEditing ? <AddBlockBar onAdd={addBlock} /> : null}
         </div>
       </div>
     </div>
@@ -178,17 +220,19 @@ export function BlockEditor({ documentId, initialBlocks }: Props) {
 
 function InlineBlockCard({
   block,
+  readOnly,
   onChangeTitle,
   onChangeContent,
   onDelete,
 }: {
   block: DraftBlock
+  readOnly: boolean
   onChangeTitle: (v: string) => void
   onChangeContent: (v: string) => void
   onDelete: () => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: block.localId })
+  const sortable = useSortable({ id: block.localId, disabled: readOnly })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = sortable
   const meta = TYPE_META[block.blockType]
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -202,40 +246,52 @@ function InlineBlockCard({
       style={style}
       className="group rounded-2xl border border-white/10 bg-slate-950/40 overflow-hidden hover:border-white/15 transition-colors"
     >
-      {/* Block header: drag + type badge + title input + delete */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-white/5 bg-white/2">
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 text-slate-500 hover:text-slate-300 opacity-40 group-hover:opacity-100 transition-opacity"
-          aria-label="Drag"
-        >
-          <GripVertical className="size-4" />
-        </button>
+        {readOnly ? null : (
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-1 text-slate-500 hover:text-slate-300 opacity-40 group-hover:opacity-100 transition-opacity"
+            aria-label="Drag"
+          >
+            <GripVertical className="size-4" />
+          </button>
+        )}
         <span
           className={`shrink-0 px-2 py-0.5 text-[11px] rounded-md font-medium ${meta.color}`}
         >
           {meta.icon} {meta.label}
         </span>
-        <input
-          type="text"
-          value={block.blockTitle ?? ''}
-          onChange={(e) => onChangeTitle(e.target.value)}
-          placeholder="블록 제목 (선택)"
-          className="flex-1 min-w-0 text-sm font-medium bg-transparent text-slate-100 outline-none placeholder:text-slate-600"
-        />
-        <button
-          onClick={onDelete}
-          className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-          title="블록 삭제"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
+        {readOnly ? (
+          block.blockTitle?.trim() ? (
+            <span className="flex-1 min-w-0 text-sm font-medium text-slate-100 truncate">
+              {block.blockTitle}
+            </span>
+          ) : (
+            <span className="flex-1" />
+          )
+        ) : (
+          <input
+            type="text"
+            value={block.blockTitle ?? ''}
+            onChange={(e) => onChangeTitle(e.target.value)}
+            placeholder="블록 제목 (선택)"
+            className="flex-1 min-w-0 text-sm font-medium bg-transparent text-slate-100 outline-none placeholder:text-slate-600"
+          />
+        )}
+        {readOnly ? null : (
+          <button
+            onClick={onDelete}
+            className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+            title="블록 삭제"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        )}
       </div>
 
-      {/* Block body */}
       <div className="min-h-[60px]">
-        <BlockBody block={block} onChangeContent={onChangeContent} />
+        <BlockBody block={block} readOnly={readOnly} onChangeContent={onChangeContent} />
       </div>
     </div>
   )
@@ -243,24 +299,38 @@ function InlineBlockCard({
 
 function BlockBody({
   block,
+  readOnly,
   onChangeContent,
 }: {
   block: DraftBlock
+  readOnly: boolean
   onChangeContent: (val: string) => void
 }) {
   switch (block.blockType) {
     case 'NOTE':
-      return <NoteBlockEditor content={block.content} onChange={onChangeContent} />
+      return (
+        <NoteBlockEditor content={block.content} onChange={onChangeContent} readOnly={readOnly} />
+      )
     case 'MMD':
-      return <MermaidBlockEditor content={block.content} onChange={onChangeContent} />
+      return (
+        <MermaidBlockEditor content={block.content} onChange={onChangeContent} readOnly={readOnly} />
+      )
     case 'FIGMA':
-      return <FigmaBlockEditor content={block.content} onChange={onChangeContent} />
+      return (
+        <FigmaBlockEditor content={block.content} onChange={onChangeContent} readOnly={readOnly} />
+      )
     case 'FILE':
-      return <FileBlockEditor content={block.content} onChange={onChangeContent} />
+      return (
+        <FileBlockEditor content={block.content} onChange={onChangeContent} readOnly={readOnly} />
+      )
     case 'DBTABLE':
-      return <DbTableBlockEditor content={block.content} onChange={onChangeContent} />
+      return (
+        <DbTableBlockEditor content={block.content} onChange={onChangeContent} readOnly={readOnly} />
+      )
     case 'GITHUB':
-      return <GithubBlockEditor content={block.content} onChange={onChangeContent} />
+      return (
+        <GithubBlockEditor content={block.content} onChange={onChangeContent} readOnly={readOnly} />
+      )
     default:
       return null
   }
@@ -292,3 +362,4 @@ function AddBlockBar({ onAdd }: { onAdd: (type: DocBlockType) => void }) {
     </div>
   )
 }
+

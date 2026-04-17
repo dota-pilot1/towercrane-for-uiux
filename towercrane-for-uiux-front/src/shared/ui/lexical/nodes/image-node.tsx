@@ -198,37 +198,18 @@ function ImageDecorator({
   nodeKey: NodeKey
   editable: boolean
 }) {
-  if (editable) {
-    return (
-      <Suspense fallback={null}>
-        <LazyImageComponent
-          src={src}
-          altText={altText}
-          width={width}
-          height={height}
-          alignment={alignment}
-          nodeKey={nodeKey}
-        />
-      </Suspense>
-    )
-  }
-
   return (
-    <img
-      src={src}
-      alt={altText}
-      width={width || undefined}
-      height={height || undefined}
-      style={{
-        maxWidth: '100%',
-        display: 'block',
-        margin: alignment === 'center' ? '0 auto' : undefined,
-        float: alignment === 'left' ? 'left' : alignment === 'right' ? 'right' : undefined,
-        marginRight: alignment === 'left' ? '12px' : undefined,
-        marginLeft: alignment === 'right' ? '12px' : undefined,
-      }}
-      draggable={false}
-    />
+    <Suspense fallback={null}>
+      <LazyImageComponent
+        src={src}
+        altText={altText}
+        width={width}
+        height={height}
+        alignment={alignment}
+        nodeKey={nodeKey}
+        editable={editable}
+      />
+    </Suspense>
   )
 }
 

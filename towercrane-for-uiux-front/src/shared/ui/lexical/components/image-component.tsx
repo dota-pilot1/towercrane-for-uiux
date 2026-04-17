@@ -20,8 +20,14 @@ type Props = {
   height: number
   alignment: ImageAlignment
   nodeKey: NodeKey
+  editable: boolean
 }
 
+/**
+ * Single component for both edit and view mode image rendering.
+ * When `editable=false` we skip selection/resize/toolbar registration
+ * so the DOM structure is identical across modes (only interactivity changes).
+ */
 export function ImageComponent({
   src,
   altText,
@@ -29,6 +35,7 @@ export function ImageComponent({
   height,
   alignment,
   nodeKey,
+  editable,
 }: Props) {
   const [editor] = useLexicalComposerContext()
   const imageRef = useRef<HTMLImageElement>(null)
@@ -42,7 +49,9 @@ export function ImageComponent({
     setCurrentHeight(height)
   }, [width, height])
 
+  // 편집 가능할 때만 커맨드 등록 (클릭 선택 / Delete / Backspace)
   useEffect(() => {
+    if (!editable) return
     return mergeRegister(
       editor.registerCommand(
         CLICK_COMMAND,
@@ -85,10 +94,16 @@ export function ImageComponent({
         COMMAND_PRIORITY_LOW,
       ),
     )
-  }, [editor, isSelected, nodeKey, setSelected, clearSelection])
+  }, [editor, editable, isSelected, nodeKey, setSelected, clearSelection])
+
+  // view 모드로 전환될 때 선택 상태 정리
+  useEffect(() => {
+    if (!editable && isSelected) clearSelection()
+  }, [editable, isSelected, clearSelection])
 
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
+      if (!editable) return
       e.preventDefault()
       e.stopPropagation()
       setIsResizing(true)
@@ -131,43 +146,59 @@ export function ImageComponent({
       document.addEventListener('mousemove', onMouseMove)
       document.addEventListener('mouseup', onMouseUp)
     },
-    [editor, nodeKey, currentWidth, currentHeight],
+    [editable, editor, nodeKey, currentWidth, currentHeight],
   )
 
   const handleAlignment = useCallback(
     (next: ImageAlignment) => {
+      if (!editable) return
       editor.update(() => {
         const node = $getNodeByKey(nodeKey)
         if ($isImageNode(node)) node.setAlignment(next)
       })
     },
-    [editor, nodeKey],
+    [editable, editor, nodeKey],
   )
 
+  // 정렬 래퍼는 항상 동일한 구조로 렌더 (view/edit 레이아웃 일관성 보장).
+  // 외곽 div가 text-align으로 inline-block 자식을 정렬한다.
+  const outerStyle: React.CSSProperties = {
+    textAlign: alignment,
+    width: '100%',
+    margin: '8px 0',
+  }
+
+  const innerStyle: React.CSSProperties = {
+    display: 'inline-block',
+    position: 'relative',
+  }
+  if (alignment === 'left') {
+    innerStyle.float = 'left'
+    innerStyle.marginRight = '12px'
+  } else if (alignment === 'right') {
+    innerStyle.float = 'right'
+    innerStyle.marginLeft = '12px'
+  }
+
+  const showSelectionChrome = editable && isSelected
+
   return (
-    <div className="relative inline-block" style={{ textAlign: alignment, width: '100%', margin: '8px 0' }}>
-      <div
-        className="relative inline-block"
-        style={{
-          float: alignment === 'left' ? 'left' : alignment === 'right' ? 'right' : undefined,
-          marginRight: alignment === 'left' ? '12px' : undefined,
-          marginLeft: alignment === 'right' ? '12px' : undefined,
-        }}
-      >
+    <div style={outerStyle}>
+      <div style={innerStyle}>
         <img
           ref={imageRef}
           src={src}
           alt={altText}
           width={currentWidth || undefined}
           height={currentHeight || undefined}
-          className={`max-w-full rounded-md ${isSelected ? 'ring-2 ring-emerald-400' : ''} ${
-            isResizing ? 'select-none' : ''
-          }`}
+          className={`max-w-full rounded-md ${
+            showSelectionChrome ? 'ring-2 ring-emerald-400' : ''
+          } ${isResizing ? 'select-none' : ''}`}
           style={{ display: 'block' }}
           draggable={false}
         />
 
-        {isSelected ? (
+        {showSelectionChrome ? (
           <div
             className="absolute bottom-0 right-0 size-3 bg-emerald-400 cursor-se-resize rounded-tl"
             onMouseDown={handleResizeStart}
@@ -175,15 +206,27 @@ export function ImageComponent({
           />
         ) : null}
 
-        {isSelected ? (
+        {showSelectionChrome ? (
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-slate-900/95 border border-white/10 rounded-md shadow-md px-1 py-0.5 z-10 backdrop-blur-sm">
-            <AlignButton active={alignment === 'left'} onClick={() => handleAlignment('left')} title="왼쪽 정렬">
+            <AlignButton
+              active={alignment === 'left'}
+              onClick={() => handleAlignment('left')}
+              title="왼쪽 정렬"
+            >
               <AlignLeft className="size-3.5" />
             </AlignButton>
-            <AlignButton active={alignment === 'center'} onClick={() => handleAlignment('center')} title="가운데 정렬">
+            <AlignButton
+              active={alignment === 'center'}
+              onClick={() => handleAlignment('center')}
+              title="가운데 정렬"
+            >
               <AlignCenter className="size-3.5" />
             </AlignButton>
-            <AlignButton active={alignment === 'right'} onClick={() => handleAlignment('right')} title="오른쪽 정렬">
+            <AlignButton
+              active={alignment === 'right'}
+              onClick={() => handleAlignment('right')}
+              title="오른쪽 정렬"
+            >
               <AlignRight className="size-3.5" />
             </AlignButton>
           </div>
@@ -210,7 +253,9 @@ function AlignButton({
       onClick={onClick}
       title={title}
       className={`p-1 rounded transition-colors ${
-        active ? 'bg-emerald-500/20 text-emerald-200' : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
+        active
+          ? 'bg-emerald-500/20 text-emerald-200'
+          : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
       }`}
     >
       {children}

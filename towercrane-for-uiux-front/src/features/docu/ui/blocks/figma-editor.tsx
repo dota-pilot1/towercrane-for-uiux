@@ -1,16 +1,38 @@
 export function FigmaBlockEditor({
   content,
   onChange,
+  readOnly = false,
 }: {
   content: string
   onChange: (val: string) => void
+  readOnly?: boolean
 }) {
+  if (readOnly) {
+    if (!content.trim()) {
+      return (
+        <div className="p-4 text-sm text-slate-500 text-center">
+          Figma URL이 지정되지 않았습니다.
+        </div>
+      )
+    }
+    return (
+      <div className="p-4">
+        <a
+          href={content}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 text-sm text-pink-300 hover:text-pink-200 break-all"
+        >
+          🎨 {content}
+        </a>
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 space-y-3">
       <div>
-        <label className="text-xs text-slate-400 mb-1 block font-medium">
-          Figma URL
-        </label>
+        <label className="text-xs text-slate-400 mb-1 block font-medium">Figma URL</label>
         <input
           type="url"
           value={content}

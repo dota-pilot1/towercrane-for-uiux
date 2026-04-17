@@ -1,16 +1,61 @@
 import { parseGithubContent, type GithubContent } from '../../types/block'
 
+const GITHUB_TYPE_LABEL: Record<GithubContent['type'], string> = {
+  repo: '📁 Repository',
+  pr: '🔀 Pull Request',
+  issue: '🐛 Issue',
+  gist: '📋 Gist',
+  other: '🔗 기타',
+}
+
 export function GithubBlockEditor({
   content,
   onChange,
+  readOnly = false,
 }: {
   content: string
   onChange: (val: string) => void
+  readOnly?: boolean
 }) {
   const github = parseGithubContent(content)
 
   const update = (field: keyof GithubContent, value: string) => {
     onChange(JSON.stringify({ ...github, [field]: value }))
+  }
+
+  if (readOnly) {
+    if (!github.url && !github.title && !github.description) {
+      return (
+        <div className="p-4 text-sm text-slate-500 text-center">
+          GitHub 정보가 지정되지 않았습니다.
+        </div>
+      )
+    }
+    return (
+      <div className="p-4 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-300 font-medium">
+            {GITHUB_TYPE_LABEL[github.type]}
+          </span>
+          {github.title ? (
+            <span className="text-sm font-semibold text-slate-100">{github.title}</span>
+          ) : null}
+        </div>
+        {github.url ? (
+          <a
+            href={github.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-emerald-300 hover:text-emerald-200 break-all"
+          >
+            🐙 {github.url}
+          </a>
+        ) : null}
+        {github.description ? (
+          <p className="text-sm text-slate-400 leading-relaxed">{github.description}</p>
+        ) : null}
+      </div>
+    )
   }
 
   return (

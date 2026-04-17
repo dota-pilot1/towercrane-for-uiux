@@ -130,6 +130,7 @@ export function DocuPage() {
         onSelect={setActiveDocumentId}
       />
       <MainPanel
+        prototypeId={activePrototypeId}
         section={currentSection}
         documentId={activeDocumentId}
         documents={documents}
@@ -718,29 +719,104 @@ function SortableDocumentItem({
  * Main panel — block editor
  * =======================================================*/
 function MainPanel({
+  prototypeId,
   section,
   documentId,
   documents,
 }: {
+  prototypeId: string
   section: DocSection | null
   documentId: string | null
   documents: DocDocumentSummary[]
 }) {
   const activeDoc = documents.find((d) => d.id === documentId) ?? null
   const documentQuery = useDocuDocument(documentId)
+  const updateDocMutation = useUpdateDocument(prototypeId)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+  const [isEditingBlocks, setIsEditingBlocks] = useState(false)
+
+  useEffect(() => {
+    setIsEditingTitle(false)
+    setIsEditingBlocks(false)
+  }, [documentId])
+
+  const startEditTitle = () => {
+    if (!activeDoc) return
+    setTitleDraft(activeDoc.title)
+    setIsEditingTitle(true)
+  }
+
+  const commitTitle = () => {
+    if (!activeDoc) return
+    const trimmed = titleDraft.trim()
+    if (!trimmed || trimmed === activeDoc.title) {
+      setIsEditingTitle(false)
+      return
+    }
+    updateDocMutation.mutate(
+      { documentId: activeDoc.id, title: trimmed },
+      { onSuccess: () => setIsEditingTitle(false) },
+    )
+  }
 
   return (
     <Card className="flex-1 rounded-[28px] p-0 flex flex-col min-w-0 overflow-hidden bg-slate-950/60 shadow-2xl relative">
       {activeDoc ? (
         <>
           <div className="flex items-center gap-3 px-6 py-4 border-b border-white/5 bg-white/2 backdrop-blur-md shrink-0">
-            <div>
+            <div className="flex-1 min-w-0">
               <div className="text-[10px] uppercase tracking-widest text-emerald-300/70 font-bold mb-1">
                 {section?.title}
               </div>
-              <h1 className="text-xl font-bold text-white tracking-tight">
-                {activeDoc.title}
-              </h1>
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={titleDraft}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.nativeEvent.isComposing) return
+                      if (e.key === 'Enter') commitTitle()
+                      if (e.key === 'Escape') setIsEditingTitle(false)
+                    }}
+                    className="flex-1 text-xl font-bold text-white bg-slate-900/60 border border-emerald-500/40 rounded-lg px-3 py-1 outline-none focus:border-emerald-400"
+                  />
+                  <button
+                    onClick={commitTitle}
+                    disabled={updateDocMutation.isPending}
+                    className="p-1.5 text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10 rounded-lg transition-colors disabled:opacity-50"
+                    title="저장 (Enter)"
+                  >
+                    <Check className="size-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsEditingTitle(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg transition-colors"
+                    title="취소 (Esc)"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 group/title">
+                  <h1
+                    onDoubleClick={isEditingBlocks ? startEditTitle : undefined}
+                    className="text-xl font-bold text-white tracking-tight"
+                  >
+                    {activeDoc.title}
+                  </h1>
+                  {isEditingBlocks ? (
+                    <button
+                      onClick={startEditTitle}
+                      className="p-1.5 text-slate-500 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors opacity-0 group-hover/title:opacity-100"
+                      title="이름 변경"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex-1 min-h-0">
@@ -753,6 +829,9 @@ function MainPanel({
                 key={documentQuery.data.id}
                 documentId={documentQuery.data.id}
                 initialBlocks={documentQuery.data.blocks}
+                isEditing={isEditingBlocks}
+                onEnterEdit={() => setIsEditingBlocks(true)}
+                onExitEdit={() => setIsEditingBlocks(false)}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-sm text-rose-300">

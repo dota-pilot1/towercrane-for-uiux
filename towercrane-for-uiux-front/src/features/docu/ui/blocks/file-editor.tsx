@@ -3,14 +3,48 @@ import { parseFileContent, type FileContent } from '../../types/block'
 export function FileBlockEditor({
   content,
   onChange,
+  readOnly = false,
 }: {
   content: string
   onChange: (val: string) => void
+  readOnly?: boolean
 }) {
   const file = parseFileContent(content)
 
   const update = (field: keyof FileContent, value: string) => {
     onChange(JSON.stringify({ ...file, [field]: value }))
+  }
+
+  if (readOnly) {
+    if (!file.url && !file.filename && !file.description) {
+      return (
+        <div className="p-4 text-sm text-slate-500 text-center">
+          파일 정보가 지정되지 않았습니다.
+        </div>
+      )
+    }
+    return (
+      <div className="p-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <span>📎</span>
+          {file.url ? (
+            <a
+              href={file.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-green-300 hover:text-green-200 break-all font-medium"
+            >
+              {file.filename || file.url}
+            </a>
+          ) : (
+            <span className="text-sm text-slate-200 font-medium">{file.filename}</span>
+          )}
+        </div>
+        {file.description ? (
+          <p className="text-sm text-slate-400 leading-relaxed pl-6">{file.description}</p>
+        ) : null}
+      </div>
+    )
   }
 
   return (

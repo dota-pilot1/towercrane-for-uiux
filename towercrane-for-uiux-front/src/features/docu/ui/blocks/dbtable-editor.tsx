@@ -9,11 +9,17 @@ import {
 export function DbTableBlockEditor({
   content,
   onChange,
+  readOnly = false,
 }: {
   content: string
   onChange: (val: string) => void
+  readOnly?: boolean
 }) {
   const dbTable = parseDbTableContent(content)
+
+  if (readOnly) {
+    return <DbTableView dbTable={dbTable} />
+  }
 
   const update = (next: DbTableContent) => {
     onChange(JSON.stringify(next))
@@ -248,6 +254,76 @@ export function DbTableBlockEditor({
           <p className="text-[10px] text-slate-500 mt-1">{dbTable.columns.length}개 컬럼</p>
         )}
       </div>
+    </div>
+  )
+}
+
+function DbTableView({ dbTable }: { dbTable: DbTableContent }) {
+  const isEmpty =
+    !dbTable.tableName && !dbTable.description && dbTable.columns.length === 0
+  if (isEmpty) {
+    return (
+      <div className="p-4 text-sm text-slate-500 text-center">
+        테이블 정보가 지정되지 않았습니다.
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-4 space-y-3">
+      <div>
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span>🗄️</span>
+          <span className="text-sm font-semibold text-slate-100 font-mono">
+            {dbTable.schema ? `${dbTable.schema}.` : ''}
+            {dbTable.tableName || '(no name)'}
+          </span>
+          {dbTable.category ? (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-300">
+              {dbTable.category}
+            </span>
+          ) : null}
+        </div>
+        {dbTable.description ? (
+          <p className="text-sm text-slate-400 leading-relaxed">{dbTable.description}</p>
+        ) : null}
+      </div>
+
+      {dbTable.columns.length > 0 ? (
+        <div className="border border-white/10 rounded-lg overflow-x-auto bg-slate-950/40">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-900/60 text-slate-400">
+              <tr>
+                <th className="px-3 py-2 text-center w-10 font-medium">No</th>
+                <th className="px-3 py-2 text-left font-medium">컬럼명</th>
+                <th className="px-3 py-2 text-left font-medium">설명</th>
+                <th className="px-3 py-2 text-left font-medium">타입</th>
+                <th className="px-3 py-2 text-left w-16 font-medium">크기</th>
+                <th className="px-3 py-2 text-center w-10 font-medium">PK</th>
+                <th className="px-3 py-2 text-center w-10 font-medium">NN</th>
+                <th className="px-3 py-2 text-left font-medium">비고</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dbTable.columns.map((col, idx) => (
+                <tr
+                  key={idx}
+                  className={`border-t border-white/5 ${col.pk ? 'bg-amber-500/5' : ''}`}
+                >
+                  <td className="px-3 py-1.5 text-center text-slate-500">{col.no}</td>
+                  <td className="px-3 py-1.5 font-mono text-slate-100">{col.name}</td>
+                  <td className="px-3 py-1.5 text-slate-300">{col.comment}</td>
+                  <td className="px-3 py-1.5 font-mono text-slate-200">{col.type}</td>
+                  <td className="px-3 py-1.5 text-center text-slate-300">{col.size}</td>
+                  <td className="px-3 py-1.5 text-center">{col.pk ? '✓' : ''}</td>
+                  <td className="px-3 py-1.5 text-center">{col.notNull ? '✓' : ''}</td>
+                  <td className="px-3 py-1.5 text-slate-300">{col.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </div>
   )
 }
