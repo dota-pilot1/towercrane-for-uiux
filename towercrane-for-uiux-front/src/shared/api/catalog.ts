@@ -8,9 +8,8 @@ import type {
   PrototypeVisibility,
   ScenarioCategory,
 } from '../config/catalog'
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000/api'
+import { useSessionStore } from '../store/session-store'
+import { apiRequest } from './http'
 
 export type CreateCategoryPayload = {
   title: string
@@ -27,33 +26,24 @@ export type UpdateCategoryPayload = Partial<CreateCategoryPayload> & {
 export type CreatePrototypePayload = {
   title: string
   repoUrl: string
+  demoUrl?: string
+  figmaUrl?: string
   summary: string
   status: PrototypeStatus
   visibility: PrototypeVisibility
+  tags?: string[]
+  notes?: string
 }
 
 export type UpdatePrototypePayload = Partial<CreatePrototypePayload>
 
-async function request<T>(input: string, init?: RequestInit) {
-  const response = await fetch(`${API_BASE_URL}${input}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`)
-  }
-
-  return (await response.json()) as T
-}
-
 export function useCatalogCategories() {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+
   return useQuery({
     queryKey: ['catalog', 'categories'],
-    queryFn: () => request<ScenarioCategory[]>('/catalog/categories'),
+    queryFn: () => apiRequest<ScenarioCategory[]>('/catalog/categories'),
+    enabled: isAuthenticated,
   })
 }
 
@@ -62,7 +52,7 @@ export function useCreateCategory() {
 
   return useMutation({
     mutationFn: (payload: CreateCategoryPayload) =>
-      request<ScenarioCategory>('/catalog/categories', {
+      apiRequest<ScenarioCategory>('/catalog/categories', {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
@@ -77,7 +67,7 @@ export function useUpdateCategory(categoryId: string) {
 
   return useMutation({
     mutationFn: (payload: UpdateCategoryPayload) =>
-      request<ScenarioCategory>(`/catalog/categories/${categoryId}`, {
+      apiRequest<ScenarioCategory>(`/catalog/categories/${categoryId}`, {
         method: 'PATCH',
         body: JSON.stringify(payload),
       }),
@@ -92,7 +82,7 @@ export function useDeleteCategory() {
 
   return useMutation({
     mutationFn: (categoryId: string) =>
-      request<{ success: boolean; categoryId: string }>(`/catalog/categories/${categoryId}`, {
+      apiRequest<{ success: boolean; categoryId: string }>(`/catalog/categories/${categoryId}`, {
         method: 'DELETE',
       }),
     onSuccess: () => {
@@ -106,7 +96,7 @@ export function useCreatePrototype(categoryId: string) {
 
   return useMutation({
     mutationFn: (payload: CreatePrototypePayload) =>
-      request<ScenarioCategory>(`/catalog/categories/${categoryId}/prototypes`, {
+      apiRequest<ScenarioCategory>(`/catalog/categories/${categoryId}/prototypes`, {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
@@ -121,7 +111,7 @@ export function useUpdatePrototype(categoryId: string, prototypeId: string) {
 
   return useMutation({
     mutationFn: (payload: UpdatePrototypePayload) =>
-      request<ScenarioCategory>(
+      apiRequest<ScenarioCategory>(
         `/catalog/categories/${categoryId}/prototypes/${prototypeId}`,
         {
           method: 'PATCH',
@@ -139,7 +129,7 @@ export function useDeletePrototype(categoryId: string) {
 
   return useMutation({
     mutationFn: (prototypeId: string) =>
-      request<ScenarioCategory>(
+      apiRequest<ScenarioCategory>(
         `/catalog/categories/${categoryId}/prototypes/${prototypeId}`,
         {
           method: 'DELETE',

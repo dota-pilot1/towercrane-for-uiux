@@ -11,9 +11,11 @@ export type WorkbenchFilters = {
 type UiStoreState = {
   activeCategoryId: string
   activeWorkspace: 'overview' | 'prototypes' | 'backend'
+  themeColor: 'emerald' | 'blue' | 'violet' | 'rose' | 'amber'
   filters: WorkbenchFilters
   setActiveCategory: (id: string) => void
   setActiveWorkspace: (workspace: 'overview' | 'prototypes' | 'backend') => void
+  setThemeColor: (color: 'emerald' | 'blue' | 'violet' | 'rose' | 'amber') => void
   applyFilters: (filters: WorkbenchFilters) => void
 }
 
@@ -28,9 +30,11 @@ export const useUiStore = create<UiStoreState>()(
     (set) => ({
       activeCategoryId: seedScenarioCategories[0]?.id ?? 'fsd-architecture',
       activeWorkspace: 'overview',
+      themeColor: 'emerald',
       filters: defaultFilters,
       setActiveCategory: (activeCategoryId) => set({ activeCategoryId }),
       setActiveWorkspace: (activeWorkspace) => set({ activeWorkspace }),
+      setThemeColor: (themeColor) => set({ themeColor }),
       applyFilters: (filters) => set({ filters }),
     }),
     {

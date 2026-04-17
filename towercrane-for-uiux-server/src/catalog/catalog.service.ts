@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { categoriesTable, prototypesTable } from '../database/schema';
 import {
@@ -13,11 +13,15 @@ import {
 export class CatalogService {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  listCategories() {
-    const categories = this.databaseService.db
+  listCategories(userId: string, userRole: string) {
+    const categoriesQuery = this.databaseService.db
       .select()
-      .from(categoriesTable)
-      .all();
+      .from(categoriesTable);
+
+    const categories = (userRole === 'admin' 
+      ? categoriesQuery 
+      : categoriesQuery.where(eq(categoriesTable.userId, userId))
+    ).all();
     const prototypes = this.databaseService.db
       .select()
       .from(prototypesTable)
@@ -31,12 +35,17 @@ export class CatalogService {
     }));
   }
 
-  getCategory(categoryId: string) {
-    const category = this.databaseService.db
+  getCategory(userId: string, userRole: string, categoryId: string) {
+    const categoryQuery = this.databaseService.db
       .select()
-      .from(categoriesTable)
-      .where(eq(categoriesTable.id, categoryId))
-      .get();
+      .from(categoriesTable);
+
+    const category = (userRole === 'admin'
+      ? categoryQuery.where(eq(categoriesTable.id, categoryId))
+      : categoryQuery.where(
+          and(eq(categoriesTable.id, categoryId), eq(categoriesTable.userId, userId)),
+        )
+    ).get();
 
     if (!category) {
       throw new NotFoundException(`Category not found: ${categoryId}`);
@@ -54,14 +63,16 @@ export class CatalogService {
     };
   }
 
-  createCategory(payload: unknown) {
+  createCategory(userId: string, payload: unknown) {
     const input = createCategorySchema.parse(payload);
+    const now = new Date().toISOString();
     const id = `${input.title.toLowerCase().replace(/[^a-z0-9가-힣]+/g, '-')}-${Date.now().toString().slice(-6)}`;
 
     this.databaseService.db
       .insert(categoriesTable)
       .values({
         id,
+        userId,
         title: input.title,
         summary: input.summary,
         group: input.group,
@@ -75,15 +86,16 @@ export class CatalogService {
                 '구현 포인트 정리',
                 '백엔드 연결 여부 판단',
               ],
-        createdAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
       })
       .run();
 
-    return this.getCategory(id);
+    return this.getCategory(userId, 'admin', id);
   }
 
-  updateCategory(categoryId: string, payload: unknown) {
-    this.ensureCategory(categoryId);
+  updateCategory(userId: string, userRole: string, categoryId: string, payload: unknown) {
+    this.ensureCategory(userId, userRole, categoryId);
     const input = updateCategorySchema.parse(payload);
 
     this.databaseService.db
@@ -95,28 +107,34 @@ export class CatalogService {
         iconKey: input.iconKey,
         tags: input.tags,
         checklist: input.checklist,
+        updatedAt: new Date().toISOString(),
       })
-      .where(eq(categoriesTable.id, categoryId))
+      .where(
+        and(eq(categoriesTable.id, categoryId), eq(categoriesTable.userId, userId)),
+      )
       .run();
 
-    return this.getCategory(categoryId);
+    return this.getCategory(userId, userRole, categoryId);
   }
 
-  deleteCategory(categoryId: string) {
-    this.ensureCategory(categoryId);
+  deleteCategory(userId: string, userRole: string, categoryId: string) {
+    this.ensureCategory(userId, userRole, categoryId);
 
     this.databaseService.db
       .delete(categoriesTable)
-      .where(eq(categoriesTable.id, categoryId))
+      .where(
+        and(eq(categoriesTable.id, categoryId), eq(categoriesTable.userId, userId)),
+      )
       .run();
 
     return { success: true, categoryId };
   }
 
-  createPrototype(categoryId: string, payload: unknown) {
-    this.ensureCategory(categoryId);
+  createPrototype(userId: string, userRole: string, categoryId: string, payload: unknown) {
+    this.ensureCategory(userId, userRole, categoryId);
 
     const input = createPrototypeSchema.parse(payload);
+    const now = new Date().toISOString();
     const id = `prototype-${Date.now().toString().slice(-6)}`;
 
     this.databaseService.db
@@ -126,19 +144,30 @@ export class CatalogService {
         categoryId,
         title: input.title,
         repoUrl: input.repoUrl,
+        demoUrl: input.demoUrl || null,
+        figmaUrl: input.figmaUrl || null,
         summary: input.summary,
         status: input.status,
         visibility: input.visibility,
-        updatedAt: new Date().toISOString().slice(0, 10),
+        tags: input.tags,
+        notes: input.notes || null,
+        createdAt: now,
+        updatedAt: now,
       })
       .run();
 
-    return this.getCategory(categoryId);
+    return this.getCategory(userId, userRole, categoryId);
   }
 
-  updatePrototype(categoryId: string, prototypeId: string, payload: unknown) {
-    this.ensureCategory(categoryId);
-    this.ensurePrototype(categoryId, prototypeId);
+  updatePrototype(
+    userId: string,
+    userRole: string,
+    categoryId: string,
+    prototypeId: string,
+    payload: unknown,
+  ) {
+    this.ensureCategory(userId, userRole, categoryId);
+    this.ensurePrototype(userId, userRole, categoryId, prototypeId);
     const input = updatePrototypeSchema.parse(payload);
 
     this.databaseService.db
@@ -146,35 +175,44 @@ export class CatalogService {
       .set({
         title: input.title,
         repoUrl: input.repoUrl,
+        demoUrl: input.demoUrl === undefined ? undefined : input.demoUrl || null,
+        figmaUrl: input.figmaUrl === undefined ? undefined : input.figmaUrl || null,
         summary: input.summary,
         status: input.status,
         visibility: input.visibility,
-        updatedAt: new Date().toISOString().slice(0, 10),
+        tags: input.tags,
+        notes: input.notes === undefined ? undefined : input.notes || null,
+        updatedAt: new Date().toISOString(),
       })
       .where(eq(prototypesTable.id, prototypeId))
       .run();
 
-    return this.getCategory(categoryId);
+    return this.getCategory(userId, userRole, categoryId);
   }
 
-  deletePrototype(categoryId: string, prototypeId: string) {
-    this.ensureCategory(categoryId);
-    this.ensurePrototype(categoryId, prototypeId);
+  deletePrototype(userId: string, userRole: string, categoryId: string, prototypeId: string) {
+    this.ensureCategory(userId, userRole, categoryId);
+    this.ensurePrototype(userId, userRole, categoryId, prototypeId);
 
     this.databaseService.db
       .delete(prototypesTable)
       .where(eq(prototypesTable.id, prototypeId))
       .run();
 
-    return this.getCategory(categoryId);
+    return this.getCategory(userId, userRole, categoryId);
   }
 
-  private ensureCategory(categoryId: string) {
-    const category = this.databaseService.db
+  private ensureCategory(userId: string, userRole: string, categoryId: string) {
+    const categoryQuery = this.databaseService.db
       .select({ id: categoriesTable.id })
-      .from(categoriesTable)
-      .where(eq(categoriesTable.id, categoryId))
-      .get();
+      .from(categoriesTable);
+
+    const category = (userRole === 'admin'
+      ? categoryQuery.where(eq(categoriesTable.id, categoryId))
+      : categoryQuery.where(
+          and(eq(categoriesTable.id, categoryId), eq(categoriesTable.userId, userId)),
+        )
+    ).get();
 
     if (!category) {
       throw new NotFoundException(`Category not found: ${categoryId}`);
@@ -183,7 +221,7 @@ export class CatalogService {
     return category;
   }
 
-  private ensurePrototype(categoryId: string, prototypeId: string) {
+  private ensurePrototype(userId: string, userRole: string, categoryId: string, prototypeId: string) {
     const prototype = this.databaseService.db
       .select({ id: prototypesTable.id })
       .from(prototypesTable)
@@ -194,11 +232,20 @@ export class CatalogService {
       throw new NotFoundException(`Prototype not found: ${prototypeId}`);
     }
 
-    const linkedPrototype = this.databaseService.db
+    const linkedPrototypeQuery = this.databaseService.db
       .select({ id: prototypesTable.id })
-      .from(prototypesTable)
-      .where(eq(prototypesTable.categoryId, categoryId))
-      .all()
+      .from(categoriesTable)
+      .innerJoin(
+        prototypesTable,
+        eq(prototypesTable.categoryId, categoriesTable.id),
+      );
+
+    const linkedPrototype = (userRole === 'admin'
+      ? linkedPrototypeQuery.where(eq(categoriesTable.id, categoryId))
+      : linkedPrototypeQuery.where(
+          and(eq(categoriesTable.id, categoryId), eq(categoriesTable.userId, userId)),
+        )
+    ).all()
       .find((item) => item.id === prototypeId);
 
     if (!linkedPrototype) {

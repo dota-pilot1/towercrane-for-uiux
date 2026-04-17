@@ -1,15 +1,16 @@
 import {
-  CreditCard,
-  LayoutDashboard,
-  PanelsTopLeft,
-  Search,
-  TicketPercent,
+  BookOpenText,
+  Bot,
+  GitBranch,
 } from 'lucide-react'
 
 export const navigationItems = [
-  { id: 'overview', label: '레이아웃 배치', icon: LayoutDashboard },
-  { id: 'search', label: '검색폼', icon: Search },
-  { id: 'workspace', label: '탭 분할', icon: PanelsTopLeft },
-  { id: 'coupon', label: '쿠폰 발급', icon: TicketPercent },
-  { id: 'payment', label: '결제 관리', icon: CreditCard },
+  { id: 'prototype', label: 'Prototype', icon: GitBranch },
+  { id: 'chatbot', label: 'Chatbot', icon: Bot },
+  { id: 'readme', label: 'README', icon: BookOpenText },
+] as const
+
+export const adminItems = [
+  { id: 'users', label: '유저 관리' },
+  { id: 'readme_admin', label: 'README 관리' },
 ] as const

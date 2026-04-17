@@ -1,15 +1,54 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-primary: var(--brand-500);
+  --color-brand-glass: var(--brand-glass);
+  --color-brand-border: var(--brand-border);
+}
+
 :root {
+  --brand-500: #10b981; /* emerald-500 */
+  --brand-glow: rgba(16, 185, 129, 0.45);
+  --brand-glass: rgba(16, 185, 129, 0.1);
+  --brand-border: rgba(16, 185, 129, 0.2);
+
   font-family: "SUIT Variable", "Pretendard Variable", "Inter Tight", sans-serif;
   color: #d7dee7;
   background:
-    radial-gradient(circle at top, rgba(19, 78, 74, 0.4), transparent 32%),
-    linear-gradient(180deg, #081018 0%, #0d1722 58%, #101d2a 100%);
+    radial-gradient(circle at top, var(--brand-glow), transparent 35%),
+    linear-gradient(180deg, #060d14 0%, #0a131b 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme="blue"] {
+  --brand-500: #3b82f6;
+  --brand-glow: rgba(59, 130, 246, 0.45);
+  --brand-glass: rgba(59, 130, 246, 0.1);
+  --brand-border: rgba(59, 130, 246, 0.2);
+}
+
+:root[data-theme="violet"] {
+  --brand-500: #8b5cf6;
+  --brand-glow: rgba(139, 92, 246, 0.45);
+  --brand-glass: rgba(139, 92, 246, 0.1);
+  --brand-border: rgba(139, 92, 246, 0.2);
+}
+
+:root[data-theme="rose"] {
+  --brand-500: #f43f5e;
+  --brand-glow: rgba(244, 63, 94, 0.45);
+  --brand-glass: rgba(244, 63, 94, 0.1);
+  --brand-border: rgba(244, 63, 94, 0.2);
+}
+
+:root[data-theme="amber"] {
+  --brand-500: #f59e0b;
+  --brand-glow: rgba(245, 158, 11, 0.45);
+  --brand-glass: rgba(245, 158, 11, 0.1);
+  --brand-border: rgba(245, 158, 11, 0.2);
 }
 
 * {
@@ -25,9 +64,9 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 20% 0%, rgba(245, 158, 11, 0.18), transparent 22%),
-    radial-gradient(circle at 100% 0%, rgba(34, 197, 94, 0.14), transparent 28%),
-    linear-gradient(180deg, #081018 0%, #0d1722 58%, #101d2a 100%);
+    radial-gradient(circle at 20% 0%, var(--brand-glow), transparent 25%),
+    radial-gradient(circle at 100% 0%, var(--brand-glow), transparent 30%),
+    linear-gradient(180deg, #060d14 0%, #0a131b 100%);
 }
 
 button,

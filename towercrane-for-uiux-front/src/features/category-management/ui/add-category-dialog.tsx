@@ -12,12 +12,15 @@ import { Input } from '../../../shared/ui/input'
 const schema = z.object({
   title: z.string().min(2).max(40),
   summary: z.string().min(8).max(140),
-  group: z.string().min(2).max(20),
 })
 
 type FormValues = z.infer<typeof schema>
 
-export function AddCategoryDialog() {
+interface AddCategoryDialogProps {
+  children?: React.ReactNode
+}
+
+export function AddCategoryDialog({ children }: AddCategoryDialogProps) {
   const [open, setOpen] = useState(false)
   const setActiveCategory = useUiStore((state) => state.setActiveCategory)
   const createCategory = useCreateCategory()
@@ -46,10 +49,12 @@ export function AddCategoryDialog() {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <Button className="w-full">
-          <Plus className="mr-2 size-4" />
-          카테고리 추가
-        </Button>
+        {children ?? (
+          <Button className="w-full">
+            <Plus className="mr-2 size-4" />
+            카테고리 추가
+          </Button>
+        )}
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" />
@@ -79,11 +84,7 @@ export function AddCategoryDialog() {
               ) : null}
             </label>
 
-            <label className="block space-y-2">
-              <span className="text-sm text-slate-300">그룹</span>
-              <Input {...register('group')} placeholder="foundation / workflow / custom" />
-              {errors.group ? <span className="text-xs text-rose-300">{errors.group.message}</span> : null}
-            </label>
+
 
             <div className="flex items-center gap-3 pt-2">
               <Button type="submit" disabled={createCategory.isPending}>

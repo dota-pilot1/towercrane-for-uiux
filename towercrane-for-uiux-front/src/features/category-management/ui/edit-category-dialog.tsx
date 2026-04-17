@@ -19,9 +19,10 @@ type FormValues = z.infer<typeof schema>
 
 type EditCategoryDialogProps = {
   category: ScenarioCategory
+  asIcon?: boolean
 }
 
-export function EditCategoryDialog({ category }: EditCategoryDialogProps) {
+export function EditCategoryDialog({ category, asIcon }: EditCategoryDialogProps) {
   const [open, setOpen] = useState(false)
   const updateCategory = useUpdateCategory(category.id)
 
@@ -55,10 +56,20 @@ export function EditCategoryDialog({ category }: EditCategoryDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <Button variant="secondary">
-          <Pencil className="mr-2 size-4" />
-          카테고리 수정
-        </Button>
+        {asIcon ? (
+          <button
+            type="button"
+            className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:bg-white/10 hover:border-white/20"
+            title="카테고리 수정"
+          >
+            <Pencil className="size-4" />
+          </button>
+        ) : (
+          <Button variant="secondary">
+            <Pencil className="mr-2 size-4" />
+            카테고리 수정
+          </Button>
+        )}
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" />

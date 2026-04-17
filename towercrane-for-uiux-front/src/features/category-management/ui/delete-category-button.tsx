@@ -6,11 +6,13 @@ import { Button } from '../../../shared/ui/button'
 type DeleteCategoryButtonProps = {
   categoryId: string
   fallbackCategoryId?: string
+  asIcon?: boolean
 }
 
 export function DeleteCategoryButton({
   categoryId,
   fallbackCategoryId,
+  asIcon,
 }: DeleteCategoryButtonProps) {
   const deleteCategory = useDeleteCategory()
   const setActiveCategory = useUiStore((state) => state.setActiveCategory)
@@ -27,6 +29,20 @@ export function DeleteCategoryButton({
     if (fallbackCategoryId && fallbackCategoryId !== categoryId) {
       setActiveCategory(fallbackCategoryId)
     }
+  }
+
+  if (asIcon) {
+    return (
+      <button
+        type="button"
+        onClick={() => void handleDelete()}
+        disabled={deleteCategory.isPending}
+        className="flex size-9 items-center justify-center rounded-xl border border-rose-400/20 bg-rose-400/5 text-rose-300 transition-all hover:bg-rose-400/15 hover:border-rose-400/40 disabled:opacity-50"
+        title="삭제"
+      >
+        <Trash2 className="size-4" />
+      </button>
+    )
   }
 
   return (

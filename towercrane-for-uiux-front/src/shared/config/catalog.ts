@@ -5,6 +5,8 @@ export type PrototypeItem = {
   id: string
   title: string
   repoUrl: string
+  demoUrl?: string
+  figmaUrl?: string
   summary: string
   status: PrototypeStatus
   visibility: PrototypeVisibility
@@ -36,6 +38,7 @@ export type ScenarioIconKey =
 
 export type ScenarioCategory = {
   id: string
+  userId: string
   title: string
   summary: string
   group: string

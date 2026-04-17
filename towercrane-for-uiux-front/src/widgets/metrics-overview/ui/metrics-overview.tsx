@@ -1,5 +1,5 @@
 import { FolderKanban, GitBranch, PanelLeftOpen, SquareActivity } from 'lucide-react'
-import { useCatalogCategories } from '../../../shared/api/catalog'
+import type { ScenarioCategory } from '../../../shared/config/catalog'
 import { Card } from '../../../shared/ui/card'
 
 const metricMeta = [
@@ -9,8 +9,11 @@ const metricMeta = [
   { key: 'customCount', label: '사용자 추가 카테고리', icon: FolderKanban },
 ] as const
 
-export function MetricsOverview() {
-  const { data: categories = [] } = useCatalogCategories()
+type MetricsOverviewProps = {
+  categories: ScenarioCategory[]
+}
+
+export function MetricsOverview({ categories }: MetricsOverviewProps) {
   const prototypeCount = categories.reduce(
     (sum, category) => sum + category.prototypes.length,
     0,
@@ -30,21 +33,21 @@ export function MetricsOverview() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {metricMeta.map((item) => {
         const Icon = item.icon
 
         return (
-          <Card key={item.key} className="rounded-[28px] p-5">
+          <Card key={item.key} className="rounded-[22px] p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-400">{item.label}</p>
-                <p className="mt-3 text-2xl font-semibold text-white">
+                <p className="text-xs text-slate-400">{item.label}</p>
+                <p className="mt-2 text-xl font-semibold text-white">
                   {metrics[item.key]}
                 </p>
               </div>
-              <div className="rounded-2xl border border-emerald-200/10 bg-emerald-300/10 p-3 text-emerald-200">
-                <Icon className="size-5" />
+              <div className="rounded-[18px] border border-emerald-200/10 bg-emerald-300/10 p-2.5 text-emerald-200">
+                <Icon className="size-4.5" />
               </div>
             </div>
           </Card>
