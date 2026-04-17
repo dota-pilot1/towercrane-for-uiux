@@ -1,4 +1,4 @@
-import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const usersTable = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -53,11 +53,58 @@ export const prototypesTable = sqliteTable('prototypes', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export const docSectionsTable = sqliteTable('doc_sections', {
+  id: text('id').primaryKey(),
+  prototypeId: text('prototype_id')
+    .notNull()
+    .references(() => prototypesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const documentsTable = sqliteTable('documents', {
+  id: text('id').primaryKey(),
+  sectionId: text('section_id')
+    .notNull()
+    .references(() => docSectionsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type DocumentBlockType =
+  | 'NOTE'
+  | 'MMD'
+  | 'FIGMA'
+  | 'FILE'
+  | 'DBTABLE'
+  | 'GITHUB';
+
+export const documentBlocksTable = sqliteTable('document_blocks', {
+  id: text('id').primaryKey(),
+  documentId: text('document_id')
+    .notNull()
+    .references(() => documentsTable.id, { onDelete: 'cascade' }),
+  blockType: text('block_type').$type<DocumentBlockType>().notNull(),
+  blockTitle: text('block_title'),
+  content: text('content').notNull(),
+  orderIdx: integer('order_idx').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const schema = {
   usersTable,
   sessionsTable,
   categoriesTable,
   prototypesTable,
+  docSectionsTable,
+  documentsTable,
+  documentBlocksTable,
 };
 
 export type UserRow = typeof usersTable.$inferSelect;
@@ -68,3 +115,9 @@ export type CategoryRow = typeof categoriesTable.$inferSelect;
 export type CategoryInsert = typeof categoriesTable.$inferInsert;
 export type PrototypeRow = typeof prototypesTable.$inferSelect;
 export type PrototypeInsert = typeof prototypesTable.$inferInsert;
+export type DocSectionRow = typeof docSectionsTable.$inferSelect;
+export type DocSectionInsert = typeof docSectionsTable.$inferInsert;
+export type DocumentRow = typeof documentsTable.$inferSelect;
+export type DocumentInsert = typeof documentsTable.$inferInsert;
+export type DocumentBlockRow = typeof documentBlocksTable.$inferSelect;
+export type DocumentBlockInsert = typeof documentBlocksTable.$inferInsert;

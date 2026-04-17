@@ -69,6 +69,9 @@ export function AdminShell() {
   const userRole = useSessionStore((state) => state.userRole)
   const activeCategoryId = useUiStore((state) => state.activeCategoryId)
   const setActiveCategory = useUiStore((state) => state.setActiveCategory)
+  const setActiveSection = useUiStore((state) => state.setActiveSection)
+  const setActivePrototypeId = useUiStore((state) => state.setActivePrototypeId)
+
   const selectedCategory =
     categories.find((category) => category.id === activeCategoryId) ?? categories[0]
   const fallbackCategoryId =
@@ -276,6 +279,17 @@ export function AdminShell() {
                                 />
                               </>
                             )}
+                             <button
+                               onClick={() => {
+                                 setActivePrototypeId(proto.id)
+                                 setActiveSection('docu')
+                                 window.scrollTo({ top: 0, behavior: 'smooth' })
+                               }}
+                               className="shrink-0 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:text-white hover:bg-emerald-500 hover:border-emerald-500 transition-all font-mono text-[10px] uppercase font-bold"
+                               title="View Documentation"
+                             >
+                               DOCU
+                             </button>
                              <a
                                href={proto.repoUrl}
                                target="_blank"

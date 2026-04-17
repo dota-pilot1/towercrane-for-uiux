@@ -91,6 +91,39 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_at TEXT NOT NULL,
         FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS doc_sections (
+        id TEXT PRIMARY KEY,
+        prototype_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(prototype_id) REFERENCES prototypes(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS documents (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES doc_sections(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS document_blocks (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL,
+        block_type TEXT NOT NULL,
+        block_title TEXT,
+        content TEXT NOT NULL,
+        order_idx INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE
+      );
     `);
 
     this.migrateLegacySchema();

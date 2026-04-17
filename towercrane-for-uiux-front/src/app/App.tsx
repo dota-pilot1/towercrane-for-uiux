@@ -1,9 +1,10 @@
-import { ArrowRight, Bot, BookOpenText, GitBranch, LogOut, Plus } from 'lucide-react'
+import { ArrowRight, Bot, BookOpenText, GitBranch, LogOut, Plus, FileText as FileTextIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useCurrentUser, useLogout } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
 import { InlineAuthBar } from '../features/auth/ui/inline-auth-bar'
 import { WorkbenchPage } from '../pages/workbench/ui/workbench-page'
+import { DocuPage } from '../pages/docu/ui/docu-page'
 import { adminItems, navigationItems } from '../shared/config/navigation'
 import { useSessionStore } from '../shared/store/session-store'
 import { Button } from '../shared/ui/button'
@@ -13,10 +14,12 @@ import { ChevronDown, ShieldCheck, UserCog, FileText } from 'lucide-react'
 import { useUiStore } from '../shared/store/ui-store'
 import { ThemeSwitcher } from '../shared/ui/theme-switcher'
 
-type AppSection = (typeof navigationItems)[number]['id'] | (typeof adminItems)[number]['id']
+type AppSection = (typeof navigationItems)[number]['id'] | (typeof adminItems)[number]['id'] | 'docu'
 
 export function AppRoot() {
-  const [activeSection, setActiveSection] = useState<AppSection>('prototype')
+  const activeSection = useUiStore((state) => state.activeSection)
+  const setActiveSection = useUiStore((state) => state.setActiveSection)
+  const activePrototypeId = useUiStore((state) => state.activePrototypeId)
   const [isAdminOpen, setIsAdminOpen] = useState(false)
   const hasHydrated = useSessionStore((state) => state.hasHydrated)
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
@@ -50,7 +53,7 @@ export function AppRoot() {
     }
   }, [clearSession, currentUserQuery.error])
 
-  const handleNavigation = (id: AppSection) => {
+  const handleNavigation = (id: string) => {
     setActiveSection(id)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -196,6 +199,10 @@ export function AppRoot() {
           </Card>
         </div>
       )
+    }
+
+    if (activeSection === 'docu') {
+      return <DocuPage />
     }
 
     if (activeSection === 'chatbot') {
