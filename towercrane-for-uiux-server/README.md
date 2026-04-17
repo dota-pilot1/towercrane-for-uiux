@@ -48,6 +48,27 @@ pnpm start:dev
 cp .env.example .env
 ```
 
+`.env` 는 커밋되지 않습니다. 아래 키를 채워 사용하세요.
+
+```env
+PORT=3000
+DATABASE_FILE=./data/towercrane-catalog.sqlite
+
+# AWS S3 (Lexical 에디터 이미지 업로드 - 필수)
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+AWS_S3_BUCKET_NAME=your-bucket-name
+AWS_S3_REGION=ap-northeast-2
+
+# AI (선택)
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+```
+
+- `AWS_*` 값이 없으면 `/upload/presign` 호출 시 500이 납니다. 이미지 업로드 안 쓸 거면 비워둬도 나머지 기능은 정상 동작합니다.
+- 버킷 CORS 에 `PUT` + 프런트 origin 을 허용해야 브라우저가 Presigned URL 로 직접 PUT 할 수 있습니다.
+- 자세한 가이드는 루트 [README](../README.md#환경변수-env-가이드) 참고.
+
 ## Notes
 
 - SQLite 파일만 교체하면 다른 프로젝트용 카테고리 세트를 빠르게 복제할 수 있습니다.
