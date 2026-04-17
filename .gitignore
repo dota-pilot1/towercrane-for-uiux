@@ -3,3 +3,6 @@
 .env.*
 !.env.example
 !.env.*.example
+
+# 배포 관련 민감 정보 (pem 키, 시크릿 등)
+docs-for-배포/
