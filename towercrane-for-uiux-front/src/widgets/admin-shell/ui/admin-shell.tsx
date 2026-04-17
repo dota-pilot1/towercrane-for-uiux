@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   Blocks,
   ChartColumnBig,
+  FileText,
   FolderPlus,
   FormInput,
   Gauge,
@@ -25,6 +26,19 @@ import {
   Workflow,
 } from 'lucide-react'
 import { AddCategoryDialog } from '../../../features/category-management/ui/add-category-dialog'
+
+function GithubIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z" />
+    </svg>
+  )
+}
 
 function FigmaIcon({ className }: { className?: string }) {
   return (
@@ -107,6 +121,13 @@ export function AdminShell() {
     custom: FolderPlus,
   } as const
 
+  const entryActionButtonClassName =
+    'inline-flex size-9 items-center justify-center rounded-xl border transition-all duration-200'
+  const entryActionGhostButtonClassName =
+    `${entryActionButtonClassName} border-white/10 bg-white/5 text-slate-400 hover:border-white/15 hover:bg-white/8 hover:text-white`
+  const entryActionBrandButtonClassName =
+    `${entryActionButtonClassName} border-brand-border bg-brand-glass text-brand-primary shadow-[0_10px_30px_rgba(16,185,129,0.12)] hover:border-brand-border hover:bg-brand-glass/80 hover:text-white`
+
   return (
     <div className="pb-4">
       <div className="grid min-h-[calc(100vh-8rem)] gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -179,7 +200,7 @@ export function AdminShell() {
           </ScrollArea.Root>
         </Card>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex flex-col min-w-0 min-h-0">
           {isError ? (
             <Card className="mb-4 rounded-[24px] border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-100">
               카테고리 데이터를 불러오지 못했습니다. 서버(`:3000`) 상태를 확인하세요.
@@ -187,9 +208,9 @@ export function AdminShell() {
           ) : null}
 
           {selectedCategory ? (
-            <div className="space-y-4">
+            <div className="flex flex-col gap-4 flex-1 min-h-0">
               {/* Category Detail Header */}
-              <Card className="rounded-[28px] p-7">
+              <Card className="rounded-[28px] p-7 shrink-0">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-3xl font-bold text-white tracking-tight">
@@ -221,7 +242,7 @@ export function AdminShell() {
               </Card>
 
               {/* Prototype Timeline List */}
-              <Card className="rounded-[28px] p-7">
+              <Card className="rounded-[28px] p-7 flex-1 min-h-0 overflow-y-auto">
                 <div className="flex items-center justify-between gap-4 mb-8">
                   <div className="flex items-center gap-3 text-slate-300 font-medium">
                     <GitBranch className="size-4 text-brand-primary" />
@@ -285,29 +306,32 @@ export function AdminShell() {
                                  setActiveSection('docu')
                                  window.scrollTo({ top: 0, behavior: 'smooth' })
                                }}
-                               className="shrink-0 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:text-white hover:bg-emerald-500 hover:border-emerald-500 transition-all font-mono text-[10px] uppercase font-bold"
-                               title="View Documentation"
+                               className={entryActionBrandButtonClassName}
+                               title="문서 보기"
+                               aria-label="문서 보기"
                              >
-                               DOCU
+                               <FileText className="size-4" />
                              </button>
                              <a
                                href={proto.repoUrl}
                                target="_blank"
                                rel="noreferrer"
-                               className="shrink-0 p-2.5 rounded-xl bg-white/4 border border-white/5 text-slate-400 hover:text-white hover:bg-brand-glass hover:border-brand-border transition-all font-mono text-[10px]"
-                               title="View on GitHub"
+                               className={entryActionGhostButtonClassName}
+                               title="GitHub 열기"
+                               aria-label="GitHub 열기"
                              >
-                               GIT
+                               <GithubIcon className="size-4" />
                              </a>
                              {proto.figmaUrl && (
                                <a
                                  href={proto.figmaUrl}
                                  target="_blank"
                                  rel="noreferrer"
-                                 className="shrink-0 p-2.5 rounded-xl bg-white/4 border border-white/5 text-slate-400 hover:text-white hover:bg-brand-glass hover:border-brand-border transition-all font-mono text-[10px]"
-                                 title="View on Figma"
+                                 className={entryActionGhostButtonClassName}
+                                 title="Figma 열기"
+                                 aria-label="Figma 열기"
                                >
-                                 FIG
+                                 <FigmaIcon className="size-4" />
                                </a>
                              )}
                            </div>
