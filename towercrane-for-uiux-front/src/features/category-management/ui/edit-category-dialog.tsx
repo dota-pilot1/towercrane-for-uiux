@@ -57,13 +57,9 @@ export function EditCategoryDialog({ category, asIcon }: EditCategoryDialogProps
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {asIcon ? (
-          <button
-            type="button"
-            className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:bg-white/10 hover:border-white/20"
-            title="카테고리 수정"
-          >
+          <Button size="icon" tone="default" title="카테고리 수정">
             <Pencil className="size-4" />
-          </button>
+          </Button>
         ) : (
           <Button variant="secondary">
             <Pencil className="mr-2 size-4" />

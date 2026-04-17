@@ -13,13 +13,13 @@ type UiStoreState = {
   activeCategoryId: string
   activePrototypeId: string | null
   activeWorkspace: 'overview' | 'prototypes' | 'backend'
-  themeColor: 'emerald' | 'blue' | 'violet' | 'rose' | 'amber'
+  themeColor: 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light'
   filters: WorkbenchFilters
   setActiveSection: (section: string) => void
   setActiveCategory: (id: string) => void
   setActivePrototypeId: (id: string | null) => void
   setActiveWorkspace: (workspace: 'overview' | 'prototypes' | 'backend') => void
-  setThemeColor: (color: 'emerald' | 'blue' | 'violet' | 'rose' | 'amber') => void
+  setThemeColor: (color: 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light') => void
   applyFilters: (filters: WorkbenchFilters) => void
 }
 

@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { DatabaseModule } from './database/database.module';
 import { DocuModule } from './docu/docu.module';
+import { ReviewModule } from './review/review.module';
 import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
 
@@ -16,6 +17,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     CatalogModule,
     DocuModule,
+    ReviewModule,
     UploadModule,
     UsersModule,
   ],

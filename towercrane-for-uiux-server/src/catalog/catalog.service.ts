@@ -1,17 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, like, or, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { categoriesTable, prototypesTable } from '../database/schema';
+import { ReviewService } from '../review/review.service';
 import {
   createCategorySchema,
   createPrototypeSchema,
+  listPrototypesQuerySchema,
   updateCategorySchema,
   updatePrototypeSchema,
 } from './catalog.schemas';
 
 @Injectable()
 export class CatalogService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly reviewService: ReviewService,
+  ) {}
 
   listCategories(userId: string, userRole: string) {
     const categoriesQuery = this.databaseService.db
@@ -200,6 +205,75 @@ export class CatalogService {
       .run();
 
     return this.getCategory(userId, userRole, categoryId);
+  }
+
+  listCategoryPrototypes(
+    userId: string,
+    userRole: string,
+    categoryId: string,
+    rawQuery: unknown,
+  ) {
+    this.ensureCategory(userId, userRole, categoryId);
+    const query = listPrototypesQuerySchema.parse(rawQuery ?? {});
+    const { page, pageSize, q, sort } = query;
+    const offset = (page - 1) * pageSize;
+
+    const whereConditions = [eq(prototypesTable.categoryId, categoryId)];
+    if (q) {
+      const pattern = `%${q}%`;
+      const searchCondition = or(
+        like(prototypesTable.title, pattern),
+        like(prototypesTable.summary, pattern),
+      );
+      if (searchCondition) whereConditions.push(searchCondition);
+    }
+    const whereClause =
+      whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0];
+
+    const orderBy =
+      sort === 'oldest'
+        ? [asc(prototypesTable.updatedAt)]
+        : sort === 'title'
+          ? [asc(prototypesTable.title)]
+          : [desc(prototypesTable.updatedAt)];
+
+    const items = this.databaseService.db
+      .select()
+      .from(prototypesTable)
+      .where(whereClause)
+      .orderBy(...orderBy)
+      .limit(pageSize)
+      .offset(offset)
+      .all();
+
+    const totalRow = this.databaseService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(prototypesTable)
+      .where(whereClause)
+      .get();
+
+    const total = Number(totalRow?.count ?? 0);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    const aggregates = this.reviewService.getAggregatesForPrototypes(
+      items.map((i) => i.id),
+    );
+
+    return {
+      items: items.map((item) => {
+        const agg = aggregates.get(item.id);
+        return {
+          ...item,
+          avgRating: agg?.avgRating ?? 0,
+          reviewCount: agg?.count ?? 0,
+        };
+      }),
+      total,
+      page,
+      pageSize,
+      totalPages,
+      query: { q, sort },
+    };
   }
 
   private ensureCategory(userId: string, userRole: string, categoryId: string) {

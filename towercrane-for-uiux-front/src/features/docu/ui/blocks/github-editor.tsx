@@ -1,3 +1,4 @@
+import { Select } from '../../../../shared/ui/select'
 import { parseGithubContent, type GithubContent } from '../../types/block'
 
 const GITHUB_TYPE_LABEL: Record<GithubContent['type'], string> = {
@@ -73,17 +74,17 @@ export function GithubBlockEditor({
         </div>
         <div>
           <label className="text-xs text-slate-400 mb-1 block font-medium">종류</label>
-          <select
+          <Select
             value={github.type}
             onChange={(e) => update('type', e.target.value)}
-            className="w-full px-3 py-2 text-sm text-slate-100 bg-slate-950/40 border border-white/10 rounded-lg outline-none focus:border-emerald-500/40"
+            className="h-10 rounded-lg bg-slate-950/40 px-3 text-sm text-slate-100 focus:border-emerald-500/40 focus:ring-emerald-500/15"
           >
             <option value="repo">📁 Repository</option>
             <option value="pr">🔀 Pull Request</option>
             <option value="issue">🐛 Issue</option>
             <option value="gist">📋 Gist</option>
             <option value="other">🔗 기타</option>
-          </select>
+          </Select>
         </div>
       </div>
       <div>

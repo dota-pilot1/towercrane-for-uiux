@@ -113,6 +113,19 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         FOREIGN KEY(section_id) REFERENCES doc_sections(id) ON DELETE CASCADE
       );
 
+      CREATE TABLE IF NOT EXISTS prototype_reviews (
+        id TEXT PRIMARY KEY,
+        prototype_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        rating INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(prototype_id) REFERENCES prototypes(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(prototype_id, user_id)
+      );
+
       CREATE TABLE IF NOT EXISTS document_blocks (
         id TEXT PRIMARY KEY,
         document_id TEXT NOT NULL,

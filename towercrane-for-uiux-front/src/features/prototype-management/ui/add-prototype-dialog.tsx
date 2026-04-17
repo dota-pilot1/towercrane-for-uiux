@@ -63,13 +63,9 @@ export function AddPrototypeDialog({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {asIcon ? (
-          <button
-            type="button"
-            className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:bg-brand-glass hover:border-brand-border hover:text-brand-primary"
-            title="프로토타입 추가"
-          >
+          <Button size="icon" tone="brand" title="프로토타입 추가">
             <Plus className="size-4" />
-          </button>
+          </Button>
         ) : (
           <Button>
             <Plus className="mr-2 size-4" />

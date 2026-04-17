@@ -22,7 +22,6 @@ import {
   Sparkles,
   TableProperties,
   TriangleAlert,
-  UserRoundPlus,
   Workflow,
 } from 'lucide-react'
 import { AddCategoryDialog } from '../../../features/category-management/ui/add-category-dialog'
@@ -65,13 +64,20 @@ import { AddPrototypeDialog } from '../../../features/prototype-management/ui/ad
 import { EditPrototypeDialog } from '../../../features/prototype-management/ui/edit-prototype-dialog'
 import { DeletePrototypeButton } from '../../../features/prototype-management/ui/delete-prototype-button'
 import { WorkbenchFilterForm } from '../../../features/workbench-filter/ui/workbench-filter-form'
-import { useCatalogCategories } from '../../../shared/api/catalog'
+import {
+  useCatalogCategories,
+  useCategoryPrototypes,
+  type PrototypeListSort,
+} from '../../../shared/api/catalog'
 import { useUiStore } from '../../../shared/store/ui-store'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { Card } from '../../../shared/ui/card'
+import { Select } from '../../../shared/ui/select'
 import { MetricsOverview } from '../../metrics-overview/ui/metrics-overview'
 import { OrderTable } from '../../order-table/ui/order-table'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { ChevronLeft, ChevronRight, Star } from 'lucide-react'
+import { PrototypeDetailDialog } from '../../../features/prototype-review/ui/prototype-detail-dialog'
 
 export function AdminShell() {
   const {
@@ -96,6 +102,30 @@ export function AdminShell() {
       setActiveCategory(categories[0].id)
     }
   }, [activeCategoryId, categories, setActiveCategory])
+
+  // 검색/페이징/정렬 state
+  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [page, setPage] = useState(1)
+  const [sort, setSort] = useState<PrototypeListSort>('recent')
+  const pageSize = 20
+
+  // 카테고리 바뀌면 페이지/검색 초기화
+  useEffect(() => {
+    setPage(1)
+    setSearch('')
+    setSearchInput('')
+  }, [selectedCategory?.id])
+
+  const prototypesQuery = useCategoryPrototypes(selectedCategory?.id ?? null, {
+    page,
+    pageSize,
+    q: search,
+    sort,
+  })
+  const prototypeList = prototypesQuery.data?.items ?? []
+  const totalPages = prototypesQuery.data?.totalPages ?? 1
+  const totalCount = prototypesQuery.data?.total ?? 0
 
   const iconMap = {
     fsd: Blocks,
@@ -124,9 +154,9 @@ export function AdminShell() {
   const entryActionButtonClassName =
     'inline-flex size-9 items-center justify-center rounded-xl border transition-all duration-200'
   const entryActionGhostButtonClassName =
-    `${entryActionButtonClassName} border-white/10 bg-white/5 text-slate-400 hover:border-white/15 hover:bg-white/8 hover:text-white`
+    `${entryActionButtonClassName} ui-icon-button`
   const entryActionBrandButtonClassName =
-    `${entryActionButtonClassName} border-brand-border bg-brand-glass text-brand-primary shadow-[0_10px_30px_rgba(16,185,129,0.12)] hover:border-brand-border hover:bg-brand-glass/80 hover:text-white`
+    `${entryActionButtonClassName} ui-icon-button-brand`
 
   return (
     <div className="pb-4">
@@ -134,27 +164,13 @@ export function AdminShell() {
         <Card className="overflow-hidden rounded-[28px]">
           <ScrollArea.Root className="h-full">
             <ScrollArea.Viewport className="h-full p-5">
-              <div className="mb-6 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.34em] text-emerald-200/70">
-                    categories
-                  </p>
-                  <h1 className="mt-2 text-xl font-semibold text-white">
-                    Prototype Sidebar
-                  </h1>
-                </div>
-                <div className="rounded-2xl border border-brand-border bg-brand-glass p-2.5 text-brand-primary">
-                  <UserRoundPlus className="size-5" />
-                </div>
-              </div>
-
               <div className="mb-4">
                 <AddCategoryDialog />
               </div>
 
               <nav className="space-y-2">
                 {isLoading ? (
-                  <div className="rounded-2xl border border-white/10 bg-white/4 px-4 py-6 text-sm text-slate-400">
+                  <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-6 text-sm ui-text-secondary">
                     카테고리 로딩 중...
                   </div>
                 ) : null}
@@ -170,8 +186,8 @@ export function AdminShell() {
                       onClick={() => setActiveCategory(item.id)}
                       className={`flex w-full items-center gap-3 rounded-[18px] px-3.5 py-2.5 text-left transition ${
                         isActive
-                          ? 'bg-white text-slate-950'
-                          : 'bg-white/4 text-slate-300 hover:bg-white/8'
+                          ? 'bg-[var(--surface-strong)] ui-text-primary ring-1 ring-brand-border'
+                          : 'bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]'
                       }`}
                     >
                       <Icon className="size-4" />
@@ -186,10 +202,6 @@ export function AdminShell() {
                 })}
               </nav>
 
-              <div className="mt-6 rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
-                <p className="text-sm text-slate-400">현재 선택</p>
-                <p className="mt-2 text-lg font-semibold text-white">{selectedCategory?.title}</p>
-              </div>
             </ScrollArea.Viewport>
             <ScrollArea.Scrollbar
               orientation="vertical"
@@ -208,22 +220,22 @@ export function AdminShell() {
           ) : null}
 
           {selectedCategory ? (
-            <div className="flex flex-col gap-4 flex-1 min-h-0">
+            <div className="flex flex-1 min-h-0 flex-col gap-3">
               {/* Category Detail Header */}
-              <Card className="rounded-[28px] p-7 shrink-0">
+              <Card className="rounded-[28px] shrink-0 p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">
+                    <h2 className="ui-text-primary text-[2rem] font-bold tracking-tight">
                       {selectedCategory.title}
                     </h2>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-400 max-w-2xl">
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed ui-text-secondary">
                       {selectedCategory.summary}
                     </p>
-                    <div className="mt-5 flex flex-wrap gap-2">
+                    <div className="mt-4 flex flex-wrap gap-2">
                       {selectedCategory.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-full border border-white/5 bg-slate-950/50 px-3 py-1 text-[11px] text-slate-300 font-medium"
+                          className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] ui-text-secondary font-medium"
                         >
                           #{tag}
                         </span>
@@ -242,15 +254,15 @@ export function AdminShell() {
               </Card>
 
               {/* Prototype Timeline List */}
-              <Card className="rounded-[28px] p-7 flex-1 min-h-0 overflow-y-auto">
-                <div className="flex items-center justify-between gap-4 mb-8">
-                  <div className="flex items-center gap-3 text-slate-300 font-medium">
+              <Card className="flex-1 min-h-0 overflow-y-auto rounded-[28px] p-5">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 ui-text-secondary font-medium">
                     <GitBranch className="size-4 text-brand-primary" />
                     <span className="text-[11px] uppercase tracking-widest">Prototype Entries</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <div className="rounded-full border border-white/5 bg-white/4 px-3 py-1 text-[11px] text-slate-400 uppercase tracking-tighter">
-                      {selectedCategory.prototypes.length} prototypes
+                    <div className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] ui-text-secondary uppercase tracking-tighter">
+                      {totalCount} prototypes
                     </div>
                     <AddPrototypeDialog
                       categoryId={selectedCategory.id}
@@ -260,28 +272,82 @@ export function AdminShell() {
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  {selectedCategory.prototypes.length > 0 ? (
-                    selectedCategory.prototypes.map((proto) => (
+                {/* Search + sort bar */}
+                <div className="mb-5 flex items-center gap-2">
+                  <form
+                    className="relative flex-1"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      setPage(1)
+                      setSearch(searchInput)
+                    }}
+                  >
+                    <Search className="ui-text-muted absolute left-3 top-1/2 size-3.5 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.nativeEvent.isComposing) return
+                        if (e.key === 'Escape') {
+                          setSearchInput('')
+                          setSearch('')
+                          setPage(1)
+                        }
+                      }}
+                      placeholder="제목·요약 검색..."
+                      className="ui-input w-full rounded-xl border py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-500/40"
+                    />
+                  </form>
+                  <Select
+                    value={sort}
+                    onChange={(e) => {
+                      setSort(e.target.value as PrototypeListSort)
+                      setPage(1)
+                    }}
+                    className="h-10 min-w-[7.5rem] rounded-xl px-3 text-sm focus:border-emerald-500/40 focus:ring-emerald-500/15"
+                  >
+                    <option value="recent">최신순</option>
+                    <option value="oldest">오래된순</option>
+                    <option value="title">제목순</option>
+                  </Select>
+                </div>
+
+                <div className="space-y-5">
+                  {prototypesQuery.isLoading ? (
+                    <div className="py-12 text-center text-sm text-slate-500">
+                      프로토타입 불러오는 중...
+                    </div>
+                  ) : prototypeList.length > 0 ? (
+                    prototypeList.map((proto) => (
                       <div
                         key={proto.id}
-                        className="relative pl-7 border-l border-white/10 py-1 transition-all hover:border-brand-primary/30 group"
+                        className="group relative border-l border-[var(--surface-border)] py-1 pl-7 transition-all hover:border-brand-primary/30"
                       >
-                        <div className="absolute left-[-5px] top-3 size-2 rounded-full bg-white/20 border border-slate-950 group-hover:bg-brand-primary transition-colors" />
+                        <div className="absolute left-[-5px] top-3 size-2 rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] transition-colors group-hover:bg-brand-primary" />
                         <div className="flex items-start justify-between gap-6">
                           <div>
-                            <div className="flex items-center gap-3 mb-1.5">
-                              <h3 className="text-base font-semibold text-white tracking-tight">
+                            <div className="mb-1 flex flex-wrap items-center gap-3">
+                              <h3 className="ui-text-primary text-base font-semibold tracking-tight">
                                 {proto.title}
                               </h3>
-                              <span className="text-[10px] text-slate-500 font-mono">
+                              <span className="ui-text-muted font-mono text-[10px]">
                                 {new Date(proto.updatedAt).toLocaleDateString()}
                               </span>
                               <span className="rounded-full bg-brand-glass px-2 py-0.5 text-[10px] uppercase text-brand-primary font-bold border border-brand-border">
                                 {proto.status}
                               </span>
+                              {proto.reviewCount > 0 ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                                  <Star className="size-3 fill-amber-400 text-amber-400" />
+                                  {proto.avgRating.toFixed(1)}
+                                  <span className="text-amber-300/60 font-normal">
+                                    ({proto.reviewCount})
+                                  </span>
+                                </span>
+                              ) : null}
                             </div>
-                            <p className="text-sm leading-relaxed text-slate-400 max-w-2xl">
+                            <p className="max-w-2xl text-sm leading-relaxed ui-text-secondary">
                               {proto.summary}
                             </p>
                           </div>
@@ -312,46 +378,56 @@ export function AdminShell() {
                              >
                                <FileText className="size-4" />
                              </button>
-                             <a
-                               href={proto.repoUrl}
-                               target="_blank"
-                               rel="noreferrer"
-                               className={entryActionGhostButtonClassName}
-                               title="GitHub 열기"
-                               aria-label="GitHub 열기"
-                             >
-                               <GithubIcon className="size-4" />
-                             </a>
-                             {proto.figmaUrl && (
-                               <a
-                                 href={proto.figmaUrl}
-                                 target="_blank"
-                                 rel="noreferrer"
-                                 className={entryActionGhostButtonClassName}
-                                 title="Figma 열기"
-                                 aria-label="Figma 열기"
-                               >
-                                 <FigmaIcon className="size-4" />
-                               </a>
-                             )}
+                             <PrototypeDetailDialog prototype={proto} />
                            </div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="py-12 text-center rounded-3xl border border-dashed border-white/5 bg-white/2">
-                      <p className="text-sm text-slate-500">등록된 프로토타입이 없습니다.</p>
+                    <div className="rounded-3xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] py-12 text-center">
+                      <p className="text-sm ui-text-muted">
+                        {search
+                          ? `"${search}" 에 해당하는 프로토타입이 없습니다.`
+                          : '등록된 프로토타입이 없습니다.'}
+                      </p>
                     </div>
                   )}
                 </div>
+
+                {/* Pagination controls */}
+                {totalCount > 0 ? (
+                  <div className="mt-6 flex items-center justify-between gap-3 border-t border-[var(--surface-border-soft)] pt-4">
+                    <div className="ui-text-muted text-[11px] uppercase tracking-widest">
+                      Page {page} / {totalPages} · {totalCount} total
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page <= 1 || prototypesQuery.isFetching}
+                        className="inline-flex size-8 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)] disabled:pointer-events-none disabled:opacity-40"
+                        aria-label="이전 페이지"
+                      >
+                        <ChevronLeft className="size-4" />
+                      </button>
+                      <button
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page >= totalPages || prototypesQuery.isFetching}
+                        className="inline-flex size-8 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)] disabled:pointer-events-none disabled:opacity-40"
+                        aria-label="다음 페이지"
+                      >
+                        <ChevronRight className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </Card>
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center py-20 animate-in fade-in slide-in-from-bottom-4">
-              <div className="rounded-[32px] border border-white/5 bg-white/4 p-10 flex flex-col items-center">
+              <div className="flex flex-col items-center rounded-[32px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-10">
                 <GitBranch className="size-12 text-brand-primary/40 mb-6" />
-                <h2 className="text-xl font-semibold text-white mb-2">시작할 카테고리를 선택하세요</h2>
-                <p className="text-sm text-slate-400 text-center max-w-xs">
+                <h2 className="mb-2 text-xl font-semibold ui-text-primary">시작할 카테고리를 선택하세요</h2>
+                <p className="max-w-xs text-center text-sm ui-text-secondary">
                   왼쪽 사이드바에서 기존 카테고리를 선택하거나,<br />새로운 패턴 카테고리를 추가하여 작업을 시작하세요.
                 </p>
               </div>

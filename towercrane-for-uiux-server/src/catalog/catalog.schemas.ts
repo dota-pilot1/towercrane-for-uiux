@@ -33,7 +33,15 @@ export const updatePrototypeSchema = createPrototypeSchema
     message: 'At least one field is required',
   });
 
+export const listPrototypesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  q: z.string().trim().max(120).optional().default(''),
+  sort: z.enum(['recent', 'oldest', 'title']).default('recent'),
+});
+
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type CreatePrototypeInput = z.infer<typeof createPrototypeSchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type UpdatePrototypeInput = z.infer<typeof updatePrototypeSchema>;
+export type ListPrototypesQuery = z.infer<typeof listPrototypesQuerySchema>;

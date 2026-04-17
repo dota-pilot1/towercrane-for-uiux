@@ -1,0 +1,29 @@
+import type { SelectHTMLAttributes } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { cn } from '../lib/utils'
+
+type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
+  wrapperClassName?: string
+}
+
+export function Select({
+  className,
+  wrapperClassName,
+  children,
+  ...props
+}: SelectProps) {
+  return (
+    <div className={cn('relative', wrapperClassName)}>
+      <select
+        className={cn(
+          'ui-input h-12 w-full appearance-none rounded-2xl border px-4 pr-10 text-sm outline-none transition focus:border-emerald-300/60 focus:ring-2 focus:ring-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-60',
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 ui-text-muted" />
+    </div>
+  )
+}

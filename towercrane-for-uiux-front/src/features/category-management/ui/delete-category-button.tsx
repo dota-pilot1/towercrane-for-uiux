@@ -33,15 +33,15 @@ export function DeleteCategoryButton({
 
   if (asIcon) {
     return (
-      <button
-        type="button"
+      <Button
+        size="icon"
+        tone="danger"
         onClick={() => void handleDelete()}
         disabled={deleteCategory.isPending}
-        className="flex size-9 items-center justify-center rounded-xl border border-rose-400/20 bg-rose-400/5 text-rose-300 transition-all hover:bg-rose-400/15 hover:border-rose-400/40 disabled:opacity-50"
         title="삭제"
       >
         <Trash2 className="size-4" />
-      </button>
+      </Button>
     )
   }
 

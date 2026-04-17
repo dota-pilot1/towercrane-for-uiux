@@ -60,15 +60,11 @@ export function EditPrototypeDialog({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {asIcon ? (
-          <button
-            type="button"
-            className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:bg-brand-glass hover:border-brand-border hover:text-brand-primary"
-            title="수정"
-          >
+          <Button size="icon" tone="default" title="수정">
             <Pencil className="size-3.5" />
-          </button>
+          </Button>
         ) : (
-          <Button variant="ghost" className="h-8 px-3">
+          <Button variant="ghost" size="sm">
             <Pencil className="size-4" />
           </Button>
         )}

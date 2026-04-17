@@ -2,14 +2,43 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  keepPreviousData,
 } from '@tanstack/react-query'
 import type {
+  PrototypeItem,
   PrototypeStatus,
   PrototypeVisibility,
   ScenarioCategory,
 } from '../config/catalog'
 import { useSessionStore } from '../store/session-store'
 import { apiRequest } from './http'
+
+export type PrototypeListSort = 'recent' | 'oldest' | 'title'
+
+export type PrototypeListParams = {
+  page: number
+  pageSize: number
+  q: string
+  sort: PrototypeListSort
+}
+
+export type PrototypeListItem = PrototypeItem & {
+  categoryId: string
+  notes: string | null
+  tags: string[]
+  createdAt: string
+  avgRating: number
+  reviewCount: number
+}
+
+export type PrototypeListResponse = {
+  items: PrototypeListItem[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+  query: { q: string; sort: PrototypeListSort }
+}
 
 export type CreateCategoryPayload = {
   title: string
@@ -58,6 +87,7 @@ export function useCreateCategory() {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
   })
 }
@@ -73,6 +103,7 @@ export function useUpdateCategory(categoryId: string) {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
   })
 }
@@ -87,7 +118,40 @@ export function useDeleteCategory() {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
+  })
+}
+
+export function useCategoryPrototypes(
+  categoryId: string | null,
+  params: PrototypeListParams,
+) {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+
+  return useQuery({
+    queryKey: [
+      'catalog',
+      'prototypes',
+      categoryId,
+      params.page,
+      params.pageSize,
+      params.q,
+      params.sort,
+    ],
+    queryFn: () => {
+      const qs = new URLSearchParams({
+        page: String(params.page),
+        pageSize: String(params.pageSize),
+        sort: params.sort,
+      })
+      if (params.q.trim()) qs.set('q', params.q.trim())
+      return apiRequest<PrototypeListResponse>(
+        `/catalog/categories/${categoryId}/prototypes?${qs.toString()}`,
+      )
+    },
+    enabled: isAuthenticated && Boolean(categoryId),
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -102,6 +166,7 @@ export function useCreatePrototype(categoryId: string) {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
   })
 }
@@ -120,6 +185,7 @@ export function useUpdatePrototype(categoryId: string, prototypeId: string) {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
   })
 }
@@ -137,6 +203,7 @@ export function useDeletePrototype(categoryId: string) {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
   })
 }

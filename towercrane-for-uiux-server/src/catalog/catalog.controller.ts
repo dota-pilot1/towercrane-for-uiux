@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -50,6 +51,20 @@ export class CatalogController {
     @Param('categoryId') categoryId: string,
   ) {
     return this.catalogService.deleteCategory(user.id, user.role, categoryId);
+  }
+
+  @Get('categories/:categoryId/prototypes')
+  listCategoryPrototypes(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('categoryId') categoryId: string,
+    @Query() query: Record<string, unknown>,
+  ) {
+    return this.catalogService.listCategoryPrototypes(
+      user.id,
+      user.role,
+      categoryId,
+      query,
+    );
   }
 
   @Post('categories/:categoryId/prototypes')

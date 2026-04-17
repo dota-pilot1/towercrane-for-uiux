@@ -1,15 +1,15 @@
-import { ArrowRight, Bot, BookOpenText, GitBranch, LogOut, Plus, FileText as FileTextIcon } from 'lucide-react'
+import { Bot, BookOpenText, GitBranch, LogOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useCurrentUser, useLogout } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
 import { InlineAuthBar } from '../features/auth/ui/inline-auth-bar'
 import { WorkbenchPage } from '../pages/workbench/ui/workbench-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
+import { IntroView } from '../pages/intro/ui/intro-view'
 import { adminItems, navigationItems } from '../shared/config/navigation'
 import { useSessionStore } from '../shared/store/session-store'
 import { Button } from '../shared/ui/button'
 import { Card } from '../shared/ui/card'
-import { AddCategoryDialog } from '../features/category-management/ui/add-category-dialog'
 import { ChevronDown, ShieldCheck, UserCog, FileText } from 'lucide-react'
 import { useUiStore } from '../shared/store/ui-store'
 import { ThemeSwitcher } from '../shared/ui/theme-switcher'
@@ -67,41 +67,25 @@ export function AppRoot() {
     setActiveSection('prototype')
   }
 
-  const [selectedCategoryIdx, setSelectedCategoryIdx] = useState(0)
-
-  const mockCategories = [
-    {
-      id: 'fsd',
-      title: 'FSD 아키텍처',
-      summary: 'Feature-Sliced Design 아키텍처를 적용하여 복잡한 프런트엔드 애플리케이션의 유지보수성과 확장성을 극대화합니다.',
-      tags: ['Layered', 'Sliced', 'Segments'],
-      prototypes: [
-        { id: 1, title: 'Shared UI 패턴 최적화', date: '2026-04-10', comment: '공통 컴포넌트의 추상화 수준을 조절하여 재사용성을 높인 실무 패턴입니다.', repo: 'https://github.com/towercrane/fsd-ui' },
-        { id: 2, title: 'Feature 단위 데이터 흐름', date: '2026-04-12', comment: '데이터 페칭과 상태 관리를 특정 도메인 기능 내에 응집시키는 전략입니다.', repo: 'https://github.com/towercrane/fsd-features' },
-      ]
-    },
-    {
-      id: 'layout',
-      title: '레이아웃 시스템',
-      summary: '일관성 있는 레이아웃과 반응형 디자인을 위한 그리드, 플렉스 박스 시스템을 구축합니다.',
-      tags: ['Grid', 'Responsive', 'Container'],
-      prototypes: [
-        { id: 3, title: '글라스모피즘 대시보드', date: '2026-04-15', comment: '현대적인 유리 질감의 패널과 조명을 활용한 프리미엄 대시보드 시안입니다.', repo: 'https://github.com/towercrane/glass-layout' },
-      ]
-    },
-    {
-      id: 'search',
-      title: '검색 패턴',
-      summary: '효율적인 데이터 탐색을 위한 자동 완성, 필터링, 그리고 검색 결과 시각화 패턴을 다룹니다.',
-      tags: ['Search', 'Filter', 'Autocomplete'],
-      prototypes: [
-        { id: 4, title: '실시간 하이라이팅 필터', date: '2026-04-16', comment: '많은 양의 데이터 속에서 키워드를 실시간으로 찾아 강조해주는 효율적인 패턴입니다.', repo: 'https://github.com/towercrane/search-pattern' },
-      ]
-    }
-  ]
-
-  const currentCategory = mockCategories[selectedCategoryIdx]
   const usersListQuery = useUsersList()
+  const projectPurposeCards = [
+    {
+      title: '프로토타입 공유',
+      description: '실험 중인 UI와 패턴을 빠르게 모아 팀 단위로 공유합니다.',
+    },
+    {
+      title: '개발 문서 공유',
+      description: '의도, 구조, 구현 메모를 문서로 정리해 맥락을 남깁니다.',
+    },
+    {
+      title: '개발 챌린지 개최',
+      description: '시도와 해결 과정을 축적해 다음 작업의 기준점으로 씁니다.',
+    },
+    {
+      title: '챗봇 응답 지원',
+      description: '쌓인 문서와 패턴을 바탕으로 필요한 답을 더 빨리 찾습니다.',
+    },
+  ]
 
   const renderContent = () => {
     if (activeSection === 'prototype') {
@@ -109,96 +93,7 @@ export function AppRoot() {
         return <WorkbenchPage />
       }
 
-      return (
-        <div className="min-h-[calc(100vh-8rem)]">
-          <Card className="rounded-[28px] p-0 overflow-hidden">
-            <div className="grid md:grid-cols-[240px_minmax(0,1fr)]">
-              {/* Sidebar */}
-              <div className="border-r border-white/5 bg-slate-950/20 p-5">
-                <div className="flex items-center justify-between gap-3 text-emerald-200 mb-6 font-medium">
-                  <div className="flex items-center gap-3">
-                    <GitBranch className="size-4" />
-                    <span className="text-sm tracking-wide">Categories</span>
-                  </div>
-                  <AddCategoryDialog>
-                    <button className="size-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-300 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all">
-                      <Plus className="size-4" />
-                    </button>
-                  </AddCategoryDialog>
-                </div>
-                <div className="space-y-1.5 font-medium">
-                  {mockCategories.map((item, index) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setSelectedCategoryIdx(index)}
-                      className={`w-full text-left rounded-[16px] border px-4 py-2.5 text-[13px] transition ${
-                        selectedCategoryIdx === index
-                          ? 'border-emerald-500/30 bg-emerald-500/10 text-white'
-                          : 'border-transparent bg-transparent text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                      }`}
-                    >
-                      {item.title}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Main Content */}
-              <div className="p-6">
-                <div className="flex items-center gap-3 text-slate-300 mb-6 font-medium">
-                  <ArrowRight className="size-4 text-emerald-300" />
-                  <span className="text-sm tracking-wide">Category Detail Information</span>
-                </div>
-
-                {/* Detail Card */}
-                <div className="rounded-[24px] border border-white/5 bg-white/4 p-6 mb-8">
-                  <h2 className="text-2xl font-bold text-white mb-3">{currentCategory.title}</h2>
-                  <p className="text-sm leading-relaxed text-slate-400 mb-4">{currentCategory.summary}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {currentCategory.tags.map(tag => (
-                      <span key={tag} className="px-3 py-1 rounded-full bg-slate-900 border border-white/5 text-[11px] text-slate-300 font-medium">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Prototypes List (Comment Format) */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-semibold text-emerald-300/80 uppercase tracking-widest">Prototypes</span>
-                    <div className="h-px flex-1 bg-white/5"></div>
-                  </div>
-                  
-                  {currentCategory.prototypes.map((proto) => (
-                    <div key={proto.id} className="relative pl-6 border-l border-white/10 py-1 transition-all hover:border-emerald-500/30">
-                      <div className="absolute left-[-5px] top-3 size-2 rounded-full bg-white/20 border border-slate-950"></div>
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-sm font-semibold text-white tracking-tight">{proto.title}</h3>
-                            <span className="text-[10px] text-slate-500 uppercase">{proto.date}</span>
-                          </div>
-                          <p className="text-[13px] leading-relaxed text-slate-400">{proto.comment}</p>
-                        </div>
-                        <a 
-                          href={proto.repo} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="shrink-0 p-2 rounded-xl bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all group"
-                          title="View on GitHub"
-                        >
-                          <svg className="size-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )
+      return <IntroView projectPurposeCards={projectPurposeCards} />
     }
 
     if (activeSection === 'docu') {
@@ -373,10 +268,10 @@ export function AppRoot() {
               className="text-left shrink-0"
               onClick={() => handleNavigation('prototype')}
             >
-              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/60 font-medium">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-brand-primary/60 font-medium">
                 towercrane
               </p>
-              <p className="text-base font-bold text-white leading-none">Front</p>
+              <p className="text-base font-bold ui-text-primary leading-none">FullStack</p>
             </button>
 
             <nav className="flex items-center justify-center gap-1.5 flex-1 min-w-0">
@@ -390,8 +285,8 @@ export function AppRoot() {
                     onClick={() => handleNavigation(item.id)}
                     className={`inline-flex h-[34px] items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition shrink-0 ${
                       activeSection === item.id
-                        ? 'border-brand-border bg-brand-glass text-white'
-                        : 'border-white/5 bg-white/4 text-slate-300 hover:bg-white/8'
+                        ? 'border-brand-border bg-brand-glass ui-text-primary'
+                        : 'border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]'
                     }`}
                   >
                     <Icon className="size-3.5" />
@@ -409,8 +304,8 @@ export function AppRoot() {
                       onBlur={() => setTimeout(() => setIsAdminOpen(false), 200)}
                       className={`inline-flex h-[34px] items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition shrink-0 ${
                         activeSection === 'users' || activeSection === 'readme_admin'
-                          ? 'border-brand-border bg-brand-glass text-white'
-                          : 'border-white/5 bg-white/4 text-slate-300 hover:bg-white/8'
+                          ? 'border-brand-border bg-brand-glass ui-text-primary'
+                          : 'border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]'
                       }`}
                     >
                       <ShieldCheck className="size-3.5" />
@@ -419,7 +314,7 @@ export function AppRoot() {
                     </button>
 
                     {isAdminOpen && (
-                      <div className="absolute left-0 top-full mt-2 w-44 origin-top-left rounded-2xl border border-white/10 bg-slate-900/95 p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in duration-200 z-50">
+                      <div className="absolute left-0 top-full mt-2 w-44 origin-top-left rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in duration-200 z-50">
                         {adminItems.map((item) => (
                           <button
                             key={item.id}
@@ -427,7 +322,7 @@ export function AppRoot() {
                               handleNavigation(item.id)
                               setIsAdminOpen(false)
                             }}
-                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] text-slate-300 hover:bg-white/5 hover:text-white transition-colors text-left"
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] transition-colors text-left"
                           >
                             {item.id === 'users' ? <UserCog className="size-3.5" /> : <FileText className="size-3.5" />}
                             {item.label}
@@ -450,13 +345,13 @@ export function AppRoot() {
                         <ShieldCheck className="size-4" />
                       </div>
                     )}
-                    <span className="rounded-full border border-white/5 bg-slate-950/35 h-[34px] flex items-center px-3.5 text-xs text-slate-200">
+                    <span className="h-[34px] flex items-center rounded-full border border-[var(--surface-border)] bg-[var(--input-bg)] px-3.5 text-xs ui-text-primary">
                       {userName || userEmail}
                     </span>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="size-[34px] rounded-full border border-white/5 bg-white/4 flex items-center justify-center text-slate-300 hover:bg-white/10"
+                    className="flex size-[34px] items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]"
                     aria-label="로그아웃"
                     title="로그아웃"
                   >

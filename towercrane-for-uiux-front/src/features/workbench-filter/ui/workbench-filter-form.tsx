@@ -8,6 +8,7 @@ import { defaultFilters, useUiStore } from '../../../shared/store/ui-store'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
+import { Select } from '../../../shared/ui/select'
 import { filterSchema, type FilterFormValues } from '../model/filter-schema'
 
 type WorkbenchFilterFormProps = {
@@ -79,27 +80,21 @@ export function WorkbenchFilterForm({
 
         <label className="space-y-1.5">
           <span className="text-xs text-slate-300">상태</span>
-          <select
-            className="h-10 w-full rounded-[18px] border border-white/10 bg-slate-950/35 px-3.5 py-2 text-sm text-slate-50 outline-none focus:border-emerald-300/60"
-            {...register('status')}
-          >
+          <Select className="h-10 rounded-[18px] px-3.5" {...register('status')}>
             <option value="all">전체 상태</option>
             <option value="draft">draft</option>
             <option value="building">building</option>
             <option value="ready">ready</option>
-          </select>
+          </Select>
         </label>
 
         <label className="space-y-1.5">
           <span className="text-xs text-slate-300">공개 범위</span>
-          <select
-            className="h-10 w-full rounded-[18px] border border-white/10 bg-slate-950/35 px-3.5 py-2 text-sm text-slate-50 outline-none focus:border-emerald-300/60"
-            {...register('visibility')}
-          >
+          <Select className="h-10 rounded-[18px] px-3.5" {...register('visibility')}>
             <option value="all">전체</option>
             <option value="public">public</option>
             <option value="private">private</option>
-          </select>
+          </Select>
         </label>
 
         <div className="flex flex-wrap items-center gap-2.5 lg:col-span-3">

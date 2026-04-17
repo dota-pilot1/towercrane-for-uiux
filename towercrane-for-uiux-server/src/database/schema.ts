@@ -84,6 +84,20 @@ export type DocumentBlockType =
   | 'DBTABLE'
   | 'GITHUB';
 
+export const prototypeReviewsTable = sqliteTable('prototype_reviews', {
+  id: text('id').primaryKey(),
+  prototypeId: text('prototype_id')
+    .notNull()
+    .references(() => prototypesTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  rating: integer('rating').notNull(),
+  content: text('content').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const documentBlocksTable = sqliteTable('document_blocks', {
   id: text('id').primaryKey(),
   documentId: text('document_id')
@@ -102,6 +116,7 @@ export const schema = {
   sessionsTable,
   categoriesTable,
   prototypesTable,
+  prototypeReviewsTable,
   docSectionsTable,
   documentsTable,
   documentBlocksTable,
@@ -121,3 +136,5 @@ export type DocumentRow = typeof documentsTable.$inferSelect;
 export type DocumentInsert = typeof documentsTable.$inferInsert;
 export type DocumentBlockRow = typeof documentBlocksTable.$inferSelect;
 export type DocumentBlockInsert = typeof documentBlocksTable.$inferInsert;
+export type PrototypeReviewRow = typeof prototypeReviewsTable.$inferSelect;
+export type PrototypeReviewInsert = typeof prototypeReviewsTable.$inferInsert;

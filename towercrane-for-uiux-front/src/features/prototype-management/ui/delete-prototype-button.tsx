@@ -27,15 +27,15 @@ export function DeletePrototypeButton({
 
   if (asIcon) {
     return (
-      <button
-        type="button"
-        className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-300 disabled:opacity-50"
+      <Button
+        size="icon"
+        tone="danger"
         title="삭제"
         onClick={() => void handleDelete()}
         disabled={deletePrototype.isPending}
       >
         <Trash2 className="size-3.5" />
-      </button>
+      </Button>
     )
   }
 
