@@ -12,7 +12,7 @@ export const TYPE_META: Record<DocBlockType, BlockMeta> = {
   FIGMA: { icon: '🎨', label: 'Figma', color: 'bg-pink-500/15 text-pink-300 border border-pink-400/20' },
   FILE: { icon: '📎', label: '첨부파일', color: 'bg-green-500/15 text-green-300 border border-green-400/20' },
   DBTABLE: { icon: '🗄️', label: 'DB테이블', color: 'bg-amber-500/15 text-amber-300 border border-amber-400/20' },
-  GITHUB: { icon: '🐙', label: 'GitHub', color: 'bg-slate-500/15 text-slate-300 border border-slate-400/20' },
+  GITHUB: { icon: '🐙', label: 'GitHub', color: 'bg-surface-muted text-text-secondary border border-surface-border-soft' },
 }
 
 export type FileContent = {

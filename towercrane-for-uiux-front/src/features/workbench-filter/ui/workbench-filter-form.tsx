@@ -52,10 +52,10 @@ export function WorkbenchFilterForm({
     <Card className="panel-grid rounded-[24px] p-5">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.34em] text-emerald-200/70">
+          <p className="text-xs uppercase tracking-[0.34em] text-brand-primary/70">
             Prototype Search
           </p>
-          <h2 className="mt-1.5 text-xl font-semibold text-white">프로토타입 검색</h2>
+          <h2 className="mt-1.5 text-xl font-semibold text-text-primary">프로토타입 검색</h2>
         </div>
         {selectedCategory ? (
           <AddPrototypeDialog
@@ -67,9 +67,9 @@ export function WorkbenchFilterForm({
 
       <form className="grid gap-3 lg:grid-cols-3" onSubmit={handleSubmit(onSubmit)}>
         <label className="space-y-1.5">
-          <span className="text-xs text-slate-300">키워드</span>
+          <span className="text-xs text-text-secondary">키워드</span>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3.5 top-3 size-4 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3.5 top-3 size-4 text-text-muted" />
             <Input
               {...register('query')}
               className="h-10 pl-10"
@@ -79,7 +79,7 @@ export function WorkbenchFilterForm({
         </label>
 
         <label className="space-y-1.5">
-          <span className="text-xs text-slate-300">상태</span>
+          <span className="text-xs text-text-secondary">상태</span>
           <Select className="h-10 rounded-[18px] px-3.5" {...register('status')}>
             <option value="all">전체 상태</option>
             <option value="draft">draft</option>
@@ -89,7 +89,7 @@ export function WorkbenchFilterForm({
         </label>
 
         <label className="space-y-1.5">
-          <span className="text-xs text-slate-300">공개 범위</span>
+          <span className="text-xs text-text-secondary">공개 범위</span>
           <Select className="h-10 rounded-[18px] px-3.5" {...register('visibility')}>
             <option value="all">전체</option>
             <option value="public">public</option>

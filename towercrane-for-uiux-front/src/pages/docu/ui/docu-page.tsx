@@ -92,16 +92,16 @@ export function DocuPage() {
   if (!activePrototypeId) {
     return (
       <Card className="rounded-[28px] p-12 flex flex-col items-center justify-center text-center">
-        <FileText className="size-12 text-slate-600 mb-4" />
-        <p className="text-lg font-semibold text-white mb-2">
+        <FileText className="size-12 ui-text-muted mb-4" />
+        <p className="text-lg font-semibold ui-text-primary mb-2">
           프로토타입을 먼저 선택해주세요
         </p>
-        <p className="text-sm text-slate-400 mb-6">
+        <p className="text-sm ui-text-secondary mb-6">
           Prototype 화면에서 DOCU 버튼을 눌러 접근할 수 있습니다.
         </p>
         <button
           onClick={() => setActiveSection('prototype')}
-          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 hover:bg-white/10"
+          className="inline-flex items-center gap-2 rounded-2xl border border-[var(--surface-border-soft)] bg-[var(--surface-muted)] px-4 py-2 text-sm ui-text-primary hover:bg-[var(--surface-muted)]"
         >
           <ArrowLeft className="size-4" /> Prototype 목록으로
         </button>
@@ -213,26 +213,26 @@ function SectionSidebar({
   }
 
   return (
-    <Card className="w-60 shrink-0 rounded-[28px] p-5 flex flex-col gap-4 overflow-hidden border border-white/5 bg-slate-950/40">
+    <Card className="w-60 shrink-0 rounded-[28px] p-5 flex flex-col gap-4 overflow-hidden border border-[var(--surface-border-soft)] bg-[var(--surface-muted)]">
       <div>
         <button
           onClick={onBack}
-          className="mb-3 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-slate-500 hover:text-emerald-300 transition-colors"
+          className="mb-3 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest ui-text-muted hover:text-brand-primary transition-colors"
         >
           <ArrowLeft className="size-3" /> Prototype
         </button>
-        <div className="text-xs uppercase tracking-widest text-emerald-200/70 font-bold mb-1">
+        <div className="text-xs uppercase tracking-widest text-brand-primary font-bold mb-1">
           Docs of
         </div>
-        <div className="text-base font-bold text-white truncate" title={prototypeTitle ?? ''}>
+        <div className="text-base font-bold ui-text-primary truncate" title={prototypeTitle ?? ''}>
           {prototypeTitle ?? '—'}
         </div>
       </div>
 
-      <div className="h-px w-full bg-white/5" />
+      <div className="h-px w-full bg-[var(--surface-muted)]" />
 
       <div className="flex items-center justify-between">
-        <div className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">
+        <div className="text-[11px] uppercase tracking-widest ui-text-secondary font-semibold">
           Sections
         </div>
         <button
@@ -240,7 +240,7 @@ function SectionSidebar({
             setAdding(true)
             setNewTitle('')
           }}
-          className="text-emerald-400 hover:text-emerald-300 transition-colors"
+          className="text-brand-primary hover:text-brand-primary transition-colors"
           title="섹션 추가"
         >
           <Plus className="size-4" />
@@ -249,7 +249,7 @@ function SectionSidebar({
 
       <div className="flex flex-col gap-1 overflow-y-auto pr-1">
         {isLoading && sections.length === 0 ? (
-          <div className="text-xs text-slate-500 text-center py-6">로딩 중...</div>
+          <div className="text-xs ui-text-muted text-center py-6">로딩 중...</div>
         ) : null}
 
         <DndContext
@@ -291,10 +291,10 @@ function SectionSidebar({
         </DndContext>
 
         {adding ? (
-          <div className="flex items-center gap-1.5 rounded-[12px] border border-emerald-500/20 bg-emerald-500/5 px-2 py-1.5 mt-1">
+          <div className="flex items-center gap-1.5 rounded-[12px] border border-brand-border bg-brand-glass px-2 py-1.5 mt-1">
             <input
               autoFocus
-              className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
+              className="flex-1 bg-transparent text-sm ui-text-primary placeholder:ui-text-muted outline-none"
               placeholder="섹션 이름"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
@@ -306,13 +306,13 @@ function SectionSidebar({
             />
             <button
               onClick={submitAdd}
-              className="text-emerald-300 hover:text-emerald-200"
+              className="text-brand-primary hover:brightness-110"
             >
               <Check className="size-3.5" />
             </button>
             <button
               onClick={() => setAdding(false)}
-              className="text-slate-500 hover:text-slate-300"
+              className="ui-text-muted hover:ui-text-secondary"
             >
               <X className="size-3.5" />
             </button>
@@ -320,7 +320,7 @@ function SectionSidebar({
         ) : null}
 
         {!isLoading && sections.length === 0 && !adding ? (
-          <div className="text-xs text-slate-500 text-center py-6">
+          <div className="text-xs ui-text-muted text-center py-6">
             섹션이 없습니다. + 버튼으로 추가하세요.
           </div>
         ) : null}
@@ -366,11 +366,11 @@ function SortableSectionItem({
       <div
         ref={setNodeRef}
         style={style}
-        className="flex items-center gap-1.5 rounded-[12px] border border-emerald-500/20 bg-emerald-500/5 px-2 py-1.5"
+        className="flex items-center gap-1.5 rounded-[12px] border border-brand-border bg-brand-glass px-2 py-1.5"
       >
         <input
           autoFocus
-          className="flex-1 min-w-0 bg-transparent text-sm text-white outline-none"
+          className="flex-1 min-w-0 bg-transparent text-sm ui-text-primary outline-none"
           value={editingTitle}
           onChange={(e) => onChangeTitle(e.target.value)}
           onKeyDown={(e) => {
@@ -379,10 +379,10 @@ function SortableSectionItem({
             if (e.key === 'Escape') onCancelEdit()
           }}
         />
-        <button onClick={onSubmitEdit} className="text-emerald-300 hover:text-emerald-200">
+        <button onClick={onSubmitEdit} className="text-brand-primary hover:brightness-110">
           <Check className="size-3.5" />
         </button>
-        <button onClick={onCancelEdit} className="text-slate-500 hover:text-slate-300">
+        <button onClick={onCancelEdit} className="ui-text-muted hover:ui-text-secondary">
           <X className="size-3.5" />
         </button>
       </div>
@@ -395,14 +395,14 @@ function SortableSectionItem({
       style={style}
       className={`group flex items-center gap-1.5 rounded-[12px] border transition-colors ${
         isActive
-          ? 'bg-white/10 text-white border-white/10 shadow-sm'
-          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-transparent'
+          ? 'bg-[var(--surface-muted)] ui-text-primary border-[var(--surface-border-soft)] shadow-sm'
+          : 'ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] border-transparent'
       }`}
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing pl-2 py-2.5 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="cursor-grab active:cursor-grabbing pl-2 py-2.5 ui-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
         aria-label="Drag"
       >
         <GripVertical className="size-3.5" />
@@ -417,14 +417,14 @@ function SortableSectionItem({
       <div className="flex items-center gap-0.5 pr-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={onStartEdit}
-          className="p-1 text-slate-400 hover:text-emerald-300"
+          className="p-1 ui-text-secondary hover:text-brand-primary"
           title="이름 변경"
         >
           <Pencil className="size-3" />
         </button>
         <button
           onClick={onDelete}
-          className="p-1 text-slate-400 hover:text-rose-400"
+          className="p-1 ui-text-secondary hover:text-rose-400"
           title="삭제"
         >
           <Trash2 className="size-3" />
@@ -506,9 +506,9 @@ function DocumentSidebar({
   }
 
   return (
-    <Card className="w-72 shrink-0 rounded-[28px] p-5 flex flex-col gap-4 overflow-hidden border border-white/5 bg-slate-950/40">
+    <Card className="w-72 shrink-0 rounded-[28px] p-5 flex flex-col gap-4 overflow-hidden border border-[var(--surface-border-soft)] bg-[var(--surface-muted)]">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-bold text-white tracking-wide truncate">
+        <div className="text-sm font-bold ui-text-primary tracking-wide truncate">
           {section?.title ?? '섹션을 선택하세요'}
         </div>
         {section ? (
@@ -517,7 +517,7 @@ function DocumentSidebar({
               setAdding(true)
               setNewTitle('')
             }}
-            className="text-slate-400 hover:text-emerald-300 transition-colors"
+            className="ui-text-secondary hover:text-brand-primary transition-colors"
             title="문서 추가"
           >
             <Plus className="size-4" />
@@ -525,7 +525,7 @@ function DocumentSidebar({
         ) : null}
       </div>
 
-      <div className="h-px w-full bg-white/5" />
+      <div className="h-px w-full bg-[var(--surface-muted)]" />
 
       <div className="flex flex-col gap-1 overflow-y-auto pr-1">
         <DndContext
@@ -567,10 +567,10 @@ function DocumentSidebar({
         </DndContext>
 
         {adding && section ? (
-          <div className="flex items-center gap-1.5 rounded-[12px] border border-emerald-500/20 bg-emerald-500/5 px-2 py-1.5 mt-1">
+          <div className="flex items-center gap-1.5 rounded-[12px] border border-brand-border bg-brand-glass px-2 py-1.5 mt-1">
             <input
               autoFocus
-              className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
+              className="flex-1 bg-transparent text-sm ui-text-primary placeholder:ui-text-muted outline-none"
               placeholder="문서 제목"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
@@ -582,13 +582,13 @@ function DocumentSidebar({
             />
             <button
               onClick={submitAdd}
-              className="text-emerald-300 hover:text-emerald-200"
+              className="text-brand-primary hover:brightness-110"
             >
               <Check className="size-3.5" />
             </button>
             <button
               onClick={() => setAdding(false)}
-              className="text-slate-500 hover:text-slate-300"
+              className="ui-text-muted hover:ui-text-secondary"
             >
               <X className="size-3.5" />
             </button>
@@ -596,12 +596,12 @@ function DocumentSidebar({
         ) : null}
 
         {section && documents.length === 0 && !adding ? (
-          <div className="text-xs text-slate-500 text-center py-6">
+          <div className="text-xs ui-text-muted text-center py-6">
             문서가 없습니다.
           </div>
         ) : null}
         {!section ? (
-          <div className="text-xs text-slate-500 text-center py-6">
+          <div className="text-xs ui-text-muted text-center py-6">
             왼쪽에서 섹션을 선택하세요.
           </div>
         ) : null}
@@ -647,11 +647,11 @@ function SortableDocumentItem({
       <div
         ref={setNodeRef}
         style={style}
-        className="flex items-center gap-1.5 rounded-[12px] border border-emerald-500/20 bg-emerald-500/5 px-2 py-1.5"
+        className="flex items-center gap-1.5 rounded-[12px] border border-brand-border bg-brand-glass px-2 py-1.5"
       >
         <input
           autoFocus
-          className="flex-1 min-w-0 bg-transparent text-sm text-white outline-none"
+          className="flex-1 min-w-0 bg-transparent text-sm ui-text-primary outline-none"
           value={editingTitle}
           onChange={(e) => onChangeTitle(e.target.value)}
           onKeyDown={(e) => {
@@ -660,10 +660,10 @@ function SortableDocumentItem({
             if (e.key === 'Escape') onCancelEdit()
           }}
         />
-        <button onClick={onSubmitEdit} className="text-emerald-300 hover:text-emerald-200">
+        <button onClick={onSubmitEdit} className="text-brand-primary hover:brightness-110">
           <Check className="size-3.5" />
         </button>
-        <button onClick={onCancelEdit} className="text-slate-500 hover:text-slate-300">
+        <button onClick={onCancelEdit} className="ui-text-muted hover:ui-text-secondary">
           <X className="size-3.5" />
         </button>
       </div>
@@ -676,14 +676,14 @@ function SortableDocumentItem({
       style={style}
       className={`group flex items-center gap-1 rounded-[12px] transition-all ${
         isActive
-          ? 'text-emerald-300 bg-emerald-500/10 font-bold border-l-[3px] border-emerald-400 pl-[5px]'
-          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-[3px] border-transparent pl-[5px]'
+          ? 'text-brand-primary bg-brand-glass font-bold border-l-[3px] border-brand-border pl-[5px]'
+          : 'ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] border-l-[3px] border-transparent pl-[5px]'
       }`}
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing py-2 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="cursor-grab active:cursor-grabbing py-2 ui-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
         aria-label="Drag"
       >
         <GripVertical className="size-3" />
@@ -698,14 +698,14 @@ function SortableDocumentItem({
       <div className="flex items-center gap-0.5 pr-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={onStartEdit}
-          className="p-1 text-slate-400 hover:text-emerald-300"
+          className="p-1 ui-text-secondary hover:text-brand-primary"
           title="이름 변경"
         >
           <Pencil className="size-3" />
         </button>
         <button
           onClick={onDelete}
-          className="p-1 text-slate-400 hover:text-rose-400"
+          className="p-1 ui-text-secondary hover:text-rose-400"
           title="삭제"
         >
           <Trash2 className="size-3" />
@@ -761,12 +761,12 @@ function MainPanel({
   }
 
   return (
-    <Card className="flex-1 rounded-[28px] p-0 flex flex-col min-w-0 overflow-hidden bg-slate-950/60 shadow-2xl relative">
+    <Card className="flex-1 rounded-[28px] p-0 flex flex-col min-w-0 overflow-hidden shadow-2xl relative">
       {activeDoc ? (
         <>
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-white/5 bg-white/2 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-[var(--surface-border-soft)] bg-[var(--surface-muted)] backdrop-blur-md shrink-0">
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] uppercase tracking-widest text-emerald-300/70 font-bold mb-1">
+              <div className="text-[10px] uppercase tracking-widest text-brand-primary/70 font-bold mb-1">
                 {section?.title}
               </div>
               {isEditingTitle ? (
@@ -780,19 +780,19 @@ function MainPanel({
                       if (e.key === 'Enter') commitTitle()
                       if (e.key === 'Escape') setIsEditingTitle(false)
                     }}
-                    className="flex-1 text-xl font-bold text-white bg-slate-900/60 border border-emerald-500/40 rounded-lg px-3 py-1 outline-none focus:border-emerald-400"
+                    className="flex-1 text-xl font-bold ui-text-primary bg-[var(--input-bg)] border border-brand-border rounded-lg px-3 py-1 outline-none focus:border-brand-border"
                   />
                   <button
                     onClick={commitTitle}
                     disabled={updateDocMutation.isPending}
-                    className="p-1.5 text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10 rounded-lg transition-colors disabled:opacity-50"
+                    className="p-1.5 text-brand-primary hover:brightness-110 hover:bg-brand-glass rounded-lg transition-colors disabled:opacity-50"
                     title="저장 (Enter)"
                   >
                     <Check className="size-4" />
                   </button>
                   <button
                     onClick={() => setIsEditingTitle(false)}
-                    className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg transition-colors"
+                    className="p-1.5 ui-text-secondary hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] rounded-lg transition-colors"
                     title="취소 (Esc)"
                   >
                     <X className="size-4" />
@@ -802,14 +802,14 @@ function MainPanel({
                 <div className="flex items-center gap-2 group/title">
                   <h1
                     onDoubleClick={isEditingBlocks ? startEditTitle : undefined}
-                    className="text-xl font-bold text-white tracking-tight"
+                    className="text-xl font-bold ui-text-primary tracking-tight"
                   >
                     {activeDoc.title}
                   </h1>
                   {isEditingBlocks ? (
                     <button
                       onClick={startEditTitle}
-                      className="p-1.5 text-slate-500 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors opacity-0 group-hover/title:opacity-100"
+                      className="p-1.5 ui-text-muted hover:text-brand-primary hover:bg-brand-glass rounded-lg transition-colors opacity-0 group-hover/title:opacity-100"
                       title="이름 변경"
                     >
                       <Pencil className="size-3.5" />
@@ -821,7 +821,7 @@ function MainPanel({
           </div>
           <div className="flex-1 min-h-0">
             {documentQuery.isLoading ? (
-              <div className="h-full flex items-center justify-center text-sm text-slate-500">
+              <div className="h-full flex items-center justify-center text-sm ui-text-muted">
                 문서 불러오는 중...
               </div>
             ) : documentQuery.data ? (
@@ -841,9 +841,9 @@ function MainPanel({
           </div>
         </>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8">
+        <div className="flex-1 flex flex-col items-center justify-center ui-text-secondary p-8">
           <FileText className="size-16 opacity-20 mb-6" />
-          <p className="text-lg font-medium text-white mb-2">문서를 선택해주세요</p>
+          <p className="text-lg font-medium ui-text-primary mb-2">문서를 선택해주세요</p>
           <p className="text-sm text-center max-w-xs">
             왼쪽 섹션과 문서 목록에서 선택하거나 새로 추가하세요.
           </p>

@@ -4,6 +4,15 @@
   --color-brand-primary: var(--brand-500);
   --color-brand-glass: var(--brand-glass);
   --color-brand-border: var(--brand-border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-on-brand: var(--text-on-brand);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-strong: var(--surface-strong);
+  --color-surface-border: var(--surface-border);
+  --color-surface-border-soft: var(--surface-border-soft);
 }
 
 :root {
@@ -25,6 +34,7 @@
   --text-primary: #ffffff;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
+  --text-on-brand: #0b1020;
   --input-bg: rgba(2, 8, 23, 0.35);
   --input-border: rgba(255, 255, 255, 0.1);
   --interactive-border: rgba(255, 255, 255, 0.14);
@@ -86,6 +96,7 @@
   --text-primary: #0f172a;
   --text-secondary: #1e293b;
   --text-muted: #64748b;
+  --text-on-brand: #ffffff;
   --input-bg: #ffffff;
   --input-border: rgba(0, 0, 0, 0.68);
   --interactive-border: rgba(0, 0, 0, 0.88);
@@ -124,6 +135,10 @@ select {
     background: var(--surface-raised);
     backdrop-filter: blur(20px);
     box-shadow: var(--surface-shadow);
+  }
+
+  .ui-overlay {
+    background-color: rgba(3, 7, 18, 0.6);
   }
 
   .panel-grid {

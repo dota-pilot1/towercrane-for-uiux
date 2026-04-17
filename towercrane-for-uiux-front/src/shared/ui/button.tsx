@@ -24,7 +24,7 @@ export function Button({
         size === 'sm' && 'h-8 px-3',
         size === 'icon' && 'size-9 rounded-xl border',
         variant === 'primary' &&
-          'border bg-emerald-300 text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_12px_30px_rgba(110,231,183,0.18)] hover:bg-emerald-200 [border-color:var(--interactive-border)]',
+          'border bg-brand-primary text-text-on-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_12px_30px_rgba(110,231,183,0.18)] hover:brightness-110 [border-color:var(--interactive-border)]',
         variant === 'secondary' &&
           'border ui-surface-muted ui-text-primary hover:bg-[var(--surface-strong)] [border-color:var(--interactive-border)]',
         variant === 'ghost' && 'ui-text-secondary hover:bg-[var(--surface-muted)]',

@@ -145,7 +145,7 @@ export function LexicalToolbar({ className, onImageUpload }: Props) {
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-white/5 bg-slate-950/60 ${className ?? ''}`}
+      className={`flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-surface-border-soft bg-surface-muted ${className ?? ''}`}
     >
       <ToolbarButton onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)} disabled={!canUndo} title="실행 취소">
         <Undo className="size-3.5" />
@@ -276,8 +276,8 @@ function ToolbarButton({
       title={title}
       className={`min-w-[28px] h-7 flex items-center justify-center rounded-md transition-colors ${
         active
-          ? 'bg-emerald-500/20 text-emerald-200'
-          : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
+          ? 'bg-brand-glass text-brand-primary'
+          : 'text-text-secondary hover:text-text-primary hover:bg-surface-strong'
       } disabled:opacity-30 disabled:pointer-events-none`}
     >
       {children}
@@ -286,5 +286,5 @@ function ToolbarButton({
 }
 
 function Divider() {
-  return <span className="w-px h-5 bg-white/10 mx-1" />
+  return <span className="w-px h-5 bg-surface-border mx-1" />
 }

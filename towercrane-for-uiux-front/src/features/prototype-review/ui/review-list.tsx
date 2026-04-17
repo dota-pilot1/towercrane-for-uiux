@@ -37,7 +37,7 @@ export function ReviewList({
 
   if (reviewsQuery.isLoading) {
     return (
-      <div className="py-8 text-center text-sm text-slate-500">
+      <div className="py-8 text-center text-sm text-text-muted">
         리뷰 불러오는 중...
       </div>
     )
@@ -46,14 +46,14 @@ export function ReviewList({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-        <div className="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">
+        <div className="text-[11px] uppercase tracking-widest text-text-muted font-semibold">
           리뷰 {total}
         </div>
         {headerAction}
       </div>
 
       {items.length === 0 ? (
-        <div className="py-8 text-center text-sm text-slate-500">
+        <div className="py-8 text-center text-sm text-text-muted">
           아직 리뷰가 없습니다. 첫 리뷰를 남겨보세요.
         </div>
       ) : null}
@@ -106,7 +106,7 @@ export function ReviewList({
 
       {items.length > 0 && totalPages > 1 ? (
         <div className="flex items-center justify-between gap-2 pt-2">
-          <span className="text-[11px] text-slate-500">
+          <span className="text-[11px] text-text-muted">
             {page} / {totalPages}
           </span>
           <div className="flex gap-1">
@@ -178,7 +178,7 @@ function ReviewCard({
             {review.userName}
           </span>
           {review.isMine ? (
-            <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-600">
+            <span className="rounded bg-brand-glass px-1.5 py-0.5 text-[9px] font-bold uppercase text-brand-primary">
               나
             </span>
           ) : null}

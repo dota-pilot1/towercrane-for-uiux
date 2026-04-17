@@ -58,7 +58,7 @@ export function Mermaid({ chart, className = '' }: MermaidProps) {
 
   if (!chart.trim()) {
     return (
-      <div className="p-4 text-sm text-slate-500 text-center">
+      <div className="p-4 text-sm text-text-muted text-center">
         Mermaid 다이어그램 코드가 없습니다.
       </div>
     )
@@ -67,8 +67,8 @@ export function Mermaid({ chart, className = '' }: MermaidProps) {
   return (
     <div className="relative">
       {isRendering ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/70 z-10 rounded-lg">
-          <div className="text-xs text-slate-400">렌더링 중...</div>
+        <div className="absolute inset-0 flex items-center justify-center bg-surface-muted z-10 rounded-lg">
+          <div className="text-xs text-text-secondary">렌더링 중...</div>
         </div>
       ) : null}
       <div ref={containerRef} className={className} />

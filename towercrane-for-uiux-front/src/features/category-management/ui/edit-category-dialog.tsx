@@ -68,24 +68,24 @@ export function EditCategoryDialog({ category, asIcon }: EditCategoryDialogProps
         )}
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 ui-overlay backdrop-blur-sm" />
         <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-6">
-          <Dialog.Title className="text-xl font-semibold text-white">
+          <Dialog.Title className="text-xl font-semibold text-text-primary">
             카테고리 수정
           </Dialog.Title>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <label className="block space-y-2">
-              <span className="text-sm text-slate-300">카테고리 이름</span>
+              <span className="text-sm text-text-secondary">카테고리 이름</span>
               <Input {...register('title')} />
               {errors.title ? <span className="text-xs text-rose-300">{errors.title.message}</span> : null}
             </label>
             <label className="block space-y-2">
-              <span className="text-sm text-slate-300">요약</span>
+              <span className="text-sm text-text-secondary">요약</span>
               <Input {...register('summary')} />
               {errors.summary ? <span className="text-xs text-rose-300">{errors.summary.message}</span> : null}
             </label>
             <label className="block space-y-2">
-              <span className="text-sm text-slate-300">그룹</span>
+              <span className="text-sm text-text-secondary">그룹</span>
               <Input {...register('group')} />
               {errors.group ? <span className="text-xs text-rose-300">{errors.group.message}</span> : null}
             </label>

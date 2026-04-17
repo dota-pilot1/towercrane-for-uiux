@@ -49,7 +49,7 @@ export function StarRating({
                 className={`${SIZE_CLASS[size]} transition-colors ${
                   filled
                     ? 'fill-amber-400 text-amber-400'
-                    : 'fill-transparent text-slate-600'
+                    : 'fill-transparent text-text-muted'
                 }`}
               />
             </button>
@@ -57,9 +57,9 @@ export function StarRating({
         })}
       </div>
       {showNumber ? (
-        <span className="text-sm text-slate-300 font-semibold tabular-nums">
+        <span className="text-sm text-text-secondary font-semibold tabular-nums">
           {displayValue > 0 ? displayValue.toFixed(1) : '—'}
-          <span className="text-xs text-slate-500"> / 10</span>
+          <span className="text-xs text-text-muted"> / 10</span>
         </span>
       ) : null}
     </div>

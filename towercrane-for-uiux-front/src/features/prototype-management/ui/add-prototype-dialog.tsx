@@ -74,18 +74,18 @@ export function AddPrototypeDialog({
         )}
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 ui-overlay backdrop-blur-sm" />
         <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[min(680px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-8">
-          <Dialog.Title className="text-xl font-semibold text-white">
+          <Dialog.Title className="text-xl font-semibold text-text-primary">
             {categoryTitle} 프로토타입 추가
           </Dialog.Title>
-          <Dialog.Description className="mt-2 text-sm text-slate-300">
+          <Dialog.Description className="mt-2 text-sm text-text-secondary">
             오른쪽 보드에서 바로 공유할 GitHub 저장소 또는 폴더 링크를 연결합니다.
           </Dialog.Description>
 
           <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)}>
             <div className="grid grid-cols-[110px_1fr] items-center gap-4">
-              <span className="text-sm font-medium text-slate-400">이름</span>
+              <span className="text-sm font-medium text-text-secondary">이름</span>
               <div className="space-y-1">
                 <Input {...register('title')} placeholder="예: Approval Flow Prototype" />
                 {errors.title ? <p className="text-[11px] text-rose-400">{errors.title.message}</p> : null}
@@ -93,10 +93,10 @@ export function AddPrototypeDialog({
             </div>
 
             <div className="grid grid-cols-[110px_1fr] items-center gap-4">
-              <span className="text-sm font-medium text-slate-400">GitHub 링크</span>
+              <span className="text-sm font-medium text-text-secondary">GitHub 링크</span>
               <div className="space-y-1">
                 <div className="relative">
-                  <GitBranch className="pointer-events-none absolute left-4 top-3 size-4 text-slate-500" />
+                  <GitBranch className="pointer-events-none absolute left-4 top-3 size-4 text-text-muted" />
                   <Input {...register('repoUrl')} className="pl-11 h-10" />
                 </div>
                 {errors.repoUrl ? <p className="text-[11px] text-rose-400">{errors.repoUrl.message}</p> : null}
@@ -104,10 +104,10 @@ export function AddPrototypeDialog({
             </div>
 
             <div className="grid grid-cols-[110px_1fr] items-center gap-4">
-              <span className="text-sm font-medium text-slate-400">Figma 링크</span>
+              <span className="text-sm font-medium text-text-secondary">Figma 링크</span>
               <div className="space-y-1">
                 <div className="relative">
-                  <div className="absolute left-4 top-3 size-4 flex items-center justify-center font-bold text-slate-500 text-[10px]">F</div>
+                  <div className="absolute left-4 top-3 size-4 flex items-center justify-center font-bold text-text-muted text-[10px]">F</div>
                   <Input {...register('figmaUrl')} placeholder="https://www.figma.com/file/..." className="pl-11 h-10" />
                 </div>
                 {errors.figmaUrl ? <p className="text-[11px] text-rose-400">{errors.figmaUrl.message}</p> : null}
@@ -115,7 +115,7 @@ export function AddPrototypeDialog({
             </div>
 
             <div className="grid grid-cols-[110px_1fr] items-start gap-4">
-              <span className="text-sm font-medium text-slate-400 mt-2.5">설명</span>
+              <span className="text-sm font-medium text-text-secondary mt-2.5">설명</span>
               <div className="space-y-1">
                 <Input {...register('summary')} placeholder="이 프로토타입에서 다루는 범위를 적습니다" />
                 {errors.summary ? (
@@ -124,9 +124,9 @@ export function AddPrototypeDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-[1.2fr_1fr] gap-10 pt-4 border-t border-white/5">
+            <div className="grid grid-cols-[1.2fr_1fr] gap-10 pt-4 border-t border-surface-border-soft">
               <div className="flex items-center gap-5">
-                <span className="text-sm font-medium text-slate-400 shrink-0">상태</span>
+                <span className="text-sm font-medium text-text-secondary shrink-0">상태</span>
                 <Controller
                   name="status"
                   control={control}
@@ -146,8 +146,8 @@ export function AddPrototypeDialog({
               </div>
 
               <div className="flex items-center gap-5">
-                <span className="text-sm font-medium text-slate-400 shrink-0">공개 여부</span>
-                <div className="flex h-11 flex-1 items-center px-4 rounded-2xl border border-white/5 bg-slate-950/40">
+                <span className="text-sm font-medium text-text-secondary shrink-0">공개 여부</span>
+                <div className="flex h-11 flex-1 items-center px-4 rounded-2xl border border-surface-border-soft bg-surface-muted">
                   <Controller
                     name="visibility"
                     control={control}
@@ -163,7 +163,7 @@ export function AddPrototypeDialog({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-6 border-t border-white/5">
+            <div className="flex items-center justify-end gap-3 pt-6 border-t border-surface-border-soft">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 취소
               </Button>

@@ -194,7 +194,7 @@ export function AdminShell() {
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">{item.title}</div>
                       </div>
-                      <span className="rounded-full bg-slate-950/10 px-2 py-0.5 text-xs">
+                      <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs">
                         {item.prototypes.length}
                       </span>
                     </button>
@@ -207,7 +207,7 @@ export function AdminShell() {
               orientation="vertical"
               className="flex w-2 touch-none select-none bg-transparent p-0.5"
             >
-              <ScrollArea.Thumb className="relative flex-1 rounded-full bg-white/15" />
+              <ScrollArea.Thumb className="relative flex-1 rounded-full bg-surface-muted" />
             </ScrollArea.Scrollbar>
           </ScrollArea.Root>
         </Card>
@@ -296,7 +296,7 @@ export function AdminShell() {
                         }
                       }}
                       placeholder="제목·요약 검색..."
-                      className="ui-input w-full rounded-xl border py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-500/40"
+                      className="ui-input w-full rounded-xl border py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-border"
                     />
                   </form>
                   <Select
@@ -305,7 +305,7 @@ export function AdminShell() {
                       setSort(e.target.value as PrototypeListSort)
                       setPage(1)
                     }}
-                    className="h-10 min-w-[7.5rem] rounded-xl px-3 text-sm focus:border-emerald-500/40 focus:ring-emerald-500/15"
+                    className="h-10 min-w-[7.5rem] rounded-xl px-3 text-sm focus:border-brand-border focus:ring-emerald-500/15"
                   >
                     <option value="recent">최신순</option>
                     <option value="oldest">오래된순</option>
@@ -315,7 +315,7 @@ export function AdminShell() {
 
                 <div className="space-y-5">
                   {prototypesQuery.isLoading ? (
-                    <div className="py-12 text-center text-sm text-slate-500">
+                    <div className="py-12 text-center text-sm text-text-muted">
                       프로토타입 불러오는 중...
                     </div>
                   ) : prototypeList.length > 0 ? (

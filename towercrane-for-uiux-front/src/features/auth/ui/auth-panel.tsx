@@ -81,18 +81,18 @@ export function AuthPanel({ mode }: AuthPanelProps) {
   return (
     <Card className="mx-auto w-full max-w-[560px] rounded-[36px] p-7 sm:p-8">
       <div className="flex items-center gap-3">
-        <div className="rounded-2xl border border-emerald-200/10 bg-emerald-300/10 p-3 text-emerald-200">
+        <div className="rounded-2xl border border-brand-border bg-brand-glass p-3 text-brand-primary">
           {isSignup ? <UserPlus className="size-5" /> : <LockKeyhole className="size-5" />}
         </div>
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-emerald-200/70">Account</p>
-          <h1 className="mt-2 text-3xl font-semibold text-white">
+          <p className="text-xs uppercase tracking-[0.3em] text-brand-primary/70">Account</p>
+          <h1 className="mt-2 text-3xl font-semibold text-text-primary">
             {isSignup ? '회원가입' : '로그인'}
           </h1>
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-2 rounded-[22px] border border-white/10 bg-slate-950/30 p-1.5">
+      <div className="mt-6 grid grid-cols-2 gap-2 rounded-[22px] border border-surface-border-soft bg-surface-muted p-1.5">
         <Button
           variant={isSignup ? 'ghost' : 'secondary'}
           className="rounded-[18px]"
@@ -112,20 +112,20 @@ export function AuthPanel({ mode }: AuthPanelProps) {
       <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
         {isSignup ? (
           <label className="block space-y-2">
-            <span className="text-sm text-slate-300">이름</span>
+            <span className="text-sm text-text-secondary">이름</span>
             <Input {...register('name')} placeholder="홍길동" />
             {errors.name ? <span className="text-sm text-rose-300">{errors.name.message}</span> : null}
           </label>
         ) : null}
 
         <label className="block space-y-2">
-          <span className="text-sm text-slate-300">이메일</span>
+          <span className="text-sm text-text-secondary">이메일</span>
           <Input {...register('email')} placeholder="you@example.com" />
           {errors.email ? <span className="text-sm text-rose-300">{errors.email.message}</span> : null}
         </label>
 
         <label className="block space-y-2">
-          <span className="text-sm text-slate-300">비밀번호</span>
+          <span className="text-sm text-text-secondary">비밀번호</span>
           <div className="relative group">
             <Input
               {...register('password')}
@@ -136,7 +136,7 @@ export function AuthPanel({ mode }: AuthPanelProps) {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
             >
               {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
             </button>
@@ -149,9 +149,9 @@ export function AuthPanel({ mode }: AuthPanelProps) {
         {isSignup ? (
           <label className="block space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-300">비밀번호 확인</span>
+              <span className="text-sm text-text-secondary">비밀번호 확인</span>
               {isPass && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400 animate-in fade-in zoom-in duration-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                <span className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-primary animate-in fade-in zoom-in duration-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                   <Check className="size-3" />
                   Pass
                 </span>
@@ -167,7 +167,7 @@ export function AuthPanel({ mode }: AuthPanelProps) {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
               >
                 {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
               </button>

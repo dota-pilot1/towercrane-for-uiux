@@ -18,7 +18,7 @@ const columnHelper = createColumnHelper<PrototypeItem>()
 const basePrototypeColumns = [
   columnHelper.accessor('title', {
     header: '프로토타입',
-    cell: (info) => <span className="font-medium text-slate-100">{info.getValue()}</span>,
+    cell: (info) => <span className="font-medium text-text-primary">{info.getValue()}</span>,
   }),
   columnHelper.accessor('summary', {
     header: '설명',
@@ -26,7 +26,7 @@ const basePrototypeColumns = [
   columnHelper.accessor('status', {
     header: '상태',
     cell: (info) => (
-      <span className="rounded-full bg-emerald-300/10 px-2.5 py-1 text-xs uppercase text-emerald-200">
+      <span className="rounded-full bg-brand-glass px-2.5 py-1 text-xs uppercase text-brand-primary">
         {info.getValue()}
       </span>
     ),
@@ -45,7 +45,7 @@ const basePrototypeColumns = [
         href={row.original.repoUrl}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-2 text-emerald-200 hover:text-emerald-100"
+        className="inline-flex items-center gap-2 text-brand-primary hover:text-brand-primary"
       >
         열기
         <ArrowUpRight className="size-4" />
@@ -128,29 +128,29 @@ export function OrderTable({ categories, activeCategoryId }: OrderTableProps) {
           setActiveWorkspace(value as 'overview' | 'prototypes' | 'backend')
         }
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-border-soft px-5 py-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+            <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">
               Prototype Workspace
             </p>
-            <h3 className="mt-1.5 text-lg font-semibold text-white">프로토타입 보드</h3>
+            <h3 className="mt-1.5 text-lg font-semibold text-text-primary">프로토타입 보드</h3>
           </div>
-          <Tabs.List className="flex flex-wrap gap-1.5 rounded-full border border-white/10 bg-slate-950/30 p-1">
+          <Tabs.List className="flex flex-wrap gap-1.5 rounded-full border border-surface-border-soft bg-surface-muted p-1">
             <Tabs.Trigger
               value="overview"
-              className="rounded-full px-3.5 py-1.5 text-sm text-slate-300 data-[state=active]:bg-white data-[state=active]:text-slate-950"
+              className="rounded-full px-3.5 py-1.5 text-sm text-text-secondary data-[state=active]:bg-brand-glass data-[state=active]:text-text-primary"
             >
               Overview
             </Tabs.Trigger>
             <Tabs.Trigger
               value="prototypes"
-              className="rounded-full px-3.5 py-1.5 text-sm text-slate-300 data-[state=active]:bg-white data-[state=active]:text-slate-950"
+              className="rounded-full px-3.5 py-1.5 text-sm text-text-secondary data-[state=active]:bg-brand-glass data-[state=active]:text-text-primary"
             >
               Prototypes
             </Tabs.Trigger>
             <Tabs.Trigger
               value="backend"
-              className="rounded-full px-3.5 py-1.5 text-sm text-slate-300 data-[state=active]:bg-white data-[state=active]:text-slate-950"
+              className="rounded-full px-3.5 py-1.5 text-sm text-text-secondary data-[state=active]:bg-brand-glass data-[state=active]:text-text-primary"
             >
               Backend
             </Tabs.Trigger>
@@ -158,33 +158,33 @@ export function OrderTable({ categories, activeCategoryId }: OrderTableProps) {
         </div>
         <Tabs.Content value="overview" className="space-y-5 p-5">
           <section className="grid gap-3 lg:grid-cols-[1.4fr_0.8fr]">
-            <div className="rounded-[22px] border border-white/10 bg-slate-950/30 p-4">
+            <div className="rounded-[22px] border border-surface-border-soft bg-surface-muted p-4">
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs text-slate-400">{selectedCategory?.group ?? 'custom'}</p>
-                  <p className="mt-1 text-base font-semibold text-white">
+                  <p className="text-xs text-text-secondary">{selectedCategory?.group ?? 'custom'}</p>
+                  <p className="mt-1 text-base font-semibold text-text-primary">
                     {selectedCategory?.title ?? '선택된 카테고리 없음'}
                   </p>
                 </div>
-                <div className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs text-slate-300">
+                <div className="rounded-full border border-surface-border-soft bg-surface-muted px-3 py-1 text-xs text-text-secondary">
                   prototypes {selectedCategory?.prototypes.length ?? 0}
                 </div>
               </div>
 
               <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <div className="rounded-[18px] border border-white/10 bg-white/4 p-3.5">
-                  <p className="text-xs text-slate-400">체크리스트</p>
-                  <ul className="mt-2.5 space-y-1.5 text-sm text-slate-200">
+                <div className="rounded-[18px] border border-surface-border-soft bg-surface-muted p-3.5">
+                  <p className="text-xs text-text-secondary">체크리스트</p>
+                  <ul className="mt-2.5 space-y-1.5 text-sm text-text-primary">
                     {selectedCategory?.checklist.map((item) => <li key={item}>{item}</li>)}
                   </ul>
                 </div>
-                <div className="rounded-[18px] border border-white/10 bg-white/4 p-3.5">
-                  <p className="text-xs text-slate-400">태그</p>
+                <div className="rounded-[18px] border border-surface-border-soft bg-surface-muted p-3.5">
+                  <p className="text-xs text-text-secondary">태그</p>
                   <div className="mt-2.5 flex flex-wrap gap-2">
                     {selectedCategory?.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-full border border-white/10 bg-slate-950/50 px-3 py-1 text-xs text-slate-300"
+                        className="rounded-full border border-surface-border-soft bg-surface-muted px-3 py-1 text-xs text-text-secondary"
                       >
                         {tag}
                       </span>
@@ -195,31 +195,31 @@ export function OrderTable({ categories, activeCategoryId }: OrderTableProps) {
             </div>
 
             <div className="space-y-3">
-              <div className="rounded-[22px] border border-white/10 bg-slate-950/30 p-4">
-                <p className="text-xs text-slate-400">요약</p>
-                <ul className="mt-3 space-y-2 text-sm text-slate-200">
+              <div className="rounded-[22px] border border-surface-border-soft bg-surface-muted p-4">
+                <p className="text-xs text-text-secondary">요약</p>
+                <ul className="mt-3 space-y-2 text-sm text-text-primary">
                   <li>카테고리 누적</li>
                   <li>프로토타입 공유</li>
                   <li>프런트/서버 분리</li>
                   <li>패턴 카탈로그화</li>
                 </ul>
               </div>
-              <div className="rounded-[22px] border border-white/10 bg-slate-950/30 p-4">
-                <p className="text-xs text-slate-400">링크 전략</p>
-                <p className="mt-2.5 text-sm leading-6 text-slate-200">repo / folder / branch</p>
+              <div className="rounded-[22px] border border-surface-border-soft bg-surface-muted p-4">
+                <p className="text-xs text-text-secondary">링크 전략</p>
+                <p className="mt-2.5 text-sm leading-6 text-text-primary">repo / folder / branch</p>
               </div>
             </div>
           </section>
         </Tabs.Content>
 
         <Tabs.Content value="prototypes" className="p-5">
-          <div className="overflow-auto rounded-[22px] border border-white/10 bg-slate-950/30 p-4">
+          <div className="overflow-auto rounded-[22px] border border-surface-border-soft bg-surface-muted p-4">
             <table className="min-w-full border-separate border-spacing-y-2 text-left text-sm">
               <thead>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <th key={header.id} className="px-3 py-2 text-slate-400">
+                      <th key={header.id} className="px-3 py-2 text-text-secondary">
                         {header.isPlaceholder
                           ? null
                           : flexRender(header.column.columnDef.header, header.getContext())}
@@ -231,9 +231,9 @@ export function OrderTable({ categories, activeCategoryId }: OrderTableProps) {
               <tbody>
                 {table.getRowModel().rows.length > 0 ? (
                   table.getRowModel().rows.map((row) => (
-                    <tr key={row.id} className="rounded-2xl bg-white/4">
+                    <tr key={row.id} className="rounded-2xl bg-surface-muted">
                       {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-3 py-2.5 text-slate-200 first:rounded-l-2xl last:rounded-r-2xl">
+                        <td key={cell.id} className="px-3 py-2.5 text-text-primary first:rounded-l-2xl last:rounded-r-2xl">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}
@@ -241,7 +241,7 @@ export function OrderTable({ categories, activeCategoryId }: OrderTableProps) {
                   ))
                 ) : (
                   <tr>
-                    <td className="px-3 py-8 text-slate-400" colSpan={prototypeColumns.length}>
+                    <td className="px-3 py-8 text-text-secondary" colSpan={prototypeColumns.length}>
                       등록된 프로토타입이 없습니다.
                     </td>
                   </tr>
@@ -253,15 +253,15 @@ export function OrderTable({ categories, activeCategoryId }: OrderTableProps) {
 
         <Tabs.Content value="backend" className="p-5">
           <div className="grid gap-3 lg:grid-cols-2">
-            <div className="rounded-[22px] border border-dashed border-sky-200/25 bg-sky-300/5 p-5 text-sm text-slate-200">
+            <div className="rounded-[22px] border border-dashed border-sky-200/25 bg-sky-300/5 p-5 text-sm text-text-primary">
               <div className="flex items-center gap-3">
                 <DatabaseZap className="size-5 text-sky-200" />
                 `towercrane-for-uiux-server`
               </div>
             </div>
-            <div className="rounded-[22px] border border-dashed border-emerald-200/25 bg-emerald-300/5 p-5 text-sm text-slate-200">
+            <div className="rounded-[22px] border border-dashed border-brand-border bg-brand-glass p-5 text-sm text-text-primary">
               <div className="flex items-center gap-3">
-                <LayoutTemplate className="size-5 text-emerald-200" />
+                <LayoutTemplate className="size-5 text-brand-primary" />
                 catalog ui / storage split
               </div>
             </div>

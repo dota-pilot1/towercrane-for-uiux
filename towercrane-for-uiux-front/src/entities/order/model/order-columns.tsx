@@ -3,9 +3,9 @@ import { formatCurrency } from '../../../shared/lib/utils'
 import type { OrderItem } from './types'
 
 const statusTone: Record<OrderItem['status'], string> = {
-  ready: 'bg-sky-400/15 text-sky-200',
+  ready: 'bg-brand-primary/15 text-sky-200',
   review: 'bg-amber-400/15 text-amber-200',
-  issued: 'bg-emerald-400/15 text-emerald-200',
+  issued: 'bg-brand-glass text-brand-primary',
   hold: 'bg-rose-400/15 text-rose-200',
 }
 
@@ -13,7 +13,7 @@ export const orderColumns: ColumnDef<OrderItem>[] = [
   {
     accessorKey: 'id',
     header: 'ID',
-    cell: ({ row }) => <span className="font-medium text-slate-100">{row.original.id}</span>,
+    cell: ({ row }) => <span className="font-medium text-text-primary">{row.original.id}</span>,
   },
   {
     accessorKey: 'customer',
@@ -27,7 +27,7 @@ export const orderColumns: ColumnDef<OrderItem>[] = [
     accessorKey: 'team',
     header: '팀',
     cell: ({ row }) => (
-      <span className="rounded-full bg-white/8 px-2.5 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">
+      <span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs uppercase tracking-[0.18em] text-text-secondary">
         {row.original.team}
       </span>
     ),

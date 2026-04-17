@@ -20,9 +20,9 @@ export function AuthIconButton({
       className={cn(
         'size-[34px] rounded-full p-0 border transition-all duration-300 flex items-center justify-center overflow-hidden',
         variant === 'emerald' &&
-          'border-emerald-500/25 text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/10',
+          'border-brand-border text-brand-primary hover:border-brand-border hover:bg-brand-glass',
         variant === 'white' &&
-          'border-white/10 text-slate-300 hover:border-white/25 hover:text-white hover:bg-white/5',
+          'border-surface-border-soft text-text-secondary hover:border-surface-border-soft hover:text-text-primary hover:bg-surface-muted',
         className
       )}
       {...props}

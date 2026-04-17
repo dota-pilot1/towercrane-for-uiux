@@ -41,12 +41,12 @@ export function MetricsOverview({ categories }: MetricsOverviewProps) {
           <Card key={item.key} className="rounded-[22px] p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-400">{item.label}</p>
-                <p className="mt-2 text-xl font-semibold text-white">
+                <p className="text-xs text-text-secondary">{item.label}</p>
+                <p className="mt-2 text-xl font-semibold text-text-primary">
                   {metrics[item.key]}
                 </p>
               </div>
-              <div className="rounded-[18px] border border-emerald-200/10 bg-emerald-300/10 p-2.5 text-emerald-200">
+              <div className="rounded-[18px] border border-brand-border bg-brand-glass p-2.5 text-brand-primary">
                 <Icon className="size-4.5" />
               </div>
             </div>

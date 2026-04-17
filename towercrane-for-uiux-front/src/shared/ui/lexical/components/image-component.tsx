@@ -200,14 +200,14 @@ export function ImageComponent({
 
         {showSelectionChrome ? (
           <div
-            className="absolute bottom-0 right-0 size-3 bg-emerald-400 cursor-se-resize rounded-tl"
+            className="absolute bottom-0 right-0 size-3 bg-brand-primary cursor-se-resize rounded-tl"
             onMouseDown={handleResizeStart}
             title="드래그로 크기 조절 (Shift: 비율 무시)"
           />
         ) : null}
 
         {showSelectionChrome ? (
-          <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-slate-900/95 border border-white/10 rounded-md shadow-md px-1 py-0.5 z-10 backdrop-blur-sm">
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-surface-strong border border-surface-border rounded-md shadow-md px-1 py-0.5 z-10 backdrop-blur-sm">
             <AlignButton
               active={alignment === 'left'}
               onClick={() => handleAlignment('left')}
@@ -254,8 +254,8 @@ function AlignButton({
       title={title}
       className={`p-1 rounded transition-colors ${
         active
-          ? 'bg-emerald-500/20 text-emerald-200'
-          : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
+          ? 'bg-brand-glass text-brand-primary'
+          : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
       }`}
     >
       {children}

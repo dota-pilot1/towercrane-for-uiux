@@ -99,13 +99,13 @@ export function InlineAuthBar() {
         <Input
           {...registerLogin('email')}
           placeholder="이메일"
-          className="h-[34px] w-[150px] rounded-full border-white/5 bg-white/5 px-3.5 text-[13px] focus:border-emerald-500/30 focus:ring-emerald-500/5"
+          className="h-[34px] w-[150px] rounded-full border-surface-border-soft bg-surface-muted px-3.5 text-[13px] focus:border-brand-border focus:ring-emerald-500/5"
         />
         <Input
           {...registerLogin('password')}
           type="password"
           placeholder="비밀번호"
-          className="h-[34px] w-[110px] rounded-full border-white/5 bg-white/5 px-3.5 text-[13px] focus:border-emerald-500/30 focus:ring-emerald-500/5"
+          className="h-[34px] w-[110px] rounded-full border-surface-border-soft bg-surface-muted px-3.5 text-[13px] focus:border-brand-border focus:ring-emerald-500/5"
         />
         
         <AuthIconButton
@@ -129,19 +129,19 @@ export function InlineAuthBar() {
           </Dialog.Trigger>
 
           <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm" />
+            <Dialog.Overlay className="fixed inset-0 z-40 ui-overlay backdrop-blur-sm" />
             <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2">
               <Card className="rounded-[28px] p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-2xl border border-emerald-200/10 bg-emerald-300/10 p-3 text-emerald-200">
+                    <div className="rounded-2xl border border-brand-border bg-brand-glass p-3 text-brand-primary">
                       <UserPlus className="size-5" />
                     </div>
                     <div>
-                      <Dialog.Title className="text-2xl font-semibold text-white">
+                      <Dialog.Title className="text-2xl font-semibold text-text-primary">
                         회원가입
                       </Dialog.Title>
-                      <Dialog.Description className="mt-2 text-sm text-slate-300">
+                      <Dialog.Description className="mt-2 text-sm text-text-secondary">
                         계정을 만들고 바로 Prototype 워크스페이스로 진입합니다.
                       </Dialog.Description>
                     </div>
@@ -150,7 +150,7 @@ export function InlineAuthBar() {
                   <Dialog.Close asChild>
                     <button
                       type="button"
-                      className="rounded-full border border-white/10 bg-white/6 p-2 text-slate-300 transition hover:bg-white/10"
+                      className="rounded-full border border-surface-border-soft bg-surface-muted p-2 text-text-secondary transition hover:bg-surface-muted"
                       aria-label="닫기"
                     >
                       <X className="size-4" />
@@ -160,7 +160,7 @@ export function InlineAuthBar() {
 
                 <form className="mt-5 space-y-4" onSubmit={handleSignupSubmit(onSignupSubmit)}>
                   <label className="block space-y-2">
-                    <span className="text-sm text-slate-300">이름</span>
+                    <span className="text-sm text-text-secondary">이름</span>
                     <Input {...registerSignup('name')} placeholder="홍길동" />
                     {signupErrors.name ? (
                       <span className="text-sm text-rose-300">{signupErrors.name.message}</span>
@@ -168,7 +168,7 @@ export function InlineAuthBar() {
                   </label>
 
                   <label className="block space-y-2">
-                    <span className="text-sm text-slate-300">이메일</span>
+                    <span className="text-sm text-text-secondary">이메일</span>
                     <Input {...registerSignup('email')} placeholder="you@example.com" />
                     {signupErrors.email ? (
                       <span className="text-sm text-rose-300">{signupErrors.email.message}</span>
@@ -176,7 +176,7 @@ export function InlineAuthBar() {
                   </label>
 
                   <label className="block space-y-2">
-                    <span className="text-sm text-slate-300">비밀번호</span>
+                    <span className="text-sm text-text-secondary">비밀번호</span>
                     <div className="relative">
                       <Input
                         {...registerSignup('password')}
@@ -187,7 +187,7 @@ export function InlineAuthBar() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
                       >
                         {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
@@ -199,9 +199,9 @@ export function InlineAuthBar() {
 
                   <label className="block space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-300">비밀번호 확인</span>
+                      <span className="text-sm text-text-secondary">비밀번호 확인</span>
                       {isPass && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400 animate-in fade-in zoom-in duration-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-primary animate-in fade-in zoom-in duration-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                           <Check className="size-3" />
                           Pass
                         </span>
@@ -217,7 +217,7 @@ export function InlineAuthBar() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
                       >
                         {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>

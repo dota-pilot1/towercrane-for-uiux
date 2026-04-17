@@ -18,7 +18,7 @@ export function FileBlockEditor({
   if (readOnly) {
     if (!file.url && !file.filename && !file.description) {
       return (
-        <div className="p-4 text-sm text-slate-500 text-center">
+        <div className="p-4 text-sm text-text-muted text-center">
           파일 정보가 지정되지 않았습니다.
         </div>
       )
@@ -37,11 +37,11 @@ export function FileBlockEditor({
               {file.filename || file.url}
             </a>
           ) : (
-            <span className="text-sm text-slate-200 font-medium">{file.filename}</span>
+            <span className="text-sm text-text-primary font-medium">{file.filename}</span>
           )}
         </div>
         {file.description ? (
-          <p className="text-sm text-slate-400 leading-relaxed pl-6">{file.description}</p>
+          <p className="text-sm text-text-secondary leading-relaxed pl-6">{file.description}</p>
         ) : null}
       </div>
     )
@@ -50,33 +50,33 @@ export function FileBlockEditor({
   return (
     <div className="p-4 space-y-3">
       <div>
-        <label className="text-xs text-slate-400 mb-1 block font-medium">파일 URL</label>
+        <label className="text-xs text-text-secondary mb-1 block font-medium">파일 URL</label>
         <input
           type="url"
           value={file.url}
           onChange={(e) => update('url', e.target.value)}
           placeholder="https://..."
-          className="w-full px-3 py-2 text-sm text-slate-100 bg-slate-950/40 border border-white/10 rounded-lg outline-none focus:border-emerald-500/40 placeholder:text-slate-600"
+          className="w-full px-3 py-2 text-sm text-text-primary bg-surface-muted border border-surface-border-soft rounded-lg outline-none focus:border-brand-border placeholder:text-text-muted"
         />
       </div>
       <div>
-        <label className="text-xs text-slate-400 mb-1 block font-medium">파일명</label>
+        <label className="text-xs text-text-secondary mb-1 block font-medium">파일명</label>
         <input
           type="text"
           value={file.filename}
           onChange={(e) => update('filename', e.target.value)}
           placeholder="example.pdf"
-          className="w-full px-3 py-2 text-sm text-slate-100 bg-slate-950/40 border border-white/10 rounded-lg outline-none focus:border-emerald-500/40 placeholder:text-slate-600"
+          className="w-full px-3 py-2 text-sm text-text-primary bg-surface-muted border border-surface-border-soft rounded-lg outline-none focus:border-brand-border placeholder:text-text-muted"
         />
       </div>
       <div>
-        <label className="text-xs text-slate-400 mb-1 block font-medium">설명</label>
+        <label className="text-xs text-text-secondary mb-1 block font-medium">설명</label>
         <textarea
           value={file.description}
           onChange={(e) => update('description', e.target.value)}
           rows={3}
           placeholder="파일에 대한 설명"
-          className="w-full px-3 py-2 text-sm text-slate-100 bg-slate-950/40 border border-white/10 rounded-lg outline-none focus:border-emerald-500/40 resize-y placeholder:text-slate-600"
+          className="w-full px-3 py-2 text-sm text-text-primary bg-surface-muted border border-surface-border-soft rounded-lg outline-none focus:border-brand-border resize-y placeholder:text-text-muted"
         />
       </div>
     </div>

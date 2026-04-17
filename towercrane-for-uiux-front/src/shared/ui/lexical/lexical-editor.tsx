@@ -104,13 +104,13 @@ export function LexicalEditor({
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className="px-5 py-4 text-sm text-slate-100 outline-none leading-relaxed"
+                className="px-5 py-4 text-sm text-text-primary outline-none leading-relaxed"
                 style={{ minHeight }}
               />
             }
             placeholder={
               readOnly ? null : (
-                <div className="absolute top-4 left-5 text-sm text-slate-600 pointer-events-none">
+                <div className="absolute top-4 left-5 text-sm text-text-muted pointer-events-none">
                   {placeholder}
                 </div>
               )
