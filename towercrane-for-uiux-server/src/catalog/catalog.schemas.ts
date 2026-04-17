@@ -17,5 +17,19 @@ export const createPrototypeSchema = z.object({
   visibility: z.enum(['public', 'private']),
 });
 
+export const updateCategorySchema = createCategorySchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field is required',
+  });
+
+export const updatePrototypeSchema = createPrototypeSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field is required',
+  });
+
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type CreatePrototypeInput = z.infer<typeof createPrototypeSchema>;
+export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
+export type UpdatePrototypeInput = z.infer<typeof updatePrototypeSchema>;

@@ -6,6 +6,8 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { ArrowUpRight, DatabaseZap, LayoutTemplate } from 'lucide-react'
+import { DeletePrototypeButton } from '../../../features/prototype-management/ui/delete-prototype-button'
+import { EditPrototypeDialog } from '../../../features/prototype-management/ui/edit-prototype-dialog'
 import { useCatalogCategories } from '../../../shared/api/catalog'
 import type { PrototypeItem } from '../../../shared/config/catalog'
 import { useUiStore } from '../../../shared/store/ui-store'
@@ -13,7 +15,7 @@ import { Card } from '../../../shared/ui/card'
 
 const columnHelper = createColumnHelper<PrototypeItem>()
 
-const prototypeColumns = [
+const basePrototypeColumns = [
   columnHelper.accessor('title', {
     header: '프로토타입',
     cell: (info) => <span className="font-medium text-slate-100">{info.getValue()}</span>,
@@ -76,6 +78,27 @@ export function OrderTable() {
 
       return matchesQuery && matchesStatus && matchesVisibility
     }) ?? []
+
+  const prototypeColumns = [
+    ...basePrototypeColumns,
+    columnHelper.display({
+      id: 'actions',
+      header: '관리',
+      cell: ({ row }) =>
+        selectedCategory ? (
+          <div className="flex items-center justify-end gap-1">
+            <EditPrototypeDialog
+              categoryId={selectedCategory.id}
+              prototype={row.original}
+            />
+            <DeletePrototypeButton
+              categoryId={selectedCategory.id}
+              prototypeId={row.original.id}
+            />
+          </div>
+        ) : null,
+    }),
+  ]
 
   // TanStack Table intentionally returns stable helpers outside React Compiler memoization.
   // eslint-disable-next-line react-hooks/incompatible-library

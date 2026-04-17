@@ -24,6 +24,8 @@ import {
   Workflow,
 } from 'lucide-react'
 import { AddCategoryDialog } from '../../../features/category-management/ui/add-category-dialog'
+import { DeleteCategoryButton } from '../../../features/category-management/ui/delete-category-button'
+import { EditCategoryDialog } from '../../../features/category-management/ui/edit-category-dialog'
 import { WorkbenchFilterForm } from '../../../features/workbench-filter/ui/workbench-filter-form'
 import { useCatalogCategories } from '../../../shared/api/catalog'
 import { useUiStore } from '../../../shared/store/ui-store'
@@ -44,6 +46,8 @@ export function AdminShell() {
   const setActiveCategory = useUiStore((state) => state.setActiveCategory)
   const selectedCategory =
     categories.find((category) => category.id === activeCategoryId) ?? categories[0]
+  const fallbackCategoryId =
+    categories.find((category) => category.id !== activeCategoryId)?.id
 
   useEffect(() => {
     if (!categories.some((category) => category.id === activeCategoryId) && categories[0]) {
@@ -177,6 +181,16 @@ export function AdminShell() {
                 NestJS + Drizzle + SQLite backend planned
               </span>
             </div>
+
+            {selectedCategory ? (
+              <div className="mt-6 flex flex-wrap gap-3">
+                <EditCategoryDialog category={selectedCategory} />
+                <DeleteCategoryButton
+                  categoryId={selectedCategory.id}
+                  fallbackCategoryId={fallbackCategoryId}
+                />
+              </div>
+            ) : null}
 
             <div className="mt-6 grid gap-3 md:grid-cols-3">
               {principleSlides.map((item) => (

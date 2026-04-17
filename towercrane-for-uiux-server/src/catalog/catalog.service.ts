@@ -2,7 +2,12 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { categoriesTable, prototypesTable } from '../database/schema';
-import { createCategorySchema, createPrototypeSchema } from './catalog.schemas';
+import {
+  createCategorySchema,
+  createPrototypeSchema,
+  updateCategorySchema,
+  updatePrototypeSchema,
+} from './catalog.schemas';
 
 @Injectable()
 export class CatalogService {
@@ -77,16 +82,39 @@ export class CatalogService {
     return this.getCategory(id);
   }
 
-  createPrototype(categoryId: string, payload: unknown) {
-    const category = this.databaseService.db
-      .select({ id: categoriesTable.id })
-      .from(categoriesTable)
-      .where(eq(categoriesTable.id, categoryId))
-      .get();
+  updateCategory(categoryId: string, payload: unknown) {
+    this.ensureCategory(categoryId);
+    const input = updateCategorySchema.parse(payload);
 
-    if (!category) {
-      throw new NotFoundException(`Category not found: ${categoryId}`);
-    }
+    this.databaseService.db
+      .update(categoriesTable)
+      .set({
+        title: input.title,
+        summary: input.summary,
+        group: input.group,
+        iconKey: input.iconKey,
+        tags: input.tags,
+        checklist: input.checklist,
+      })
+      .where(eq(categoriesTable.id, categoryId))
+      .run();
+
+    return this.getCategory(categoryId);
+  }
+
+  deleteCategory(categoryId: string) {
+    this.ensureCategory(categoryId);
+
+    this.databaseService.db
+      .delete(categoriesTable)
+      .where(eq(categoriesTable.id, categoryId))
+      .run();
+
+    return { success: true, categoryId };
+  }
+
+  createPrototype(categoryId: string, payload: unknown) {
+    this.ensureCategory(categoryId);
 
     const input = createPrototypeSchema.parse(payload);
     const id = `prototype-${Date.now().toString().slice(-6)}`;
@@ -106,5 +134,79 @@ export class CatalogService {
       .run();
 
     return this.getCategory(categoryId);
+  }
+
+  updatePrototype(categoryId: string, prototypeId: string, payload: unknown) {
+    this.ensureCategory(categoryId);
+    this.ensurePrototype(categoryId, prototypeId);
+    const input = updatePrototypeSchema.parse(payload);
+
+    this.databaseService.db
+      .update(prototypesTable)
+      .set({
+        title: input.title,
+        repoUrl: input.repoUrl,
+        summary: input.summary,
+        status: input.status,
+        visibility: input.visibility,
+        updatedAt: new Date().toISOString().slice(0, 10),
+      })
+      .where(eq(prototypesTable.id, prototypeId))
+      .run();
+
+    return this.getCategory(categoryId);
+  }
+
+  deletePrototype(categoryId: string, prototypeId: string) {
+    this.ensureCategory(categoryId);
+    this.ensurePrototype(categoryId, prototypeId);
+
+    this.databaseService.db
+      .delete(prototypesTable)
+      .where(eq(prototypesTable.id, prototypeId))
+      .run();
+
+    return this.getCategory(categoryId);
+  }
+
+  private ensureCategory(categoryId: string) {
+    const category = this.databaseService.db
+      .select({ id: categoriesTable.id })
+      .from(categoriesTable)
+      .where(eq(categoriesTable.id, categoryId))
+      .get();
+
+    if (!category) {
+      throw new NotFoundException(`Category not found: ${categoryId}`);
+    }
+
+    return category;
+  }
+
+  private ensurePrototype(categoryId: string, prototypeId: string) {
+    const prototype = this.databaseService.db
+      .select({ id: prototypesTable.id })
+      .from(prototypesTable)
+      .where(eq(prototypesTable.id, prototypeId))
+      .get();
+
+    if (!prototype) {
+      throw new NotFoundException(`Prototype not found: ${prototypeId}`);
+    }
+
+    const linkedPrototype = this.databaseService.db
+      .select({ id: prototypesTable.id })
+      .from(prototypesTable)
+      .where(eq(prototypesTable.categoryId, categoryId))
+      .all()
+      .find((item) => item.id === prototypeId);
+
+    if (!linkedPrototype) {
+      throw new NotFoundException(
+        `Prototype ${prototypeId} is not linked to category ${categoryId}`,
+      );
+    }
+
+    return prototype;
   }
 }

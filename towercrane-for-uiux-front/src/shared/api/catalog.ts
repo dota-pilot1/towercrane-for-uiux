@@ -18,6 +18,12 @@ export type CreateCategoryPayload = {
   group: string
 }
 
+export type UpdateCategoryPayload = Partial<CreateCategoryPayload> & {
+  iconKey?: string
+  tags?: string[]
+  checklist?: string[]
+}
+
 export type CreatePrototypePayload = {
   title: string
   repoUrl: string
@@ -25,6 +31,8 @@ export type CreatePrototypePayload = {
   status: PrototypeStatus
   visibility: PrototypeVisibility
 }
+
+export type UpdatePrototypePayload = Partial<CreatePrototypePayload>
 
 async function request<T>(input: string, init?: RequestInit) {
   const response = await fetch(`${API_BASE_URL}${input}`, {
@@ -64,6 +72,35 @@ export function useCreateCategory() {
   })
 }
 
+export function useUpdateCategory(categoryId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: UpdateCategoryPayload) =>
+      request<ScenarioCategory>(`/catalog/categories/${categoryId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+    },
+  })
+}
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (categoryId: string) =>
+      request<{ success: boolean; categoryId: string }>(`/catalog/categories/${categoryId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+    },
+  })
+}
+
 export function useCreatePrototype(categoryId: string) {
   const queryClient = useQueryClient()
 
@@ -73,6 +110,41 @@ export function useCreatePrototype(categoryId: string) {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+    },
+  })
+}
+
+export function useUpdatePrototype(categoryId: string, prototypeId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: UpdatePrototypePayload) =>
+      request<ScenarioCategory>(
+        `/catalog/categories/${categoryId}/prototypes/${prototypeId}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+    },
+  })
+}
+
+export function useDeletePrototype(categoryId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (prototypeId: string) =>
+      request<ScenarioCategory>(
+        `/catalog/categories/${categoryId}/prototypes/${prototypeId}`,
+        {
+          method: 'DELETE',
+        },
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
     },
