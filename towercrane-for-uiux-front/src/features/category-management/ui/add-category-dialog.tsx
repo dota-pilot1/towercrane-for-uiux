@@ -86,12 +86,12 @@ export function AddCategoryDialog({ children }: AddCategoryDialogProps) {
 
 
 
-            <div className="flex items-center gap-3 pt-2">
-              <Button type="submit" disabled={createCategory.isPending}>
-                {createCategory.isPending ? '저장 중...' : '저장'}
-              </Button>
+            <div className="flex items-center justify-end gap-3 pt-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 취소
+              </Button>
+              <Button type="submit" disabled={createCategory.isPending}>
+                {createCategory.isPending ? '저장 중...' : '저장'}
               </Button>
             </div>
           </form>
