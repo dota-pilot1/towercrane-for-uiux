@@ -6,6 +6,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { useUpdatePrototype } from '../../../shared/api/catalog'
 import type { PrototypeItem } from '../../../shared/config/catalog'
+import { ActionIconButton } from '../../../shared/ui/action-icon-button'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 import { Switch } from '../../../shared/ui/switch'
@@ -60,9 +61,7 @@ export function EditPrototypeDialog({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {asIcon ? (
-          <Button size="icon" tone="default" title="수정">
-            <Pencil className="size-3.5" />
-          </Button>
+          <ActionIconButton icon={Pencil} title="수정" />
         ) : (
           <Button variant="ghost" size="sm">
             <Pencil className="size-4" />

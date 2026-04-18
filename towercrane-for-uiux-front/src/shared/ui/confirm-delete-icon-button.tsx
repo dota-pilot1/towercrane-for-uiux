@@ -6,7 +6,6 @@ type ConfirmDeleteIconButtonProps = {
   confirmMessage: string
   isPending?: boolean
   title?: string
-  iconSize?: 'sm' | 'md'
   className?: string
 }
 
@@ -15,7 +14,6 @@ export function ConfirmDeleteIconButton({
   confirmMessage,
   isPending = false,
   title = '삭제',
-  iconSize = 'md',
   className,
 }: ConfirmDeleteIconButtonProps) {
   const handleClick = async () => {
@@ -35,7 +33,7 @@ export function ConfirmDeleteIconButton({
       disabled={isPending}
       className={className}
     >
-      <Trash2 className={iconSize === 'sm' ? 'size-3.5' : 'size-4'} />
+      <Trash2 className="size-4" />
     </Button>
   )
 }

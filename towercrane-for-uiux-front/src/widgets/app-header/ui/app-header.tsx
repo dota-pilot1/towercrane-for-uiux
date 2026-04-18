@@ -5,6 +5,7 @@ import { useLogout } from '../../../shared/api/auth'
 import { adminItems, navigationItems } from '../../../shared/config/navigation'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { useUiStore } from '../../../shared/store/ui-store'
+import { HeaderPill } from '../../../shared/ui/header-pill'
 import { ThemeSwitcher } from '../../../shared/ui/theme-switcher'
 
 export function AppHeader() {
@@ -47,43 +48,36 @@ export function AppHeader() {
         </button>
 
         <nav className="flex items-center justify-center gap-1.5 flex-1 min-w-0">
-          {navigationItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleNavigation(item.id)}
-                className={`inline-flex h-[34px] items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition shrink-0 ${
-                  activeSection === item.id
-                    ? 'border-brand-border bg-brand-glass ui-text-primary'
-                    : 'border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]'
-                }`}
-              >
-                <Icon className="size-3.5" />
-                <span className="hidden sm:inline">{item.label}</span>
-              </button>
-            )
-          })}
+          {navigationItems.map((item) => (
+            <HeaderPill
+              key={item.id}
+              icon={item.icon}
+              variant={activeSection === item.id ? 'active' : 'default'}
+              onClick={() => handleNavigation(item.id)}
+              labelClassName="hidden sm:inline"
+            >
+              {item.label}
+            </HeaderPill>
+          ))}
 
           {userRole === 'admin' && (
             <div className="relative">
-              <button
-                type="button"
+              <HeaderPill
+                icon={ShieldCheck}
+                variant={
+                  activeSection === 'users' || activeSection === 'readme_admin' ? 'active' : 'default'
+                }
                 onClick={() => setIsAdminOpen(!isAdminOpen)}
                 onBlur={() => setTimeout(() => setIsAdminOpen(false), 200)}
-                className={`inline-flex h-[34px] items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition shrink-0 ${
-                  activeSection === 'users' || activeSection === 'readme_admin'
-                    ? 'border-brand-border bg-brand-glass ui-text-primary'
-                    : 'border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]'
-                }`}
+                labelClassName="hidden sm:inline"
+                trailingIcon={
+                  <ChevronDown
+                    className={`size-3 transition-transform duration-200 ${isAdminOpen ? 'rotate-180' : ''}`}
+                  />
+                }
               >
-                <ShieldCheck className="size-3.5" />
-                <span className="hidden sm:inline">Admin</span>
-                <ChevronDown
-                  className={`size-3 transition-transform duration-200 ${isAdminOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
+                Admin
+              </HeaderPill>
 
               {isAdminOpen && (
                 <div className="absolute left-0 top-full mt-2 w-44 origin-top-left rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in duration-200 z-50">
@@ -123,9 +117,9 @@ export function AppHeader() {
                     <ShieldCheck className="size-4" />
                   </div>
                 )}
-                <span className="h-[34px] flex items-center rounded-full border border-[var(--surface-border)] bg-[var(--input-bg)] px-3.5 text-xs ui-text-primary">
+                <HeaderPill as="span" variant="static">
                   {userName || userEmail}
-                </span>
+                </HeaderPill>
               </div>
               <button
                 onClick={handleLogout}

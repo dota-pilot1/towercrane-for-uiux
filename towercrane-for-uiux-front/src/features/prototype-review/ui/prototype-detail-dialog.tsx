@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import type { PrototypeListItem } from '../../../shared/api/catalog'
 import { useSessionStore } from '../../../shared/store/session-store'
+import { ActionIconButton } from '../../../shared/ui/action-icon-button'
 import { Button } from '../../../shared/ui/button'
 import { ReviewForm } from './review-form'
 import { ReviewList } from './review-list'
@@ -29,14 +30,7 @@ export function PrototypeDetailDialog({ prototype }: Props) {
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
-        <Button
-          size="icon"
-          tone="default"
-          title="상세 보기"
-          aria-label="상세 보기"
-        >
-          <Info className="size-4" />
-        </Button>
+        <ActionIconButton icon={Info} title="상세 보기" aria-label="상세 보기" />
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 ui-overlay backdrop-blur-sm z-40" />

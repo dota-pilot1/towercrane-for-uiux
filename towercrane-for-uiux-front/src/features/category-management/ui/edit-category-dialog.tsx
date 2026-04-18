@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useUpdateCategory } from '../../../shared/api/catalog'
 import type { ScenarioCategory } from '../../../shared/config/catalog'
+import { ActionIconButton } from '../../../shared/ui/action-icon-button'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 
@@ -57,9 +58,7 @@ export function EditCategoryDialog({ category, asIcon }: EditCategoryDialogProps
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {asIcon ? (
-          <Button size="icon" tone="default" title="카테고리 수정">
-            <Pencil className="size-4" />
-          </Button>
+          <ActionIconButton icon={Pencil} title="카테고리 수정" />
         ) : (
           <Button variant="secondary">
             <Pencil className="mr-2 size-4" />

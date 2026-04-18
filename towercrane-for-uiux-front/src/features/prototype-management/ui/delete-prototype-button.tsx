@@ -26,7 +26,6 @@ export function DeletePrototypeButton({
         onConfirm={runDelete}
         confirmMessage={CONFIRM_MESSAGE}
         isPending={deletePrototype.isPending}
-        iconSize="sm"
       />
     )
   }

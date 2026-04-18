@@ -71,6 +71,7 @@ import {
 } from '../../../shared/api/catalog'
 import { useUiStore } from '../../../shared/store/ui-store'
 import { useSessionStore } from '../../../shared/store/session-store'
+import { ActionIconButton } from '../../../shared/ui/action-icon-button'
 import { Card } from '../../../shared/ui/card'
 import { Select } from '../../../shared/ui/select'
 import { MetricsOverview } from '../../metrics-overview/ui/metrics-overview'
@@ -150,13 +151,6 @@ export function AdminShell() {
     performance: Gauge,
     custom: FolderPlus,
   } as const
-
-  const entryActionButtonClassName =
-    'inline-flex size-9 items-center justify-center rounded-xl border transition-all duration-200'
-  const entryActionGhostButtonClassName =
-    `${entryActionButtonClassName} ui-icon-button`
-  const entryActionBrandButtonClassName =
-    `${entryActionButtonClassName} ui-icon-button-brand`
 
   return (
     <div className="pb-4">
@@ -366,18 +360,16 @@ export function AdminShell() {
                                 />
                               </>
                             )}
-                             <button
-                               onClick={() => {
-                                 setActivePrototypeId(proto.id)
-                                 setActiveSection('docu')
-                                 window.scrollTo({ top: 0, behavior: 'smooth' })
-                               }}
-                               className={entryActionBrandButtonClassName}
-                               title="문서 보기"
-                               aria-label="문서 보기"
-                             >
-                               <FileText className="size-4" />
-                             </button>
+                            <ActionIconButton
+                              icon={FileText}
+                              onClick={() => {
+                                setActivePrototypeId(proto.id)
+                                setActiveSection('docu')
+                                window.scrollTo({ top: 0, behavior: 'smooth' })
+                              }}
+                              title="문서 보기"
+                              aria-label="문서 보기"
+                            />
                              <PrototypeDetailDialog prototype={proto} />
                            </div>
                         </div>

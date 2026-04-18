@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { clsx } from 'clsx'
 import { Palette, Check } from 'lucide-react'
 import { useUiStore } from '../store/ui-store'
+import { HeaderPill } from './header-pill'
 
 const themes = [
   { id: 'emerald', color: '#10b981', label: 'Emerald' },
@@ -34,24 +35,22 @@ export function ThemeSwitcher() {
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
-        type="button"
+      <HeaderPill
         onClick={() => setIsOpen(!isOpen)}
+        variant={isOpen ? 'active' : 'default'}
         className={clsx(
-          'flex h-[34px] items-center gap-2.5 rounded-full border px-3 text-[13px] font-medium transition-all duration-300',
-          isOpen 
-            ? 'border-brand-border bg-brand-glass ui-text-primary shadow-[0_0_20px_rgba(15,23,42,0.06)]' 
-            : 'border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]'
+          'gap-2.5',
+          isOpen && 'shadow-[0_0_20px_rgba(15,23,42,0.06)]',
         )}
       >
         <div className="relative size-4 rounded-full border border-[var(--surface-border)] overflow-hidden">
-          <span 
-            className="absolute inset-0 transition-colors duration-500" 
-            style={{ backgroundColor: activeTheme.color }} 
+          <span
+            className="absolute inset-0 transition-colors duration-500"
+            style={{ backgroundColor: activeTheme.color }}
           />
         </div>
         <Palette className="size-3.5" />
-      </button>
+      </HeaderPill>
 
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-48 origin-top-right rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in duration-200 z-50">
