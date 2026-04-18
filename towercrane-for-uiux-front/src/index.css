@@ -17,34 +17,34 @@
 
 :root {
   --brand-500: #10b981; /* emerald-500 */
-  --brand-glow: rgba(16, 185, 129, 0.45);
+  --brand-glow: rgba(16, 185, 129, 0.28);
   --brand-glass: rgba(16, 185, 129, 0.1);
   --brand-border: rgba(16, 185, 129, 0.2);
   --app-bg:
     radial-gradient(circle at 20% 0%, var(--brand-glow), transparent 25%),
     radial-gradient(circle at 100% 0%, var(--brand-glow), transparent 30%),
-    linear-gradient(180deg, #060d14 0%, #0a131b 100%);
-  --app-fg: #d7dee7;
-  --surface-raised: rgba(17, 24, 39, 0.84);
-  --surface-muted: rgba(255, 255, 255, 0.04);
-  --surface-strong: rgba(2, 8, 23, 0.42);
-  --surface-border: rgba(255, 255, 255, 0.1);
+    linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --app-fg: #e2e8f0;
+  --surface-raised: rgba(30, 41, 59, 0.7);
+  --surface-muted: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(15, 23, 42, 0.5);
+  --surface-border: rgba(255, 255, 255, 0.08);
   --surface-border-soft: rgba(255, 255, 255, 0.05);
   --surface-shadow: 0 28px 60px rgba(3, 9, 17, 0.32);
-  --text-primary: #ffffff;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
   --text-on-brand: #0b1020;
-  --input-bg: rgba(2, 8, 23, 0.35);
+  --input-bg: rgba(15, 23, 42, 0.45);
   --input-border: rgba(255, 255, 255, 0.1);
   --interactive-border: rgba(255, 255, 255, 0.14);
-  --input-placeholder: #64748b;
+  --input-placeholder: #94a3b8;
 
   font-family: "SUIT Variable", "Pretendard Variable", "Inter Tight", sans-serif;
   color: var(--app-fg);
   background:
     radial-gradient(circle at top, var(--brand-glow), transparent 35%),
-    linear-gradient(180deg, #060d14 0%, #0a131b 100%);
+    linear-gradient(180deg, #0b1220 0%, #111827 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -53,54 +53,54 @@
 
 :root[data-theme="blue"] {
   --brand-500: #3b82f6;
-  --brand-glow: rgba(59, 130, 246, 0.45);
+  --brand-glow: rgba(59, 130, 246, 0.28);
   --brand-glass: rgba(59, 130, 246, 0.1);
-  --brand-border: rgba(59, 130, 246, 0.2);
+  --brand-border: rgba(59, 130, 246, 0.22);
 }
 
 :root[data-theme="violet"] {
   --brand-500: #8b5cf6;
-  --brand-glow: rgba(139, 92, 246, 0.45);
+  --brand-glow: rgba(139, 92, 246, 0.28);
   --brand-glass: rgba(139, 92, 246, 0.1);
-  --brand-border: rgba(139, 92, 246, 0.2);
+  --brand-border: rgba(139, 92, 246, 0.22);
 }
 
 :root[data-theme="rose"] {
   --brand-500: #f43f5e;
-  --brand-glow: rgba(244, 63, 94, 0.45);
+  --brand-glow: rgba(244, 63, 94, 0.28);
   --brand-glass: rgba(244, 63, 94, 0.1);
-  --brand-border: rgba(244, 63, 94, 0.2);
+  --brand-border: rgba(244, 63, 94, 0.22);
 }
 
 :root[data-theme="amber"] {
   --brand-500: #f59e0b;
-  --brand-glow: rgba(245, 158, 11, 0.45);
+  --brand-glow: rgba(245, 158, 11, 0.28);
   --brand-glass: rgba(245, 158, 11, 0.1);
-  --brand-border: rgba(245, 158, 11, 0.2);
+  --brand-border: rgba(245, 158, 11, 0.22);
 }
 
 :root[data-theme="light"] {
-  --brand-500: #111827;
-  --brand-glow: rgba(255, 255, 255, 0);
-  --brand-glass: rgba(17, 24, 39, 0.04);
-  --brand-border: rgba(0, 0, 0, 0.72);
+  --brand-500: #18181b;
+  --brand-glow: rgba(24, 24, 27, 0);
+  --brand-glass: rgba(24, 24, 27, 0.05);
+  --brand-border: rgba(24, 24, 27, 0.12);
   --app-bg:
-    linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
-  --app-fg: #0f172a;
+    linear-gradient(180deg, #fafafa 0%, #f4f4f5 100%);
+  --app-fg: #18181b;
   --surface-raised: #ffffff;
-  --surface-muted: rgba(15, 23, 42, 0.018);
-  --surface-strong: #ffffff;
-  --surface-border: rgba(0, 0, 0, 0.54);
-  --surface-border-soft: rgba(0, 0, 0, 0.42);
-  --surface-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --text-primary: #0f172a;
-  --text-secondary: #1e293b;
-  --text-muted: #64748b;
-  --text-on-brand: #ffffff;
+  --surface-muted: rgba(24, 24, 27, 0.04);
+  --surface-strong: #fafafa;
+  --surface-border: rgba(24, 24, 27, 0.08);
+  --surface-border-soft: rgba(24, 24, 27, 0.05);
+  --surface-shadow: 0 1px 2px rgba(24, 24, 27, 0.04), 0 8px 24px rgba(24, 24, 27, 0.04);
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+  --text-on-brand: #fafafa;
   --input-bg: #ffffff;
-  --input-border: rgba(0, 0, 0, 0.68);
-  --interactive-border: rgba(0, 0, 0, 0.88);
-  --input-placeholder: #64748b;
+  --input-border: rgba(24, 24, 27, 0.12);
+  --interactive-border: rgba(24, 24, 27, 0.14);
+  --input-placeholder: #a1a1aa;
 }
 
 * {

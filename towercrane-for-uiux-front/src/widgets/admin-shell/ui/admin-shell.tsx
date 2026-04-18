@@ -255,13 +255,13 @@ export function AdminShell() {
 
               {/* Prototype Timeline List */}
               <Card className="flex-1 min-h-0 overflow-y-auto rounded-[28px] p-5">
-                <div className="mb-4 flex items-center justify-between gap-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-3 ui-text-secondary font-medium">
                     <GitBranch className="size-4 text-brand-primary" />
                     <span className="text-[11px] uppercase tracking-widest">Prototype Entries</span>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <div className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] ui-text-secondary uppercase tracking-tighter">
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex h-9 items-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[11px] font-semibold ui-text-secondary uppercase tracking-widest">
                       {totalCount} prototypes
                     </div>
                     <AddPrototypeDialog
@@ -273,7 +273,7 @@ export function AdminShell() {
                 </div>
 
                 {/* Search + sort bar */}
-                <div className="mb-5 flex items-center gap-2">
+                <div className="mb-4 flex items-center gap-2">
                   <form
                     className="relative flex-1"
                     onSubmit={(e) => {
@@ -296,7 +296,7 @@ export function AdminShell() {
                         }
                       }}
                       placeholder="제목·요약 검색..."
-                      className="ui-input w-full rounded-xl border py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-border"
+                      className="ui-input h-9 w-full rounded-xl border pl-9 pr-3 text-sm outline-none focus:border-brand-border"
                     />
                   </form>
                   <Select
@@ -305,7 +305,7 @@ export function AdminShell() {
                       setSort(e.target.value as PrototypeListSort)
                       setPage(1)
                     }}
-                    className="h-10 min-w-[7.5rem] rounded-xl px-3 text-sm focus:border-brand-border focus:ring-emerald-500/15"
+                    className="h-9! min-w-[7.5rem] rounded-xl! pl-3! pr-9! text-sm focus:border-brand-border focus:ring-emerald-500/15"
                   >
                     <option value="recent">최신순</option>
                     <option value="oldest">오래된순</option>
