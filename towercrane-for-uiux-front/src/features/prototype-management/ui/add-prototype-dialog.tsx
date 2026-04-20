@@ -13,8 +13,8 @@ import { uploadFile } from '../../../shared/api/upload'
 
 const schema = z.object({
   title: z.string().min(2).max(50),
-  repoUrl: z.string().url().or(z.literal('')).nullish().transform(v => v || ''),
-  figmaUrl: z.string().url().or(z.literal('')).nullish().transform(v => v || ''),
+  repoUrl: z.string(),
+  figmaUrl: z.string(),
   summary: z.string().min(2).max(160),
   status: z.enum(['draft', 'building', 'ready']),
   visibility: z.enum(['public', 'private']),
