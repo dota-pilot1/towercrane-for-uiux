@@ -173,10 +173,10 @@ export function PrototypeDetailPage({
                   )}
                   {prototype.visibility}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-[999px] border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[11px] font-bold text-amber-300">
+                <span className="inline-flex items-center gap-1 rounded-[999px] border border-amber-500 bg-amber-500 px-3 py-1 text-[11px] font-bold text-amber-300">
                   <Star className="size-3 fill-amber-400 text-amber-400" />
                   {prototype.avgRating.toFixed(1)}
-                  <span className="text-amber-300/60 font-normal">
+                  <span className="text-amber-300 font-normal">
                     ({prototype.reviewCount})
                   </span>
                 </span>
@@ -229,7 +229,7 @@ export function PrototypeDetailPage({
               <p className="mt-1.5 text-sm font-semibold text-text-primary">GitHub 링크</p>
             </div>
           </div>
-          <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-surface-border-soft bg-surface-muted/60 p-3.5">
+          <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-surface-border-soft bg-surface-muted p-3.5">
             <div className="min-w-0 flex-1">
               <a
                 href={prototype.repoUrl}
@@ -428,7 +428,7 @@ export function PrototypeDetailPage({
                           type="button"
                           onClick={() => void removeChecklistItem(idx)}
                           disabled={updatePrototype.isPending}
-                          className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-text-muted transition-all hover:bg-rose-500/10 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-text-muted transition-all hover:bg-rose-500 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label="체크리스트 삭제"
                         >
                           <X className="size-4" />
