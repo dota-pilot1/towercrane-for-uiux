@@ -285,6 +285,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'created_at',
       "ALTER TABLE prototypes ADD COLUMN created_at TEXT DEFAULT '' NOT NULL",
     );
+    this.ensureColumn(
+      'categories',
+      'order_idx',
+      'ALTER TABLE categories ADD COLUMN order_idx INTEGER DEFAULT 0 NOT NULL',
+    );
 
     const now = new Date().toISOString();
     const demoUser = this.ensureDemoUser(now);

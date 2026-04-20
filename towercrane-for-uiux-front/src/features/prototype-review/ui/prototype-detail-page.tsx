@@ -156,149 +156,157 @@ export function PrototypeDetailPage({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-3xl border border-surface-border-soft bg-surface-raised shadow-sm">
-        <div className="grid lg:grid-cols-[1fr,340px]">
-          {/* Left: Info */}
-          <div className="flex flex-col p-7 lg:border-r lg:border-surface-border-soft">
-             <div className="flex items-start justify-between gap-6">
-                <div className="min-w-0 flex-1 space-y-3">
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary">
-                    <Tag className="size-3" />
-                    {category?.title ?? 'Category'}
-                  </div>
-                  <h1 className="text-4xl font-black tracking-tight text-text-primary leading-tight">
-                    {prototype.title}
-                  </h1>
-                  <p className="text-base text-text-secondary leading-relaxed max-w-2xl">
-                    {prototype.summary}
-                  </p>
+      {/* Main Info Card */}
+      <div className="overflow-hidden rounded-3xl border border-surface-border-soft bg-surface-raised shadow-sm p-7">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary">
+              <Tag className="size-3" />
+              {category?.title ?? 'Category'}
+            </div>
+            <h1 className="text-4xl font-black tracking-tight text-text-primary leading-tight">
+              {prototype.title}
+            </h1>
+            <p className="text-base text-text-secondary leading-relaxed max-w-4xl">
+              {prototype.summary}
+            </p>
 
-                  {/* Tags added here */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    {tags.length > 0 ? (
-                      tags.map(tag => (
-                        <div key={tag} className="flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-bold text-text-secondary">
-                          #{tag}
-                          {canManagePrototype && (
-                            <button onClick={() => removeTag(tag)} className="text-text-muted hover:text-rose-500 transition-colors">
-                              <X className="size-3" />
-                            </button>
-                          )}
-                        </div>
-                      ))
-                    ) : null}
+            {/* Tags area */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {tags.length > 0 ? (
+                tags.map(tag => (
+                  <div key={tag} className="flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-bold text-text-secondary">
+                    #{tag}
                     {canManagePrototype && (
-                      <div className="relative group">
-                        <Input 
-                          value={tagDraft} 
-                          onChange={e => setTagDraft(e.target.value)} 
-                          placeholder="Add tag..." 
-                          className="h-7 w-24 rounded-full px-3 text-[10px] transition-all focus:w-32" 
-                          onKeyDown={e => e.key === 'Enter' && addTag()} 
-                        />
-                        <button onClick={addTag} className="absolute right-2 top-1.5 text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Plus className="size-3.5" />
-                        </button>
-                      </div>
+                      <button onClick={() => removeTag(tag)} className="text-text-muted hover:text-rose-500 transition-colors">
+                        <X className="size-3" />
+                      </button>
                     )}
                   </div>
-
-                  <div className="mt-6 flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1.5 rounded-full bg-brand-primary px-3.5 py-1.5 text-[10px] font-black uppercase text-white shadow-sm shadow-brand-primary/20">
-                      <span className="size-1.5 rounded-full bg-white animate-pulse" />
-                      {prototype.status}
-                    </div>
-                    <div className="flex items-center gap-1.5 rounded-full border border-surface-border bg-surface-muted/50 px-3.5 py-1.5 text-[10px] font-bold text-text-muted">
-                      {prototype.visibility === 'public' ? <Globe className="size-3" /> : <Lock className="size-3" />}
-                      {prototype.visibility}
-                    </div>
-                    <div className="flex items-center gap-1.5 rounded-full bg-amber-500 px-3.5 py-1.5 text-[10px] font-black text-white shadow-sm shadow-amber-500/20">
-                      <Star className="size-3 fill-white" />
-                      {prototype.avgRating.toFixed(1)}
-                    </div>
-                  </div>
+                ))
+              ) : null}
+              {canManagePrototype && (
+                <div className="relative group">
+                  <Input 
+                    value={tagDraft} 
+                    onChange={e => setTagDraft(e.target.value)} 
+                    placeholder="Add tag..." 
+                    className="h-7 w-24 rounded-full px-3 text-[10px] transition-all focus:w-32" 
+                    onKeyDown={e => e.key === 'Enter' && addTag()} 
+                  />
+                  <button onClick={addTag} className="absolute right-2 top-1.5 text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Plus className="size-3.5" />
+                  </button>
                 </div>
+              )}
+            </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={handleCopyLink}
-                    className="h-10 min-w-[110px] justify-center rounded-xl bg-surface-muted/50 text-[11px] font-bold transition-all hover:bg-surface-strong"
-                  >
-                    <Copy className="mr-2 size-3.5" />
-                    {copyButtonText}
-                  </Button>
-                  {canManagePrototype && (
-                    <>
-                      <EditPrototypeDialog
-                        categoryId={prototype.categoryId}
-                        prototype={prototype}
-                        asIcon
-                        className="h-10 w-10 rounded-xl"
-                      />
-                      <DeletePrototypeButton
-                        categoryId={prototype.categoryId}
-                        prototypeId={prototype.id}
-                        asIcon
-                        className="h-10 w-10 rounded-xl"
-                      />
-                    </>
-                  )}
-                  <Button
-                    variant="secondary"
-                    onClick={onBack}
-                    size="icon"
-                    className="h-10 w-10 rounded-xl bg-surface-muted/50"
-                  >
-                    <ArrowLeft className="size-4" />
-                  </Button>
-                </div>
-             </div>
-
-             <div className="mt-8 flex flex-wrap items-center gap-2">
-              {prototype.repoUrl && (
-                <a href={prototype.repoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-surface-border-soft bg-surface-muted px-3 py-1.5 text-[10px] font-bold text-text-primary transition-all hover:bg-surface-strong">
-                  <ExternalLink className="size-3 text-text-muted" /> Source
-                </a>
-              )}
-              {prototype.figmaUrl && (
-                <a href={prototype.figmaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-surface-border-soft bg-surface-muted px-3 py-1.5 text-[10px] font-bold text-text-primary transition-all hover:bg-surface-strong">
-                  <ExternalLink className="size-3 text-text-muted" /> Design
-                </a>
-              )}
-              {prototype.demoUrl && (
-                <a href={prototype.demoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-brand-border bg-brand-glass px-4 py-1.5 text-[10px] font-black text-brand-primary transition-all hover:bg-brand-primary hover:text-white">
-                  <Globe className="size-3" /> Live Preview
-                </a>
-              )}
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 rounded-full bg-brand-primary px-3.5 py-1.5 text-[10px] font-black uppercase text-white shadow-sm shadow-brand-primary/20">
+                <span className="size-1.5 rounded-full bg-white animate-pulse" />
+                {prototype.status}
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full border border-surface-border bg-surface-muted/50 px-3.5 py-1.5 text-[10px] font-bold text-text-muted">
+                {prototype.visibility === 'public' ? <Globe className="size-3" /> : <Lock className="size-3" />}
+                {prototype.visibility}
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full bg-amber-500 px-3.5 py-1.5 text-[10px] font-black text-white shadow-sm shadow-amber-500/20">
+                <Star className="size-3 fill-white" />
+                {prototype.avgRating.toFixed(1)}
+              </div>
             </div>
           </div>
 
-          {/* Right: Images Grid */}
-          <div className="bg-surface-muted/20 p-5">
-            <div className="mb-3 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-text-muted/60">
-              <ImageIcon className="size-3 text-brand-primary/50" /> Visuals
-            </div>
-            {prototype.images && prototype.images.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto pr-1">
-                {prototype.images.map((url, i) => (
-                   <div 
-                    key={i} 
-                    className="group relative aspect-video cursor-zoom-in overflow-hidden rounded-lg border border-surface-border-soft bg-surface-strong shadow-sm transition-transform hover:scale-[1.02]"
-                    onClick={() => setExpandedImageUrl(url)}
-                  >
-                    <img src={url} alt="" className="h-full w-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex h-32 w-full flex-col items-center justify-center rounded-xl border border-dashed border-surface-border bg-surface-muted/40 text-[10px] font-medium text-text-muted/50">
-                <ImageIcon className="mb-1.5 size-4 opacity-10" />
-                No images
-              </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={handleCopyLink}
+              className="h-10 min-w-[110px] justify-center rounded-xl bg-surface-muted/50 text-[11px] font-bold transition-all hover:bg-surface-strong"
+            >
+              <Copy className="mr-2 size-3.5" />
+              {copyButtonText}
+            </Button>
+            {canManagePrototype && (
+              <>
+                <EditPrototypeDialog
+                  categoryId={prototype.categoryId}
+                  prototype={prototype}
+                  asIcon
+                  className="h-10 w-10 rounded-xl"
+                />
+                <DeletePrototypeButton
+                  categoryId={prototype.categoryId}
+                  prototypeId={prototype.id}
+                  asIcon
+                  className="h-10 w-10 rounded-xl"
+                />
+              </>
             )}
+            <Button
+              variant="secondary"
+              onClick={onBack}
+              size="icon"
+              className="h-10 w-10 rounded-xl bg-surface-muted/50"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
           </div>
         </div>
+
+        <div className="mt-8 flex flex-wrap items-center gap-2">
+          {prototype.repoUrl && (
+            <a href={prototype.repoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-surface-border-soft bg-surface-muted px-3 py-1.5 text-[10px] font-bold text-text-primary transition-all hover:bg-surface-strong">
+              <ExternalLink className="size-3 text-text-muted" /> Source
+            </a>
+          )}
+          {prototype.figmaUrl && (
+            <a href={prototype.figmaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-surface-border-soft bg-surface-muted px-3 py-1.5 text-[10px] font-bold text-text-primary transition-all hover:bg-surface-strong">
+              <ExternalLink className="size-3 text-text-muted" /> Design
+            </a>
+          )}
+          {prototype.demoUrl && (
+            <a href={prototype.demoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-brand-border bg-brand-glass px-4 py-1.5 text-[10px] font-black text-brand-primary transition-all hover:bg-brand-primary hover:text-white">
+              <Globe className="size-3" /> Live Preview
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Separate Visuals Card */}
+      <div className="rounded-3xl border border-surface-border-soft bg-surface-raised p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 text-[10px] font-black uppercase tracking-widest text-text-primary">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-brand-glass text-brand-primary">
+              <ImageIcon className="size-4" />
+            </div>
+            Project Visuals
+          </div>
+          {prototype.images && prototype.images.length > 0 && (
+            <div className="text-[10px] font-bold text-text-muted">
+              {prototype.images.length} images • Click to expand
+            </div>
+          )}
+        </div>
+        
+        {prototype.images && prototype.images.length > 0 ? (
+          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+            {prototype.images.map((url, i) => (
+              <div 
+                key={i} 
+                className="group relative aspect-video cursor-zoom-in overflow-hidden rounded-xl border border-surface-border-soft bg-surface-strong shadow-sm transition-all hover:scale-[1.05] hover:shadow-md hover:ring-2 hover:ring-brand-primary/20"
+                onClick={() => setExpandedImageUrl(url)}
+              >
+                <img src={url} alt="" className="h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/5" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex h-32 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-surface-border-soft bg-surface-muted/20 text-[11px] font-medium text-text-muted/50">
+            <ImageIcon className="mb-2 size-5 opacity-20" />
+            No images uploaded yet
+          </div>
+        )}
       </div>
 
       <div className="grid min-h-[500px] gap-4 xl:grid-cols-2">
