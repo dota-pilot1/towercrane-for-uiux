@@ -572,17 +572,22 @@ function SortableCategoryItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative flex w-full items-center gap-2 rounded-[10px] transition ${
+      className={`group relative flex w-full items-center gap-2 overflow-hidden rounded-[12px] transition-all duration-200 ${
         isActive
-          ? 'bg-[var(--surface-strong)] ui-text-primary ring-1 ring-brand-border'
-          : 'bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]'
+          ? 'bg-brand-glass ui-text-primary shadow-sm ring-1 ring-brand-border/50'
+          : 'bg-surface-muted/50 ui-text-secondary hover:bg-surface-muted'
       }`}
     >
+      {isActive && (
+        <div className="absolute left-0 top-0 h-full w-1 bg-brand-primary" />
+      )}
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="flex h-10 w-8 shrink-0 cursor-grab items-center justify-center text-text-muted transition-colors hover:text-text-primary active:cursor-grabbing"
+        className={`flex h-10 w-8 shrink-0 cursor-grab items-center justify-center transition-colors active:cursor-grabbing ${
+          isActive ? 'text-brand-primary' : 'text-text-muted hover:text-text-primary'
+        }`}
       >
         <GripVertical className="size-3.5" />
       </button>
@@ -593,9 +598,13 @@ function SortableCategoryItem({
         className="flex min-w-0 flex-1 items-center gap-3 py-2.5 pr-3.5 text-left"
       >
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">{item.title}</div>
+          <div className={`truncate text-sm transition-all ${isActive ? 'font-black tracking-tight' : 'font-medium'}`}>
+            {item.title}
+          </div>
         </div>
-        <span className="shrink-0 rounded-[999px] bg-surface-muted px-2 py-0.5 text-[10px] font-bold text-text-muted">
+        <span className={`shrink-0 rounded-[999px] px-2 py-0.5 text-[10px] font-black transition-colors ${
+          isActive ? 'bg-brand-primary text-white' : 'bg-surface-muted text-text-muted'
+        }`}>
           {item.prototypes.length}
         </span>
       </button>
