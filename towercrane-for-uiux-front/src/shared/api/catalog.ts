@@ -78,6 +78,16 @@ export function useCatalogCategories() {
   })
 }
 
+export function useCategory(categoryId: string) {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+
+  return useQuery({
+    queryKey: ['catalog', 'categories', categoryId],
+    queryFn: () => apiRequest<ScenarioCategory>(`/catalog/categories/${categoryId}`),
+    enabled: isAuthenticated && Boolean(categoryId),
+  })
+}
+
 export function useCreateCategory() {
   const queryClient = useQueryClient()
 
