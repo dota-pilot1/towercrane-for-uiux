@@ -67,6 +67,7 @@ export function PrototypeDetailPage({
   const [copyState, setCopyState] = useState('idle')
   const [checklistDraft, setChecklistDraft] = useState('')
   const [tagDraft, setTagDraft] = useState('')
+  const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null)
 
   const checklist = prototype.checklist ?? []
   const tags = prototype.tags ?? []
@@ -135,6 +136,26 @@ export function PrototypeDetailPage({
 
   return (
     <div className="flex animate-in fade-in slide-in-from-bottom-4 flex-col gap-4">
+      {/* Expanded Image Modal */}
+      {expandedImageUrl && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-10 animate-in fade-in duration-200"
+          onClick={() => setExpandedImageUrl(null)}
+        >
+          <button 
+            className="absolute right-6 top-6 text-white/60 hover:text-white transition-colors"
+            onClick={() => setExpandedImageUrl(null)}
+          >
+            <X className="size-8" />
+          </button>
+          <img 
+            src={expandedImageUrl} 
+            alt="Expanded visual" 
+            className="max-h-full max-w-full rounded-xl object-contain shadow-2xl animate-in zoom-in-95 duration-300" 
+          />
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-3xl border border-surface-border-soft bg-surface-raised shadow-sm">
         <div className="grid lg:grid-cols-[1fr,340px]">
           {/* Left: Info */}
@@ -261,7 +282,11 @@ export function PrototypeDetailPage({
             {prototype.images && prototype.images.length > 0 ? (
               <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto pr-1">
                 {prototype.images.map((url, i) => (
-                  <div key={i} className="group relative aspect-video overflow-hidden rounded-lg border border-surface-border-soft bg-surface-strong shadow-sm transition-transform hover:scale-[1.02]">
+                   <div 
+                    key={i} 
+                    className="group relative aspect-video cursor-zoom-in overflow-hidden rounded-lg border border-surface-border-soft bg-surface-strong shadow-sm transition-transform hover:scale-[1.02]"
+                    onClick={() => setExpandedImageUrl(url)}
+                  >
                     <img src={url} alt="" className="h-full w-full object-cover" />
                   </div>
                 ))}

@@ -259,6 +259,8 @@ export function AdminShell() {
                           isActive={activeCategoryId === item.id}
                           icon={iconMap[item.iconKey] || Package}
                           onSelect={() => setActiveCategory(item.id)}
+                          canManage={item.userId === currentUserId || userRole === 'admin'}
+                          fallbackCategoryId={fallbackCategoryId}
                         />
                       ))}
                     </nav>
@@ -546,11 +548,15 @@ function SortableCategoryItem({
   isActive,
   icon: Icon,
   onSelect,
+  canManage,
+  fallbackCategoryId,
 }: {
   item: any
   isActive: boolean
   icon: any
   onSelect: () => void
+  canManage: boolean
+  fallbackCategoryId?: string
 }) {
   const {
     attributes,
@@ -590,7 +596,7 @@ function SortableCategoryItem({
       <button
         type="button"
         onClick={onSelect}
-        className="flex min-w-0 flex-1 items-center gap-3 py-2.5 pr-3.5 text-left"
+        className="flex min-w-0 flex-1 items-center gap-3 py-2.5 text-left"
       >
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{item.title}</div>
@@ -599,6 +605,17 @@ function SortableCategoryItem({
           {item.prototypes.length}
         </span>
       </button>
+
+      {canManage && (
+        <div className="absolute right-10 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100">
+           <DeleteCategoryButton 
+            categoryId={item.id} 
+            fallbackCategoryId={fallbackCategoryId} 
+            asIcon 
+            className="size-7! p-0! rounded-lg!" 
+          />
+        </div>
+      )}
     </div>
   )
 }
