@@ -64,11 +64,13 @@ export function PrototypeDetailPage({
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
   const updatePrototype = useUpdatePrototype(prototype.categoryId, prototype.id)
   const [checklistDraft, setChecklistDraft] = useState('')
+  const [tagDraft, setTagDraft] = useState('')
   const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle')
   const checklist = prototype.checklist ?? []
+  const tags = prototype.tags ?? []
   const canEditChecklist = isAuthenticated
   const imageCount = prototype.images?.length ?? 0
-  const tagCount = prototype.tags?.length ?? 0
+  const tagCount = tags.length
 
   useEffect(() => {
     if (copyState === 'idle') return
@@ -78,6 +80,10 @@ export function PrototypeDetailPage({
 
   const updateChecklist = async (nextChecklist: string[]) => {
     await updatePrototype.mutateAsync({ checklist: nextChecklist })
+  }
+
+  const updateTags = async (nextTags: string[]) => {
+    await updatePrototype.mutateAsync({ tags: nextTags })
   }
 
   const addChecklistItem = async () => {
@@ -101,6 +107,34 @@ export function PrototypeDetailPage({
     } catch (error) {
       console.error('Checklist remove failed:', error)
       alert('체크리스트 삭제에 실패했습니다.')
+    }
+  }
+
+  const addTag = async () => {
+    const nextTag = tagDraft.trim().replace(/^#/, '')
+    if (!nextTag || updatePrototype.isPending) return
+    if (tags.some((tag) => tag.toLowerCase() === nextTag.toLowerCase())) {
+      setTagDraft('')
+      return
+    }
+
+    try {
+      await updateTags([...tags, nextTag])
+      setTagDraft('')
+    } catch (error) {
+      console.error('Tag add failed:', error)
+      alert('태그 추가에 실패했습니다.')
+    }
+  }
+
+  const removeTag = async (index: number) => {
+    if (updatePrototype.isPending) return
+
+    try {
+      await updateTags(tags.filter((_, tagIndex) => tagIndex !== index))
+    } catch (error) {
+      console.error('Tag remove failed:', error)
+      alert('태그 삭제에 실패했습니다.')
     }
   }
 
@@ -228,6 +262,69 @@ export function PrototypeDetailPage({
                 <ExternalLink className="size-4" />
               </a>
             </div>
+          </div>
+
+          <div className="mt-5 border-t border-surface-border-soft pt-5">
+            <div className="mb-3 flex items-center gap-2">
+              <Tag className="size-4 text-text-muted" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-text-muted">
+                Tags
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {tags.length > 0 ? (
+                tags.map((tag, index) => (
+                  <span
+                    key={`${tag}-${index}`}
+                    className="inline-flex items-center gap-1 rounded-[999px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-xs text-text-secondary"
+                  >
+                    #{tag}
+                    {canManagePrototype ? (
+                      <button
+                        type="button"
+                        onClick={() => void removeTag(index)}
+                        disabled={updatePrototype.isPending}
+                        className="inline-flex size-4 items-center justify-center rounded-full text-text-muted transition hover:text-rose-500 disabled:opacity-40"
+                        aria-label={`태그 ${tag} 삭제`}
+                      >
+                        <X className="size-3" />
+                      </button>
+                    ) : null}
+                  </span>
+                ))
+              ) : (
+                <p className="text-xs text-text-muted">등록된 태그가 없습니다.</p>
+              )}
+            </div>
+
+            {canManagePrototype ? (
+              <div className="relative mt-3">
+                <Input
+                  value={tagDraft}
+                  onChange={(event) => setTagDraft(event.target.value)}
+                  placeholder="태그 추가"
+                  className="h-10 pr-12"
+                  disabled={updatePrototype.isPending}
+                  onKeyDown={(event) => {
+                    if (event.nativeEvent.isComposing) return
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      void addTag()
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void addTag()}
+                  disabled={updatePrototype.isPending || tagDraft.trim().length === 0}
+                  className="absolute right-1.5 top-1.5 bottom-1.5 inline-flex aspect-square items-center justify-center rounded-lg bg-surface-muted text-text-secondary transition-colors hover:bg-surface-border-soft hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="태그 추가"
+                >
+                  <Plus className="size-4" />
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
