@@ -40,7 +40,7 @@ export type ScenarioIconKey =
 
 export type ScenarioCategory = {
   id: string
-  userId: string
+  userId?: string
   title: string
   summary: string
   group: string
