@@ -259,8 +259,6 @@ export function AdminShell() {
                           isActive={activeCategoryId === item.id}
                           icon={iconMap[item.iconKey] || Package}
                           onSelect={() => setActiveCategory(item.id)}
-                          canManage={item.userId === currentUserId || userRole === 'admin'}
-                          fallbackCategoryId={fallbackCategoryId}
                         />
                       ))}
                     </nav>
@@ -548,15 +546,11 @@ function SortableCategoryItem({
   isActive,
   icon: Icon,
   onSelect,
-  canManage,
-  fallbackCategoryId,
 }: {
   item: any
   isActive: boolean
   icon: any
   onSelect: () => void
-  canManage: boolean
-  fallbackCategoryId?: string
 }) {
   const {
     attributes,
@@ -596,29 +590,15 @@ function SortableCategoryItem({
       <button
         type="button"
         onClick={onSelect}
-        className="flex min-w-0 flex-1 items-center gap-3 py-2.5 text-left"
+        className="flex min-w-0 flex-1 items-center gap-3 py-2.5 pr-3.5 text-left"
       >
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{item.title}</div>
         </div>
-      </button>
-
-      <div className="flex items-center gap-2 pr-3">
         <span className="shrink-0 rounded-[999px] bg-surface-muted px-2 py-0.5 text-[10px] font-bold text-text-muted">
           {item.prototypes.length}
         </span>
-        
-        {canManage && (
-          <div className="opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-0 translate-x-2">
-            <DeleteCategoryButton 
-              categoryId={item.id} 
-              fallbackCategoryId={fallbackCategoryId} 
-              asIcon 
-              className="size-7! p-0! rounded-lg hover:bg-rose-50! hover:text-rose-600! transition-colors" 
-            />
-          </div>
-        )}
-      </div>
+      </button>
     </div>
   )
 }
