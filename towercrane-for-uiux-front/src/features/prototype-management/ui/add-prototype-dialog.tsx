@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { GitBranch, Plus, ImagePlus, X, Image as ImageIcon, Loader2 } from 'lucide-react'
 import { useState } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, type SubmitHandler } from 'react-hook-form'
 import { z } from 'zod'
 import { useCreatePrototype } from '../../../shared/api/catalog'
 import { Button } from '../../../shared/ui/button'
@@ -102,7 +102,7 @@ export function AddPrototypeDialog({
     )
   }
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit: SubmitHandler<FormValues> = async (values) => {
     try {
       await createPrototype.mutateAsync(values as any)
       reset()

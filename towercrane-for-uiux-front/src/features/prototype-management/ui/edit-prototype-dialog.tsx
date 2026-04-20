@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Pencil } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, type SubmitHandler } from 'react-hook-form'
 import { z } from 'zod'
 import { useUpdatePrototype } from '../../../shared/api/catalog'
 import type { PrototypeItem } from '../../../shared/config/catalog'
@@ -71,7 +71,7 @@ export function EditPrototypeDialog({
     })
   }, [prototype, reset])
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit: SubmitHandler<FormValues> = async (values) => {
     try {
       await updatePrototype.mutateAsync(values as any)
       setOpen(false)

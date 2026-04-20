@@ -247,7 +247,6 @@ export function AdminShell() {
               {activePrototype ? (
                 <PrototypeDetailPage
                   prototype={activePrototype}
-                  categoryTitle={selectedCategory.title}
                   canManagePrototype={
                     selectedCategory.userId === currentUserId || userRole === 'admin'
                   }
