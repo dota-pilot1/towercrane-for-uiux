@@ -601,21 +601,24 @@ function SortableCategoryItem({
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{item.title}</div>
         </div>
-        <span className="rounded-[999px] bg-surface-muted px-2 py-0.5 text-xs">
-          {item.prototypes.length}
-        </span>
       </button>
 
-      {canManage && (
-        <div className="absolute right-10 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100">
-           <DeleteCategoryButton 
-            categoryId={item.id} 
-            fallbackCategoryId={fallbackCategoryId} 
-            asIcon 
-            className="size-7! p-0! rounded-lg!" 
-          />
-        </div>
-      )}
+      <div className="flex items-center gap-2 pr-3">
+        <span className="shrink-0 rounded-[999px] bg-surface-muted px-2 py-0.5 text-[10px] font-bold text-text-muted">
+          {item.prototypes.length}
+        </span>
+        
+        {canManage && (
+          <div className="opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-0 translate-x-2">
+            <DeleteCategoryButton 
+              categoryId={item.id} 
+              fallbackCategoryId={fallbackCategoryId} 
+              asIcon 
+              className="size-7! p-0! rounded-lg hover:bg-rose-50! hover:text-rose-600! transition-colors" 
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
