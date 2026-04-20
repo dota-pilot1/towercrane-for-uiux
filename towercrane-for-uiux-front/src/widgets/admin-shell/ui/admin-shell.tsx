@@ -45,7 +45,7 @@ import { ChevronLeft, ChevronRight, Star } from 'lucide-react'
 import {
   PrototypeDetailDialog,
   PrototypeDetailPage,
-} from '../../../features/prototype-review/ui/prototype-detail-dialog'
+} from '../../../features/prototype-review/ui/prototype-detail-page'
 
 export function AdminShell() {
   const {
