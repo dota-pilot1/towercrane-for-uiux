@@ -2,9 +2,12 @@ type SeedPrototype = {
   id: string;
   title: string;
   repoUrl: string;
+  demoUrl?: string;
+  figmaUrl?: string;
   summary: string;
   status: 'draft' | 'building' | 'ready';
   visibility: 'public' | 'private';
+  checklist?: string[];
   updatedAt: string;
 };
 

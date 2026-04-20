@@ -19,10 +19,10 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center rounded-2xl text-sm font-semibold transition duration-200',
+        'inline-flex items-center justify-center rounded-[10px] text-sm font-semibold transition duration-200',
         size === 'default' && 'px-4 py-2.5',
         size === 'sm' && 'h-8 px-3',
-        size === 'icon' && 'size-9 rounded-xl border',
+        size === 'icon' && 'size-9 rounded-[10px] border',
         variant === 'primary' &&
           'border bg-brand-primary text-text-on-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_12px_30px_rgba(110,231,183,0.18)] hover:brightness-110 [border-color:var(--interactive-border)]',
         variant === 'secondary' &&

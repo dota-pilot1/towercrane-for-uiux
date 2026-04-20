@@ -120,27 +120,27 @@
 }
 
 :root[data-theme="light"] {
-  --brand-500: #18181b;
-  --brand-glow: rgba(24, 24, 27, 0);
-  --brand-glass: rgba(24, 24, 27, 0.05);
-  --brand-border: rgba(24, 24, 27, 0.32);
+  --brand-500: #1d4ed8;
+  --brand-glow: rgba(29, 78, 216, 0.08);
+  --brand-glass: rgba(29, 78, 216, 0.08);
+  --brand-border: rgba(29, 78, 216, 0.22);
   --app-bg:
-    linear-gradient(180deg, #fafafa 0%, #f4f4f5 100%);
-  --app-fg: #18181b;
-  --surface-raised: #ffffff;
-  --surface-muted: rgba(24, 24, 27, 0.04);
-  --surface-strong: #fafafa;
-  --surface-border: rgba(24, 24, 27, 0.28);
-  --surface-border-soft: rgba(24, 24, 27, 0.18);
-  --surface-shadow: 0 1px 2px rgba(24, 24, 27, 0.04), 0 8px 24px rgba(24, 24, 27, 0.04);
-  --text-primary: #18181b;
-  --text-secondary: #52525b;
-  --text-muted: #71717a;
+    linear-gradient(180deg, #f5f7fb 0%, #eef2f7 100%);
+  --app-fg: #111827;
+  --surface-raised: #fcfdff;
+  --surface-muted: rgba(148, 163, 184, 0.1);
+  --surface-strong: #f8fafc;
+  --surface-border: rgba(100, 116, 139, 0.26);
+  --surface-border-soft: rgba(100, 116, 139, 0.18);
+  --surface-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 30px rgba(15, 23, 42, 0.06);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
   --text-on-brand: #fafafa;
   --input-bg: #ffffff;
-  --input-border: rgba(24, 24, 27, 0.35);
-  --interactive-border: rgba(24, 24, 27, 0.38);
-  --input-placeholder: #a1a1aa;
+  --input-border: rgba(100, 116, 139, 0.3);
+  --interactive-border: rgba(71, 85, 105, 0.34);
+  --input-placeholder: #94a3b8;
 }
 
 * {
@@ -285,8 +285,29 @@ select {
 
 :root[data-theme="light"] .glass-panel {
   backdrop-filter: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
 }
 
 :root[data-theme="light"] .panel-grid {
-  background-image: none;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+:root[data-theme="light"] .ui-input:focus,
+:root[data-theme="light"] select:focus,
+:root[data-theme="light"] input:focus {
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.08);
+}
+
+:root[data-theme="light"] .ui-icon-button:hover {
+  background: rgba(226, 232, 240, 0.7);
+}
+
+:root[data-theme="light"] .ui-panel,
+:root[data-theme="light"] .ui-panel-soft,
+:root[data-theme="light"] .ui-surface-muted {
+  background: rgba(248, 250, 252, 0.88);
 }

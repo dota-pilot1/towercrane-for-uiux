@@ -98,7 +98,7 @@ pnpm install
 pnpm dev`}
         </pre>
         <p className="mt-2 text-xs ui-text-muted">
-          기본 포트 <code className="ui-text-primary">http://localhost:5173</code>, 백엔드는{' '}
+          기본 포트 <code className="ui-text-primary">http://localhost:5174</code>, 백엔드는{' '}
           <code className="ui-text-primary">http://127.0.0.1:3000/api</code>.
         </p>
       </section>
@@ -160,7 +160,7 @@ pnpm start:dev`}
   {
     "AllowedHeaders": ["*"],
     "AllowedMethods": ["PUT", "GET"],
-    "AllowedOrigins": ["http://localhost:5173"],
+    "AllowedOrigins": ["http://localhost:5174"],
     "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 3000
   }

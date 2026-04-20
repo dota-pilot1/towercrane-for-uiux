@@ -11,6 +11,8 @@ export type PrototypeItem = {
   status: PrototypeStatus
   visibility: PrototypeVisibility
   updatedAt: string
+  images?: string[]
+  checklist?: string[]
 }
 
 export type ScenarioIconKey =

@@ -10,7 +10,7 @@ const themes = [
   { id: 'violet', color: '#8b5cf6', label: 'Violet' },
   { id: 'rose', color: '#f43f5e', label: 'Rose' },
   { id: 'amber', color: '#f59e0b', label: 'Amber' },
-  { id: 'light', color: '#ffffff', label: 'Light' },
+  { id: 'light', color: '#dbeafe', label: 'Light' },
 ] as const
 
 export function ThemeSwitcher() {

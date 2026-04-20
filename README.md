@@ -29,7 +29,7 @@ pnpm install
 pnpm dev
 ```
 
-기본적으로 `http://localhost:5173` 에서 실행되고, 백엔드는 `http://127.0.0.1:3000/api` 를 바라봅니다.
+기본적으로 `http://localhost:5174` 에서 실행되고, 백엔드는 `http://127.0.0.1:3000/api` 를 바라봅니다.
 
 ### 2. 서버 실행
 
@@ -84,7 +84,7 @@ OPENAI_API_KEY=
   {
     "AllowedHeaders": ["*"],
     "AllowedMethods": ["PUT", "GET"],
-    "AllowedOrigins": ["http://localhost:5173", "https://your-production-domain.com"],
+    "AllowedOrigins": ["http://localhost:5174", "https://your-production-domain.com"],
     "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 3000
   }

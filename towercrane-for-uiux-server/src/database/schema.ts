@@ -48,6 +48,7 @@ export const prototypesTable = sqliteTable('prototypes', {
   status: text('status').notNull(),
   visibility: text('visibility').notNull(),
   tags: text('tags', { mode: 'json' }).$type<string[]>().notNull(),
+  checklist: text('checklist', { mode: 'json' }).$type<string[]>().notNull().default([]),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -111,12 +112,23 @@ export const documentBlocksTable = sqliteTable('document_blocks', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export const prototypeImagesTable = sqliteTable('prototype_images', {
+  id: text('id').primaryKey(),
+  prototypeId: text('prototype_id')
+    .notNull()
+    .references(() => prototypesTable.id, { onDelete: 'cascade' }),
+  imageUrl: text('image_url').notNull(),
+  orderIdx: integer('order_idx').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
 export const schema = {
   usersTable,
   sessionsTable,
   categoriesTable,
   prototypesTable,
   prototypeReviewsTable,
+  prototypeImagesTable,
   docSectionsTable,
   documentsTable,
   documentBlocksTable,
@@ -130,6 +142,8 @@ export type CategoryRow = typeof categoriesTable.$inferSelect;
 export type CategoryInsert = typeof categoriesTable.$inferInsert;
 export type PrototypeRow = typeof prototypesTable.$inferSelect;
 export type PrototypeInsert = typeof prototypesTable.$inferInsert;
+export type PrototypeImageRow = typeof prototypeImagesTable.$inferSelect;
+export type PrototypeImageInsert = typeof prototypeImagesTable.$inferInsert;
 export type DocSectionRow = typeof docSectionsTable.$inferSelect;
 export type DocSectionInsert = typeof docSectionsTable.$inferInsert;
 export type DocumentRow = typeof documentsTable.$inferSelect;

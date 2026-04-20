@@ -82,10 +82,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         title TEXT NOT NULL,
         repo_url TEXT NOT NULL,
         demo_url TEXT,
+        figma_url TEXT,
         summary TEXT NOT NULL,
         status TEXT NOT NULL,
         visibility TEXT NOT NULL,
         tags TEXT NOT NULL,
+        checklist TEXT NOT NULL DEFAULT '[]',
         notes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -137,6 +139,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_at TEXT NOT NULL,
         FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS prototype_images (
+        id TEXT PRIMARY KEY,
+        prototype_id TEXT NOT NULL,
+        image_url TEXT NOT NULL,
+        order_idx INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(prototype_id) REFERENCES prototypes(id) ON DELETE CASCADE
+      );
     `);
 
     this.migrateLegacySchema();
@@ -183,11 +194,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             categoryId: category.id,
             title: prototype.title,
             repoUrl: prototype.repoUrl,
-            demoUrl: null,
+            demoUrl: prototype.demoUrl || null,
+            figmaUrl: prototype.figmaUrl || null,
             summary: prototype.summary,
             status: prototype.status,
             visibility: prototype.visibility,
             tags: [],
+            checklist: prototype.checklist || [],
             notes: null,
             createdAt: now,
             updatedAt: prototype.updatedAt,
@@ -233,6 +246,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       "ALTER TABLE categories ADD COLUMN updated_at TEXT DEFAULT '' NOT NULL",
     );
     this.ensureColumn(
+      'categories',
+      'tags',
+      "ALTER TABLE categories ADD COLUMN tags TEXT DEFAULT '[]' NOT NULL",
+    );
+    this.ensureColumn(
+      'categories',
+      'checklist',
+      "ALTER TABLE categories ADD COLUMN checklist TEXT DEFAULT '[]' NOT NULL",
+    );
+    this.ensureColumn(
       'prototypes',
       'demo_url',
       'ALTER TABLE prototypes ADD COLUMN demo_url TEXT',
@@ -251,6 +274,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'prototypes',
       'notes',
       'ALTER TABLE prototypes ADD COLUMN notes TEXT',
+    );
+    this.ensureColumn(
+      'prototypes',
+      'checklist',
+      "ALTER TABLE prototypes ADD COLUMN checklist TEXT DEFAULT '[]' NOT NULL",
     );
     this.ensureColumn(
       'prototypes',

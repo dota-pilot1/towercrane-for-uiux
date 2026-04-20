@@ -62,6 +62,8 @@ export type CreatePrototypePayload = {
   visibility: PrototypeVisibility
   tags?: string[]
   notes?: string
+  images?: string[]
+  checklist?: string[]
 }
 
 export type UpdatePrototypePayload = Partial<CreatePrototypePayload>

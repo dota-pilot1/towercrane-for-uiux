@@ -29,6 +29,20 @@ export function AppRoot() {
   }, [themeColor])
 
   useEffect(() => {
+    const sectionTitles: Record<string, string> = {
+      prototype: 'Prototype Registry',
+      docu: 'Documentation Workspace',
+      chatbot: 'Workspace Assistant',
+      readme: 'Project Readme',
+      users: 'User Administration',
+      readme_admin: 'Readme Administration',
+    }
+
+    const currentSectionTitle = sectionTitles[activeSection] ?? 'Console'
+    document.title = `Towercrane ${currentSectionTitle}`
+  }, [activeSection])
+
+  useEffect(() => {
     if (currentUserQuery.data) {
       syncUser(currentUserQuery.data)
     }

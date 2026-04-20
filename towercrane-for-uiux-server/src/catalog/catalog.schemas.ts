@@ -11,14 +11,16 @@ export const createCategorySchema = z.object({
 
 export const createPrototypeSchema = z.object({
   title: z.string().min(2).max(50),
-  repoUrl: z.string().url(),
-  demoUrl: z.string().url().optional().or(z.literal('')),
-  figmaUrl: z.string().url().optional().or(z.literal('')),
-  summary: z.string().min(8).max(160),
+  repoUrl: z.string().optional().or(z.literal('')),
+  demoUrl: z.string().optional().or(z.literal('')),
+  figmaUrl: z.string().optional().or(z.literal('')),
+  summary: z.string().min(2).max(160),
   status: z.enum(['draft', 'building', 'ready']),
   visibility: z.enum(['public', 'private']),
   tags: z.array(z.string().trim().min(1).max(24)).default([]),
+  checklist: z.array(z.string().trim().min(1).max(100)).default([]),
   notes: z.string().max(2000).optional().or(z.literal('')),
+  images: z.array(z.string().url()).optional().default([]),
 });
 
 export const updateCategorySchema = createCategorySchema

@@ -6,8 +6,27 @@ type PresignedUrlResponse = {
   key: string
 }
 
+function assertPresignResponse(
+  response: Partial<PresignedUrlResponse>,
+): asserts response is PresignedUrlResponse {
+  if (
+    typeof response.presignedUrl !== 'string' ||
+    response.presignedUrl.length === 0
+  ) {
+    throw new Error(
+      'Upload presign response is invalid: presignedUrl is missing.',
+    )
+  }
+
+  if (typeof response.publicUrl !== 'string' || response.publicUrl.length === 0) {
+    throw new Error(
+      'Upload presign response is invalid: publicUrl is missing.',
+    )
+  }
+}
+
 export async function uploadImageToS3(file: File): Promise<string> {
-  const { presignedUrl, publicUrl } = await apiRequest<PresignedUrlResponse>(
+  const response = await apiRequest<Partial<PresignedUrlResponse>>(
     '/upload/presign',
     {
       method: 'POST',
@@ -17,6 +36,9 @@ export async function uploadImageToS3(file: File): Promise<string> {
       }),
     },
   )
+  assertPresignResponse(response)
+
+  const { presignedUrl, publicUrl } = response
 
   const putResponse = await fetch(presignedUrl, {
     method: 'PUT',

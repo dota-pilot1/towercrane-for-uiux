@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, desc, eq, like, or, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
-import { categoriesTable, prototypesTable } from '../database/schema';
+import { categoriesTable, prototypeImagesTable, prototypesTable } from '../database/schema';
 import { ReviewService } from '../review/review.service';
 import {
   createCategorySchema,
@@ -32,11 +32,22 @@ export class CatalogService {
       .from(prototypesTable)
       .all();
 
+    const allImages = this.databaseService.db
+      .select()
+      .from(prototypeImagesTable)
+      .orderBy(asc(prototypeImagesTable.orderIdx))
+      .all();
+
     return categories.map((category) => ({
       ...category,
-      prototypes: prototypes.filter(
-        (prototype) => prototype.categoryId === category.id,
-      ),
+      prototypes: prototypes
+        .filter((prototype) => prototype.categoryId === category.id)
+        .map((p) => ({
+          ...p,
+          images: allImages
+            .filter((img) => img.prototypeId === p.id)
+            .map((img) => img.imageUrl),
+        })),
     }));
   }
 
@@ -62,9 +73,24 @@ export class CatalogService {
       .where(eq(prototypesTable.categoryId, categoryId))
       .all();
 
+    const prototypeIds = prototypes.map((p) => p.id);
+    const allImages = prototypeIds.length > 0
+      ? this.databaseService.db
+          .select()
+          .from(prototypeImagesTable)
+          .where(sql`${prototypeImagesTable.prototypeId} IN ${prototypeIds}`)
+          .orderBy(asc(prototypeImagesTable.orderIdx))
+          .all()
+      : [];
+
     return {
       ...category,
-      prototypes,
+      prototypes: prototypes.map((p) => ({
+        ...p,
+        images: allImages
+          .filter((img) => img.prototypeId === p.id)
+          .map((img) => img.imageUrl),
+      })),
     };
   }
 
@@ -148,18 +174,34 @@ export class CatalogService {
         id,
         categoryId,
         title: input.title,
-        repoUrl: input.repoUrl,
+        repoUrl: input.repoUrl || '',
         demoUrl: input.demoUrl || null,
         figmaUrl: input.figmaUrl || null,
-        summary: input.summary,
+        summary: input.summary || '',
         status: input.status,
         visibility: input.visibility,
         tags: input.tags,
+        checklist: input.checklist,
         notes: input.notes || null,
         createdAt: now,
         updatedAt: now,
       })
       .run();
+
+    if (input.images && input.images.length > 0) {
+      this.databaseService.db
+        .insert(prototypeImagesTable)
+        .values(
+          input.images.map((url, idx) => ({
+            id: `img-${Date.now().toString().slice(-4)}-${idx}`,
+            prototypeId: id,
+            imageUrl: url,
+            orderIdx: idx,
+            createdAt: now,
+          })),
+        )
+        .run();
+    }
 
     return this.getCategory(userId, userRole, categoryId);
   }
@@ -179,18 +221,42 @@ export class CatalogService {
       .update(prototypesTable)
       .set({
         title: input.title,
-        repoUrl: input.repoUrl,
+        repoUrl: input.repoUrl === undefined ? undefined : input.repoUrl || '',
         demoUrl: input.demoUrl === undefined ? undefined : input.demoUrl || null,
         figmaUrl: input.figmaUrl === undefined ? undefined : input.figmaUrl || null,
         summary: input.summary,
         status: input.status,
         visibility: input.visibility,
         tags: input.tags,
+        checklist: input.checklist,
         notes: input.notes === undefined ? undefined : input.notes || null,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(prototypesTable.id, prototypeId))
       .run();
+
+    if (input.images !== undefined) {
+      // Simple sync: delete all and re-insert
+      this.databaseService.db
+        .delete(prototypeImagesTable)
+        .where(eq(prototypeImagesTable.prototypeId, prototypeId))
+        .run();
+
+      if (input.images.length > 0) {
+        this.databaseService.db
+          .insert(prototypeImagesTable)
+          .values(
+            input.images.map((url, idx) => ({
+              id: `img-${Date.now().toString().slice(-4)}-${idx}`,
+              prototypeId: prototypeId,
+              imageUrl: url,
+              orderIdx: idx,
+              createdAt: new Date().toISOString(),
+            })),
+          )
+          .run();
+      }
+    }
 
     return this.getCategory(userId, userRole, categoryId);
   }
@@ -255,15 +321,25 @@ export class CatalogService {
     const total = Number(totalRow?.count ?? 0);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    const aggregates = this.reviewService.getAggregatesForPrototypes(
-      items.map((i) => i.id),
-    );
+    const prototypeIds = items.map((i) => i.id);
+    const aggregates = this.reviewService.getAggregatesForPrototypes(prototypeIds);
+    
+    const allImages = prototypeIds.length > 0 
+      ? this.databaseService.db
+          .select()
+          .from(prototypeImagesTable)
+          .where(sql`${prototypeImagesTable.prototypeId} IN ${prototypeIds}`)
+          .orderBy(asc(prototypeImagesTable.orderIdx))
+          .all()
+      : [];
 
     return {
       items: items.map((item) => {
         const agg = aggregates.get(item.id);
+        const images = allImages.filter(img => img.prototypeId === item.id).map(img => img.imageUrl);
         return {
           ...item,
+          images,
           avgRating: agg?.avgRating ?? 0,
           reviewCount: agg?.count ?? 0,
         };
