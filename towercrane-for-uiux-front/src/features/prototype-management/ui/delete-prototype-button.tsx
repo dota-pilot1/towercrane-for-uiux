@@ -7,6 +7,7 @@ type DeletePrototypeButtonProps = {
   categoryId: string
   prototypeId: string
   asIcon?: boolean
+  className?: string
 }
 
 const CONFIRM_MESSAGE = '이 프로토타입을 삭제할까요?'
@@ -15,6 +16,7 @@ export function DeletePrototypeButton({
   categoryId,
   prototypeId,
   asIcon,
+  className,
 }: DeletePrototypeButtonProps) {
   const deletePrototype = useDeletePrototype(categoryId)
 
@@ -26,6 +28,7 @@ export function DeletePrototypeButton({
         onConfirm={runDelete}
         confirmMessage={CONFIRM_MESSAGE}
         isPending={deletePrototype.isPending}
+        className={className}
       />
     )
   }

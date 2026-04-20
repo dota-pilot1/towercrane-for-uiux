@@ -165,17 +165,37 @@ export function PrototypeDetailPage({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <Button variant="secondary" onClick={handleCopyLink} className="h-11 rounded-xl bg-surface-muted px-5">
+            <Button
+              variant="secondary"
+              onClick={handleCopyLink}
+              className="h-11 min-w-[120px] justify-center rounded-xl bg-surface-muted/50 transition-all hover:bg-surface-strong"
+            >
               <Copy className="mr-2 size-4" />
               {copyButtonText}
             </Button>
             {canManagePrototype && (
               <>
-                <EditPrototypeDialog categoryId={prototype.categoryId} prototype={prototype} asIcon />
-                <DeletePrototypeButton categoryId={prototype.categoryId} prototypeId={prototype.id} asIcon />
+                <div className="mx-1 h-6 w-px bg-surface-border-soft" />
+                <EditPrototypeDialog
+                  categoryId={prototype.categoryId}
+                  prototype={prototype}
+                  asIcon
+                  className="h-11 w-11 rounded-xl"
+                />
+                <DeletePrototypeButton
+                  categoryId={prototype.categoryId}
+                  prototypeId={prototype.id}
+                  asIcon
+                  className="h-11 w-11 rounded-xl"
+                />
               </>
             )}
-            <Button variant="secondary" onClick={onBack} size="icon" className="h-11 w-11 rounded-xl">
+            <Button
+              variant="secondary"
+              onClick={onBack}
+              size="icon"
+              className="h-11 w-11 rounded-xl bg-surface-muted/50"
+            >
               <ArrowLeft className="size-5" />
             </Button>
           </div>
