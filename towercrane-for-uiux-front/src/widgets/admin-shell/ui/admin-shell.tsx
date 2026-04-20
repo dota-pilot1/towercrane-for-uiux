@@ -1,5 +1,6 @@
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import {
+  Activity,
   Blocks,
   ChartColumnBig,
   FileText,

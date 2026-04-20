@@ -8,7 +8,6 @@ import {
   Globe,
   Image as ImageIcon,
   Info,
-  Link2,
   Loader2,
   Lock,
   MessageSquareText,
@@ -37,7 +36,6 @@ type ButtonProps = {
 
 type PageProps = {
   prototype: PrototypeListItem
-  categoryTitle: string
   canManagePrototype: boolean
   onBack: () => void
 }
@@ -57,7 +55,6 @@ export function PrototypeDetailDialog({ prototype }: ButtonProps) {
 
 export function PrototypeDetailPage({
   prototype,
-  categoryTitle,
   canManagePrototype,
   onBack,
 }: PageProps) {
