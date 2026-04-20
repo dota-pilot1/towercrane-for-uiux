@@ -190,7 +190,7 @@ export function PrototypeDetailPage({
               <Button
                 variant="secondary"
                 onClick={handleCopyLink}
-                className="h-10 min-w-[112px] justify-center rounded-xl border-surface-border-soft bg-surface-muted/70"
+                className="h-10 min-w-[112px] justify-center rounded-xl border-surface-border-soft bg-surface-muted"
               >
                 <Copy className="mr-2 size-4" />
                 {copyState === 'done'
@@ -366,7 +366,7 @@ export function PrototypeDetailPage({
 
           <section className="flex min-h-[560px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-4.5">
             <div className="mb-4 flex items-center gap-2 border-b border-surface-border-soft pb-2.5">
-              <div className="flex size-6 items-center justify-center rounded-full bg-blue-500/10 text-xs font-bold text-blue-500">
+              <div className="flex size-6 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-blue-500">
                 2
               </div>
               <h3 className="text-sm font-bold uppercase tracking-widest text-text-primary">
@@ -449,7 +449,7 @@ export function PrototypeDetailPage({
 
           <section className="flex min-h-[560px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-4.5">
           <div className="mb-4 flex items-center gap-2 border-b border-surface-border-soft pb-2.5">
-            <div className="flex size-6 items-center justify-center rounded-full bg-rose-500/10 text-xs font-bold text-rose-500">
+            <div className="flex size-6 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-rose-500">
               3
             </div>
             <h3 className="text-sm font-bold uppercase tracking-widest text-text-primary">
