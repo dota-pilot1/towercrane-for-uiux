@@ -153,18 +153,18 @@ export function PrototypeDetailPage({
   }
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col gap-3">
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-        <div className="rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-wrap items-start justify-between gap-5">
+    <div className="flex flex-1 min-h-0 flex-col gap-2.5">
+      <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.05)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="ui-text-primary text-[2.25rem] font-bold tracking-tight">
                 {prototype.title}
               </h2>
-              <p className="mt-3 max-w-3xl text-sm leading-relaxed ui-text-secondary">
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed ui-text-secondary">
                 {prototype.summary}
               </p>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className="rounded-[999px] border border-brand-border bg-brand-glass px-3 py-1 text-[11px] font-bold uppercase text-brand-primary">
                   {prototype.status}
                 </span>
@@ -189,7 +189,7 @@ export function PrototypeDetailPage({
                 </span>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               <Button
                 variant="secondary"
                 onClick={handleCopyLink}
@@ -215,7 +215,7 @@ export function PrototypeDetailPage({
               </Button>
             </div>
           </div>
-          <div className="mt-5 grid gap-3 md:grid-cols-4">
+          <div className="mt-4 grid gap-2 md:grid-cols-4">
             <MetaCard label="Checklist" value={`${checklist.length}`} icon={<CheckCircle2 className="size-4" />} />
             <MetaCard label="Images" value={`${imageCount}`} icon={<ImageIcon className="size-4" />} />
             <MetaCard label="Tags" value={`${tagCount}`} icon={<Tag className="size-4" />} />
@@ -223,22 +223,22 @@ export function PrototypeDetailPage({
           </div>
         </div>
 
-        <div className="rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-5">
+        <div className="rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-4.5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-text-muted">
                 Repository
               </div>
-              <p className="mt-2 text-sm font-semibold text-text-primary">GitHub 링크</p>
+              <p className="mt-1.5 text-sm font-semibold text-text-primary">GitHub 링크</p>
             </div>
           </div>
-          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-surface-border-soft bg-surface-muted/60 p-4">
+          <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-surface-border-soft bg-surface-muted/60 p-3.5">
             <div className="min-w-0 flex-1">
               <a
                 href={prototype.repoUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="block break-all text-sm leading-6 text-text-primary underline-offset-4 hover:underline"
+                className="block break-all text-sm leading-5 text-text-primary underline-offset-4 hover:underline"
               >
                 {prototype.repoUrl}
               </a>
@@ -264,15 +264,15 @@ export function PrototypeDetailPage({
             </div>
           </div>
 
-          <div className="mt-5 border-t border-surface-border-soft pt-5">
-            <div className="mb-3 flex items-center gap-2">
+          <div className="mt-4 border-t border-surface-border-soft pt-4">
+            <div className="mb-2 flex items-center gap-2">
               <Tag className="size-4 text-text-muted" />
               <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-text-muted">
                 Tags
               </span>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {tags.length > 0 ? (
                 tags.map((tag, index) => (
                   <span
@@ -299,7 +299,7 @@ export function PrototypeDetailPage({
             </div>
 
             {canManagePrototype ? (
-              <div className="relative mt-3">
+              <div className="relative mt-2.5">
                 <Input
                   value={tagDraft}
                   onChange={(event) => setTagDraft(event.target.value)}
@@ -329,10 +329,10 @@ export function PrototypeDetailPage({
         </div>
       </div>
 
-      <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
-        <div className="grid min-h-0 gap-3 lg:grid-cols-2">
-          <section className="flex min-h-[620px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-5">
-            <div className="mb-5 flex items-center gap-2 border-b border-surface-border-soft pb-3">
+      <div className="grid min-h-0 gap-2.5 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
+        <div className="grid min-h-0 gap-2.5 lg:grid-cols-2">
+          <section className="flex min-h-[560px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-4.5">
+            <div className="mb-4 flex items-center gap-2 border-b border-surface-border-soft pb-2.5">
               <div className="flex size-6 items-center justify-center rounded-full bg-brand-glass text-xs font-bold text-brand-primary">
                 1
               </div>
@@ -367,8 +367,8 @@ export function PrototypeDetailPage({
 
           </section>
 
-          <section className="flex min-h-[620px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-5">
-            <div className="mb-5 flex items-center gap-2 border-b border-surface-border-soft pb-3">
+          <section className="flex min-h-[560px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-4.5">
+            <div className="mb-4 flex items-center gap-2 border-b border-surface-border-soft pb-2.5">
               <div className="flex size-6 items-center justify-center rounded-full bg-blue-500/10 text-xs font-bold text-blue-500">
                 2
               </div>
@@ -379,7 +379,7 @@ export function PrototypeDetailPage({
 
             <div className="flex min-h-0 flex-1 flex-col">
               {updatePrototype.isPending ? (
-                <div className="mb-3 flex justify-end">
+                <div className="mb-2 flex justify-end">
                   <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
                     <Loader2 className="size-3.5 animate-spin" />
                     저장 중
@@ -388,7 +388,7 @@ export function PrototypeDetailPage({
               ) : null}
 
               {canEditChecklist ? (
-                <div className="relative mb-4">
+                <div className="relative mb-3">
                   <Input
                     value={checklistDraft}
                     onChange={(event) => setChecklistDraft(event.target.value)}
@@ -415,12 +415,12 @@ export function PrototypeDetailPage({
                 </div>
               ) : null}
 
-              <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2.5">
                 {checklist.length > 0 ? (
                   checklist.map((item, idx) => (
                     <div
                       key={`${item}-${idx}`}
-                      className="group flex items-start gap-3 rounded-xl border border-surface-border-soft bg-surface-strong p-4 transition-colors hover:border-brand-glass"
+                      className="group flex items-start gap-3 rounded-xl border border-surface-border-soft bg-surface-strong p-3.5 transition-colors hover:border-brand-glass"
                     >
                       <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-brand-primary" />
                       <span className="flex-1 text-sm font-medium leading-tight text-text-primary">
@@ -450,8 +450,8 @@ export function PrototypeDetailPage({
           </section>
         </div>
 
-        <section className="flex min-h-[620px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-5">
-          <div className="mb-5 flex items-center gap-2 border-b border-surface-border-soft pb-3">
+          <section className="flex min-h-[560px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-4.5">
+          <div className="mb-4 flex items-center gap-2 border-b border-surface-border-soft pb-2.5">
             <div className="flex size-6 items-center justify-center rounded-full bg-rose-500/10 text-xs font-bold text-rose-500">
               3
             </div>
@@ -460,8 +460,8 @@ export function PrototypeDetailPage({
             </h3>
           </div>
 
-          <div className="mb-5 grid gap-3 md:grid-cols-2">
-            <div className="rounded-[24px] border border-brand-border bg-brand-glass p-5">
+          <div className="mb-4 grid gap-2.5 md:grid-cols-2">
+            <div className="rounded-[22px] border border-brand-border bg-brand-glass p-4">
               <div className="text-[10px] font-black uppercase tracking-widest text-brand-primary opacity-60">
                 Community Score
               </div>
@@ -469,7 +469,7 @@ export function PrototypeDetailPage({
                 {prototype.reviewCount > 0 ? prototype.avgRating.toFixed(1) : '0.0'}
               </div>
             </div>
-            <div className="rounded-[24px] border border-[var(--surface-border)] bg-[var(--surface-muted)] p-5">
+            <div className="rounded-[22px] border border-[var(--surface-border)] bg-[var(--surface-muted)] p-4">
               <div className="text-[10px] font-black uppercase tracking-widest text-text-muted">
                 Participants
               </div>
@@ -507,7 +507,7 @@ function MetaCard({
   icon: ReactNode
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-3">
+    <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-2.5">
       <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-text-muted">
         {icon}
         {label}

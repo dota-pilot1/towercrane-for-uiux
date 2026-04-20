@@ -420,6 +420,18 @@ export function AdminShell() {
                             <p className="max-w-2xl text-sm leading-relaxed ui-text-secondary">
                               {proto.summary}
                             </p>
+                            {proto.tags.length > 0 ? (
+                              <div className="mt-2 flex max-w-2xl flex-wrap gap-1.5">
+                                {proto.tags.map((tag) => (
+                                  <span
+                                    key={`${proto.id}-${tag}`}
+                                    className="rounded-[999px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-0.5 text-[10px] font-medium ui-text-secondary"
+                                  >
+                                    #{tag}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
                           </div>
                           <div className="flex items-center gap-2">
                             {(selectedCategory.userId === currentUserId || userRole === 'admin') && (
