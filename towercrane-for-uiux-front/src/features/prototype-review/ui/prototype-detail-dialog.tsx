@@ -1,359 +1,421 @@
-import * as Dialog from '@radix-ui/react-dialog'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
-  CalendarClock,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  Copy,
   ExternalLink,
-  FileText,
   Globe,
-  Hash,
+  Image as ImageIcon,
   Info,
-  Link as LinkIcon,
-  MessageSquare,
+  Link2,
+  Loader2,
+  Lock,
+  MessageSquareText,
+  Plus,
   Star,
-  StickyNote,
+  Tag,
   X,
 } from 'lucide-react'
-import type { PrototypeListItem } from '../../../shared/api/catalog'
+import {
+  useUpdatePrototype,
+  type PrototypeListItem,
+} from '../../../shared/api/catalog'
+import { DeletePrototypeButton } from '../../prototype-management/ui/delete-prototype-button'
+import { EditPrototypeDialog } from '../../prototype-management/ui/edit-prototype-dialog'
 import { useSessionStore } from '../../../shared/store/session-store'
+import { useUiStore } from '../../../shared/store/ui-store'
 import { ActionIconButton } from '../../../shared/ui/action-icon-button'
 import { Button } from '../../../shared/ui/button'
+import { Input } from '../../../shared/ui/input'
 import { ReviewForm } from './review-form'
 import { ReviewList } from './review-list'
-import { ReviewStats } from './review-stats'
 
-type Props = {
+type ButtonProps = {
   prototype: PrototypeListItem
 }
 
-export function PrototypeDetailDialog({ prototype }: Props) {
-  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+type PageProps = {
+  prototype: PrototypeListItem
+  categoryTitle: string
+  canManagePrototype: boolean
+  onBack: () => void
+}
+
+export function PrototypeDetailDialog({ prototype }: ButtonProps) {
+  const setActivePrototypeId = useUiStore((state) => state.setActivePrototypeId)
 
   return (
-    <Dialog.Root>
-      <Dialog.Trigger asChild>
-        <ActionIconButton icon={Info} title="상세 보기" aria-label="상세 보기" />
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 ui-overlay backdrop-blur-sm z-40" />
-        <Dialog.Content
-          className="glass-panel fixed left-1/2 top-1/2 w-[min(1100px,calc(100vw-2rem))] h-[min(720px,calc(100vh-4rem))] -translate-x-1/2 -translate-y-1/2 rounded-[24px] overflow-hidden z-50 flex flex-col"
-        >
-          {/* Header with gradient accent */}
-          <div className="relative shrink-0 border-b border-[var(--surface-border)] bg-gradient-to-r from-emerald-500/[0.08] via-transparent to-transparent px-6 py-4">
-            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-400/60 via-emerald-400/20 to-transparent" />
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-brand-glass text-brand-primary/80 border border-brand-border shrink-0">
-                  <Info className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-brand-primary/80 mb-0.5">
-                    Prototype Detail
-                  </div>
-                  <Dialog.Title className="ui-text-primary truncate text-lg font-bold">
-                    {prototype.title}
-                  </Dialog.Title>
-                </div>
-              </div>
-              <Dialog.Close asChild>
-                <Button size="icon" tone="default" className="size-8 rounded-lg shrink-0" aria-label="닫기">
-                  <X className="size-4" />
-                </Button>
-              </Dialog.Close>
-            </div>
-          </div>
+    <ActionIconButton
+      icon={Info}
+      title="상세 보기"
+      aria-label="상세 보기"
+      onClick={() => setActivePrototypeId(prototype.id)}
+    />
+  )
+}
 
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(440px,520px)_minmax(0,1fr)] flex-1 min-h-0">
-            {/* META */}
-            <div className="overflow-y-auto border-b border-[var(--surface-border)] p-6 md:border-b-0 md:border-r">
-              <MetaPanel prototype={prototype} />
-            </div>
+export function PrototypeDetailPage({
+  prototype,
+  categoryTitle,
+  canManagePrototype,
+  onBack,
+}: PageProps) {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+  const updatePrototype = useUpdatePrototype(prototype.categoryId, prototype.id)
+  const [checklistDraft, setChecklistDraft] = useState('')
+  const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle')
+  const checklist = prototype.checklist ?? []
+  const canEditChecklist = isAuthenticated
+  const imageCount = prototype.images?.length ?? 0
+  const tagCount = prototype.tags?.length ?? 0
 
-            {/* REVIEWS */}
-            <div className="flex flex-col gap-4 overflow-y-auto bg-gradient-to-b from-[var(--surface-muted)]/30 to-transparent p-6">
-              <div className="flex items-center gap-1.5 ui-text-muted">
-                <MessageSquare className="size-3.5" />
-                <span className="text-[10px] font-semibold uppercase tracking-widest">
-                  Reviews & Ratings
+  useEffect(() => {
+    if (copyState === 'idle') return
+    const timer = window.setTimeout(() => setCopyState('idle'), 1800)
+    return () => window.clearTimeout(timer)
+  }, [copyState])
+
+  const updateChecklist = async (nextChecklist: string[]) => {
+    await updatePrototype.mutateAsync({ checklist: nextChecklist })
+  }
+
+  const addChecklistItem = async () => {
+    const nextItem = checklistDraft.trim()
+    if (!nextItem || updatePrototype.isPending) return
+
+    try {
+      await updateChecklist([...checklist, nextItem])
+      setChecklistDraft('')
+    } catch (error) {
+      console.error('Checklist add failed:', error)
+      alert('체크리스트 추가에 실패했습니다.')
+    }
+  }
+
+  const removeChecklistItem = async (index: number) => {
+    if (updatePrototype.isPending) return
+
+    try {
+      await updateChecklist(checklist.filter((_, itemIndex) => itemIndex !== index))
+    } catch (error) {
+      console.error('Checklist remove failed:', error)
+      alert('체크리스트 삭제에 실패했습니다.')
+    }
+  }
+
+  const handleCopyLink = async () => {
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.set('view', 'prototype-detail')
+      url.searchParams.set('categoryId', prototype.categoryId)
+      url.searchParams.set('prototypeId', prototype.id)
+      await navigator.clipboard.writeText(url.toString())
+      setCopyState('done')
+    } catch (error) {
+      console.error('Copy failed:', error)
+      setCopyState('error')
+    }
+  }
+
+  return (
+    <div className="flex flex-1 min-h-0 flex-col gap-3">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="min-w-0">
+              <h2 className="ui-text-primary text-[2.25rem] font-bold tracking-tight">
+                {prototype.title}
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-relaxed ui-text-secondary">
+                {prototype.summary}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="rounded-[999px] border border-brand-border bg-brand-glass px-3 py-1 text-[11px] font-bold uppercase text-brand-primary">
+                  {prototype.status}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-[999px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] ui-text-secondary">
+                  {prototype.visibility === 'public' ? (
+                    <Globe className="size-3.5" />
+                  ) : (
+                    <Lock className="size-3.5" />
+                  )}
+                  {prototype.visibility}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-[999px] border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[11px] font-bold text-amber-300">
+                  <Star className="size-3 fill-amber-400 text-amber-400" />
+                  {prototype.avgRating.toFixed(1)}
+                  <span className="text-amber-300/60 font-normal">
+                    ({prototype.reviewCount})
+                  </span>
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-[999px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] ui-text-secondary">
+                  <Clock className="size-3.5" />
+                  {new Date(prototype.updatedAt).toLocaleDateString()}
                 </span>
               </div>
-              <ReviewList
-                prototypeId={prototype.id}
-                headerAction={
-                  <ReviewForm
-                    prototypeId={prototype.id}
-                    disabled={!isAuthenticated}
-                    inlineTrigger
-                  />
-                }
-              />
-              <ReviewStats prototypeId={prototype.id} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={handleCopyLink}
+                className="h-10 min-w-[112px] justify-center rounded-xl border-surface-border-soft bg-surface-muted/70"
+              >
+                <Copy className="mr-2 size-4" />
+                {copyState === 'done'
+                  ? '복사됨'
+                  : copyState === 'error'
+                    ? '실패'
+                    : '링크 복사'}
+              </Button>
+              {canManagePrototype ? (
+                <DeletePrototypeButton
+                  categoryId={prototype.categoryId}
+                  prototypeId={prototype.id}
+                  asIcon
+                />
+              ) : null}
+              <Button variant="secondary" onClick={onBack}>
+                <ArrowLeft className="mr-2 size-4" />
+                목록으로
+              </Button>
             </div>
           </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-  )
-}
-
-function MetaPanel({ prototype }: { prototype: PrototypeListItem }) {
-  return (
-    <div className="space-y-5">
-      {/* Hero accent strip + summary */}
-      <section className="relative overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-gradient-to-br from-emerald-500/[0.06] via-transparent to-transparent p-5">
-        <div className="absolute inset-y-0 left-0 w-0.5 bg-gradient-to-b from-emerald-400/60 via-emerald-400/20 to-transparent" />
-        <div className="flex items-center gap-2 mb-2">
-          <FileText className="size-3.5 text-brand-primary/70" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-brand-primary/80">
-            Summary
-          </span>
+          <div className="mt-5 grid gap-3 md:grid-cols-4">
+            <MetaCard label="Checklist" value={`${checklist.length}`} icon={<CheckCircle2 className="size-4" />} />
+            <MetaCard label="Images" value={`${imageCount}`} icon={<ImageIcon className="size-4" />} />
+            <MetaCard label="Tags" value={`${tagCount}`} icon={<Tag className="size-4" />} />
+            <MetaCard label="Reviews" value={`${prototype.reviewCount}`} icon={<MessageSquareText className="size-4" />} />
+          </div>
         </div>
-        <p className="ui-text-primary text-sm leading-relaxed whitespace-pre-wrap">
-          {prototype.summary}
-        </p>
-      </section>
 
-      {/* Quick stats grid */}
-      <section className="grid grid-cols-2 gap-2">
-        <StatCard
-          icon={<Star className="size-3.5 fill-amber-400 text-amber-400" />}
-          label="Rating"
-          value={
-            prototype.reviewCount > 0
-              ? `${prototype.avgRating.toFixed(1)} / 10`
-              : '—'
-          }
-          hint={`${prototype.reviewCount} reviews`}
-        />
-        <StatCard
-          icon={<StatusDot status={prototype.status} />}
-          label="Status"
-          value={prototype.status.toUpperCase()}
-          hint={prototype.visibility}
-        />
-      </section>
-
-      {/* Tags */}
-      {prototype.tags.length > 0 ? (
-        <section>
-          <SectionHeader icon={<Hash className="size-3.5" />} label="Tags" />
-          <div className="flex flex-wrap gap-1.5">
-            {prototype.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-0.5 text-[11px] ui-text-secondary hover:border-brand-border hover:text-brand-primary transition-colors cursor-default"
+        <div className="rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-text-muted">
+                Repository
+              </div>
+              <p className="mt-2 text-sm font-semibold text-text-primary">GitHub 링크</p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-surface-border-soft bg-surface-muted/60 p-4">
+            <div className="min-w-0 flex-1">
+              <a
+                href={prototype.repoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="block break-all text-sm leading-6 text-text-primary underline-offset-4 hover:underline"
               >
-                #{tag}
-              </span>
-            ))}
+                {prototype.repoUrl}
+              </a>
+            </div>
+            <div className="flex items-center gap-2 self-start">
+              {canManagePrototype ? (
+                <EditPrototypeDialog
+                  categoryId={prototype.categoryId}
+                  prototype={prototype}
+                  asIcon
+                />
+              ) : null}
+              <a
+                href={prototype.repoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex size-9 items-center justify-center rounded-[10px] border border-[var(--surface-border)] bg-[var(--surface-raised)] text-text-secondary transition hover:bg-[var(--surface-strong)] hover:text-text-primary"
+                aria-label="GitHub 링크 열기"
+                title="GitHub 링크 열기"
+              >
+                <ExternalLink className="size-4" />
+              </a>
+            </div>
           </div>
-        </section>
-      ) : null}
-
-      {/* Links */}
-      <section>
-        <SectionHeader icon={<LinkIcon className="size-3.5" />} label="Links" />
-        <div className="space-y-1.5">
-          <LinkRow kind="github" href={prototype.repoUrl} />
-          {prototype.demoUrl ? (
-            <LinkRow kind="demo" href={prototype.demoUrl} />
-          ) : null}
-          {prototype.figmaUrl ? (
-            <LinkRow kind="figma" href={prototype.figmaUrl} />
-          ) : null}
         </div>
-      </section>
+      </div>
 
-      {/* Notes */}
-      {prototype.notes ? (
-        <section>
-          <SectionHeader
-            icon={<StickyNote className="size-3.5" />}
-            label="Notes"
-          />
-          <div className="rounded-xl border border-amber-500/15 bg-amber-500/5 p-3">
-            <p className="ui-text-secondary text-sm leading-relaxed whitespace-pre-wrap">
-              {prototype.notes}
-            </p>
+      <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
+        <div className="grid min-h-0 gap-3 lg:grid-cols-2">
+          <section className="flex min-h-[620px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-5">
+            <div className="mb-5 flex items-center gap-2 border-b border-surface-border-soft pb-3">
+              <div className="flex size-6 items-center justify-center rounded-full bg-brand-glass text-xs font-bold text-brand-primary">
+                1
+              </div>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-text-primary">
+                Visual Evidence
+              </h3>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-1">
+              {prototype.images && prototype.images.length > 0 ? (
+                <div className="space-y-4">
+                  {prototype.images.map((url, idx) => (
+                    <div
+                      key={`${url}-${idx}`}
+                      className="group relative aspect-video overflow-hidden rounded-2xl border border-surface-border-soft bg-surface-strong shadow-sm"
+                    >
+                      <img
+                        src={url}
+                        alt={`Documentation ${idx + 1}`}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-surface-border-soft p-8 text-text-muted">
+                  <ImageIcon className="size-12 opacity-20" />
+                  <p className="text-sm font-medium">등록된 상세 이미지가 없습니다</p>
+                </div>
+              )}
+            </div>
+
+          </section>
+
+          <section className="flex min-h-[620px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-5">
+            <div className="mb-5 flex items-center gap-2 border-b border-surface-border-soft pb-3">
+              <div className="flex size-6 items-center justify-center rounded-full bg-blue-500/10 text-xs font-bold text-blue-500">
+                2
+              </div>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-text-primary">
+                Checklist
+              </h3>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col">
+              {updatePrototype.isPending ? (
+                <div className="mb-3 flex justify-end">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    저장 중
+                  </span>
+                </div>
+              ) : null}
+
+              {canEditChecklist ? (
+                <div className="relative mb-4">
+                  <Input
+                    value={checklistDraft}
+                    onChange={(event) => setChecklistDraft(event.target.value)}
+                    placeholder="체크리스트를 바로 추가하세요"
+                    className="h-11 pr-12"
+                    disabled={updatePrototype.isPending}
+                    onKeyDown={(event) => {
+                      if (event.nativeEvent.isComposing) return
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        void addChecklistItem()
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void addChecklistItem()}
+                    disabled={updatePrototype.isPending || checklistDraft.trim().length === 0}
+                    className="absolute right-1.5 top-1.5 bottom-1.5 inline-flex aspect-square items-center justify-center rounded-lg bg-surface-muted text-text-secondary transition-colors hover:bg-surface-border-soft hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="체크리스트 추가"
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+                {checklist.length > 0 ? (
+                  checklist.map((item, idx) => (
+                    <div
+                      key={`${item}-${idx}`}
+                      className="group flex items-start gap-3 rounded-xl border border-surface-border-soft bg-surface-strong p-4 transition-colors hover:border-brand-glass"
+                    >
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-brand-primary" />
+                      <span className="flex-1 text-sm font-medium leading-tight text-text-primary">
+                        {item}
+                      </span>
+                      {canEditChecklist ? (
+                        <button
+                          type="button"
+                          onClick={() => void removeChecklistItem(idx)}
+                          disabled={updatePrototype.isPending}
+                          className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-text-muted transition-all hover:bg-rose-500/10 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label="체크리스트 삭제"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-surface-border-soft text-text-muted opacity-70">
+                    <Info className="size-8 opacity-20" />
+                    <p className="text-xs">체크리스트가 없습니다</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section className="flex min-h-[620px] flex-col rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-5">
+          <div className="mb-5 flex items-center gap-2 border-b border-surface-border-soft pb-3">
+            <div className="flex size-6 items-center justify-center rounded-full bg-rose-500/10 text-xs font-bold text-rose-500">
+              3
+            </div>
+            <h3 className="text-sm font-bold uppercase tracking-widest text-text-primary">
+              Feedback Loop
+            </h3>
+          </div>
+
+          <div className="mb-5 grid gap-3 md:grid-cols-2">
+            <div className="rounded-[24px] border border-brand-border bg-brand-glass p-5">
+              <div className="text-[10px] font-black uppercase tracking-widest text-brand-primary opacity-60">
+                Community Score
+              </div>
+              <div className="mt-2 text-3xl font-black tracking-tighter text-brand-primary">
+                {prototype.reviewCount > 0 ? prototype.avgRating.toFixed(1) : '0.0'}
+              </div>
+            </div>
+            <div className="rounded-[24px] border border-[var(--surface-border)] bg-[var(--surface-muted)] p-5">
+              <div className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                Participants
+              </div>
+              <div className="mt-2 text-2xl font-bold text-text-primary">
+                {prototype.reviewCount}
+              </div>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <ReviewList
+              prototypeId={prototype.id}
+              headerAction={
+                <ReviewForm
+                  prototypeId={prototype.id}
+                  disabled={!isAuthenticated}
+                  inlineTrigger
+                />
+              }
+            />
           </div>
         </section>
-      ) : null}
-
-      {/* Timeline */}
-      <section className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3">
-        <SectionHeader
-          icon={<CalendarClock className="size-3.5" />}
-          label="Timeline"
-        />
-        <ul className="space-y-2">
-          <TimelineRow label="생성" date={prototype.createdAt} color="emerald" />
-          <TimelineRow label="수정" date={prototype.updatedAt} color="sky" />
-        </ul>
-      </section>
+      </div>
     </div>
   )
 }
 
-function SectionHeader({
-  icon,
-  label,
-}: {
-  icon: React.ReactNode
-  label: string
-}) {
-  return (
-    <div className="mb-2 flex items-center gap-1.5 ui-text-muted">
-      {icon}
-      <span className="text-[10px] font-semibold uppercase tracking-widest">
-        {label}
-      </span>
-    </div>
-  )
-}
-
-function StatCard({
-  icon,
+function MetaCard({
   label,
   value,
-  hint,
+  icon,
 }: {
-  icon: React.ReactNode
   label: string
   value: string
-  hint?: string
+  icon: ReactNode
 }) {
   return (
-    <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] p-3 transition-colors hover:border-brand-border">
-      <div className="flex items-center gap-1.5 mb-1.5">
+    <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-3">
+      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-text-muted">
         {icon}
-        <span className="text-[9px] font-bold uppercase tracking-widest ui-text-muted">
-          {label}
-        </span>
+        {label}
       </div>
-      <div className="ui-text-primary text-base font-semibold tabular-nums">
-        {value}
-      </div>
-      {hint ? (
-        <div className="mt-0.5 text-[11px] ui-text-muted">{hint}</div>
-      ) : null}
+      <div className="mt-2 text-xl font-bold text-text-primary">{value}</div>
     </div>
-  )
-}
-
-function StatusDot({ status }: { status: string }) {
-  const color: Record<string, string> = {
-    draft: 'bg-text-muted',
-    building: 'bg-amber-400',
-    ready: 'bg-brand-primary',
-  }
-  return (
-    <span className="relative inline-flex size-2.5">
-      <span
-        className={`absolute inset-0 rounded-full ${
-          color[status] ?? color.draft
-        } opacity-75 animate-ping`}
-      />
-      <span
-        className={`relative inline-flex size-2.5 rounded-full ${
-          color[status] ?? color.draft
-        }`}
-      />
-    </span>
-  )
-}
-
-const LINK_META: Record<
-  'github' | 'demo' | 'figma',
-  { label: string; accent: string; icon: React.ReactNode }
-> = {
-  github: {
-    label: 'GitHub',
-    accent: 'hover:border-surface-border hover:bg-surface-muted',
-    icon: (
-      <svg className="size-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z" />
-      </svg>
-    ),
-  },
-  demo: {
-    label: 'Demo',
-    accent: 'hover:border-brand-border hover:bg-brand-glass',
-    icon: <Globe className="size-3.5" />,
-  },
-  figma: {
-    label: 'Figma',
-    accent: 'hover:border-pink-500/40 hover:bg-pink-500/10',
-    icon: (
-      <svg
-        className="size-3.5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M5 5.5A3.5 3.5 0 0 1 8.5 2H12v7H8.5A3.5 3.5 0 0 1 5 5.5z" />
-        <path d="M12 2h3.5a3.5 3.5 0 1 1 0 7H12V2z" />
-        <path d="M5 12.5A3.5 3.5 0 0 1 8.5 9H12v7H8.5A3.5 3.5 0 0 1 5 12.5z" />
-        <path d="M12 9h3.5a3.5 3.5 0 1 1 0 7H12V9z" />
-        <path d="M5 19.5A3.5 3.5 0 0 1 8.5 16H12v3.5a3.5 3.5 0 1 1-7 0z" />
-      </svg>
-    ),
-  },
-}
-
-function LinkRow({
-  kind,
-  href,
-}: {
-  kind: 'github' | 'demo' | 'figma'
-  href: string
-}) {
-  const meta = LINK_META[kind]
-  const host = href.replace(/^https?:\/\//, '').replace(/\/$/, '')
-
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className={`flex items-center gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-2.5 transition-all group ${meta.accent}`}
-    >
-      <div className="flex size-8 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-strong)] ui-text-secondary group-hover:border-current">
-        {meta.icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[10px] font-semibold uppercase tracking-widest ui-text-muted">
-          {meta.label}
-        </div>
-        <div className="truncate text-[12px] ui-text-primary font-mono">
-          {host}
-        </div>
-      </div>
-      <ExternalLink className="size-3.5 ui-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
-    </a>
-  )
-}
-
-function TimelineRow({
-  label,
-  date,
-  color,
-}: {
-  label: string
-  date: string
-  color: 'emerald' | 'sky'
-}) {
-  const dotColor =
-    color === 'emerald' ? 'bg-brand-primary' : 'bg-brand-primary'
-  return (
-    <li className="flex items-center gap-2 text-[12px]">
-      <span className={`size-1.5 rounded-full ${dotColor}`} />
-      <span className="ui-text-muted w-8">{label}</span>
-      <span className="ui-text-secondary font-mono tabular-nums">
-        {new Date(date).toLocaleDateString()}
-      </span>
-    </li>
   )
 }

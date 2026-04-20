@@ -78,7 +78,10 @@ import { MetricsOverview } from '../../metrics-overview/ui/metrics-overview'
 import { OrderTable } from '../../order-table/ui/order-table'
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react'
-import { PrototypeDetailDialog } from '../../../features/prototype-review/ui/prototype-detail-dialog'
+import {
+  PrototypeDetailDialog,
+  PrototypeDetailPage,
+} from '../../../features/prototype-review/ui/prototype-detail-dialog'
 
 export function AdminShell() {
   const {
@@ -91,6 +94,7 @@ export function AdminShell() {
   const activeCategoryId = useUiStore((state) => state.activeCategoryId)
   const setActiveCategory = useUiStore((state) => state.setActiveCategory)
   const setActiveSection = useUiStore((state) => state.setActiveSection)
+  const activePrototypeId = useUiStore((state) => state.activePrototypeId)
   const setActivePrototypeId = useUiStore((state) => state.setActivePrototypeId)
 
   const selectedCategory =
@@ -103,6 +107,26 @@ export function AdminShell() {
       setActiveCategory(categories[0].id)
     }
   }, [activeCategoryId, categories, setActiveCategory])
+
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const params = new URLSearchParams(window.location.search)
+      const nextCategoryId = params.get('categoryId')
+      const nextPrototypeId =
+        params.get('view') === 'prototype-detail' ? params.get('prototypeId') : null
+
+      if (nextCategoryId) {
+        setActiveCategory(nextCategoryId)
+      }
+
+      setActivePrototypeId(nextPrototypeId)
+    }
+
+    syncFromUrl()
+    window.addEventListener('popstate', syncFromUrl)
+
+    return () => window.removeEventListener('popstate', syncFromUrl)
+  }, [setActiveCategory, setActivePrototypeId])
 
   // 검색/페이징/정렬 state
   const [search, setSearch] = useState('')
@@ -127,6 +151,47 @@ export function AdminShell() {
   const prototypeList = prototypesQuery.data?.items ?? []
   const totalPages = prototypesQuery.data?.totalPages ?? 1
   const totalCount = prototypesQuery.data?.total ?? 0
+  const activePrototypeFromCategory =
+    selectedCategory?.prototypes.find((prototype) => prototype.id === activePrototypeId) ?? null
+  const activePrototype =
+    prototypeList.find((prototype) => prototype.id === activePrototypeId) ??
+    (activePrototypeFromCategory
+      ? {
+          ...activePrototypeFromCategory,
+          categoryId: selectedCategory?.id ?? '',
+          notes: null,
+          tags: [],
+          avgRating: 0,
+          reviewCount: 0,
+          createdAt: activePrototypeFromCategory.updatedAt,
+        }
+      : null)
+
+  useEffect(() => {
+    if (!selectedCategory?.id) return
+
+    const params = new URLSearchParams(window.location.search)
+    params.set('categoryId', selectedCategory.id)
+
+    if (activePrototypeId) {
+      params.set('view', 'prototype-detail')
+      params.set('prototypeId', activePrototypeId)
+    } else {
+      params.delete('view')
+      params.delete('prototypeId')
+    }
+
+    const nextUrl = `${window.location.pathname}?${params.toString()}`
+    window.history.replaceState(null, '', nextUrl)
+  }, [activePrototypeId, selectedCategory?.id])
+
+  useEffect(() => {
+    if (!activePrototypeId || !selectedCategory) return
+    const exists = selectedCategory.prototypes.some((prototype) => prototype.id === activePrototypeId)
+    if (!exists) {
+      setActivePrototypeId(null)
+    }
+  }, [activePrototypeId, selectedCategory, setActivePrototypeId])
 
   const iconMap = {
     fsd: Blocks,
@@ -155,7 +220,7 @@ export function AdminShell() {
   return (
     <div className="pb-4">
       <div className="grid min-h-[calc(100vh-8rem)] gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <Card className="overflow-hidden rounded-[28px]">
+        <Card className="overflow-hidden rounded-[16px]">
           <ScrollArea.Root className="h-full">
             <ScrollArea.Viewport className="h-full p-5">
               <div className="mb-4">
@@ -164,7 +229,7 @@ export function AdminShell() {
 
               <nav className="space-y-2">
                 {isLoading ? (
-                  <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-6 text-sm ui-text-secondary">
+                  <div className="rounded-[10px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-6 text-sm ui-text-secondary">
                     카테고리 로딩 중...
                   </div>
                 ) : null}
@@ -178,7 +243,7 @@ export function AdminShell() {
                       key={item.id}
                       type="button"
                       onClick={() => setActiveCategory(item.id)}
-                      className={`flex w-full items-center gap-3 rounded-[18px] px-3.5 py-2.5 text-left transition ${
+                      className={`flex w-full items-center gap-3 rounded-[10px] px-3.5 py-2.5 text-left transition ${
                         isActive
                           ? 'bg-[var(--surface-strong)] ui-text-primary ring-1 ring-brand-border'
                           : 'bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]'
@@ -188,7 +253,7 @@ export function AdminShell() {
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">{item.title}</div>
                       </div>
-                      <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs">
+                      <span className="rounded-[999px] bg-surface-muted px-2 py-0.5 text-xs">
                         {item.prototypes.length}
                       </span>
                     </button>
@@ -208,15 +273,26 @@ export function AdminShell() {
 
         <div className="flex flex-col min-w-0 min-h-0">
           {isError ? (
-            <Card className="mb-4 rounded-[24px] border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-100">
+            <Card className="mb-4 rounded-[14px] border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-100">
               카테고리 데이터를 불러오지 못했습니다. 서버(`:3000`) 상태를 확인하세요.
             </Card>
           ) : null}
 
           {selectedCategory ? (
             <div className="flex flex-1 min-h-0 flex-col gap-3">
+              {activePrototype ? (
+                <PrototypeDetailPage
+                  prototype={activePrototype}
+                  categoryTitle={selectedCategory.title}
+                  canManagePrototype={
+                    selectedCategory.userId === currentUserId || userRole === 'admin'
+                  }
+                  onBack={() => setActivePrototypeId(null)}
+                />
+              ) : (
+                <>
               {/* Category Detail Header */}
-              <Card className="rounded-[28px] shrink-0 p-5">
+              <Card className="shrink-0 rounded-[16px] p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="ui-text-primary text-[2rem] font-bold tracking-tight">
@@ -229,7 +305,7 @@ export function AdminShell() {
                       {selectedCategory.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] ui-text-secondary font-medium"
+                          className="rounded-[999px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] ui-text-secondary font-medium"
                         >
                           #{tag}
                         </span>
@@ -248,14 +324,14 @@ export function AdminShell() {
               </Card>
 
               {/* Prototype Timeline List */}
-              <Card className="flex-1 min-h-0 overflow-y-auto rounded-[28px] p-5">
+              <Card className="flex-1 min-h-0 overflow-y-auto rounded-[16px] p-5">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-3 ui-text-secondary font-medium">
                     <GitBranch className="size-4 text-brand-primary" />
                     <span className="text-[11px] uppercase tracking-widest">Prototype Entries</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="inline-flex h-9 items-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[11px] font-semibold ui-text-secondary uppercase tracking-widest">
+                    <div className="inline-flex h-9 items-center rounded-[10px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[11px] font-semibold ui-text-secondary uppercase tracking-widest">
                       {totalCount} prototypes
                     </div>
                     <AddPrototypeDialog
@@ -290,7 +366,7 @@ export function AdminShell() {
                         }
                       }}
                       placeholder="제목·요약 검색..."
-                      className="ui-input h-9 w-full rounded-xl border pl-9 pr-3 text-sm outline-none focus:border-brand-border"
+                      className="ui-input h-9 w-full rounded-[10px] border pl-9 pr-3 text-sm outline-none focus:border-brand-border"
                     />
                   </form>
                   <Select
@@ -299,7 +375,7 @@ export function AdminShell() {
                       setSort(e.target.value as PrototypeListSort)
                       setPage(1)
                     }}
-                    className="h-9! min-w-[7.5rem] rounded-xl! pl-3! pr-9! text-sm focus:border-brand-border focus:ring-emerald-500/15"
+                    className="h-9! min-w-[7.5rem] rounded-[10px]! pl-3! pr-9! text-sm focus:border-brand-border focus:ring-emerald-500/15"
                   >
                     <option value="recent">최신순</option>
                     <option value="oldest">오래된순</option>
@@ -328,11 +404,11 @@ export function AdminShell() {
                               <span className="ui-text-muted font-mono text-[10px]">
                                 {new Date(proto.updatedAt).toLocaleDateString()}
                               </span>
-                              <span className="rounded-full bg-brand-glass px-2 py-0.5 text-[10px] uppercase text-brand-primary font-bold border border-brand-border">
+                              <span className="rounded-[999px] border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase text-brand-primary">
                                 {proto.status}
                               </span>
                               {proto.reviewCount > 0 ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                                <span className="inline-flex items-center gap-1 rounded-[999px] border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
                                   <Star className="size-3 fill-amber-400 text-amber-400" />
                                   {proto.avgRating.toFixed(1)}
                                   <span className="text-amber-300/60 font-normal">
@@ -376,7 +452,7 @@ export function AdminShell() {
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-3xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] py-12 text-center">
+                    <div className="rounded-[12px] border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] py-12 text-center">
                       <p className="text-sm ui-text-muted">
                         {search
                           ? `"${search}" 에 해당하는 프로토타입이 없습니다.`
@@ -413,10 +489,12 @@ export function AdminShell() {
                   </div>
                 ) : null}
               </Card>
+                </>
+              )}
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center py-20 animate-in fade-in slide-in-from-bottom-4">
-              <div className="flex flex-col items-center rounded-[32px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-10">
+                <div className="flex flex-col items-center rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-10">
                 <GitBranch className="size-12 text-brand-primary/40 mb-6" />
                 <h2 className="mb-2 text-xl font-semibold ui-text-primary">시작할 카테고리를 선택하세요</h2>
                 <p className="max-w-xs text-center text-sm ui-text-secondary">
