@@ -227,7 +227,7 @@ export function AdminShell() {
 
   return (
     <div className="pb-4">
-      <div className="grid min-h-[calc(100vh-8rem)] gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="grid min-h-[calc(100vh-8rem)] gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
         <Card className="overflow-hidden rounded-[16px]">
           <ScrollArea.Root className="h-full">
             <ScrollArea.Viewport className="h-full p-5">
@@ -582,7 +582,7 @@ function SortableCategoryItem({
         type="button"
         {...attributes}
         {...listeners}
-        className="flex h-10 w-8 shrink-0 cursor-grab items-center justify-center text-text-muted opacity-0 transition-opacity hover:text-text-primary group-hover:opacity-100 active:cursor-grabbing"
+        className="flex h-10 w-8 shrink-0 cursor-grab items-center justify-center text-text-muted transition-colors hover:text-text-primary active:cursor-grabbing"
       >
         <GripVertical className="size-3.5" />
       </button>
@@ -592,7 +592,6 @@ function SortableCategoryItem({
         onClick={onSelect}
         className="flex min-w-0 flex-1 items-center gap-3 py-2.5 pr-3.5 text-left"
       >
-        <Icon className="size-4 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{item.title}</div>
         </div>
