@@ -19,14 +19,16 @@ export class CatalogService {
   ) {}
 
   listCategories(userId: string, userRole: string) {
-    const categoriesQuery = this.databaseService.db
+    const query = this.databaseService.db
       .select()
-      .from(categoriesTable);
+      .from(categoriesTable)
+      .orderBy(asc(categoriesTable.orderIdx));
 
-    const categories = (userRole === 'admin' 
-      ? categoriesQuery 
-      : categoriesQuery.where(eq(categoriesTable.userId, userId))
+    const categories = (userRole === 'admin'
+      ? query
+      : query.where(eq(categoriesTable.userId, userId))
     ).all();
+
     const prototypes = this.databaseService.db
       .select()
       .from(prototypesTable)
@@ -117,6 +119,7 @@ export class CatalogService {
                 '구현 포인트 정리',
                 '백엔드 연결 여부 판단',
               ],
+        orderIdx: this.getNextCategoryOrderIdx(userId),
         createdAt: now,
         updatedAt: now,
       })
@@ -350,6 +353,27 @@ export class CatalogService {
       totalPages,
       query: { q, sort },
     };
+  }
+
+  reorderCategories(userId: string, categoryIds: string[]) {
+    this.databaseService.db.transaction((tx) => {
+      categoryIds.forEach((id, idx) => {
+        tx.update(categoriesTable)
+          .set({ orderIdx: idx })
+          .where(and(eq(categoriesTable.id, id), eq(categoriesTable.userId, userId)))
+          .run();
+      });
+    });
+    return { success: true };
+  }
+
+  private getNextCategoryOrderIdx(userId: string): number {
+    const row = this.databaseService.db
+      .select({ maxIdx: sql<number>`max(${categoriesTable.orderIdx})` })
+      .from(categoriesTable)
+      .where(eq(categoriesTable.userId, userId))
+      .get();
+    return (row?.maxIdx ?? -1) + 1;
   }
 
   private ensureCategory(userId: string, userRole: string, categoryId: string) {

@@ -22,7 +22,26 @@ import {
   TableProperties,
   TriangleAlert,
   Workflow,
+  GripVertical,
 } from 'lucide-react'
+
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { AddCategoryDialog } from '../../../features/category-management/ui/add-category-dialog'
 
 import { DeleteCategoryButton } from '../../../features/category-management/ui/delete-category-button'
@@ -33,6 +52,7 @@ import { DeletePrototypeButton } from '../../../features/prototype-management/ui
 import {
   useCatalogCategories,
   useCategoryPrototypes,
+  useReorderCategories,
   type PrototypeListSort,
 } from '../../../shared/api/catalog'
 import { useUiStore } from '../../../shared/store/ui-store'
@@ -40,7 +60,7 @@ import { useSessionStore } from '../../../shared/store/session-store'
 import { ActionIconButton } from '../../../shared/ui/action-icon-button'
 import { Card } from '../../../shared/ui/card'
 import { Select } from '../../../shared/ui/select'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react'
 import {
   PrototypeDetailDialog,
@@ -48,11 +68,35 @@ import {
 } from '../../../features/prototype-review/ui/prototype-detail-page'
 
 export function AdminShell() {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
+  const reorderCategories = useReorderCategories()
   const {
-    data: categories = [],
+    data: fetchedCategories = [],
     isLoading,
     isError,
   } = useCatalogCategories()
+  
+  const [categories, setCategories] = useState<any[]>([])
+
+  useEffect(() => {
+    if (fetchedCategories.length > 0 && categories.length === 0) {
+      setCategories(fetchedCategories)
+    } else if (fetchedCategories.length > 0) {
+      // Sync only if IDs changed or data refreshed and not dragging
+      setCategories(fetchedCategories)
+    }
+  }, [fetchedCategories])
+
   const currentUserId = useSessionStore((state) => state.userId)
   const userRole = useSessionStore((state) => state.userRole)
   const activeCategoryId = useUiStore((state) => state.activeCategoryId)
@@ -198,31 +242,28 @@ export function AdminShell() {
                   </div>
                 ) : null}
 
-                {categories.map((item) => {
-                  const Icon = iconMap[item.iconKey]
-                  const isActive = activeCategoryId === item.id
-
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setActiveCategory(item.id)}
-                      className={`flex w-full items-center gap-3 rounded-[10px] px-3.5 py-2.5 text-left transition ${
-                        isActive
-                          ? 'bg-[var(--surface-strong)] ui-text-primary ring-1 ring-brand-border'
-                          : 'bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]'
-                      }`}
-                    >
-                      <Icon className="size-4" />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">{item.title}</div>
-                      </div>
-                      <span className="rounded-[999px] bg-surface-muted px-2 py-0.5 text-xs">
-                        {item.prototypes.length}
-                      </span>
-                    </button>
-                  )
-                })}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={categories.map((c) => c.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <nav className="space-y-2">
+                      {categories.map((item) => (
+                        <SortableCategoryItem
+                          key={item.id}
+                          item={item}
+                          isActive={activeCategoryId === item.id}
+                          icon={iconMap[item.iconKey] || Package}
+                          onSelect={() => setActiveCategory(item.id)}
+                        />
+                      ))}
+                    </nav>
+                  </SortableContext>
+                </DndContext>
               </nav>
 
             </ScrollArea.Viewport>
@@ -480,6 +521,85 @@ export function AdminShell() {
           )}
         </div>
       </div>
+    </div>
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const oldIndex = categories.findIndex((c) => c.id === active.id)
+      const newIndex = categories.findIndex((c) => c.id === over.id)
+      const newOrder = arrayMove(categories, oldIndex, newIndex)
+      
+      // Update local state first
+      setCategories(newOrder)
+
+      // Update DB
+      reorderCategories.mutate(newOrder.map((c) => c.id))
+    }
+  }
+}
+
+function SortableCategoryItem({
+  item,
+  isActive,
+  icon: Icon,
+  onSelect,
+}: {
+  item: any
+  isActive: boolean
+  icon: any
+  onSelect: () => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.5 : undefined,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group relative flex w-full items-center gap-2 rounded-[10px] transition ${
+        isActive
+          ? 'bg-[var(--surface-strong)] ui-text-primary ring-1 ring-brand-border'
+          : 'bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]'
+      }`}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="flex h-10 w-8 shrink-0 cursor-grab items-center justify-center text-text-muted opacity-0 transition-opacity hover:text-text-primary group-hover:opacity-100 active:cursor-grabbing"
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+      
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex min-w-0 flex-1 items-center gap-3 py-2.5 pr-3.5 text-left"
+      >
+        <Icon className="size-4 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium">{item.title}</div>
+        </div>
+        <span className="rounded-[999px] bg-surface-muted px-2 py-0.5 text-xs">
+          {item.prototypes.length}
+        </span>
+      </button>
     </div>
   )
 }

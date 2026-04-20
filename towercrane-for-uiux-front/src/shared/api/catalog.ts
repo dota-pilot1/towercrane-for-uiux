@@ -135,6 +135,21 @@ export function useDeleteCategory() {
   })
 }
 
+export function useReorderCategories() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (categoryIds: string[]) =>
+      apiRequest<{ success: boolean }>('/catalog/categories/reorder', {
+        method: 'POST',
+        body: JSON.stringify({ categoryIds }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+    },
+  })
+}
+
 export function useCategoryPrototypes(
   categoryId: string | null,
   params: PrototypeListParams,

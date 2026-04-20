@@ -31,6 +31,7 @@ export const categoriesTable = sqliteTable('categories', {
   iconKey: text('icon_key').notNull(),
   tags: text('tags', { mode: 'json' }).$type<string[]>().notNull(),
   checklist: text('checklist', { mode: 'json' }).$type<string[]>().notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });

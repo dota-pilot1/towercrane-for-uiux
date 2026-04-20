@@ -23,6 +23,14 @@ export class CatalogController {
     return this.catalogService.listCategories(user.id, user.role);
   }
 
+  @Post('categories/reorder')
+  reorderCategories(
+    @CurrentUser() user: { id: string },
+    @Body('categoryIds') categoryIds: string[],
+  ) {
+    return this.catalogService.reorderCategories(user.id, categoryIds);
+  }
+
   @Get('categories/:categoryId')
   getCategory(
     @CurrentUser() user: { id: string; role: string },
