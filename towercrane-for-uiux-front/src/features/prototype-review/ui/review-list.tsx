@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import { useDeleteMyReview, useUpdateMyReview } from '../../../shared/api/reviews'
 import { Button } from '../../../shared/ui/button'
 import { Textarea } from '../../../shared/ui/textarea'
@@ -184,13 +184,21 @@ function ReviewCard({
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <StarRating
-            value={isEditing ? draftRating : review.rating}
-            onChange={isEditing ? onChangeDraftRating : undefined}
-            readOnly={!isEditing}
-            size="sm"
-            showNumber
-          />
+          {isEditing ? (
+            <StarRating
+              value={draftRating}
+              onChange={onChangeDraftRating}
+              size="sm"
+              showNumber
+            />
+          ) : (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-amber-50 border border-amber-100">
+              <span className="text-sm font-bold text-amber-600 tabular-nums">
+                {review.rating.toFixed(1)}
+              </span>
+              <span className="text-[10px] text-amber-400 font-medium tracking-tight">/ 10</span>
+            </div>
+          )}
           {review.isMine ? (
             <div className="flex items-center gap-1">
               {isEditing ? (
@@ -218,19 +226,23 @@ function ReviewCard({
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-7 px-2.5 text-[11px]"
+                    size="icon"
+                    className="size-7 rounded-lg"
                     onClick={onStartEdit}
+                    title="수정"
                   >
-                    수정
+                    <Pencil className="size-3.5" />
                   </Button>
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-7 px-2.5 text-[11px] text-rose-600 hover:bg-rose-50"
+                    size="icon"
+                    className="size-7 rounded-lg text-rose-600 hover:bg-rose-50"
                     onClick={onDelete}
                     disabled={pending}
+                    title="삭제"
                   >
-                    삭제
+                    <Trash2 className="size-3.5" />
                   </Button>
                 </>
               )}
