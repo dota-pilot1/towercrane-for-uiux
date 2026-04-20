@@ -71,9 +71,9 @@ export function EditPrototypeDialog({
     })
   }, [prototype, reset])
 
-  const onSubmit: SubmitHandler<FormValues> = async (values) => {
+  const onSubmit = async (values: any) => {
     try {
-      await updatePrototype.mutateAsync(values as any)
+      await updatePrototype.mutateAsync(values)
       setOpen(false)
     } catch (e) {
       console.error('Submit error:', e)

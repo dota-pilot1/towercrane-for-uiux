@@ -102,9 +102,9 @@ export function AddPrototypeDialog({
     )
   }
 
-  const onSubmit: SubmitHandler<FormValues> = async (values) => {
+  const onSubmit = async (values: any) => {
     try {
-      await createPrototype.mutateAsync(values as any)
+      await createPrototype.mutateAsync(values)
       reset()
       setOpen(false)
     } catch (e) {
