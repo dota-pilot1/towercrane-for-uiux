@@ -18,7 +18,7 @@ export function AuthIconButton({
     <Button
       variant="secondary"
       className={cn(
-        'size-[34px] rounded-full p-0 border transition-all duration-300 flex items-center justify-center overflow-hidden',
+        'size-[34px] rounded-md p-0 border transition-all duration-300 flex items-center justify-center overflow-hidden',
         variant === 'emerald' &&
           'border-brand-border text-brand-primary hover:border-brand-border hover:bg-brand-glass',
         variant === 'white' &&

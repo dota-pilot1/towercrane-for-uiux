@@ -19,14 +19,14 @@ export function ToggleGroup<T extends string>({
   className,
 }: ToggleGroupProps<T>) {
   return (
-    <div className={clsx('flex rounded-[10px] border border-surface-border-soft bg-surface-muted p-1', className)}>
+    <div className={clsx('flex rounded-md border border-surface-border-soft bg-surface-muted p-1', className)}>
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
           className={clsx(
-            'flex-1 rounded-[8px] px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-200',
+            'flex-1 rounded px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-200',
             value === option.value
               ? 'bg-brand-glass text-brand-primary shadow-sm border border-brand-border'
               : 'text-text-muted hover:text-text-primary'

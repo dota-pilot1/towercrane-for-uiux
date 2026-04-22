@@ -228,7 +228,7 @@ export function AdminShell() {
   return (
     <div className="pb-4">
       <div className="grid min-h-[calc(100vh-8rem)] gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <Card className="overflow-hidden rounded-[16px]">
+        <Card className="overflow-hidden rounded-lg">
           <ScrollArea.Root className="h-full">
             <ScrollArea.Viewport className="h-full p-5">
               <div className="mb-4">
@@ -237,7 +237,7 @@ export function AdminShell() {
 
               <nav className="space-y-2">
                 {isLoading ? (
-                  <div className="rounded-[10px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-6 text-sm ui-text-secondary">
+                  <div className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-6 text-sm ui-text-secondary">
                     카테고리 로딩 중...
                   </div>
                 ) : null}
@@ -296,7 +296,7 @@ export function AdminShell() {
               ) : (
                 <>
               {/* Category Detail Header */}
-              <Card className="shrink-0 rounded-[16px] p-5">
+              <Card className="shrink-0 rounded-lg p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="ui-text-primary text-[2rem] font-bold tracking-tight">
@@ -309,7 +309,7 @@ export function AdminShell() {
                       {selectedCategory.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-[999px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] ui-text-secondary font-medium"
+                          className="rounded border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] ui-text-secondary font-medium"
                         >
                           #{tag}
                         </span>
@@ -328,14 +328,14 @@ export function AdminShell() {
               </Card>
 
               {/* Prototype Timeline List */}
-              <Card className="flex-1 min-h-0 overflow-y-auto rounded-[16px] p-5">
+              <Card className="flex-1 min-h-0 overflow-y-auto rounded-lg p-5">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-3 ui-text-secondary font-medium">
                     <GitBranch className="size-4 text-brand-primary" />
                     <span className="text-[11px] uppercase tracking-widest">Prototype Entries</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="inline-flex h-9 items-center rounded-[10px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[11px] font-semibold ui-text-secondary uppercase tracking-widest">
+                    <div className="inline-flex h-9 items-center rounded-md border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[11px] font-semibold ui-text-secondary uppercase tracking-widest">
                       {totalCount} prototypes
                     </div>
                     <AddPrototypeDialog
@@ -370,7 +370,7 @@ export function AdminShell() {
                         }
                       }}
                       placeholder="제목·요약 검색..."
-                      className="ui-input h-9 w-full rounded-[10px] border pl-9 pr-3 text-sm outline-none focus:border-brand-border"
+                      className="ui-input h-9 w-full rounded-md border pl-9 pr-3 text-sm outline-none focus:border-brand-border"
                     />
                   </form>
                   <Select
@@ -379,7 +379,7 @@ export function AdminShell() {
                       setSort(e.target.value as PrototypeListSort)
                       setPage(1)
                     }}
-                    className="h-9! min-w-[7.5rem] rounded-[10px]! pl-3! pr-9! text-sm focus:border-brand-border focus:ring-emerald-500/15"
+                    className="h-9! min-w-[7.5rem] rounded-md! pl-3! pr-9! text-sm focus:border-brand-border focus:ring-brand-border/30"
                   >
                     <option value="recent">최신순</option>
                     <option value="oldest">오래된순</option>
@@ -408,14 +408,14 @@ export function AdminShell() {
                               <span className="ui-text-muted font-mono text-[10px]">
                                 {new Date(proto.updatedAt).toLocaleDateString()}
                               </span>
-                              <span className="rounded-[999px] border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase text-brand-primary">
+                              <span className="rounded border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase text-brand-primary">
                                 {proto.status}
                               </span>
                               {proto.reviewCount > 0 ? (
-                                <span className="inline-flex items-center gap-1 rounded-[999px] border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                                  <Star className="size-3 fill-amber-400 text-amber-400" />
+                                <span className="inline-flex items-center gap-1 rounded border border-[color:color-mix(in_srgb,var(--brand-500)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--brand-glass)_80%,transparent)] px-2 py-0.5 text-[10px] font-bold text-brand-primary">
+                                  <Star className="size-3 fill-brand-primary text-brand-primary" />
                                   {proto.avgRating.toFixed(1)}
-                                  <span className="text-amber-300/60 font-normal">
+                                  <span className="font-normal text-brand-primary/60">
                                     ({proto.reviewCount})
                                   </span>
                                 </span>
@@ -429,7 +429,7 @@ export function AdminShell() {
                                 {proto.tags.map((tag) => (
                                   <span
                                     key={`${proto.id}-${tag}`}
-                                    className="rounded-[999px] border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-0.5 text-[10px] font-medium ui-text-secondary"
+                                    className="rounded border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-0.5 text-[10px] font-medium ui-text-secondary"
                                   >
                                     #{tag}
                                   </span>
@@ -510,7 +510,7 @@ export function AdminShell() {
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center py-20 animate-in fade-in slide-in-from-bottom-4">
-                <div className="flex flex-col items-center rounded-[16px] border border-[var(--surface-border)] bg-[var(--surface-raised)] p-10">
+                <div className="flex flex-col items-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-raised)] p-10">
                 <GitBranch className="size-12 text-brand-primary/40 mb-6" />
                 <h2 className="mb-2 text-xl font-semibold ui-text-primary">시작할 카테고리를 선택하세요</h2>
                 <p className="max-w-xs text-center text-sm ui-text-secondary">
@@ -572,7 +572,7 @@ function SortableCategoryItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative flex w-full items-center gap-2 overflow-hidden rounded-[12px] transition-all duration-200 ${
+      className={`group relative flex w-full items-center gap-2 overflow-hidden rounded-md transition-all duration-200 ${
         isActive
           ? 'bg-brand-glass ui-text-primary shadow-sm ring-1 ring-brand-border/50'
           : 'bg-surface-muted/50 ui-text-secondary hover:bg-surface-muted'
@@ -602,8 +602,8 @@ function SortableCategoryItem({
             {item.title}
           </div>
         </div>
-        <span className={`shrink-0 rounded-[999px] px-2 py-0.5 text-[10px] font-black transition-colors ${
-          isActive ? 'bg-brand-primary text-white' : 'bg-surface-muted text-text-muted'
+        <span className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-black transition-colors ${
+          isActive ? 'bg-brand-primary text-text-on-brand' : 'bg-surface-muted text-text-muted'
         }`}>
           {item.prototypes.length}
         </span>

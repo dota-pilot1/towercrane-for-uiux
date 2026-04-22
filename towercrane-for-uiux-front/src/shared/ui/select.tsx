@@ -16,7 +16,7 @@ export function Select({
     <div className={cn('relative', wrapperClassName)}>
       <select
         className={cn(
-          'ui-input h-12 w-full appearance-none rounded-[10px] border px-4 pr-10 text-sm outline-none transition focus:border-brand-border focus:ring-2 focus:ring-brand-border disabled:cursor-not-allowed disabled:opacity-60',
+          'ui-input h-12 w-full appearance-none rounded-md border px-4 pr-10 text-sm outline-none transition focus:border-brand-border focus:ring-2 focus:ring-brand-border disabled:cursor-not-allowed disabled:opacity-60',
           className,
         )}
         {...props}

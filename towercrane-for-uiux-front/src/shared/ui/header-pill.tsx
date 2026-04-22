@@ -12,7 +12,7 @@ const variantStyles: Record<HeaderPillVariant, string> = {
 }
 
 const baseClassName =
-  'inline-flex h-[34px] items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition shrink-0'
+  'inline-flex h-[34px] items-center gap-2 rounded-md border px-3 text-[13px] font-medium transition shrink-0'
 
 type CommonProps = {
   variant?: HeaderPillVariant

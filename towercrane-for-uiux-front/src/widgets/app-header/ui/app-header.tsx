@@ -34,7 +34,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="glass-panel sticky top-3 z-30 mb-3 rounded-[16px] px-5 py-2">
+    <header className="glass-panel sticky top-3 z-30 mb-3 rounded-lg px-5 py-2">
       <div className="flex items-center justify-between gap-4">
         <button
           type="button"
@@ -42,7 +42,7 @@ export function AppHeader() {
           onClick={() => handleNavigation('prototype')}
         >
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-[10px] border border-brand-border bg-brand-glass shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+            <div className="flex size-10 items-center justify-center rounded-md border border-brand-border bg-brand-glass shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
               <span className="text-sm font-black tracking-[-0.06em] text-brand-primary">
                 TC
               </span>
@@ -91,7 +91,7 @@ export function AppHeader() {
               </HeaderPill>
 
               {isAdminOpen && (
-                <div className="absolute left-0 top-full z-50 mt-2 w-44 origin-top-left animate-in zoom-in rounded-[14px] border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1.5 shadow-2xl backdrop-blur-xl duration-200 fade-in">
+                <div className="absolute left-0 top-full z-50 mt-2 w-44 origin-top-left animate-in zoom-in rounded-lg border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1.5 shadow-2xl backdrop-blur-xl duration-200 fade-in">
                   {adminItems.map((item) => (
                     <button
                       key={item.id}
@@ -99,7 +99,7 @@ export function AppHeader() {
                         handleNavigation(item.id)
                         setIsAdminOpen(false)
                       }}
-                      className="flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-[13px] transition-colors ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] transition-colors ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
                     >
                       {item.id === 'users' ? (
                         <UserCog className="size-3.5" />
@@ -122,7 +122,7 @@ export function AppHeader() {
               <div className="flex items-center gap-2">
                 {userRole === 'admin' && (
                   <div
-                    className="flex size-[34px] items-center justify-center rounded-[10px] border border-brand-border bg-brand-glass text-brand-primary"
+                    className="flex size-[34px] items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary"
                     title="시스템 관리자"
                   >
                     <ShieldCheck className="size-4" />
@@ -134,7 +134,7 @@ export function AppHeader() {
               </div>
               <button
                 onClick={handleLogout}
-                className="flex size-[34px] items-center justify-center rounded-[10px] border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]"
+                className="flex size-[34px] items-center justify-center rounded-md border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]"
                 aria-label="로그아웃"
                 title="로그아웃"
               >

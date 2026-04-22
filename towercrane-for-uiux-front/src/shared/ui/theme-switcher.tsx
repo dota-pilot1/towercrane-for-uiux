@@ -53,7 +53,7 @@ export function ThemeSwitcher() {
       </HeaderPill>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 origin-top-right rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-strong)] p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in duration-200 z-50">
+        <div className="absolute right-0 top-full mt-2 w-48 origin-top-right rounded-lg border border-[var(--surface-border)] bg-[var(--surface-strong)] p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in duration-200 z-50">
           <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest ui-text-muted">
             Workspace Theme
           </p>
@@ -67,7 +67,7 @@ export function ThemeSwitcher() {
                   setIsOpen(false)
                 }}
                 className={clsx(
-                  'flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-2 text-sm transition-all duration-200',
+                  'flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200',
                   themeColor === theme.id 
                     ? 'bg-brand-glass text-brand-primary' 
                     : 'ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]'

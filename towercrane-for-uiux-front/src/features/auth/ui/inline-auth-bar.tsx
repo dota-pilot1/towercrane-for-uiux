@@ -99,13 +99,13 @@ export function InlineAuthBar() {
         <Input
           {...registerLogin('email')}
           placeholder="이메일"
-          className="h-[34px] w-[150px] rounded-full border-surface-border-soft bg-surface-muted px-3.5 text-[13px] focus:border-brand-border focus:ring-emerald-500/5"
+          className="h-[34px] w-[150px] rounded-md border-surface-border-soft bg-surface-muted px-3.5 text-[13px] focus:border-brand-border focus:ring-brand-border/20"
         />
         <Input
           {...registerLogin('password')}
           type="password"
           placeholder="비밀번호"
-          className="h-[34px] w-[110px] rounded-full border-surface-border-soft bg-surface-muted px-3.5 text-[13px] focus:border-brand-border focus:ring-emerald-500/5"
+          className="h-[34px] w-[110px] rounded-md border-surface-border-soft bg-surface-muted px-3.5 text-[13px] focus:border-brand-border focus:ring-brand-border/20"
         />
         
         <AuthIconButton
@@ -131,10 +131,10 @@ export function InlineAuthBar() {
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 z-40 ui-overlay backdrop-blur-sm" />
             <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2">
-              <Card className="rounded-[28px] p-6">
+              <Card className="rounded-lg p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-2xl border border-brand-border bg-brand-glass p-3 text-brand-primary">
+                    <div className="rounded-md border border-brand-border bg-brand-glass p-3 text-brand-primary">
                       <UserPlus className="size-5" />
                     </div>
                     <div>
@@ -150,7 +150,7 @@ export function InlineAuthBar() {
                   <Dialog.Close asChild>
                     <button
                       type="button"
-                      className="rounded-full border border-surface-border-soft bg-surface-muted p-2 text-text-secondary transition hover:bg-surface-muted"
+                      className="rounded-md border border-surface-border-soft bg-surface-muted p-2 text-text-secondary transition hover:bg-surface-muted"
                       aria-label="닫기"
                     >
                       <X className="size-4" />
@@ -201,7 +201,7 @@ export function InlineAuthBar() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-text-secondary">비밀번호 확인</span>
                       {isPass && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-primary animate-in fade-in zoom-in duration-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                        <span className="inline-flex items-center gap-1 rounded border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-primary animate-in fade-in zoom-in duration-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                           <Check className="size-3" />
                           Pass
                         </span>
@@ -230,7 +230,7 @@ export function InlineAuthBar() {
                   </label>
 
                   {signupMutation.error ? (
-                    <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+                    <div className="rounded-md border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
                       {signupMutation.error.message}
                     </div>
                   ) : null}
