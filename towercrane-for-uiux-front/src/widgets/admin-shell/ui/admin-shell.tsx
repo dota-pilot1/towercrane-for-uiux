@@ -228,7 +228,7 @@ export function AdminShell() {
 
   return (
     <div className="pb-8 bg-background">
-      <div className="grid min-h-[calc(100vh-8rem)] gap-6 lg:grid-cols-[280px_minmax(0,1fr)] max-w-[1600px] mx-auto px-4">
+      <div className="grid min-h-[calc(100vh-6rem)] gap-3 lg:grid-cols-[250px_minmax(0,1fr)] max-w-[1600px] mx-auto px-4">
         <div className="ui-panel overflow-hidden border-none shadow-none bg-muted/30">
           <ScrollArea.Root className="h-full">
             <ScrollArea.Viewport className="h-full p-4">
@@ -255,7 +255,7 @@ export function AdminShell() {
                       items={categories.map((c) => c.id)}
                       strategy={verticalListSortingStrategy}
                     >
-                      <nav className="space-y-2">
+                      <nav className="space-y-1">
                         {categories.map((item) => (
                           <SortableCategoryItem
                             key={item.id}
@@ -276,7 +276,7 @@ export function AdminShell() {
                         key={item.id}
                         type="button"
                         onClick={() => setActiveCategory(item.id)}
-                        className={`group relative flex w-full items-center gap-2 overflow-hidden rounded-[10px] border transition-all duration-200 px-4 py-3 ${
+                        className={`group relative flex w-full items-center gap-2 overflow-hidden rounded-sm border transition-all duration-200 px-2.5 py-1.5 ${
                           activeCategoryId === item.id
                             ? 'bg-brand-glass text-brand-primary border-brand-border/50 shadow-sm'
                             : 'border-transparent text-text-muted hover:bg-surface-muted/50 hover:text-text-primary'
@@ -317,13 +317,13 @@ export function AdminShell() {
 
         <div className="flex flex-col min-w-0 min-h-0">
           {isError ? (
-            <Card className="mb-4 rounded-[14px] border border-danger-border bg-danger-glass p-4 text-sm text-danger-500">
+            <Card className="mb-1.5 rounded-sm border border-danger-border bg-danger-glass p-2 text-xs text-danger-500">
               카테고리 데이터를 불러오지 못했습니다. 서버(`:3000`) 상태를 확인하세요.
             </Card>
           ) : null}
 
           {selectedCategory ? (
-            <div className="flex flex-1 min-h-0 flex-col gap-3">
+            <div className="flex flex-1 min-h-0 flex-col gap-2">
               {activePrototype ? (
                 <PrototypeDetailPage
                   prototype={activePrototype}
@@ -335,7 +335,7 @@ export function AdminShell() {
               ) : (
                 <>
               {/* Category Detail Header */}
-              <div className="ui-panel p-6 sm:p-8">
+              <div className="ui-panel p-3 sm:p-3.5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-text-primary text-3xl font-extrabold tracking-tight">
@@ -369,10 +369,10 @@ export function AdminShell() {
               </div>
 
               {/* Prototype Timeline List */}
-              <div className="ui-panel flex-1 min-h-0 overflow-y-auto p-8">
-                <div className="mb-6 flex items-center justify-between gap-2 border-b border-border/50 pb-6">
+              <div className="ui-panel flex-1 min-h-0 overflow-y-auto p-4">
+                <div className="mb-4 flex items-center justify-between gap-2 border-b border-border/50 pb-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-xl bg-primary/5 text-primary">
+                    <div className="flex size-8 items-center justify-center rounded-sm bg-primary/5 text-primary">
                       <GitBranch className="size-5" />
                     </div>
                     <div>
@@ -384,8 +384,8 @@ export function AdminShell() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-[11px] font-bold text-text-muted bg-surface-muted border border-surface-border-soft px-3 py-1.5 rounded-[10px]">
+                  <div className="flex items-center gap-3">
+                    <div className="text-[10px] font-black text-text-muted bg-surface-muted border border-surface-border-soft px-2.5 py-1 rounded-sm">
                       {totalCount} Items
                     </div>
                     {isAuthenticated && (
@@ -399,7 +399,7 @@ export function AdminShell() {
                 </div>
 
                 {/* Search + sort bar */}
-                <div className="mb-4 flex items-center gap-2">
+                <div className="mb-3 flex items-center gap-2">
                   <form
                     className="relative flex-1"
                     onSubmit={(e) => {
@@ -408,7 +408,7 @@ export function AdminShell() {
                       setSearch(searchInput)
                     }}
                   >
-                    <Search className="ui-text-muted absolute left-3 top-1/2 size-3.5 -translate-y-1/2" />
+                    <Search className="ui-text-muted absolute left-3.5 top-1/2 size-3.5 -translate-y-1/2" />
                     <input
                       type="text"
                       value={searchInput}
@@ -422,7 +422,7 @@ export function AdminShell() {
                         }
                       }}
                       placeholder="제목·요약 검색..."
-                      className="ui-input h-9 w-full rounded-md border pl-9 pr-3 text-sm outline-none focus:border-brand-border"
+                      className="ui-input h-8 w-full rounded-sm border pl-11 pr-3 text-[12px] leading-none outline-none focus:border-brand-border"
                     />
                   </form>
                   <Select
@@ -431,7 +431,7 @@ export function AdminShell() {
                       setSort(e.target.value as PrototypeListSort)
                       setPage(1)
                     }}
-                    className="h-9! min-w-[7.5rem] rounded-md! pl-3! pr-9! text-sm focus:border-brand-border focus:ring-brand-border/30"
+                    className="h-8 min-w-[100px] rounded-sm px-2 text-[12px] focus:border-brand-border focus:ring-brand-border/30"
                   >
                     <option value="recent">최신순</option>
                     <option value="oldest">오래된순</option>
@@ -460,11 +460,11 @@ export function AdminShell() {
                               <span className="ui-text-muted font-mono text-[10px]">
                                 {new Date(proto.updatedAt).toLocaleDateString()}
                               </span>
-                              <span className="rounded border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase text-brand-primary">
+                              <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase text-brand-primary">
                                 {proto.status}
                               </span>
                               {proto.reviewCount > 0 ? (
-                                <span className="inline-flex items-center gap-1 rounded border border-[color:color-mix(in_srgb,var(--brand-500)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--brand-glass)_80%,transparent)] px-2 py-0.5 text-[10px] font-bold text-brand-primary">
+                                <span className="inline-flex items-center gap-1 rounded-sm border border-[color:color-mix(in_srgb,var(--brand-500)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--brand-glass)_80%,transparent)] px-2 py-0.5 text-[10px] font-bold text-brand-primary">
                                   <Star className="size-3 fill-brand-primary text-brand-primary" />
                                   {proto.avgRating.toFixed(1)}
                                   <span className="font-normal text-brand-primary/60">
@@ -481,7 +481,7 @@ export function AdminShell() {
                                 {proto.tags.map((tag) => (
                                   <span
                                     key={`${proto.id}-${tag}`}
-                                    className="rounded border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2.5 py-0.5 text-[10px] font-medium ui-text-secondary"
+                                    className="rounded-sm border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-medium ui-text-secondary"
                                   >
                                     #{tag}
                                   </span>
@@ -520,7 +520,7 @@ export function AdminShell() {
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-[12px] border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] py-12 text-center">
+                    <div className="rounded-sm border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] py-10 text-center">
                       <p className="text-sm ui-text-muted">
                         {search
                           ? `"${search}" 에 해당하는 프로토타입이 없습니다.`
@@ -532,7 +532,7 @@ export function AdminShell() {
 
                 {/* Pagination controls */}
                 {totalCount > 0 ? (
-                  <div className="mt-6 flex items-center justify-between gap-3 border-t border-[var(--surface-border-soft)] pt-4">
+                  <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--surface-border-soft)] pt-3.5">
                     <div className="ui-text-muted text-[11px] uppercase tracking-widest">
                       Page {page} / {totalPages} · {totalCount} total
                     </div>
@@ -540,7 +540,7 @@ export function AdminShell() {
                       <button
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page <= 1 || prototypesQuery.isFetching}
-                        className="inline-flex size-8 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)] disabled:pointer-events-none disabled:opacity-40"
+                        className="inline-flex size-7 items-center justify-center rounded-sm border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)] disabled:pointer-events-none disabled:opacity-40"
                         aria-label="이전 페이지"
                       >
                         <ChevronLeft className="size-4" />
@@ -548,7 +548,7 @@ export function AdminShell() {
                       <button
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={page >= totalPages || prototypesQuery.isFetching}
-                        className="inline-flex size-8 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)] disabled:pointer-events-none disabled:opacity-40"
+                        className="inline-flex size-7 items-center justify-center rounded-sm border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)] disabled:pointer-events-none disabled:opacity-40"
                         aria-label="다음 페이지"
                       >
                         <ChevronRight className="size-4" />
@@ -624,7 +624,7 @@ function SortableCategoryItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative flex w-full items-center gap-2 overflow-hidden rounded-[10px] border transition-all duration-200 ${
+      className={`group relative flex w-full items-center gap-2 overflow-hidden rounded-sm border transition-all duration-200 ${
         isActive
           ? 'bg-brand-glass text-brand-primary border-brand-border/50 shadow-sm translate-x-0.5'
           : 'border-transparent text-text-muted hover:bg-surface-muted/50 hover:text-text-primary'
@@ -654,7 +654,7 @@ function SortableCategoryItem({
             {item.title}
           </div>
         </div>
-        <span className={`shrink-0 rounded-[6px] px-2 py-0.5 text-[10px] font-black transition-colors ${
+        <span className={`shrink-0 rounded-sm px-2 py-0.5 text-[10px] font-black transition-colors ${
           isActive ? 'bg-brand-primary text-text-on-brand' : 'bg-surface-muted text-text-muted border border-surface-border-soft/50'
         }`}>
           {item.prototypes.length}

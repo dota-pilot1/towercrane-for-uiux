@@ -53,8 +53,8 @@ export function ThemeSwitcher() {
       </HeaderPill>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-4 w-52 origin-top-right rounded-[20px] border border-border bg-background/80 p-2 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 z-50">
-          <p className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+        <div className="absolute right-0 top-full mt-2 w-48 origin-top-right rounded-md border border-border bg-background/90 p-1.5 shadow-xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200 z-[60]">
+          <p className="px-3 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
             Appearance
           </p>
           <div className="grid gap-1">
@@ -67,9 +67,9 @@ export function ThemeSwitcher() {
                   setIsOpen(false)
                 }}
                 className={clsx(
-                  'flex w-full items-center justify-between gap-3 rounded-[14px] px-3 py-2.5 text-sm transition-all duration-300',
+                  'flex w-full items-center justify-between gap-2.5 rounded-md px-2.5 py-2 text-sm transition-all duration-300',
                   themeColor === theme.id 
-                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/10' 
+                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/5' 
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >

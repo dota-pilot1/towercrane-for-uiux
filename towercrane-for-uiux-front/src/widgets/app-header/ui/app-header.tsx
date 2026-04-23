@@ -34,22 +34,22 @@ export function AppHeader() {
   }
 
   return (
-    <header className="glass-panel mb-3 rounded-lg px-5 py-2">
+    <header className="glass-panel relative z-[100] mb-3 rounded-md px-4 py-1.5">
       <div className="flex items-center justify-between gap-4">
         <button
           type="button"
           className="shrink-0 text-left"
           onClick={() => handleNavigation('prototype')}
         >
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-              <span className="text-sm font-black tracking-tighter">TC</span>
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-md shadow-primary/10">
+              <span className="text-[13px] font-black tracking-tighter">TC</span>
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-1">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary mb-0.5">
                 Towercrane
               </p>
-              <p className="text-[15px] font-black leading-none text-foreground">
+              <p className="text-[14px] font-black leading-none text-foreground">
                 Prototype Console
               </p>
             </div>
@@ -89,7 +89,7 @@ export function AppHeader() {
               </HeaderPill>
 
               {isAdminOpen && (
-                <div className="absolute left-0 top-full z-50 mt-2 w-44 origin-top-left animate-in zoom-in rounded-lg border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1.5 shadow-2xl backdrop-blur-xl duration-200 fade-in">
+                <div className="absolute left-0 top-full z-50 mt-1.5 w-40 origin-top-left animate-in zoom-in rounded-md border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1 shadow-xl backdrop-blur-xl duration-200 fade-in">
                   {adminItems.map((item) => (
                     <button
                       key={item.id}
@@ -120,10 +120,10 @@ export function AppHeader() {
               <div className="flex items-center gap-2">
                 {userRole === 'admin' && (
                   <div
-                    className="flex size-[34px] items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary"
+                    className="flex size-8 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary"
                     title="시스템 관리자"
                   >
-                    <ShieldCheck className="size-4" />
+                    <ShieldCheck className="size-3.5" />
                   </div>
                 )}
                 <HeaderPill as="span" variant="static">
@@ -132,11 +132,11 @@ export function AppHeader() {
               </div>
               <button
                 onClick={handleLogout}
-                className="flex size-9 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]"
+                className="flex size-8 items-center justify-center rounded-md border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]"
                 aria-label="로그아웃"
                 title="로그아웃"
               >
-                <LogOut className="size-4" />
+                <LogOut className="size-3.5" />
               </button>
             </>
           ) : (

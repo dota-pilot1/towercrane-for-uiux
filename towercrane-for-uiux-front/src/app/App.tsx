@@ -88,10 +88,10 @@ export function AppRoot() {
 
     if (activeSection === 'chatbot') {
       return (
-        <Card className="rounded-[28px] p-6">
-          <div className="flex items-start gap-4">
-            <div className="ui-icon-button-brand rounded-2xl p-3 shrink-0">
-              <Bot className="size-5" />
+        <Card className="rounded-md p-4">
+          <div className="flex items-start gap-3">
+            <div className="ui-icon-button-brand rounded-md p-2 shrink-0">
+              <Bot className="size-4" />
             </div>
             <div className="flex-1">
               <p className="text-sm leading-6 ui-text-secondary">
@@ -111,23 +111,23 @@ export function AppRoot() {
       const users = usersListQuery.data || []
 
       return (
-        <Card className="rounded-[28px] p-8">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <div className="ui-icon-button-brand rounded-2xl p-3">
-                <UserCog className="size-6" />
+        <Card className="rounded-md p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="ui-icon-button-brand rounded-md p-2.5">
+                <UserCog className="size-5" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold ui-text-primary">유저 관리</h2>
-                <p className="text-sm ui-text-secondary">시스템 사용자 권한 및 계정을 관리합니다.</p>
+                <h2 className="text-xl font-bold ui-text-primary">유저 관리</h2>
+                <p className="text-xs ui-text-secondary">시스템 사용자 권한 및 계정을 관리합니다.</p>
               </div>
             </div>
-            <div className="text-xs ui-text-muted uppercase tracking-widest font-medium">
+            <div className="text-[10px] ui-text-muted uppercase tracking-widest font-bold">
               Total {users.length} Users
             </div>
           </div>
 
-          <div className="ui-panel-soft overflow-hidden rounded-3xl">
+          <div className="ui-panel-soft overflow-hidden rounded-md">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="ui-panel-soft border-b">
@@ -153,7 +153,7 @@ export function AppRoot() {
                       <td className="px-6 py-4 text-sm ui-text-secondary">{u.email}</td>
                       <td className="px-6 py-4 text-sm">
                         <span
-                          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                          className={`inline-flex px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase border ${
                             u.role === 'admin'
                               ? 'border-brand-border bg-brand-glass text-brand-primary'
                               : 'border-[var(--surface-border-soft)] bg-[var(--surface-muted)] ui-text-secondary'
@@ -175,25 +175,25 @@ export function AppRoot() {
 
     if (activeSection === 'readme_admin') {
       return (
-        <Card className="rounded-[28px] p-8">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="ui-icon-button-brand rounded-2xl p-3">
-              <FileText className="size-6" />
+        <Card className="rounded-md p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="ui-icon-button-brand rounded-md p-2.5">
+              <FileText className="size-5" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold ui-text-primary">README 관리</h2>
-              <p className="text-sm ui-text-secondary">프로젝트 문서 및 가이드를 관리합니다.</p>
+              <h2 className="text-xl font-bold ui-text-primary">README 관리</h2>
+              <p className="text-xs ui-text-secondary">프로젝트 문서 및 가이드를 관리합니다.</p>
             </div>
           </div>
-          <div className="rounded-3xl border border-dashed border-[var(--surface-border-soft)] bg-[var(--surface-muted)] py-20 text-center">
-            <p className="ui-text-muted">README 편집 기능이 곧 구현될 예정입니다.</p>
+          <div className="rounded-md border border-dashed border-[var(--surface-border-soft)] bg-[var(--surface-muted)] py-16 text-center">
+            <p className="ui-text-muted text-sm">README 편집 기능이 곧 구현될 예정입니다.</p>
           </div>
         </Card>
       )
     }
 
     return (
-      <Card className="rounded-[36px] p-7">
+      <Card className="rounded-md p-6">
         <h1 className="max-w-3xl text-3xl font-semibold tracking-tight ui-text-primary">
           UI/UX Prototype Hub
         </h1>
@@ -213,7 +213,7 @@ export function AppRoot() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-3 sm:px-5 lg:px-6">
+    <div className="min-h-screen px-4 py-1.5 sm:px-5 lg:px-6">
       <div className="mx-auto max-w-[1600px]">
         <AppHeader />
         <main>{renderContent()}</main>
