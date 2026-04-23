@@ -74,7 +74,6 @@ export function useCatalogCategories() {
   return useQuery({
     queryKey: ['catalog', 'categories'],
     queryFn: () => apiRequest<ScenarioCategory[]>('/catalog/categories'),
-    enabled: isAuthenticated,
   })
 }
 
@@ -84,7 +83,7 @@ export function useCategory(categoryId: string) {
   return useQuery({
     queryKey: ['catalog', 'categories', categoryId],
     queryFn: () => apiRequest<ScenarioCategory>(`/catalog/categories/${categoryId}`),
-    enabled: isAuthenticated && Boolean(categoryId),
+    enabled: Boolean(categoryId),
   })
 }
 
@@ -177,7 +176,7 @@ export function useCategoryPrototypes(
         `/catalog/categories/${categoryId}/prototypes?${qs.toString()}`,
       )
     },
-    enabled: isAuthenticated && Boolean(categoryId),
+    enabled: Boolean(categoryId),
     placeholderData: keepPreviousData,
   })
 }
