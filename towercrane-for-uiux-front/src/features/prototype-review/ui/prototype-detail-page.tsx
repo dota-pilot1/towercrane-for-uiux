@@ -2,10 +2,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import {
   ArrowLeft,
+  Check,
   CheckCircle2,
   Clock,
   Copy,
   ExternalLink,
+  GitBranch,
   Globe,
   Image as ImageIcon,
   Info,
@@ -13,6 +15,7 @@ import {
   Lock,
   MessageSquareText,
   Plus,
+  Sparkles,
   Star,
   Tag,
   X,
@@ -135,11 +138,11 @@ export function PrototypeDetailPage({
   if (copyState === 'error') copyButtonText = 'Error'
 
   return (
-    <div className="flex animate-in fade-in slide-in-from-bottom-4 flex-col gap-4">
+    <div className="flex flex-1 flex-col gap-6 overflow-y-auto pr-2 pb-12">
       {/* Expanded Image Modal */}
       {expandedImageUrl && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-10 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-10 animate-in fade-in duration-200"
           onClick={() => setExpandedImageUrl(null)}
         >
           <button 
@@ -151,34 +154,34 @@ export function PrototypeDetailPage({
           <img 
             src={expandedImageUrl} 
             alt="Expanded visual" 
-            className="max-h-full max-w-full rounded-xl object-contain shadow-2xl animate-in zoom-in-95 duration-300" 
+            className="max-h-full max-w-full rounded-2xl object-contain shadow-2xl animate-in zoom-in-95 duration-300" 
           />
         </div>
       )}
 
-      {/* Main Info Card */}
-      <div className="overflow-hidden rounded-3xl border border-surface-border-soft bg-surface-raised shadow-sm p-7">
-        <div className="flex items-start justify-between gap-6">
-          <div className="min-w-0 flex-1 space-y-3">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary">
-              <Tag className="size-3" />
+      {/* Main Info Section */}
+      <div className="ui-panel p-10 flex flex-col gap-8 relative overflow-hidden group">
+        <div className="flex items-start justify-between relative z-10">
+          <div className="min-w-0 flex-1 space-y-4">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
+              <Tag className="size-3.5" />
               {category?.title ?? 'Category'}
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-text-primary leading-tight">
+            <h1 className="text-5xl font-black tracking-tight text-foreground leading-[1.1]">
               {prototype.title}
             </h1>
-            <p className="text-base text-text-secondary leading-relaxed max-w-4xl">
+            <p className="text-lg text-muted-foreground leading-relaxed max-w-4xl">
               {prototype.summary}
             </p>
 
             {/* Tags area */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
               {tags.length > 0 ? (
                 tags.map(tag => (
-                  <div key={tag} className="flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-bold text-text-secondary">
+                  <div key={tag} className="flex items-center gap-2 rounded-full bg-muted border border-border/50 px-4 py-1.5 text-[11px] font-bold text-muted-foreground">
                     #{tag}
                     {canManagePrototype && (
-                      <button onClick={() => removeTag(tag)} className="text-text-muted hover:text-rose-500 transition-colors">
+                      <button onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-destructive transition-colors ml-1">
                         <X className="size-3" />
                       </button>
                     )}
@@ -186,195 +189,190 @@ export function PrototypeDetailPage({
                 ))
               ) : null}
               {canManagePrototype && (
-                <div className="relative group">
-                  <Input 
+                <div className="relative">
+                  <input 
                     value={tagDraft} 
                     onChange={e => setTagDraft(e.target.value)} 
-                    placeholder="Add tag..." 
-                    className="h-7 w-24 rounded-full px-3 text-[10px] transition-all focus:w-32" 
+                    placeholder="+ Tag..." 
+                    className="h-8 w-24 rounded-full border border-dashed border-border bg-transparent px-4 text-[11px] font-medium transition-all focus:w-32 focus:border-primary focus:border-solid outline-none" 
                     onKeyDown={e => e.key === 'Enter' && addTag()} 
                   />
-                  <button onClick={addTag} className="absolute right-2 top-1.5 text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Plus className="size-3.5" />
-                  </button>
                 </div>
               )}
             </div>
-
-            <div className="mt-6 flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 rounded-full bg-brand-primary px-3.5 py-1.5 text-[10px] font-black uppercase text-white shadow-sm shadow-brand-primary/20">
-                <span className="size-1.5 rounded-full bg-white animate-pulse" />
-                {prototype.status}
-              </div>
-              <div className="flex items-center gap-1.5 rounded-full border border-surface-border bg-surface-muted/50 px-3.5 py-1.5 text-[10px] font-bold text-text-muted">
-                {prototype.visibility === 'public' ? <Globe className="size-3" /> : <Lock className="size-3" />}
-                {prototype.visibility}
-              </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-amber-500 px-3.5 py-1.5 text-[10px] font-black text-white shadow-sm shadow-amber-500/20">
-                <Star className="size-3 fill-white" />
-                {prototype.avgRating.toFixed(1)}
-              </div>
-            </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="secondary"
+          <div className="flex shrink-0 items-center gap-3">
+            <button
               onClick={handleCopyLink}
-              className="h-10 min-w-[110px] justify-center rounded-xl bg-surface-muted/50 text-[11px] font-bold transition-all hover:bg-surface-strong"
+              className="size-12 flex items-center justify-center rounded-2xl bg-background border border-border text-muted-foreground hover:text-foreground shadow-sm transition-all hover:scale-105 active:scale-95"
+              title={copyButtonText}
             >
-              <Copy className="mr-2 size-3.5" />
-              {copyButtonText}
-            </Button>
+              <Copy className="size-5" />
+            </button>
             {canManagePrototype && (
               <>
                 <EditPrototypeDialog
                   categoryId={prototype.categoryId}
                   prototype={prototype}
                   asIcon
-                  className="h-10 w-10 rounded-xl"
+                  className="size-12 rounded-2xl border-border!"
                 />
                 <DeletePrototypeButton
                   categoryId={prototype.categoryId}
                   prototypeId={prototype.id}
                   asIcon
-                  className="h-10 w-10 rounded-xl"
+                  className="size-12 rounded-2xl border-border!"
                 />
               </>
             )}
-            <Button
-              variant="secondary"
+            <button
               onClick={onBack}
-              size="icon"
-              className="h-10 w-10 rounded-xl bg-surface-muted/50"
+              className="size-12 flex items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:translate-x-1 active:scale-95"
             >
-              <ArrowLeft className="size-4" />
-            </Button>
+              <ArrowLeft className="size-5" />
+            </button>
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-2">
-          {prototype.repoUrl && (
-            <a href={prototype.repoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-surface-border-soft bg-surface-muted px-3 py-1.5 text-[10px] font-bold text-text-primary transition-all hover:bg-surface-strong">
-              <ExternalLink className="size-3 text-text-muted" /> Source
-            </a>
-          )}
-          {prototype.figmaUrl && (
-            <a href={prototype.figmaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-surface-border-soft bg-surface-muted px-3 py-1.5 text-[10px] font-bold text-text-primary transition-all hover:bg-surface-strong">
-              <ExternalLink className="size-3 text-text-muted" /> Design
-            </a>
-          )}
-          {prototype.demoUrl && (
-            <a href={prototype.demoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-brand-border bg-brand-glass px-4 py-1.5 text-[10px] font-black text-brand-primary transition-all hover:bg-brand-primary hover:text-white">
-              <Globe className="size-3" /> Live Preview
-            </a>
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-6 pt-4 border-t border-border/50">
+          <div className="flex items-center gap-4">
+             <div className="flex items-center gap-2.5 rounded-full bg-primary px-5 py-2 text-[11px] font-black uppercase text-primary-foreground shadow-xl shadow-primary/15">
+                <span className="size-1.5 rounded-full bg-primary-foreground animate-pulse" />
+                {prototype.status}
+              </div>
+              <div className="flex items-center gap-2 rounded-full border border-border bg-background px-5 py-2 text-[11px] font-bold text-muted-foreground">
+                {prototype.visibility === 'public' ? <Globe className="size-3.5" /> : <Lock className="size-3.5" />}
+                {prototype.visibility}
+              </div>
+              {prototype.reviewCount > 0 && (
+                <div className="flex items-center gap-1.5 rounded-full bg-primary/5 border border-primary/10 px-5 py-2 text-[11px] font-bold text-primary">
+                  <Star className="size-3.5 fill-primary" />
+                  {prototype.avgRating.toFixed(1)}
+                  <span className="text-primary/50 font-medium font-mono ml-1">({prototype.reviewCount})</span>
+                </div>
+              )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {prototype.repoUrl && (
+              <a href={prototype.repoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 rounded-xl border border-border bg-background px-6 py-2.5 text-xs font-bold text-foreground transition-all hover:bg-muted active:scale-95 shadow-sm">
+                <GitBranch className="size-4 text-muted-foreground" /> Source Code
+              </a>
+            )}
+            {prototype.figmaUrl && (
+              <a href={prototype.figmaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 rounded-xl border border-border bg-background px-6 py-2.5 text-xs font-bold text-foreground transition-all hover:bg-muted active:scale-95 shadow-sm">
+                <Sparkles className="size-4 text-muted-foreground" /> Design Spec
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Separate Visuals Card */}
-      <div className="rounded-3xl border border-surface-border-soft bg-surface-raised p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 text-[10px] font-black uppercase tracking-widest text-text-primary">
-            <div className="flex size-7 items-center justify-center rounded-lg bg-brand-glass text-brand-primary">
-              <ImageIcon className="size-4" />
+      {/* Visuals Section */}
+      <div className="ui-panel p-10">
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/5 text-primary">
+              <ImageIcon className="size-6" />
             </div>
-            Project Visuals
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">Visual Discovery</h3>
+              <div className="text-[10px] font-black underline decoration-primary underline-offset-4 text-primary">PROJECT VISUALS</div>
+            </div>
           </div>
           {prototype.images && prototype.images.length > 0 && (
-            <div className="text-[10px] font-bold text-text-muted">
-              {prototype.images.length} images • Click to expand
+            <div className="text-[11px] font-bold text-muted-foreground bg-muted px-4 py-1.5 rounded-full">
+              {prototype.images.length} Imagery Assets
             </div>
           )}
         </div>
         
         {prototype.images && prototype.images.length > 0 ? (
-          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {prototype.images.map((url, i) => (
               <div 
                 key={i} 
-                className="group relative aspect-video cursor-zoom-in overflow-hidden rounded-xl border border-surface-border-soft bg-surface-strong shadow-sm transition-all hover:scale-[1.05] hover:shadow-md hover:ring-2 hover:ring-brand-primary/20"
+                className="group relative aspect-video cursor-zoom-in overflow-hidden rounded-2xl border border-border bg-muted shadow-sm transition-all hover:scale-[1.03] hover:shadow-2xl active:scale-[0.98]"
                 onClick={() => setExpandedImageUrl(url)}
               >
                 <img src={url} alt="" className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/5" />
+                <div className="absolute inset-0 bg-primary/0 transition-colors group-hover:bg-primary/5" />
               </div>
             ))}
           </div>
         ) : (
-          <div className="flex h-32 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-surface-border-soft bg-surface-muted/20 text-[11px] font-medium text-text-muted/50">
-            <ImageIcon className="mb-2 size-5 opacity-20" />
-            No images uploaded yet
+          <div className="flex h-48 w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border bg-muted/20 text-xs font-bold text-muted-foreground/30">
+            <ImageIcon className="mb-3 size-10 opacity-10" />
+            이미지 데이터가 아직 업로드되지 않았습니다
           </div>
         )}
       </div>
 
-      <div className="grid min-h-[500px] gap-4 xl:grid-cols-2">
-        <section className="flex flex-col rounded-3xl border border-surface-border-soft bg-surface-raised p-6 shadow-sm">
-           <div className="mb-6 flex items-center justify-between">
-            <h3 className="flex items-center gap-2.5 text-xs font-black uppercase tracking-widest text-text-primary">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-brand-glass text-brand-primary">
-                <CheckCircle2 className="size-4" />
+      <div className="grid gap-8 lg:grid-cols-2">
+        <section className="flex flex-col ui-panel p-10 bg-muted/10 border-none">
+           <div className="mb-10 flex items-center justify-between">
+            <h3 className="flex items-center gap-4 text-xs font-black uppercase tracking-widest text-muted-foreground">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-background border border-border text-primary shadow-sm">
+                <CheckCircle2 className="size-6" />
               </div>
-              Project Checklist
+              Project Roadmap
             </h3>
           </div>
-          <div className="flex-1 space-y-6 overflow-y-auto pr-1">
-            <div className="space-y-2.5">
-              {checklist.map((item, i) => {
-                const checked = item.startsWith('[x] ')
-                return (
-                  <div key={i} className="group flex items-center gap-3 rounded-2xl bg-surface-muted/30 p-3.5 transition-all hover:bg-surface-muted/60">
-                    <button onClick={() => toggleChecklistItem(i)} className={`flex size-5.5 items-center justify-center rounded-lg border-2 transition-all ${checked ? 'border-brand-primary bg-brand-primary text-white shadow-sm shadow-brand-primary/20' : 'border-surface-border bg-white hover:border-brand-primary/50'}`}>
-                      <CheckCircle2 className={`size-3.5 ${checked ? 'opacity-100' : 'opacity-0'}`} />
-                    </button>
-                    <span className={`text-[13px] font-medium flex-1 ${checked ? 'text-text-muted line-through' : 'text-text-secondary'}`}>
-                      {checked ? item.slice(4) : item}
-                    </span>
-                    {canManagePrototype && (
-                      <button onClick={() => removeChecklistItem(i)} className="opacity-0 text-text-muted hover:text-rose-500 transition-all group-hover:opacity-100">
-                        <X className="size-4" />
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-              {canManagePrototype && (
-                <div className="relative mt-4">
-                  <Input 
-                    value={checklistDraft} 
-                    onChange={e => setChecklistDraft(e.target.value)} 
-                    placeholder="Add a new task..." 
-                    className="h-12 rounded-2xl border-surface-border-soft bg-surface-muted/20 px-4 transition-all focus:bg-white" 
-                    onKeyDown={e => e.key === 'Enter' && addChecklistItem()} 
-                  />
-                  <button onClick={addChecklistItem} className="absolute right-3.5 top-3.5 text-brand-primary hover:scale-110 transition-transform">
-                    <Plus className="size-5" />
+          <div className="flex-1 space-y-4">
+            {checklist.map((item, i) => {
+              const checked = item.startsWith('[x] ')
+              return (
+                <div key={i} className="group flex items-center gap-4 rounded-2xl bg-background p-5 border border-border/40 transition-all hover:shadow-md hover:border-primary/20">
+                  <button onClick={() => toggleChecklistItem(i)} className={`flex size-7 items-center justify-center rounded-xl border-2 transition-all ${checked ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/25' : 'border-border bg-muted/30 hover:border-primary/40'}`}>
+                    <Check className={`size-4 ${checked ? 'opacity-100' : 'opacity-0'}`} />
                   </button>
+                  <span className={`text-base font-medium flex-1 ${checked ? 'text-muted-foreground line-through opacity-50' : 'text-foreground'}`}>
+                    {checked ? item.slice(4) : item}
+                  </span>
+                  {canManagePrototype && (
+                    <button onClick={() => removeChecklistItem(i)} className="opacity-0 text-muted-foreground hover:text-destructive transition-all group-hover:opacity-100">
+                      <X className="size-5" />
+                    </button>
+                  )}
                 </div>
-              )}
-            </div>
+              )
+            })}
+            {canManagePrototype && (
+              <div className="relative mt-8">
+                <input 
+                  value={checklistDraft} 
+                  onChange={e => setChecklistDraft(e.target.value)} 
+                  placeholder="New goal..." 
+                  className="h-16 w-full rounded-2xl bg-background border border-dashed border-border px-8 text-sm font-medium transition-all focus:border-primary focus:border-solid focus:ring-4 focus:ring-primary/5 outline-none" 
+                  onKeyDown={e => e.key === 'Enter' && addChecklistItem()} 
+                />
+                <button onClick={addChecklistItem} className="absolute right-4 top-4 size-8 flex items-center justify-center rounded-xl bg-primary text-primary-foreground hover:scale-105 transition-transform">
+                  <Plus className="size-5" />
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
-        <section className="flex flex-col rounded-3xl border border-surface-border-soft bg-surface-raised p-6 shadow-sm">
-           <div className="mb-6 flex items-center justify-between">
-            <h3 className="flex items-center gap-2.5 text-xs font-black uppercase tracking-widest text-text-primary">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-brand-glass text-brand-primary">
-                <MessageSquareText className="size-4" />
+        <section className="flex flex-col ui-panel p-10">
+           <div className="mb-10 flex items-center justify-between">
+            <h3 className="flex items-center gap-4 text-xs font-black uppercase tracking-widest text-muted-foreground">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/5 text-primary">
+                <MessageSquareText className="size-6" />
               </div>
-              User Feedback
+              Peer Reviews
             </h3>
           </div>
           <div className="flex flex-1 flex-col overflow-hidden">
-             <div className="mb-4 grid grid-cols-2 gap-3">
-               <div className="rounded-2xl border border-brand-border bg-brand-glass p-3 text-center">
-                <div className="text-[9px] font-black uppercase tracking-widest text-brand-primary opacity-50">Score</div>
-                <div className="text-2xl font-black text-brand-primary">{prototype.avgRating.toFixed(1)}</div>
+             <div className="mb-8 grid grid-cols-2 gap-4">
+               <div className="rounded-2xl bg-primary/5 border border-primary/10 p-5 text-center">
+                <div className="text-[10px] font-black uppercase tracking-widest text-primary opacity-60 mb-2">Health Score</div>
+                <div className="text-4xl font-black text-primary">{prototype.avgRating.toFixed(1)}</div>
               </div>
-               <div className="rounded-2xl border border-surface-border-soft bg-surface-muted p-3 text-center">
-                <div className="text-[9px] font-black uppercase tracking-widest text-text-muted">Volume</div>
-                <div className="text-2xl font-black text-text-primary">{prototype.reviewCount}</div>
+               <div className="rounded-2xl bg-muted p-5 text-center">
+                <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60 mb-2">Total Feedback</div>
+                <div className="text-4xl font-black text-foreground">{prototype.reviewCount}</div>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto pr-1">

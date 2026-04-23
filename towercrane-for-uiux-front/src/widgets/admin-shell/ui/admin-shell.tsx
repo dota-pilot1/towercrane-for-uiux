@@ -97,6 +97,7 @@ export function AdminShell() {
     }
   }, [fetchedCategories])
 
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
   const currentUserId = useSessionStore((state) => state.userId)
   const userRole = useSessionStore((state) => state.userRole)
   const activeCategoryId = useUiStore((state) => state.activeCategoryId)
@@ -226,44 +227,82 @@ export function AdminShell() {
   } as const
 
   return (
-    <div className="pb-4">
-      <div className="grid min-h-[calc(100vh-8rem)] gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <Card className="overflow-hidden rounded-lg">
+    <div className="pb-8 bg-background">
+      <div className="grid min-h-[calc(100vh-8rem)] gap-6 lg:grid-cols-[280px_minmax(0,1fr)] max-w-[1600px] mx-auto px-4">
+        <div className="ui-panel overflow-hidden border-none shadow-none bg-muted/30">
           <ScrollArea.Root className="h-full">
-            <ScrollArea.Viewport className="h-full p-5">
-              <div className="mb-4">
-                <AddCategoryDialog />
-              </div>
+            <ScrollArea.Viewport className="h-full p-4">
+              {isAuthenticated && (
+                <div className="mb-4">
+                  <AddCategoryDialog />
+                </div>
+              )}
 
-              <nav className="space-y-2">
+              <nav className="space-y-1.5">
                 {isLoading ? (
-                  <div className="rounded-md border border-[var(--surface-border)] bg-[var(--surface-muted)] px-4 py-6 text-sm ui-text-secondary">
-                    카테고리 로딩 중...
+                  <div className="rounded-xl border border-border/40 bg-background/50 px-4 py-8 text-xs font-bold text-muted-foreground/60 text-center">
+                    데이터를 가져오는 중...
                   </div>
                 ) : null}
 
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={categories.map((c) => c.id)}
-                    strategy={verticalListSortingStrategy}
+                {isAuthenticated ? (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
                   >
-                    <nav className="space-y-2">
-                      {categories.map((item) => (
-                        <SortableCategoryItem
-                          key={item.id}
-                          item={item}
-                          isActive={activeCategoryId === item.id}
-                          icon={iconMap[item.iconKey] || Package}
-                          onSelect={() => setActiveCategory(item.id)}
-                        />
-                      ))}
-                    </nav>
-                  </SortableContext>
-                </DndContext>
+                    <SortableContext
+                      items={categories.map((c) => c.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <nav className="space-y-2">
+                        {categories.map((item) => (
+                          <SortableCategoryItem
+                            key={item.id}
+                            item={item}
+                            isActive={activeCategoryId === item.id}
+                            icon={iconMap[item.iconKey] || Package}
+                            onSelect={() => setActiveCategory(item.id)}
+                            isSortable={true}
+                          />
+                        ))}
+                      </nav>
+                    </SortableContext>
+                  </DndContext>
+                ) : (
+                  <div className="space-y-2">
+                    {categories.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setActiveCategory(item.id)}
+                        className={`group relative flex w-full items-center gap-2 overflow-hidden rounded-[10px] border transition-all duration-200 px-4 py-3 ${
+                          activeCategoryId === item.id
+                            ? 'bg-brand-glass text-brand-primary border-brand-border/50 shadow-sm'
+                            : 'border-transparent text-text-muted hover:bg-surface-muted/50 hover:text-text-primary'
+                        }`}
+                      >
+                        {activeCategoryId === item.id && (
+                          <div className="absolute left-0 top-[15%] h-[70%] w-1 rounded-r-full bg-brand-primary" />
+                        )}
+                        <div className="shrink-0">
+                          {(() => {
+                            const IconComp = iconMap[item.iconKey as keyof typeof iconMap] || Package
+                            return <IconComp className="size-4" />
+                          })()}
+                        </div>
+                        <div className="min-w-0 flex-1 truncate text-sm font-medium">
+                          {item.title}
+                        </div>
+                        <span className={`shrink-0 rounded-[6px] px-2 py-0.5 text-[10px] font-black ${
+                          activeCategoryId === item.id ? 'bg-brand-primary text-text-on-brand' : 'bg-surface-muted text-text-muted border border-surface-border-soft/50'
+                        }`}>
+                          {item.prototypes.length}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </nav>
 
             </ScrollArea.Viewport>
@@ -274,11 +313,11 @@ export function AdminShell() {
               <ScrollArea.Thumb className="relative flex-1 rounded-full bg-surface-muted" />
             </ScrollArea.Scrollbar>
           </ScrollArea.Root>
-        </Card>
+        </div>
 
         <div className="flex flex-col min-w-0 min-h-0">
           {isError ? (
-            <Card className="mb-4 rounded-[14px] border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-100">
+            <Card className="mb-4 rounded-[14px] border border-danger-border bg-danger-glass p-4 text-sm text-danger-500">
               카테고리 데이터를 불러오지 못했습니다. 서버(`:3000`) 상태를 확인하세요.
             </Card>
           ) : null}
@@ -296,53 +335,66 @@ export function AdminShell() {
               ) : (
                 <>
               {/* Category Detail Header */}
-              <Card className="shrink-0 rounded-lg p-5">
+              <div className="ui-panel p-6 sm:p-8">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="ui-text-primary text-[2rem] font-bold tracking-tight">
+                    <h2 className="text-text-primary text-3xl font-extrabold tracking-tight">
                       {selectedCategory.title}
                     </h2>
-                    <p className="mt-2 max-w-2xl text-sm leading-relaxed ui-text-secondary">
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
                       {selectedCategory.summary}
                     </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-4 flex flex-wrap gap-2 text-brand-primary font-bold">
                       {selectedCategory.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] ui-text-secondary font-medium"
+                          className="rounded-full bg-brand-glass border border-brand-border/50 px-3 py-1 text-[11px] font-bold"
                         >
                           #{tag}
                         </span>
                       ))}
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <EditCategoryDialog category={selectedCategory} asIcon />
-                    <DeleteCategoryButton
-                      categoryId={selectedCategory.id}
-                      fallbackCategoryId={fallbackCategoryId}
-                      asIcon
-                    />
-                  </div>
+                  {isAuthenticated && (
+                    <div className="flex gap-2">
+                      <EditCategoryDialog category={selectedCategory} asIcon />
+                      <DeleteCategoryButton
+                        categoryId={selectedCategory.id}
+                        fallbackCategoryId={fallbackCategoryId}
+                        asIcon
+                      />
+                    </div>
+                  )}
                 </div>
-              </Card>
+              </div>
 
               {/* Prototype Timeline List */}
-              <Card className="flex-1 min-h-0 overflow-y-auto rounded-lg p-5">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3 ui-text-secondary font-medium">
-                    <GitBranch className="size-4 text-brand-primary" />
-                    <span className="text-[11px] uppercase tracking-widest">Prototype Entries</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex h-9 items-center rounded-md border border-[var(--surface-border)] bg-[var(--surface-muted)] px-3 text-[11px] font-semibold ui-text-secondary uppercase tracking-widest">
-                      {totalCount} prototypes
+              <div className="ui-panel flex-1 min-h-0 overflow-y-auto p-8">
+                <div className="mb-6 flex items-center justify-between gap-2 border-b border-border/50 pb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-primary/5 text-primary">
+                      <GitBranch className="size-5" />
                     </div>
-                    <AddPrototypeDialog
-                      categoryId={selectedCategory.id}
-                      categoryTitle={selectedCategory.title}
-                      asIcon
-                    />
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">
+                        Infrastructure
+                      </h3>
+                      <div className="text-[10px] font-black underline decoration-primary underline-offset-4 text-primary">
+                        PROTOTYPE LIBRARY
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-[11px] font-bold text-text-muted bg-surface-muted border border-surface-border-soft px-3 py-1.5 rounded-[10px]">
+                      {totalCount} Items
+                    </div>
+                    {isAuthenticated && (
+                      <AddPrototypeDialog
+                        categoryId={selectedCategory.id}
+                        categoryTitle={selectedCategory.title}
+                        asIcon
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -438,7 +490,7 @@ export function AdminShell() {
                             ) : null}
                           </div>
                           <div className="flex items-center gap-2">
-                            {(selectedCategory.userId === currentUserId || userRole === 'admin') && (
+                            {isAuthenticated && (selectedCategory.userId === currentUserId || userRole === 'admin') && (
                               <>
                                 <EditPrototypeDialog
                                   categoryId={selectedCategory.id}
@@ -504,7 +556,7 @@ export function AdminShell() {
                     </div>
                   </div>
                 ) : null}
-              </Card>
+              </div>
                 </>
               )}
             </div>
@@ -572,14 +624,14 @@ function SortableCategoryItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative flex w-full items-center gap-2 overflow-hidden rounded-md transition-all duration-200 ${
+      className={`group relative flex w-full items-center gap-2 overflow-hidden rounded-[10px] border transition-all duration-200 ${
         isActive
-          ? 'bg-brand-glass ui-text-primary shadow-sm ring-1 ring-brand-border/50'
-          : 'bg-surface-muted/50 ui-text-secondary hover:bg-surface-muted'
+          ? 'bg-brand-glass text-brand-primary border-brand-border/50 shadow-sm translate-x-0.5'
+          : 'border-transparent text-text-muted hover:bg-surface-muted/50 hover:text-text-primary'
       }`}
     >
       {isActive && (
-        <div className="absolute left-0 top-0 h-full w-1 bg-brand-primary" />
+        <div className="absolute left-0 top-[15%] h-[70%] w-1 rounded-r-full bg-brand-primary" />
       )}
       <button
         type="button"
@@ -602,8 +654,8 @@ function SortableCategoryItem({
             {item.title}
           </div>
         </div>
-        <span className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-black transition-colors ${
-          isActive ? 'bg-brand-primary text-text-on-brand' : 'bg-surface-muted text-text-muted'
+        <span className={`shrink-0 rounded-[6px] px-2 py-0.5 text-[10px] font-black transition-colors ${
+          isActive ? 'bg-brand-primary text-text-on-brand' : 'bg-surface-muted text-text-muted border border-surface-border-soft/50'
         }`}>
           {item.prototypes.length}
         </span>

@@ -34,7 +34,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="glass-panel sticky top-3 z-30 mb-3 rounded-lg px-5 py-2">
+    <header className="glass-panel mb-3 rounded-lg px-5 py-2">
       <div className="flex items-center justify-between gap-4">
         <button
           type="button"
@@ -42,16 +42,14 @@ export function AppHeader() {
           onClick={() => handleNavigation('prototype')}
         >
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-md border border-brand-border bg-brand-glass shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
-              <span className="text-sm font-black tracking-[-0.06em] text-brand-primary">
-                TC
-              </span>
+            <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+              <span className="text-sm font-black tracking-tighter">TC</span>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-brand-primary/80">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-1">
                 Towercrane
               </p>
-              <p className="text-[15px] font-extrabold leading-none ui-text-primary">
+              <p className="text-[15px] font-black leading-none text-foreground">
                 Prototype Console
               </p>
             </div>
@@ -134,7 +132,7 @@ export function AppHeader() {
               </div>
               <button
                 onClick={handleLogout}
-                className="flex size-[34px] items-center justify-center rounded-md border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]"
+                className="flex size-9 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]"
                 aria-label="로그아웃"
                 title="로그아웃"
               >

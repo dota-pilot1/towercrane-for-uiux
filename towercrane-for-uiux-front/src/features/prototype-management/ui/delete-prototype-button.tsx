@@ -44,7 +44,7 @@ export function DeletePrototypeButton({
   return (
     <Button
       variant="ghost"
-      className="h-8 px-3 text-rose-200 hover:bg-rose-400/10"
+      className="h-8 px-3 text-danger-500 hover:bg-danger-glass"
       onClick={() => void handleClick()}
       disabled={deletePrototype.isPending}
     >

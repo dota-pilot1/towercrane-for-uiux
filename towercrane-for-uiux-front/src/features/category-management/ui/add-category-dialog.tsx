@@ -50,15 +50,15 @@ export function AddCategoryDialog({ children }: AddCategoryDialogProps) {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {children ?? (
-          <Button className="w-full">
+          <Button variant="secondary" className="w-full border-dashed border shadow-none bg-surface-muted/30 text-text-secondary hover:text-text-primary hover:border-brand-primary/50 transition-colors">
             <Plus className="mr-2 size-4" />
             카테고리 추가
           </Button>
         )}
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 ui-overlay backdrop-blur-sm" />
-        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-6">
+        <Dialog.Overlay className="fixed inset-0 ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-6 shadow-2xl border border-surface-border-soft">
           <Dialog.Title className="text-xl font-semibold text-text-primary">
             사이드바 카테고리 추가
           </Dialog.Title>

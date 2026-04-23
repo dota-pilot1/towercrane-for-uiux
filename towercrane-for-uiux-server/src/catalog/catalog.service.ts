@@ -24,7 +24,7 @@ export class CatalogService {
       .from(categoriesTable)
       .orderBy(asc(categoriesTable.orderIdx));
 
-    const categories = (userRole === 'admin'
+    const categories = (userRole === 'admin' || userRole === 'guest'
       ? query
       : query.where(eq(categoriesTable.userId, userId))
     ).all();
@@ -58,7 +58,7 @@ export class CatalogService {
       .select()
       .from(categoriesTable);
 
-    const category = (userRole === 'admin'
+    const category = (userRole === 'admin' || userRole === 'guest'
       ? categoryQuery.where(eq(categoriesTable.id, categoryId))
       : categoryQuery.where(
           and(eq(categoriesTable.id, categoryId), eq(categoriesTable.userId, userId)),
@@ -381,7 +381,7 @@ export class CatalogService {
       .select({ id: categoriesTable.id })
       .from(categoriesTable);
 
-    const category = (userRole === 'admin'
+    const category = (userRole === 'admin' || userRole === 'guest'
       ? categoryQuery.where(eq(categoriesTable.id, categoryId))
       : categoryQuery.where(
           and(eq(categoriesTable.id, categoryId), eq(categoriesTable.userId, userId)),
@@ -414,7 +414,7 @@ export class CatalogService {
         eq(prototypesTable.categoryId, categoriesTable.id),
       );
 
-    const linkedPrototype = (userRole === 'admin'
+    const linkedPrototype = (userRole === 'admin' || userRole === 'guest'
       ? linkedPrototypeQuery.where(eq(categoriesTable.id, categoryId))
       : linkedPrototypeQuery.where(
           and(eq(categoriesTable.id, categoryId), eq(categoriesTable.userId, userId)),

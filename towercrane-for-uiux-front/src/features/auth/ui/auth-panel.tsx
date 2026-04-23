@@ -114,14 +114,14 @@ export function AuthPanel({ mode }: AuthPanelProps) {
           <label className="block space-y-2">
             <span className="text-sm text-text-secondary">이름</span>
             <Input {...register('name')} placeholder="홍길동" />
-            {errors.name ? <span className="text-sm text-rose-300">{errors.name.message}</span> : null}
+            {errors.name ? <span className="text-sm text-destructive">{errors.name.message}</span> : null}
           </label>
         ) : null}
 
         <label className="block space-y-2">
           <span className="text-sm text-text-secondary">이메일</span>
           <Input {...register('email')} placeholder="you@example.com" />
-          {errors.email ? <span className="text-sm text-rose-300">{errors.email.message}</span> : null}
+          {errors.email ? <span className="text-sm text-destructive">{errors.email.message}</span> : null}
         </label>
 
         <label className="block space-y-2">
@@ -142,7 +142,7 @@ export function AuthPanel({ mode }: AuthPanelProps) {
             </button>
           </div>
           {errors.password ? (
-            <span className="text-sm text-rose-300">{errors.password.message}</span>
+            <span className="text-sm text-destructive">{errors.password.message}</span>
           ) : null}
         </label>
 
@@ -173,7 +173,7 @@ export function AuthPanel({ mode }: AuthPanelProps) {
               </button>
             </div>
             {errors.confirmPassword ? (
-              <span className="text-sm text-rose-300">
+              <span className="text-sm text-destructive">
                 {errors.confirmPassword.message}
               </span>
             ) : null}
@@ -181,7 +181,7 @@ export function AuthPanel({ mode }: AuthPanelProps) {
         ) : null}
 
         {activeMutation.error ? (
-          <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+          <div className="rounded-2xl border border-destructive/20 bg-danger-glass px-4 py-3 text-sm text-destructive">
             {activeMutation.error.message}
           </div>
         ) : null}

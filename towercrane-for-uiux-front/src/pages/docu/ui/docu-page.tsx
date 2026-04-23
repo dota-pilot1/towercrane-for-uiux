@@ -213,7 +213,7 @@ function SectionSidebar({
   }
 
   return (
-    <Card className="w-60 shrink-0 rounded-[28px] p-5 flex flex-col gap-4 overflow-hidden border border-[var(--surface-border-soft)] bg-[var(--surface-muted)]">
+    <div className="w-64 shrink-0 ui-panel p-5 flex flex-col gap-5 overflow-hidden bg-muted/40 border-none">
       <div>
         <button
           onClick={onBack}
@@ -325,7 +325,7 @@ function SectionSidebar({
           </div>
         ) : null}
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -424,7 +424,7 @@ function SortableSectionItem({
         </button>
         <button
           onClick={onDelete}
-          className="p-1 ui-text-secondary hover:text-rose-400"
+          className="p-1 ui-text-secondary hover:text-danger-500"
           title="삭제"
         >
           <Trash2 className="size-3" />
@@ -506,7 +506,7 @@ function DocumentSidebar({
   }
 
   return (
-    <Card className="w-72 shrink-0 rounded-[28px] p-5 flex flex-col gap-4 overflow-hidden border border-[var(--surface-border-soft)] bg-[var(--surface-muted)]">
+    <div className="w-72 shrink-0 ui-panel p-5 flex flex-col gap-5 overflow-hidden bg-muted/40 border-none">
       <div className="flex items-center justify-between">
         <div className="text-sm font-bold ui-text-primary tracking-wide truncate">
           {section?.title ?? '섹션을 선택하세요'}
@@ -606,7 +606,7 @@ function DocumentSidebar({
           </div>
         ) : null}
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -705,7 +705,7 @@ function SortableDocumentItem({
         </button>
         <button
           onClick={onDelete}
-          className="p-1 ui-text-secondary hover:text-rose-400"
+          className="p-1 ui-text-secondary hover:text-danger-500"
           title="삭제"
         >
           <Trash2 className="size-3" />
@@ -761,10 +761,10 @@ function MainPanel({
   }
 
   return (
-    <Card className="flex-1 rounded-[28px] p-0 flex flex-col min-w-0 overflow-hidden shadow-2xl relative">
+    <div className="flex-1 ui-panel p-0 flex flex-col min-w-0 overflow-hidden shadow-sm relative">
       {activeDoc ? (
         <>
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-[var(--surface-border-soft)] bg-[var(--surface-muted)] backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-3 px-8 py-5 border-b border-border bg-background/50 backdrop-blur-md shrink-0">
             <div className="flex-1 min-w-0">
               <div className="text-[10px] uppercase tracking-widest text-brand-primary/70 font-bold mb-1">
                 {section?.title}
@@ -849,6 +849,6 @@ function MainPanel({
           </p>
         </div>
       )}
-    </Card>
+    </div>
   )
 }

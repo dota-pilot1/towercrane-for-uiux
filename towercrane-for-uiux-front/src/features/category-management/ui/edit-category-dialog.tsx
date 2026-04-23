@@ -67,8 +67,8 @@ export function EditCategoryDialog({ category, asIcon }: EditCategoryDialogProps
         )}
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 ui-overlay backdrop-blur-sm" />
-        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-6">
+        <Dialog.Overlay className="fixed inset-0 ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-6 shadow-2xl border border-surface-border-soft">
           <Dialog.Title className="text-xl font-semibold text-text-primary">
             카테고리 수정
           </Dialog.Title>

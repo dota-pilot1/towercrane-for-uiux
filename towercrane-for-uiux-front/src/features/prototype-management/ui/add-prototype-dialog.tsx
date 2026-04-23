@@ -117,7 +117,7 @@ export function AddPrototypeDialog({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {asIcon ? (
-          <Button size="icon" tone="brand" title="프로토타입 추가">
+          <Button size="icon" variant="secondary" className="border-dashed bg-surface-muted/50 hover:bg-surface-raised hover:text-brand-primary transition-colors" title="프로토타입 추가">
             <Plus className="size-4" />
           </Button>
         ) : (
@@ -128,10 +128,10 @@ export function AddPrototypeDialog({
         )}
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 ui-overlay backdrop-blur-md" />
+        <Dialog.Overlay className="fixed inset-0 ui-overlay" />
         <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[95vw] max-w-[1280px] max-h-[85vh] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-0 flex flex-col overflow-hidden shadow-2xl z-50 border border-surface-border-soft">
           {/* Header */}
-          <div className="flex shrink-0 items-center justify-between px-8 py-5 border-b border-surface-border-soft bg-surface-muted/50">
+          <div className="flex shrink-0 items-center justify-between px-8 py-5 border-b border-surface-border-soft bg-surface-muted/30">
             <div>
               <Dialog.Title className="text-xl font-bold text-text-primary">
                 새 프로토타입 작성
@@ -165,7 +165,7 @@ export function AddPrototypeDialog({
                   <div className="space-y-1.5">
                     <span className="text-[13px] font-medium text-text-secondary ml-1">이름</span>
                     <Input {...register('title')} placeholder="예: Approval Flow Prototype" className="h-11" />
-                    {errors.title ? <p className="text-[11px] text-rose-400 font-medium ml-1">{errors.title.message}</p> : null}
+                    {errors.title ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.title.message}</p> : null}
                   </div>
 
                   <div className="space-y-1.5">
@@ -174,20 +174,20 @@ export function AddPrototypeDialog({
                       <GitBranch className="pointer-events-none absolute left-3.5 top-3.5 size-4 text-text-muted" />
                       <Input {...register('repoUrl')} className="pl-10 h-11" />
                     </div>
-                    {errors.repoUrl ? <p className="text-[11px] text-rose-400 font-medium ml-1">{errors.repoUrl.message}</p> : null}
+                    {errors.repoUrl ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.repoUrl.message}</p> : null}
                   </div>
 
                   <div className="space-y-1.5">
                     <span className="text-[13px] font-medium text-text-secondary ml-1">Figma 링크</span>
                     <Input {...register('figmaUrl')} placeholder="https://www.figma.com/file/..." className="h-11" />
-                    {errors.figmaUrl ? <p className="text-[11px] text-rose-400 font-medium ml-1">{errors.figmaUrl.message}</p> : null}
+                    {errors.figmaUrl ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.figmaUrl.message}</p> : null}
                   </div>
 
                   <div className="space-y-1.5">
                     <span className="text-[13px] font-medium text-text-secondary ml-1">설명</span>
                     <Input {...register('summary')} placeholder="이 프로토타입에서 다루는 범위를 적습니다" className="h-11" />
                     {errors.summary ? (
-                      <p className="text-[11px] text-rose-400 font-medium ml-1">{errors.summary.message}</p>
+                      <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.summary.message}</p>
                     ) : null}
                   </div>
                 </div>
@@ -240,7 +240,7 @@ export function AddPrototypeDialog({
                 </div>
                 
                 <div className="flex-1 flex flex-col gap-4">
-                  <div className="flex-1 ui-panel-soft min-h-[300px] rounded-[24px] p-5 bg-surface-muted/10 border-surface-border-soft/50 flex flex-col">
+                  <div className="flex-1 ui-panel-soft min-h-[300px] rounded-[24px] p-5 flex flex-col">
                     <div className="flex-1 overflow-y-auto pr-2 pb-4">
                       {currentImages.length === 0 ? (
                         <div className="h-full min-h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-surface-border-soft rounded-2xl gap-3 text-text-muted">
@@ -256,7 +256,7 @@ export function AddPrototypeDialog({
                               <button
                                 type="button"
                                 onClick={() => removeImage(index)}
-                                className="absolute top-2 right-2 size-7 flex items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:scale-110 shadow-lg"
+                                className="absolute top-2 right-2 size-7 flex items-center justify-center rounded-full bg-black/60 text-text-on-brand opacity-0 group-hover:opacity-100 transition-all hover:bg-danger-500 hover:scale-110 shadow-lg"
                               >
                                 <X className="size-3.5" />
                               </button>
@@ -293,7 +293,7 @@ export function AddPrototypeDialog({
                 </div>
                 
                 <div className="flex-1 flex flex-col gap-4">
-                  <div className="flex-1 ui-panel-soft min-h-[300px] rounded-[24px] p-5 bg-surface-muted/10 border-surface-border-soft/50 flex flex-col">
+                  <div className="flex-1 ui-panel-soft min-h-[300px] rounded-[24px] p-5 flex flex-col">
                     <div className="flex-1 overflow-y-auto pr-2 space-y-2 pb-4">
                       {currentChecklist.length === 0 ? (
                         <div className="h-full min-h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-surface-border-soft rounded-2xl gap-3 text-text-muted">
@@ -310,7 +310,7 @@ export function AddPrototypeDialog({
                             <button
                               type="button"
                               onClick={() => removeChecklistItem(index)}
-                              className="size-6 shrink-0 flex items-center justify-center rounded-md text-text-muted hover:text-rose-500 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                              className="size-6 shrink-0 flex items-center justify-center rounded-md text-text-muted hover:text-danger-500 hover:bg-danger-glass opacity-0 group-hover:opacity-100 transition-all"
                             >
                               <X className="size-3.5" />
                             </button>

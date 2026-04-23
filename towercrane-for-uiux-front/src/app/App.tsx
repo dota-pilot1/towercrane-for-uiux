@@ -79,11 +79,7 @@ export function AppRoot() {
 
   const renderContent = () => {
     if (activeSection === 'prototype') {
-      return isAuthenticated ? (
-        <WorkbenchPage />
-      ) : (
-        <IntroView projectPurposeCards={projectPurposeCards} />
-      )
+      return <WorkbenchPage />
     }
 
     if (activeSection === 'docu') {

@@ -43,7 +43,7 @@ export function ThemeSwitcher() {
           isOpen && 'shadow-[0_0_20px_rgba(15,23,42,0.06)]',
         )}
       >
-        <div className="relative size-4 rounded-full border border-[var(--surface-border)] overflow-hidden">
+        <div className="relative size-4 rounded-full border border-border overflow-hidden">
           <span
             className="absolute inset-0 transition-colors duration-500"
             style={{ backgroundColor: activeTheme.color }}
@@ -53,9 +53,9 @@ export function ThemeSwitcher() {
       </HeaderPill>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 origin-top-right rounded-lg border border-[var(--surface-border)] bg-[var(--surface-strong)] p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in duration-200 z-50">
-          <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest ui-text-muted">
-            Workspace Theme
+        <div className="absolute right-0 top-full mt-4 w-52 origin-top-right rounded-[20px] border border-border bg-background/80 p-2 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 z-50">
+          <p className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+            Appearance
           </p>
           <div className="grid gap-1">
             {themes.map((theme) => (
@@ -67,20 +67,20 @@ export function ThemeSwitcher() {
                   setIsOpen(false)
                 }}
                 className={clsx(
-                  'flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200',
+                  'flex w-full items-center justify-between gap-3 rounded-[14px] px-3 py-2.5 text-sm transition-all duration-300',
                   themeColor === theme.id 
-                    ? 'bg-brand-glass text-brand-primary' 
-                    : 'ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]'
+                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/10' 
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >
                 <div className="flex items-center gap-3">
                   <span
-                    className="size-3.5 rounded-full shadow-sm ring-1 ring-[var(--surface-border)]"
+                    className="size-4 rounded-full shadow-inner ring-2 ring-white/10"
                     style={{ backgroundColor: theme.color }}
                   />
-                  <span className="text-[13px] font-medium">{theme.label}</span>
+                  <span className="text-[13px] font-semibold">{theme.label}</span>
                 </div>
-                {themeColor === theme.id && <Check className="size-3.5" />}
+                {themeColor === theme.id && <Check className="size-4 font-black" />}
               </button>
             ))}
           </div>
