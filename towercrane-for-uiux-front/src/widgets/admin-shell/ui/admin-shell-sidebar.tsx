@@ -42,6 +42,8 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 
 import { AddCategoryDialog } from '../../../features/category-management/ui/add-category-dialog'
+import { DeleteCategoryButton } from '../../../features/category-management/ui/delete-category-button'
+import { EditCategoryDialog } from '../../../features/category-management/ui/edit-category-dialog'
 import { useReorderCategories } from '../../../shared/api/catalog'
 import type { ScenarioCategory } from '../../../shared/config/catalog'
 
@@ -174,18 +176,21 @@ export function AdminShellSidebar({
                           <div className="shrink-0">
                             <Icon className="size-4" />
                           </div>
-                          <div className="min-w-0 flex-1 truncate text-sm font-medium">
-                            {category.title}
-                          </div>
                           <span
-                            className={`shrink-0 rounded-sm px-2 py-0.5 text-[10px] font-black ${
+                            className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-black ${
                               activeCategoryId === category.id
                                 ? 'bg-brand-primary text-text-on-brand'
                                 : 'border border-surface-border-soft/50 bg-surface-muted text-text-muted'
                             }`}
                           >
-                            {category.prototypes.length}
+                            {category.prototypes.length > 0 ? 'ON' : 'OFF'}
                           </span>
+                          <div className="min-w-0 flex-1 truncate text-left">
+                            <div className="truncate text-sm font-bold">{category.title}</div>
+                            <div className="truncate text-[10px] ui-text-muted opacity-70">
+                              {category.summary}
+                            </div>
+                          </div>
                         </button>
                       )
                     })}
@@ -237,7 +242,7 @@ function SortableCategoryItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative flex h-11 w-full items-center gap-3 overflow-hidden rounded-md border transition-all duration-200 ${
+      className={`group relative flex h-14 w-full items-center gap-2 overflow-hidden rounded-md border transition-all duration-200 ${
         isActive
           ? 'translate-x-0.5 border-brand-border/50 bg-brand-glass text-brand-primary shadow-sm'
           : 'border-transparent text-text-muted hover:bg-surface-muted/50 hover:text-text-primary'
@@ -246,41 +251,49 @@ function SortableCategoryItem({
       {isActive ? (
         <div className="absolute left-0 top-[15%] h-[70%] w-1 rounded-r-full bg-brand-primary" />
       ) : null}
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        className={`flex h-full w-9 shrink-0 cursor-grab items-center justify-center transition-colors active:cursor-grabbing ${
-          isActive ? 'text-brand-primary' : 'text-text-muted hover:text-text-primary'
-        }`}
-      >
-        <GripVertical className="size-3.5" />
-      </button>
 
-      <button
-        type="button"
-        onClick={onSelect}
-        className="flex h-full min-w-0 flex-1 items-center gap-3 pr-4 text-left"
-      >
-        <div className="min-w-0 flex-1">
-          <div
-            className={`truncate text-sm transition-all ${
-              isActive ? 'font-black tracking-tight' : 'font-medium'
-            }`}
-          >
-            {item.title}
-          </div>
-        </div>
+      <div className="flex items-center gap-1 pl-2">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className={`flex h-8 w-6 shrink-0 cursor-grab items-center justify-center transition-colors active:cursor-grabbing ${
+            isActive ? 'text-brand-primary' : 'text-text-muted hover:text-text-primary'
+          }`}
+        >
+          <GripVertical className="size-3.5" />
+        </button>
+
         <span
-          className={`shrink-0 rounded-sm px-2 py-0.5 text-[10px] font-black transition-colors ${
+          className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-black transition-colors ${
             isActive
               ? 'bg-brand-primary text-text-on-brand'
               : 'border border-surface-border-soft/50 bg-surface-muted text-text-muted'
           }`}
         >
-          {item.prototypes.length}
+          {item.prototypes.length > 0 ? 'ON' : 'OFF'}
         </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex h-full min-w-0 flex-1 flex-col justify-center py-2 text-left"
+      >
+        <div
+          className={`truncate text-sm transition-all ${
+            isActive ? 'font-black tracking-tight' : 'font-medium'
+          }`}
+        >
+          {item.title}
+        </div>
+        <div className="truncate text-[10px] opacity-60 font-medium">{item.summary}</div>
       </button>
+
+      <div className="flex shrink-0 items-center gap-1 pr-2 transition-opacity">
+        <EditCategoryDialog category={item} asIcon size="sm-icon" />
+        <DeleteCategoryButton categoryId={item.id} asIcon size="sm-icon" />
+      </div>
     </div>
   )
 }

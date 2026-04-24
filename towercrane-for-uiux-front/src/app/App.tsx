@@ -1,5 +1,6 @@
 import { Bot, FileText, GitBranch, UserCog } from 'lucide-react'
 import { useEffect } from 'react'
+import { Toaster } from 'sonner'
 import { useCurrentUser } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
 import { WorkbenchPage } from '../pages/workbench/ui/workbench-page'
@@ -215,6 +216,7 @@ export function AppRoot() {
   return (
     <div className="min-h-screen px-4 py-1.5 sm:px-5 lg:px-6">
       <div className="mx-auto max-w-[1600px]">
+        <Toaster position="top-center" richColors />
         <AppHeader />
         <main>{renderContent()}</main>
       </div>

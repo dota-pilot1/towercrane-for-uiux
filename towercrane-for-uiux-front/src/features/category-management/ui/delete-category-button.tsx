@@ -8,6 +8,7 @@ type DeleteCategoryButtonProps = {
   categoryId: string
   fallbackCategoryId?: string
   asIcon?: boolean
+  size?: 'icon' | 'sm-icon'
 }
 
 const CONFIRM_MESSAGE = '이 카테고리를 삭제할까요? 연결된 프로토타입도 함께 삭제됩니다.'
@@ -16,6 +17,7 @@ export function DeleteCategoryButton({
   categoryId,
   fallbackCategoryId,
   asIcon,
+  size = 'icon',
 }: DeleteCategoryButtonProps) {
   const deleteCategory = useDeleteCategory()
   const setActiveCategory = useUiStore((state) => state.setActiveCategory)
@@ -34,6 +36,7 @@ export function DeleteCategoryButton({
         onConfirm={runDelete}
         confirmMessage={CONFIRM_MESSAGE}
         isPending={deleteCategory.isPending}
+        size={size}
       />
     )
   }

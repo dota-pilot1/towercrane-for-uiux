@@ -6,6 +6,7 @@ import { useForm, Controller, type SubmitHandler } from 'react-hook-form'
 import { z } from 'zod'
 import { useCreatePrototype } from '../../../shared/api/catalog'
 import { Button } from '../../../shared/ui/button'
+import { AddIconButton } from '../../../shared/ui/add-icon-button'
 import { Input } from '../../../shared/ui/input'
 import { Switch } from '../../../shared/ui/switch'
 import { ToggleGroup } from '../../../shared/ui/toggle-group'
@@ -28,12 +29,14 @@ type AddPrototypeDialogProps = {
   categoryId: string
   categoryTitle: string
   asIcon?: boolean
+  size?: 'icon' | 'sm-icon'
 }
 
 export function AddPrototypeDialog({
   categoryId,
   categoryTitle,
   asIcon,
+  size = 'icon',
 }: AddPrototypeDialogProps) {
   const [open, setOpen] = useState(false)
   const createPrototype = useCreatePrototype(categoryId)
@@ -117,9 +120,7 @@ export function AddPrototypeDialog({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {asIcon ? (
-          <Button size="icon" variant="secondary" className="border-dashed bg-surface-muted/50 hover:bg-surface-raised hover:text-brand-primary transition-colors" title="프로토타입 추가">
-            <Plus className="size-4" />
-          </Button>
+          <AddIconButton size={size} title="프로토타입 추가" aria-label="프로토타입 추가" />
         ) : (
           <Button>
             <Plus className="mr-2 size-4" />

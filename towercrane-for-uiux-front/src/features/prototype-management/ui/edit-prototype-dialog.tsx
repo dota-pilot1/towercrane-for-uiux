@@ -31,6 +31,7 @@ type EditPrototypeDialogProps = {
   categoryId: string
   prototype: PrototypeItem
   asIcon?: boolean
+  size?: 'icon' | 'sm-icon'
   className?: string
 }
 
@@ -38,6 +39,7 @@ export function EditPrototypeDialog({
   categoryId,
   prototype,
   asIcon,
+  size = 'icon',
   className,
 }: EditPrototypeDialogProps) {
   const [open, setOpen] = useState(false)
@@ -124,7 +126,7 @@ export function EditPrototypeDialog({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {asIcon ? (
-          <ActionIconButton icon={Pencil} title="수정" className={className} />
+          <ActionIconButton icon={Pencil} title="수정" size={size} className={className} />
         ) : (
           <Button variant="ghost" size="sm" className={className}>
             <Pencil className="size-4" />

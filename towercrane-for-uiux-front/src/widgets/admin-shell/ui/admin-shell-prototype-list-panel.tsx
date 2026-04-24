@@ -59,9 +59,9 @@ export function AdminShellPrototypeListPanel({
 }: AdminShellPrototypeListPanelProps) {
   return (
     <div className="ui-panel flex-1 min-h-0 overflow-y-auto">
-      <div className={`mb-3 flex items-center gap-2 ${insetClassName} pt-4`}>
+      <div className={`flex items-center gap-3 ${insetClassName} pb-4 pt-5`}>
         <form
-          className="relative flex-1 group"
+          className="group relative min-w-0 flex-1"
           onSubmit={(e) => {
             e.preventDefault()
             onSearchSubmit()
@@ -77,14 +77,14 @@ export function AdminShellPrototypeListPanel({
             }}
             hint="Enter"
             placeholder="제목·요약 검색..."
-            wrapperClassName="h-10"
+            wrapperClassName="h-9"
           />
         </form>
         <CompactSelect
           value={sort}
           onChange={(e) => onSortChange(e.target.value as PrototypeListSort)}
-          wrapperClassName="w-[76px]"
-          className="h-9 pl-3 pr-7 text-[10px] font-medium"
+          wrapperClassName="w-[88px]"
+          className="h-9 text-[10px] font-medium"
         >
           <option value="recent">최신순</option>
           <option value="oldest">오래된순</option>
@@ -103,16 +103,17 @@ export function AdminShellPrototypeListPanel({
         )}
       </div>
 
-      <div className={`space-y-3 ${insetClassName}`}>
+      <div className={`space-y-4 ${insetClassName}`}>
         {isLoading ? (
           <div className="py-12 text-center text-sm text-text-muted">
             프로토타입 불러오는 중...
           </div>
         ) : prototypeList.length > 0 ? (
           prototypeList.map((proto) => (
-            <div key={proto.id} className="group relative py-1.5 transition-all">
-              <div className="absolute bottom-0 left-[-18px] top-0 w-px bg-[var(--surface-border)] transition-colors group-hover:bg-brand-primary/30" />
-              <div className="absolute left-[-22px] top-3 size-2 rounded-full border border-[var(--surface-border)] bg-[var(--surface-strong)] transition-colors group-hover:bg-brand-primary" />
+            <div
+              key={proto.id}
+              className="group rounded-sm border border-surface-border-soft px-4 py-3 transition-all hover:border-surface-border hover:bg-surface-muted/40"
+            >
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center gap-2">
@@ -151,7 +152,7 @@ export function AdminShellPrototypeListPanel({
                     </div>
                     ) : null}
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 opacity-90 transition-opacity group-hover:opacity-100">
                   {isAuthenticated && canManagePrototype && (
                     <>
                       <EditPrototypeDialog
@@ -193,16 +194,16 @@ export function AdminShellPrototypeListPanel({
 
       {totalCount > 0 ? (
         <div
-          className={`mt-3 flex items-center justify-between gap-3 border-t border-[var(--surface-border)] ${insetClassName} pb-4 pt-3`}
+          className={`mt-5 flex items-center justify-between gap-3 border-t border-surface-border ${insetClassName} pb-5 pt-5`}
         >
-          <div className="ui-text-muted text-[11px] uppercase tracking-widest">
+          <div className="ui-text-muted text-[11px] uppercase tracking-[0.18em]">
             Page {page} / {totalPages} · {totalCount} total
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <button
               onClick={onPrevPage}
               disabled={page <= 1 || isFetching}
-              className="inline-flex size-7 items-center justify-center rounded-sm border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)] disabled:pointer-events-none disabled:opacity-40"
+              className="inline-flex size-7 items-center justify-center rounded-sm border border-surface-border bg-surface-muted ui-text-secondary hover:bg-surface-strong disabled:pointer-events-none disabled:opacity-40"
               aria-label="이전 페이지"
             >
               <ChevronLeft className="size-4" />
@@ -210,7 +211,7 @@ export function AdminShellPrototypeListPanel({
             <button
               onClick={onNextPage}
               disabled={page >= totalPages || isFetching}
-              className="inline-flex size-7 items-center justify-center rounded-sm border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)] disabled:pointer-events-none disabled:opacity-40"
+              className="inline-flex size-7 items-center justify-center rounded-sm border border-surface-border bg-surface-muted ui-text-secondary hover:bg-surface-strong disabled:pointer-events-none disabled:opacity-40"
               aria-label="다음 페이지"
             >
               <ChevronRight className="size-4" />

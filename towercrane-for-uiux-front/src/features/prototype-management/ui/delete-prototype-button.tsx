@@ -7,6 +7,7 @@ type DeletePrototypeButtonProps = {
   categoryId: string
   prototypeId: string
   asIcon?: boolean
+  size?: 'icon' | 'sm-icon'
   className?: string
 }
 
@@ -16,6 +17,7 @@ export function DeletePrototypeButton({
   categoryId,
   prototypeId,
   asIcon,
+  size = 'icon',
   className,
 }: DeletePrototypeButtonProps) {
   const deletePrototype = useDeletePrototype(categoryId)
@@ -28,6 +30,7 @@ export function DeletePrototypeButton({
         onConfirm={runDelete}
         confirmMessage={CONFIRM_MESSAGE}
         isPending={deletePrototype.isPending}
+        size={size}
         className={className}
       />
     )

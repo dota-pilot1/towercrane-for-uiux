@@ -29,7 +29,7 @@ export function AdminShellCategoryHeader({
             {selectedCategory.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-brand-border/50 bg-brand-glass px-2.5 py-1 text-[10px] font-bold"
+                className="rounded-sm border border-brand-border/50 bg-brand-glass px-2 py-0.5 text-[10px] font-bold"
               >
                 #{tag}
               </span>
@@ -37,12 +37,13 @@ export function AdminShellCategoryHeader({
           </div>
         </div>
         {isAuthenticated && (
-          <div className="flex gap-1.5 pt-0.5">
-            <EditCategoryDialog category={selectedCategory} asIcon />
+          <div className="flex gap-1 pt-0.5">
+            <EditCategoryDialog category={selectedCategory} asIcon size="sm-icon" />
             <DeleteCategoryButton
               categoryId={selectedCategory.id}
               fallbackCategoryId={fallbackCategoryId}
               asIcon
+              size="sm-icon"
             />
           </div>
         )}
