@@ -6,13 +6,13 @@ export type HeaderPillVariant = 'default' | 'active' | 'static'
 
 const variantStyles: Record<HeaderPillVariant, string> = {
   default:
-    'border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]',
-  active: 'border-brand-border bg-brand-glass ui-text-primary',
-  static: 'border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-primary',
+    'border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)] hover:border-[var(--surface-border)]',
+  active: 'border-primary/50 bg-primary/12 text-primary font-semibold',
+  static: 'border-[var(--surface-border)] bg-transparent ui-text-primary',
 }
 
 const baseClassName =
-  'inline-flex h-[34px] items-center gap-2 rounded-md border px-3 text-[13px] font-medium transition shrink-0'
+  'inline-flex h-[34px] items-center gap-2 rounded-sm border px-3 text-[13px] font-medium transition shrink-0'
 
 type CommonProps = {
   variant?: HeaderPillVariant

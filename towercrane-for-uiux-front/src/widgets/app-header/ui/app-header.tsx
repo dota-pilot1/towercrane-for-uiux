@@ -34,7 +34,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="glass-panel relative z-[100] mb-3 rounded-md px-4 py-1.5">
+    <header className="glass-panel relative z-[100] mb-3 rounded-sm px-4 py-1.5">
       <div className="flex items-center justify-between gap-4">
         <button
           type="button"
@@ -42,7 +42,7 @@ export function AppHeader() {
           onClick={() => handleNavigation('prototype')}
         >
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-md shadow-primary/10">
+            <div className="flex size-8 items-center justify-center rounded-sm bg-primary text-primary-foreground shadow-md shadow-primary/10">
               <span className="text-[13px] font-black tracking-tighter">TC</span>
             </div>
             <div>
@@ -89,7 +89,7 @@ export function AppHeader() {
               </HeaderPill>
 
               {isAdminOpen && (
-                <div className="absolute left-0 top-full z-50 mt-1.5 w-40 origin-top-left animate-in zoom-in rounded-md border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1 shadow-xl backdrop-blur-xl duration-200 fade-in">
+                <div className="absolute left-0 top-full z-50 mt-1.5 w-40 origin-top-left animate-in zoom-in rounded-sm border border-[var(--surface-border)] bg-[var(--surface-strong)] p-1 shadow-xl backdrop-blur-xl duration-200 fade-in">
                   {adminItems.map((item) => (
                     <button
                       key={item.id}
@@ -97,7 +97,7 @@ export function AppHeader() {
                         handleNavigation(item.id)
                         setIsAdminOpen(false)
                       }}
-                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] transition-colors ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+                      className="flex w-full items-center gap-2.5 rounded-sm px-3 py-2 text-left text-[13px] transition-colors ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
                     >
                       {item.id === 'users' ? (
                         <UserCog className="size-3.5" />
@@ -117,22 +117,12 @@ export function AppHeader() {
           <ThemeSwitcher />
           {isAuthenticated ? (
             <>
-              <div className="flex items-center gap-2">
-                {userRole === 'admin' && (
-                  <div
-                    className="flex size-8 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary"
-                    title="시스템 관리자"
-                  >
-                    <ShieldCheck className="size-3.5" />
-                  </div>
-                )}
-                <HeaderPill as="span" variant="static">
-                  {userName || userEmail}
-                </HeaderPill>
-              </div>
+              <HeaderPill as="span" variant="static">
+                {userName || userEmail}
+              </HeaderPill>
               <button
                 onClick={handleLogout}
-                className="flex size-8 items-center justify-center rounded-md border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]"
+                className="flex size-8 items-center justify-center rounded-sm border border-[var(--surface-border)] bg-[var(--surface-muted)] ui-text-secondary hover:bg-[var(--surface-strong)]"
                 aria-label="로그아웃"
                 title="로그아웃"
               >
