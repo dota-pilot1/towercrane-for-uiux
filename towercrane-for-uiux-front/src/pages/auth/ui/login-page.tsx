@@ -223,7 +223,7 @@ export function LoginPage() {
 
             <label className="block space-y-2 text-left">
               <span className="text-sm text-text-secondary">이메일</span>
-              <Input {...registerLogin('email')} type="email" placeholder="you@example.com" />
+              <Input {...registerLogin('email')} className="h-11" type="email" placeholder="you@example.com" />
               {loginErrors.email ? <span className="text-sm text-destructive">{loginErrors.email.message}</span> : null}
             </label>
 
@@ -243,7 +243,7 @@ export function LoginPage() {
               비밀번호 찾기
             </button>
 
-            <Button type="submit" className="w-full gap-2" disabled={loginMutation.isPending}>
+            <Button type="submit" className="h-11 w-full gap-2" disabled={loginMutation.isPending}>
               <ArrowRight className="size-4" />
               {loginMutation.isPending ? '로그인 중...' : '로그인'}
             </Button>
@@ -266,26 +266,26 @@ export function LoginPage() {
 
             <label className="block space-y-2 text-left">
               <span className="text-sm text-text-secondary">이메일</span>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_118px]">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_104px]">
                 <Input
                   {...signupEmailRegister}
                   type="email"
                   placeholder="you@example.com"
                   disabled={emailVerified}
-                  className="h-12"
+                  className="h-11"
                 />
                 {!emailVerified ? (
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-12 px-0 text-sm"
+                    className="h-11 px-0 text-xs"
                     disabled={checkEmailMutation.isPending || sendCodeMutation.isPending}
                     onClick={sendSignupCode}
                   >
                     {sendCodeMutation.isPending ? '발송 중...' : codeSent ? '재발송' : '인증코드 발송'}
                   </Button>
                 ) : (
-                  <span className="inline-flex h-12 items-center justify-center gap-1 rounded-md border border-brand-border bg-brand-glass px-3 text-sm font-semibold text-brand-primary">
+                  <span className="inline-flex h-11 items-center justify-center gap-1 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-semibold text-brand-primary">
                     <CheckCircle2 className="size-4" />
                     인증 완료
                   </span>
@@ -297,14 +297,14 @@ export function LoginPage() {
             {codeSent && !emailVerified ? (
               <div className="space-y-2 text-left">
                 <span className="text-sm text-text-secondary">인증코드</span>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_88px]">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_72px]">
                   <div className="relative flex-1">
                     <Input
                       value={code}
                       inputMode="numeric"
                       maxLength={6}
                       placeholder="6자리"
-                      className="h-12 pr-16"
+                      className="h-11 pr-16"
                       onChange={(event) => {
                         setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
                         setCodeError(null)
@@ -318,7 +318,7 @@ export function LoginPage() {
                   </div>
                   <Button
                     type="button"
-                    className="h-12 px-0"
+                    className="h-11 px-0 text-xs"
                     disabled={verifyCodeMutation.isPending || code.length !== 6}
                     onClick={verifySignupCode}
                   >
@@ -336,7 +336,7 @@ export function LoginPage() {
 
             <label className="block space-y-2 text-left">
               <span className="text-sm text-text-secondary">이름</span>
-              <Input {...registerSignup('name')} className="h-12" placeholder="홍길동" disabled={!emailVerified} />
+              <Input {...registerSignup('name')} className="h-11" placeholder="홍길동" disabled={!emailVerified} />
               {signupErrors.name ? <span className="text-sm text-destructive">{signupErrors.name.message}</span> : null}
             </label>
 
@@ -364,7 +364,7 @@ export function LoginPage() {
               </div>
             ) : null}
 
-            <Button type="submit" className="h-12 w-full gap-2" disabled={signupMutation.isPending || !emailVerified}>
+            <Button type="submit" className="h-11 w-full gap-2" disabled={signupMutation.isPending || !emailVerified}>
               <UserPlus className="size-4" />
               {signupMutation.isPending ? '처리 중...' : '계정 만들기'}
             </Button>
@@ -444,7 +444,7 @@ function PasswordInput({
           {...registration}
           type={visible ? 'text' : 'password'}
           placeholder="8자 이상 입력"
-          className="pr-10"
+          className="h-11 pr-10"
           disabled={disabled}
         />
         <button
@@ -501,8 +501,8 @@ function SwitchPanel({ title, description, buttonLabel, onClick }: SwitchPanelPr
       <p className="mt-5 max-w-[360px] text-sm leading-7 text-text-secondary">{description}</p>
       <Button
         type="button"
-        variant="primary"
-        className="mt-7 h-12 min-w-[128px] px-8"
+        variant="secondary"
+        className="mt-7 h-10 min-w-[104px] px-5 text-sm"
         onClick={onClick}
       >
         {buttonLabel}
