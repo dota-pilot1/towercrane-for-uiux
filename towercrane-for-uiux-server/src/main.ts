@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { MeetingGateway } from './meeting/meeting.gateway';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,5 +15,6 @@ async function bootstrap() {
     credentials: true,
   });
   await app.listen(process.env.PORT ?? 3000);
+  app.get(MeetingGateway).attach(app.getHttpServer());
 }
 void bootstrap();

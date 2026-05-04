@@ -58,8 +58,8 @@ export function AdminShellPrototypeListPanel({
   onNextPage,
 }: AdminShellPrototypeListPanelProps) {
   return (
-    <div className="ui-panel flex-1 min-h-0 overflow-y-auto">
-      <div className={`flex items-center gap-3 ${insetClassName} pb-4 pt-5`}>
+    <div className="ui-panel flex-1 min-h-0 overflow-y-auto border-brand-border/20 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--primary)_4%,var(--card))_0%,var(--card)_9rem)]">
+      <div className={`flex items-center gap-3 border-b border-brand-border/20 bg-brand-glass/40 ${insetClassName} pb-4 pt-5`}>
         <form
           className="group relative min-w-0 flex-1"
           onSubmit={(e) => {
@@ -103,7 +103,7 @@ export function AdminShellPrototypeListPanel({
         )}
       </div>
 
-      <div className={`space-y-4 ${insetClassName}`}>
+      <div className={`space-y-4 ${insetClassName} pt-4`}>
         {isLoading ? (
           <div className="py-12 text-center text-sm text-text-muted">
             프로토타입 불러오는 중...
@@ -112,8 +112,9 @@ export function AdminShellPrototypeListPanel({
           prototypeList.map((proto) => (
             <div
               key={proto.id}
-              className="group rounded-sm border border-surface-border-soft px-4 py-3 transition-all hover:border-surface-border hover:bg-surface-muted/40"
+              className="group relative overflow-hidden rounded-sm border border-surface-border-soft bg-background px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-brand-border/50 hover:bg-[color:color-mix(in_srgb,var(--primary)_3%,var(--background))] hover:shadow-[0_12px_32px_color-mix(in_srgb,var(--primary)_8%,transparent)]"
             >
+              <div className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-brand-primary opacity-0 transition-opacity group-hover:opacity-100" />
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center gap-2">
@@ -152,9 +153,9 @@ export function AdminShellPrototypeListPanel({
                     </div>
                     ) : null}
                 </div>
-                <div className="flex items-center gap-1.5 opacity-90 transition-opacity group-hover:opacity-100">
+                <div className="flex items-center gap-1.5 opacity-0 transition-all duration-200 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0">
                   {isAuthenticated && canManagePrototype && (
-                    <>
+                    <div className="flex items-center gap-1.5 pr-1.5 mr-1.5 border-r border-surface-border-soft">
                       <EditPrototypeDialog
                         categoryId={selectedCategory.id}
                         prototype={proto}
@@ -167,7 +168,7 @@ export function AdminShellPrototypeListPanel({
                         asIcon
                         size="sm-icon"
                       />
-                    </>
+                    </div>
                   )}
                   <ActionIconButton
                     icon={FileText}

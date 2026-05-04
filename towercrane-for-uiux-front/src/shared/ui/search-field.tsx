@@ -17,7 +17,7 @@ export function SearchField({
   return (
     <label
       className={cn(
-        'flex h-10 w-full items-center gap-2 rounded-sm border border-surface-border bg-background px-2.5 transition-all focus-within:border-brand-border',
+        'flex h-9 w-full items-center gap-2 rounded-md border border-surface-border bg-background px-2.5 transition-all focus-within:border-brand-border focus-within:ring-2 focus-within:ring-brand-border/5',
         wrapperClassName,
       )}
     >

@@ -7,11 +7,11 @@ export type BlockMeta = {
 }
 
 export const TYPE_META: Record<DocBlockType, BlockMeta> = {
-  NOTE: { icon: '📝', label: '노트', color: 'bg-blue-500/15 text-blue-300 border border-blue-400/20' },
-  MMD: { icon: '📊', label: '다이어그램', color: 'bg-purple-500/15 text-purple-300 border border-purple-400/20' },
-  FIGMA: { icon: '🎨', label: 'Figma', color: 'bg-pink-500/15 text-pink-300 border border-pink-400/20' },
-  FILE: { icon: '📎', label: '첨부파일', color: 'bg-green-500/15 text-green-300 border border-green-400/20' },
-  DBTABLE: { icon: '🗄️', label: 'DB테이블', color: 'bg-amber-500/15 text-amber-300 border border-amber-400/20' },
+  NOTE: { icon: '📝', label: '노트', color: 'bg-brand-glass text-brand-primary border border-brand-border' },
+  MMD: { icon: '📊', label: '다이어그램', color: 'bg-surface-muted text-text-secondary border border-surface-border-soft' },
+  FIGMA: { icon: '🎨', label: 'Figma', color: 'bg-brand-glass text-brand-primary border border-brand-border' },
+  FILE: { icon: '📎', label: '첨부파일', color: 'bg-surface-muted text-text-secondary border border-surface-border-soft' },
+  DBTABLE: { icon: '🗄️', label: 'DB테이블', color: 'bg-brand-glass text-brand-primary border border-brand-border' },
   GITHUB: { icon: '🐙', label: 'GitHub', color: 'bg-surface-muted text-text-secondary border border-surface-border-soft' },
 }
 

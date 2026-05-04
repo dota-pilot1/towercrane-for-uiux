@@ -36,7 +36,7 @@ export const useUiStore = create<UiStoreState>()(
       activeCategoryId: seedScenarioCategories[0]?.id ?? 'fsd-architecture',
       activePrototypeId: null,
       activeWorkspace: 'overview',
-      themeColor: 'emerald',
+      themeColor: 'light',
       filters: defaultFilters,
       setActiveSection: (activeSection) => set({ activeSection }),
       setActiveCategory: (activeCategoryId) => set({ activeCategoryId }),

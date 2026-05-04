@@ -50,7 +50,7 @@ export function AddCategoryDialog({ children }: AddCategoryDialogProps) {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {children ?? (
-          <Button variant="secondary" className="w-full border-dashed border shadow-none bg-surface-muted/30 text-text-secondary hover:text-text-primary hover:border-brand-primary/50 transition-colors">
+          <Button variant="secondary" className="w-full border-2 border-dashed border-surface-border bg-surface-muted/20 text-text-muted transition-all duration-300 hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary hover:scale-[1.01] active:scale-[0.99] shadow-none">
             <Plus className="mr-2 size-4" />
             카테고리 추가
           </Button>

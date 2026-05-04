@@ -5,12 +5,12 @@ import { useUiStore } from '../store/ui-store'
 import { HeaderPill } from './header-pill'
 
 const themes = [
+  { id: 'light', color: '#7dd3fc', label: 'Light' },
   { id: 'emerald', color: '#10b981', label: 'Emerald' },
   { id: 'blue', color: '#3b82f6', label: 'Blue' },
   { id: 'violet', color: '#8b5cf6', label: 'Violet' },
   { id: 'rose', color: '#f43f5e', label: 'Rose' },
   { id: 'amber', color: '#f59e0b', label: 'Amber' },
-  { id: 'light', color: '#dbeafe', label: 'Light' },
 ] as const
 
 export function ThemeSwitcher() {
@@ -53,7 +53,7 @@ export function ThemeSwitcher() {
       </HeaderPill>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 origin-top-right rounded-md border border-border bg-background/90 p-1.5 shadow-xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200 z-[60]">
+        <div className="absolute right-0 top-full mt-2 w-48 origin-top-right rounded-md border border-surface-border bg-surface-raised p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-200 z-[60]">
           <p className="px-3 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
             Appearance
           </p>
@@ -70,7 +70,7 @@ export function ThemeSwitcher() {
                   'flex w-full items-center justify-between gap-2.5 rounded-md px-2.5 py-2 text-sm transition-all duration-300',
                   themeColor === theme.id 
                     ? 'bg-primary text-primary-foreground shadow-md shadow-primary/5' 
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground hover:bg-surface-muted hover:ui-text-primary hover:scale-[1.02] active:scale-[0.98]'
                 )}
               >
                 <div className="flex items-center gap-3">

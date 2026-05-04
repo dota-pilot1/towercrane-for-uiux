@@ -9,6 +9,7 @@ import { useSessionStore } from '../../../shared/store/session-store'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
+import { WarningDialog } from '../../../shared/ui/warning-dialog'
 
 const authSchema = z
   .object({
@@ -37,6 +38,7 @@ export function AuthPanel({ mode }: AuthPanelProps) {
   const setAuthMode = useSessionStore((state) => state.setAuthMode)
   const setSession = useSessionStore((state) => state.setSession)
   const [showPassword, setShowPassword] = useState(false)
+  const [loginWarning, setLoginWarning] = useState<string | null>(null)
   const loginMutation = useLogin()
   const signupMutation = useSignup()
 
@@ -71,11 +73,15 @@ export function AuthPanel({ mode }: AuthPanelProps) {
       return
     }
 
-    const response = await loginMutation.mutateAsync({
-      email: values.email,
-      password: values.password,
-    })
-    setSession(response)
+    try {
+      const response = await loginMutation.mutateAsync({
+        email: values.email,
+        password: values.password,
+      })
+      setSession(response)
+    } catch (error) {
+      setLoginWarning(getLoginErrorMessage(error))
+    }
   }
 
   return (
@@ -180,7 +186,7 @@ export function AuthPanel({ mode }: AuthPanelProps) {
           </label>
         ) : null}
 
-        {activeMutation.error ? (
+        {isSignup && activeMutation.error ? (
           <div className="rounded-2xl border border-destructive/20 bg-danger-glass px-4 py-3 text-sm text-destructive">
             {activeMutation.error.message}
           </div>
@@ -194,6 +200,26 @@ export function AuthPanel({ mode }: AuthPanelProps) {
               : '로그인'}
         </Button>
       </form>
+
+      <WarningDialog
+        open={loginWarning !== null}
+        title="로그인할 수 없습니다"
+        description={loginWarning ?? ''}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLoginWarning(null)
+            loginMutation.reset()
+          }
+        }}
+      />
     </Card>
   )
+}
+
+function getLoginErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : ''
+  if (/invalid credentials|unauthorized|401/i.test(message)) {
+    return '이메일 또는 비밀번호가 올바르지 않습니다. 입력한 정보를 확인한 뒤 다시 시도해 주세요.'
+  }
+  return message || '로그인 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.'
 }

@@ -114,11 +114,23 @@ export function AdminShellSidebar({
   }
 
   return (
-    <div className="ui-panel overflow-hidden border-none bg-surface-muted/20 shadow-none">
+    <div className="ui-panel overflow-hidden border-brand-border/20 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--primary)_7%,var(--card))_0%,var(--card)_11rem)] shadow-[0_14px_40px_color-mix(in_srgb,var(--primary)_6%,transparent)]">
       <ScrollArea.Root className="relative h-full">
         <ScrollArea.Viewport className="h-full">
           <div className="px-4 py-4">
-            <div className="mx-auto w-full max-w-[212px]">
+            <div className="mx-auto w-full max-w-[264px]">
+              <div className="mb-3 flex items-center justify-between px-0.5">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-primary">
+                    Library
+                  </div>
+                  <div className="mt-0.5 text-xs font-medium ui-text-muted">
+                    {categories.length} categories
+                  </div>
+                </div>
+                <div className="h-8 w-1 rounded-full bg-brand-primary" />
+              </div>
+
               {isAuthenticated ? (
                 <div className="mb-3">
                   <AddCategoryDialog />
@@ -166,8 +178,8 @@ export function AdminShellSidebar({
                           onClick={() => onSelectCategory(category.id)}
                           className={`group relative flex h-11 w-full items-center gap-3 overflow-hidden rounded-md border px-4 transition-all duration-200 ${
                             activeCategoryId === category.id
-                              ? 'border-brand-border/50 bg-brand-glass text-brand-primary shadow-sm'
-                              : 'border-transparent text-text-muted hover:bg-surface-muted/50 hover:text-text-primary'
+                              ? 'border-brand-border bg-brand-glass text-brand-primary shadow-[0_8px_24px_color-mix(in_srgb,var(--primary)_12%,transparent)]'
+                              : 'border-transparent text-text-muted hover:border-surface-border-soft hover:bg-surface-muted/60 hover:text-text-primary'
                           }`}
                         >
                           {activeCategoryId === category.id ? (
@@ -176,15 +188,6 @@ export function AdminShellSidebar({
                           <div className="shrink-0">
                             <Icon className="size-4" />
                           </div>
-                          <span
-                            className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-black ${
-                              activeCategoryId === category.id
-                                ? 'bg-brand-primary text-text-on-brand'
-                                : 'border border-surface-border-soft/50 bg-surface-muted text-text-muted'
-                            }`}
-                          >
-                            {category.prototypes.length > 0 ? 'ON' : 'OFF'}
-                          </span>
                           <div className="min-w-0 flex-1 truncate text-left">
                             <div className="truncate text-sm font-bold">{category.title}</div>
                             <div className="truncate text-[10px] ui-text-muted opacity-70">
@@ -244,8 +247,8 @@ function SortableCategoryItem({
       style={style}
       className={`group relative flex h-14 w-full items-center gap-2 overflow-hidden rounded-md border transition-all duration-200 ${
         isActive
-          ? 'translate-x-0.5 border-brand-border/50 bg-brand-glass text-brand-primary shadow-sm'
-          : 'border-transparent text-text-muted hover:bg-surface-muted/50 hover:text-text-primary'
+          ? 'translate-x-0.5 border-brand-border bg-brand-glass text-brand-primary shadow-[0_8px_24px_color-mix(in_srgb,var(--primary)_12%,transparent)]'
+          : 'border-transparent text-text-muted hover:border-surface-border-soft hover:bg-surface-muted/60 hover:text-text-primary'
       }`}
     >
       {isActive ? (
@@ -263,16 +266,6 @@ function SortableCategoryItem({
         >
           <GripVertical className="size-3.5" />
         </button>
-
-        <span
-          className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-black transition-colors ${
-            isActive
-              ? 'bg-brand-primary text-text-on-brand'
-              : 'border border-surface-border-soft/50 bg-surface-muted text-text-muted'
-          }`}
-        >
-          {item.prototypes.length > 0 ? 'ON' : 'OFF'}
-        </span>
       </div>
 
       <button
@@ -290,7 +283,7 @@ function SortableCategoryItem({
         <div className="truncate text-[10px] opacity-60 font-medium">{item.summary}</div>
       </button>
 
-      <div className="flex shrink-0 items-center gap-1 pr-2 transition-opacity">
+      <div className="flex shrink-0 items-center gap-1 pr-2 opacity-0 transition-all duration-200 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0">
         <EditCategoryDialog category={item} asIcon size="sm-icon" />
         <DeleteCategoryButton categoryId={item.id} asIcon size="sm-icon" />
       </div>

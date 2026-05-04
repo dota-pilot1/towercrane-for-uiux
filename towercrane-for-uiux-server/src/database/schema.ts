@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 
 export const usersTable = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -123,6 +123,64 @@ export const prototypeImagesTable = sqliteTable('prototype_images', {
   createdAt: text('created_at').notNull(),
 });
 
+export const menusTable = sqliteTable('menus', {
+  id: text('id').primaryKey(),
+  parentId: text('parent_id').references((): AnySQLiteColumn => menusTable.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  sectionId: text('section_id'),
+  icon: text('icon'),
+  displayOrder: integer('display_order').notNull().default(0),
+  isVisible: integer('is_visible', { mode: 'boolean' }).notNull().default(true),
+  requiredRole: text('required_role'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type MeetingRoomType = 'ANNOUNCE' | 'INTERNAL' | 'FREE' | 'QNA' | 'DM';
+export type MeetingMessageType = 'TEXT' | 'SYSTEM' | 'COMMAND_RESULT' | 'BOT_REPLY';
+
+export const meetingRoomsTable = sqliteTable('meeting_rooms', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  roomType: text('room_type').$type<MeetingRoomType>().notNull(),
+  description: text('description'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdBy: text('created_by').references(() => usersTable.id, { onDelete: 'set null' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const meetingMessagesTable = sqliteTable('meeting_messages', {
+  id: text('id').primaryKey(),
+  roomId: text('room_id')
+    .notNull()
+    .references(() => meetingRoomsTable.id, { onDelete: 'cascade' }),
+  senderId: text('sender_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  senderName: text('sender_name').notNull(),
+  senderRole: text('sender_role'),
+  content: text('content').notNull(),
+  messageType: text('message_type').$type<MeetingMessageType>().notNull().default('TEXT'),
+  payload: text('payload', { mode: 'json' }).$type<Record<string, unknown> | null>(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const meetingDmPairsTable = sqliteTable('meeting_dm_pairs', {
+  id: text('id').primaryKey(),
+  roomId: text('room_id')
+    .notNull()
+    .references(() => meetingRoomsTable.id, { onDelete: 'cascade' }),
+  userAId: text('user_a_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  userBId: text('user_b_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+});
+
 export const schema = {
   usersTable,
   sessionsTable,
@@ -133,6 +191,10 @@ export const schema = {
   docSectionsTable,
   documentsTable,
   documentBlocksTable,
+  menusTable,
+  meetingRoomsTable,
+  meetingMessagesTable,
+  meetingDmPairsTable,
 };
 
 export type UserRow = typeof usersTable.$inferSelect;
@@ -153,3 +215,11 @@ export type DocumentBlockRow = typeof documentBlocksTable.$inferSelect;
 export type DocumentBlockInsert = typeof documentBlocksTable.$inferInsert;
 export type PrototypeReviewRow = typeof prototypeReviewsTable.$inferSelect;
 export type PrototypeReviewInsert = typeof prototypeReviewsTable.$inferInsert;
+export type MenuRow = typeof menusTable.$inferSelect;
+export type MenuInsert = typeof menusTable.$inferInsert;
+export type MeetingRoomRow = typeof meetingRoomsTable.$inferSelect;
+export type MeetingRoomInsert = typeof meetingRoomsTable.$inferInsert;
+export type MeetingMessageRow = typeof meetingMessagesTable.$inferSelect;
+export type MeetingMessageInsert = typeof meetingMessagesTable.$inferInsert;
+export type MeetingDmPairRow = typeof meetingDmPairsTable.$inferSelect;
+export type MeetingDmPairInsert = typeof meetingDmPairsTable.$inferInsert;

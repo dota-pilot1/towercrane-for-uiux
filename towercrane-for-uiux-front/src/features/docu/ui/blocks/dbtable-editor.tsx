@@ -119,17 +119,17 @@ export function DbTableBlockEditor({
         />
       </div>
 
-      <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
-        <label className="text-xs font-semibold mb-1.5 block text-amber-300">
+      <div className="rounded-lg border border-brand-border bg-brand-glass p-2.5">
+        <label className="text-xs font-semibold mb-1.5 block text-brand-primary">
           📋 DBeaver / Excel에서 붙여넣기 (TSV)
         </label>
         <textarea
           onPaste={handleTsvPaste}
           rows={3}
           placeholder={`여기에 Ctrl+V\n\n예시: id\tBIGINT\t\tNO`}
-          className="w-full px-2.5 py-1.5 text-xs font-mono text-text-primary bg-surface-muted border border-amber-500/20 rounded-lg outline-none placeholder:text-text-muted"
+          className="w-full px-2.5 py-1.5 text-xs font-mono text-text-primary bg-surface-raised border border-brand-border rounded-lg outline-none placeholder:text-text-muted"
         />
-        <p className="text-[10px] text-amber-200/60 mt-1">
+        <p className="text-[10px] text-text-muted mt-1">
           DBeaver에서 컬럼 정보를 복사한 후 위 영역에 붙여넣으면 자동으로 파싱됩니다
         </p>
       </div>
@@ -172,7 +172,7 @@ export function DbTableBlockEditor({
                   <tr
                     key={idx}
                     className={`border-t border-surface-border-soft hover:bg-surface-muted ${
-                      col.pk ? 'bg-amber-500/5' : ''
+                      col.pk ? 'bg-brand-glass' : ''
                     }`}
                   >
                     <td className="px-2 py-1 text-center text-text-muted">{col.no}</td>
@@ -308,7 +308,7 @@ function DbTableView({ dbTable }: { dbTable: DbTableContent }) {
               {dbTable.columns.map((col, idx) => (
                 <tr
                   key={idx}
-                  className={`border-t border-surface-border-soft ${col.pk ? 'bg-amber-500/5' : ''}`}
+                  className={`border-t border-surface-border-soft ${col.pk ? 'bg-brand-glass' : ''}`}
                 >
                   <td className="px-3 py-1.5 text-center text-text-muted">{col.no}</td>
                   <td className="px-3 py-1.5 font-mono text-text-primary">{col.name}</td>

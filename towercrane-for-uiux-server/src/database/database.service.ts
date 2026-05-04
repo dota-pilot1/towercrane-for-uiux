@@ -12,6 +12,8 @@ import { dirname, isAbsolute, join } from 'node:path';
 import { catalogSeed } from '../catalog/catalog.seed';
 import {
   categoriesTable,
+  menusTable,
+  meetingRoomsTable,
   prototypesTable,
   schema,
   sessionsTable,
@@ -148,6 +150,51 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_at TEXT NOT NULL,
         FOREIGN KEY(prototype_id) REFERENCES prototypes(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS meeting_rooms (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        room_type TEXT NOT NULL,
+        description TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS meeting_messages (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        sender_id TEXT NOT NULL,
+        sender_name TEXT NOT NULL,
+        sender_role TEXT,
+        content TEXT NOT NULL,
+        message_type TEXT NOT NULL DEFAULT 'TEXT',
+        payload TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(room_id) REFERENCES meeting_rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_meeting_messages_room_created
+        ON meeting_messages(room_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS meeting_dm_pairs (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        user_a_id TEXT NOT NULL,
+        user_b_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(room_id) REFERENCES meeting_rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_a_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_b_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(user_a_id, user_b_id)
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_meeting_dm_pairs_users
+        ON meeting_dm_pairs(user_a_id, user_b_id);
     `);
 
     this.migrateLegacySchema();
@@ -163,12 +210,84 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .prepare('SELECT COUNT(*) as count FROM users')
       .get() as { count: number };
 
+    const now = new Date().toISOString();
+    const demoUser = this.ensureDemoUser(now);
+
+    const existingMenus = this.sqlite
+      .prepare('SELECT COUNT(*) as count FROM menus')
+      .get() as { count: number };
+
+    if (existingMenus.count === 0) {
+      const adminMenuId = randomUUID();
+      const initialMenus = [
+        { id: randomUUID(), name: 'Prototype', sectionId: 'prototype', icon: 'GitBranch', displayOrder: 0, isVisible: true, requiredRole: null, parentId: null, createdAt: now, updatedAt: now },
+        { id: randomUUID(), name: 'Chatbot', sectionId: 'chatbot', icon: 'Bot', displayOrder: 1, isVisible: true, requiredRole: null, parentId: null, createdAt: now, updatedAt: now },
+        { id: randomUUID(), name: 'README', sectionId: 'readme', icon: 'BookOpenText', displayOrder: 2, isVisible: true, requiredRole: null, parentId: null, createdAt: now, updatedAt: now },
+        { id: randomUUID(), name: 'AI 개발 방법론', sectionId: 'ai_methodology', icon: 'Zap', displayOrder: 3, isVisible: true, requiredRole: null, parentId: null, createdAt: now, updatedAt: now },
+        { id: adminMenuId, name: 'Admin', sectionId: 'admin_dropdown', icon: 'ShieldCheck', displayOrder: 4, isVisible: true, requiredRole: 'admin', parentId: null, createdAt: now, updatedAt: now },
+        { id: randomUUID(), name: '유저 관리', sectionId: 'users', icon: 'UserCog', displayOrder: 0, isVisible: true, requiredRole: 'admin', parentId: adminMenuId, createdAt: now, updatedAt: now },
+        { id: randomUUID(), name: 'README 관리', sectionId: 'readme_admin', icon: 'FileText', displayOrder: 1, isVisible: true, requiredRole: 'admin', parentId: adminMenuId, createdAt: now, updatedAt: now },
+        { id: randomUUID(), name: '메뉴 관리', sectionId: 'menu_admin', icon: 'LayoutGrid', displayOrder: 2, isVisible: true, requiredRole: 'admin', parentId: adminMenuId, createdAt: now, updatedAt: now },
+      ];
+      this.db.insert(menusTable).values(initialMenus).run();
+    }
+
+    const existingMeetingRooms = this.sqlite
+      .prepare('SELECT COUNT(*) as count FROM meeting_rooms')
+      .get() as { count: number };
+
+    if (existingMeetingRooms.count === 0) {
+      this.db.insert(meetingRoomsTable).values([
+        {
+          id: 'meeting-notice',
+          name: '공지',
+          roomType: 'ANNOUNCE',
+          description: '프로젝트 공지와 변경사항',
+          orderIdx: 0,
+          archived: false,
+          createdBy: demoUser.id,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'meeting-internal',
+          name: '매장-내부',
+          roomType: 'INTERNAL',
+          description: '운영 회의와 결정사항',
+          orderIdx: 1,
+          archived: false,
+          createdBy: demoUser.id,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'meeting-free',
+          name: '자유',
+          roomType: 'FREE',
+          description: '가벼운 공유와 질문',
+          orderIdx: 2,
+          archived: false,
+          createdBy: demoUser.id,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'meeting-qna',
+          name: '디자이너-Q&A',
+          roomType: 'QNA',
+          description: '공개 질문과 답변',
+          orderIdx: 3,
+          archived: false,
+          createdBy: demoUser.id,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]).run();
+    }
+
     if (existing.count > 0) {
       return;
     }
-
-    const now = new Date().toISOString();
-    const demoUser = this.ensureDemoUser(now);
 
     for (const category of catalogSeed) {
       this.db
@@ -289,6 +408,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'categories',
       'order_idx',
       'ALTER TABLE categories ADD COLUMN order_idx INTEGER DEFAULT 0 NOT NULL',
+    );
+    this.ensureColumn(
+      'meeting_rooms',
+      'archived',
+      'ALTER TABLE meeting_rooms ADD COLUMN archived INTEGER DEFAULT 0 NOT NULL',
+    );
+    this.ensureColumn(
+      'meeting_messages',
+      'payload',
+      'ALTER TABLE meeting_messages ADD COLUMN payload TEXT',
     );
 
     const now = new Date().toISOString();

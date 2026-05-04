@@ -9,6 +9,7 @@ import { useSessionStore } from '../../../shared/store/session-store'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
+import { WarningDialog } from '../../../shared/ui/warning-dialog'
 import { AuthIconButton } from './auth-icon-button'
 
 const loginSchema = z.object({
@@ -38,6 +39,7 @@ type SignupFormValues = z.infer<typeof signupSchema>
 
 export function InlineAuthBar() {
   const [signupOpen, setSignupOpen] = useState(false)
+  const [loginWarning, setLoginWarning] = useState<string | null>(null)
   const setSession = useSessionStore((state) => state.setSession)
   const loginMutation = useLogin()
   const signupMutation = useSignup()
@@ -75,8 +77,12 @@ export function InlineAuthBar() {
   const isPass = password && password.length >= 8 && password === confirmPassword
 
   const onLoginSubmit = async (values: LoginFormValues) => {
-    const response = await loginMutation.mutateAsync(values)
-    setSession(response)
+    try {
+      const response = await loginMutation.mutateAsync(values)
+      setSession(response)
+    } catch (error) {
+      setLoginWarning(getLoginErrorMessage(error))
+    }
   }
 
   const onSignupSubmit = async (values: SignupFormValues) => {
@@ -252,17 +258,34 @@ export function InlineAuthBar() {
         </Dialog.Root>
       </form>
 
-      {loginErrors.email || loginErrors.password || loginMutation.error ? (
+      {loginErrors.email || loginErrors.password ? (
         <div className="mt-1.5 text-right text-[11px] text-rose-200">
           {loginErrors.email ? <span>{loginErrors.email.message}</span> : null}
           {!loginErrors.email && loginErrors.password ? (
             <span>{loginErrors.password.message}</span>
           ) : null}
-          {!loginErrors.email && !loginErrors.password && loginMutation.error ? (
-            <span>{loginMutation.error.message}</span>
-          ) : null}
         </div>
       ) : null}
+
+      <WarningDialog
+        open={loginWarning !== null}
+        title="로그인할 수 없습니다"
+        description={loginWarning ?? ''}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLoginWarning(null)
+            loginMutation.reset()
+          }
+        }}
+      />
     </>
   )
+}
+
+function getLoginErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : ''
+  if (/invalid credentials|unauthorized|401/i.test(message)) {
+    return '이메일 또는 비밀번호가 올바르지 않습니다. 입력한 정보를 확인한 뒤 다시 시도해 주세요.'
+  }
+  return message || '로그인 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.'
 }

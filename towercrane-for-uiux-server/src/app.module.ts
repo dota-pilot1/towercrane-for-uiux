@@ -9,6 +9,8 @@ import { DocuModule } from './docu/docu.module';
 import { ReviewModule } from './review/review.module';
 import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
+import { MenusModule } from './menus/menus.module';
+import { MeetingModule } from './meeting/meeting.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { UsersModule } from './users/users.module';
     ReviewModule,
     UploadModule,
     UsersModule,
+    MenusModule,
+    MeetingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

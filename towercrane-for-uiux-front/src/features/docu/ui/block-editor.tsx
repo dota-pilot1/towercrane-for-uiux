@@ -119,14 +119,14 @@ export function BlockEditor({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-2.5 border-b border-surface-border-soft bg-surface-muted shrink-0">
+      <div className="flex items-center justify-between border-b border-surface-border-soft bg-surface-raised px-6 py-2.5 shadow-[0_1px_0_color-mix(in_srgb,var(--border)_40%,transparent)] shrink-0">
         <div className="text-[11px] uppercase tracking-widest text-text-muted">
           {blocks.length} 블록
           {isEditing ? (
             <>
               {' · '}
               {isDirty ? (
-                <span className="text-amber-300">변경됨</span>
+                <span className="text-brand-primary">변경됨</span>
               ) : (
                 <span className="text-brand-primary">저장됨</span>
               )}
@@ -139,14 +139,14 @@ export function BlockEditor({
               <button
                 onClick={handleCancel}
                 disabled={replaceMutation.isPending}
-                className="text-xs px-3 py-1.5 rounded-lg border border-surface-border-soft text-text-secondary hover:bg-surface-muted disabled:opacity-50"
+                className="rounded-md border border-surface-border-soft px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-surface-muted disabled:opacity-50"
               >
                 취소
               </button>
               <button
                 onClick={handleSave}
                 disabled={!isDirty || replaceMutation.isPending}
-                className="text-xs px-3 py-1.5 rounded-lg bg-brand-primary text-text-on-brand font-semibold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md bg-brand-primary px-3 py-1.5 text-xs font-semibold text-text-on-brand transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {replaceMutation.isPending ? '저장 중...' : '저장'}
               </button>
@@ -154,7 +154,7 @@ export function BlockEditor({
           ) : (
             <button
               onClick={onEnterEdit}
-              className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-brand-glass border border-brand-border text-brand-primary hover:bg-brand-glass transition-colors font-semibold"
+              className="inline-flex items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 py-1.5 text-xs font-semibold text-brand-primary transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_8%,transparent)]"
             >
               <Pencil className="size-3" />
               편집
@@ -164,10 +164,10 @@ export function BlockEditor({
       </div>
 
       {/* Block stack */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,color-mix(in_srgb,var(--primary)_2%,var(--background))_0%,var(--background)_180px)]">
         <div className="max-w-5xl mx-auto px-6 py-5 space-y-3">
           {blocks.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-surface-border-soft bg-surface-muted py-14 text-center text-text-muted">
+            <div className="rounded-lg border border-dashed border-surface-border-soft bg-surface-raised py-14 text-center text-text-muted shadow-sm">
               {isEditing
                 ? '아래에서 블록 타입을 선택해 추가하세요.'
                 : '등록된 블록이 없습니다. 상단의 편집 버튼을 눌러 추가하세요.'}
@@ -244,9 +244,9 @@ function InlineBlockCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="group rounded-2xl border border-surface-border-soft bg-surface-muted overflow-hidden hover:border-surface-border-soft transition-colors"
+      className="group overflow-hidden rounded-lg border border-surface-border-soft bg-surface-raised shadow-[0_10px_30px_color-mix(in_srgb,var(--foreground)_4%,transparent)] transition-all hover:border-brand-border/40 hover:shadow-[0_14px_34px_color-mix(in_srgb,var(--primary)_7%,transparent)]"
     >
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-surface-border-soft bg-surface-muted">
+      <div className="flex items-center gap-2 border-b border-surface-border-soft bg-[color:color-mix(in_srgb,var(--surface-muted)_48%,var(--card))] px-3 py-2">
         {readOnly ? null : (
           <button
             {...attributes}
@@ -282,7 +282,7 @@ function InlineBlockCard({
         {readOnly ? null : (
           <button
             onClick={onDelete}
-            className="p-1.5 text-text-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+            className="rounded-md p-1.5 text-text-muted opacity-0 transition-colors hover:bg-danger-glass hover:text-destructive group-hover:opacity-100"
             title="블록 삭제"
           >
             <Trash2 className="size-3.5" />
@@ -290,7 +290,7 @@ function InlineBlockCard({
         )}
       </div>
 
-      <div className="min-h-[60px]">
+      <div className="min-h-[60px] bg-surface-raised">
         <BlockBody block={block} readOnly={readOnly} onChangeContent={onChangeContent} />
       </div>
     </div>
@@ -338,7 +338,7 @@ function BlockBody({
 
 function AddBlockBar({ onAdd }: { onAdd: (type: DocBlockType) => void }) {
   return (
-    <div className="rounded-2xl border border-dashed border-surface-border-soft bg-surface-muted p-3">
+    <div className="rounded-lg border border-dashed border-surface-border-soft bg-surface-raised p-3 shadow-sm">
       <div className="flex items-center gap-2 mb-2">
         <Plus className="size-3.5 text-brand-primary/70" />
         <p className="text-[11px] uppercase tracking-widest text-text-secondary font-semibold">
@@ -351,7 +351,7 @@ function AddBlockBar({ onAdd }: { onAdd: (type: DocBlockType) => void }) {
             <button
               key={type}
               onClick={() => onAdd(type)}
-              className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs rounded-lg border border-surface-border-soft bg-surface-muted text-text-secondary hover:bg-surface-muted hover:border-surface-border-soft transition-colors"
+              className="flex items-center justify-center gap-1.5 rounded-md border border-surface-border-soft bg-surface-raised px-2 py-2 text-xs text-text-secondary transition-all hover:-translate-y-0.5 hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
             >
               <span>{meta.icon}</span>
               <span className="truncate">{meta.label}</span>
@@ -362,4 +362,3 @@ function AddBlockBar({ onAdd }: { onAdd: (type: DocBlockType) => void }) {
     </div>
   )
 }
-

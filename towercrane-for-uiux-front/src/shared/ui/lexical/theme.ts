@@ -19,11 +19,18 @@ export const editorTheme: EditorThemeClasses = {
     ul: 'list-disc ml-5 mb-2',
     ol: 'list-decimal ml-5 mb-2',
     listitem: 'mb-0.5 text-text-primary',
+    listitemChecked: 'editor-list-item-checked',
+    listitemUnchecked: 'editor-list-item-unchecked',
     nested: {
       listitem: 'list-none',
     },
   },
   link: 'text-brand-primary underline hover:brightness-110 cursor-pointer',
+  table: 'w-full border-collapse my-3 table-fixed',
+  tableRow: '',
+  tableCell: 'border border-surface-border px-3 py-2 text-sm text-text-primary align-top min-w-[80px]',
+  tableCellHeader: 'border border-surface-border px-3 py-2 text-sm font-semibold text-text-primary align-top',
+  tableScrollableWrapper: 'overflow-x-auto my-3',
   code: 'block bg-surface-muted text-text-primary font-mono text-sm p-3 rounded-lg my-2 overflow-x-auto whitespace-pre border border-surface-border-soft',
   codeHighlight: {
     atrule: 'text-purple-500',

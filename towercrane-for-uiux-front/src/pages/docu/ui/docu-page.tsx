@@ -213,34 +213,58 @@ function SectionSidebar({
   }
 
   return (
-    <div className="w-64 shrink-0 ui-panel p-5 flex flex-col gap-5 overflow-hidden bg-muted/40 border-none">
-      <div>
+    <div className="w-64 shrink-0 ui-panel p-5 flex flex-col gap-5 overflow-hidden border border-surface-border-soft bg-[linear-gradient(180deg,color-mix(in_srgb,var(--primary)_4%,var(--card))_0%,var(--card)_10rem)] shadow-[0_14px_36px_color-mix(in_srgb,var(--primary)_5%,transparent)]">
+      <div className="space-y-3">
         <button
+          type="button"
           onClick={onBack}
-          className="mb-3 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest ui-text-muted hover:text-brand-primary transition-colors"
+          className="group inline-flex items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-[11px] font-semibold uppercase tracking-widest ui-text-muted transition-all hover:-translate-y-0.5 hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary hover:shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
         >
-          <ArrowLeft className="size-3" /> Prototype
+          <span className="flex size-5 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised transition-colors group-hover:border-brand-border group-hover:text-brand-primary">
+            <ArrowLeft className="size-3" />
+          </span>
+          Prototype
         </button>
-        <div className="text-xs uppercase tracking-widest text-brand-primary font-bold mb-1">
-          Docs of
-        </div>
-        <div className="text-base font-bold ui-text-primary truncate" title={prototypeTitle ?? ''}>
-          {prototypeTitle ?? '—'}
-        </div>
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="group w-full rounded-lg border border-surface-border-soft bg-surface-raised/80 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-border hover:bg-brand-glass hover:shadow-[0_14px_30px_color-mix(in_srgb,var(--primary)_9%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+          title={prototypeTitle ?? ''}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary">
+                Docs of
+              </div>
+              <div className="mt-1 truncate text-base font-bold ui-text-primary transition-colors group-hover:text-brand-primary">
+                {prototypeTitle ?? '—'}
+              </div>
+            </div>
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-muted transition-colors group-hover:border-brand-border group-hover:bg-surface-raised group-hover:text-brand-primary">
+              <Layers className="size-4" />
+            </div>
+          </div>
+        </button>
       </div>
 
-      <div className="h-px w-full bg-[var(--surface-muted)]" />
+      <div className="h-px w-full bg-surface-border-soft" />
 
-      <div className="flex items-center justify-between">
-        <div className="text-[11px] uppercase tracking-widest ui-text-secondary font-semibold">
-          Sections
+      <div className="flex items-center justify-between rounded-lg border border-surface-border-soft bg-surface-raised/70 px-3 py-2 shadow-sm">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary">
+            Sections
+          </div>
+          <div className="mt-0.5 text-[11px] font-medium ui-text-muted">
+            {sections.length} items
+          </div>
         </div>
         <button
           onClick={() => {
             setAdding(true)
             setNewTitle('')
           }}
-          className="text-brand-primary hover:text-brand-primary transition-colors"
+          className="flex size-8 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-secondary transition-all hover:-translate-y-0.5 hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary hover:shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
           title="섹션 추가"
         >
           <Plus className="size-4" />
@@ -366,7 +390,7 @@ function SortableSectionItem({
       <div
         ref={setNodeRef}
         style={style}
-        className="flex items-center gap-1.5 rounded-[12px] border border-brand-border bg-brand-glass px-2 py-1.5"
+        className="flex items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-2 py-1.5 shadow-sm"
       >
         <input
           autoFocus
@@ -379,10 +403,10 @@ function SortableSectionItem({
             if (e.key === 'Escape') onCancelEdit()
           }}
         />
-        <button onClick={onSubmitEdit} className="text-brand-primary hover:brightness-110">
+        <button onClick={onSubmitEdit} className="rounded-md p-1 text-brand-primary transition-colors hover:bg-brand-glass hover:brightness-110">
           <Check className="size-3.5" />
         </button>
-        <button onClick={onCancelEdit} className="ui-text-muted hover:ui-text-secondary">
+        <button onClick={onCancelEdit} className="rounded-md p-1 ui-text-muted transition-colors hover:bg-surface-muted hover:ui-text-secondary">
           <X className="size-3.5" />
         </button>
       </div>
@@ -393,38 +417,51 @@ function SortableSectionItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-1.5 rounded-[12px] border transition-colors ${
+      className={`group relative flex items-center gap-1.5 overflow-hidden rounded-md border transition-all duration-200 ${
         isActive
-          ? 'bg-[var(--surface-muted)] ui-text-primary border-[var(--surface-border-soft)] shadow-sm'
-          : 'ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] border-transparent'
+          ? 'translate-x-0.5 border-brand-border bg-brand-glass text-brand-primary shadow-[0_10px_28px_color-mix(in_srgb,var(--primary)_10%,transparent)]'
+          : 'border-transparent ui-text-secondary hover:translate-x-0.5 hover:border-brand-border/40 hover:bg-brand-glass/60 hover:text-text-primary hover:shadow-[0_8px_22px_color-mix(in_srgb,var(--primary)_7%,transparent)]'
       }`}
     >
+      <span
+        className={`absolute left-0 top-[18%] h-[64%] w-1 rounded-r-full bg-brand-primary transition-opacity ${
+          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-70'
+        }`}
+      />
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing pl-2 py-2.5 ui-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
+        className="cursor-grab active:cursor-grabbing pl-2 py-2.5 ui-text-muted opacity-0 transition-opacity group-hover:opacity-100"
         aria-label="Drag"
       >
         <GripVertical className="size-3.5" />
       </button>
       <button
         onClick={onSelect}
-        className="flex-1 flex items-center gap-2 py-2.5 text-left text-sm font-medium min-w-0"
+        className="flex-1 flex items-center gap-2 py-2.5 text-left text-sm font-medium min-w-0 focus-visible:outline-none"
       >
-        <Layers className="size-4 opacity-70 shrink-0" />
+        <span
+          className={`flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors ${
+            isActive
+              ? 'border-brand-border bg-surface-raised text-brand-primary'
+              : 'border-surface-border-soft bg-surface-muted text-text-muted group-hover:border-brand-border group-hover:bg-surface-raised group-hover:text-brand-primary'
+          }`}
+        >
+          <Layers className="size-3.5" />
+        </span>
         <span className="truncate">{section.title}</span>
       </button>
-      <div className="flex items-center gap-0.5 pr-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex translate-x-2 items-center gap-0.5 pr-1.5 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100">
         <button
           onClick={onStartEdit}
-          className="p-1 ui-text-secondary hover:text-brand-primary"
+          className="rounded-md p-1 ui-text-secondary transition-colors hover:bg-surface-raised hover:text-brand-primary"
           title="이름 변경"
         >
           <Pencil className="size-3" />
         </button>
         <button
           onClick={onDelete}
-          className="p-1 ui-text-secondary hover:text-danger-500"
+          className="rounded-md p-1 ui-text-secondary transition-colors hover:bg-danger-glass hover:text-destructive"
           title="삭제"
         >
           <Trash2 className="size-3" />
@@ -506,10 +543,20 @@ function DocumentSidebar({
   }
 
   return (
-    <div className="w-72 shrink-0 ui-panel p-5 flex flex-col gap-5 overflow-hidden bg-muted/40 border-none">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-bold ui-text-primary tracking-wide truncate">
-          {section?.title ?? '섹션을 선택하세요'}
+    <div className="w-72 shrink-0 ui-panel p-5 flex flex-col gap-5 overflow-hidden border border-surface-border-soft bg-[linear-gradient(180deg,color-mix(in_srgb,var(--primary)_3%,var(--card))_0%,var(--card)_10rem)] shadow-[0_14px_36px_color-mix(in_srgb,var(--primary)_5%,transparent)]">
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-surface-border-soft bg-surface-raised/70 px-4 py-3 shadow-sm transition-colors hover:border-brand-border/60 hover:bg-brand-glass/50">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary">
+            Documents
+          </div>
+          <div className="mt-1 truncate text-sm font-bold tracking-wide ui-text-primary">
+            {section?.title ?? '섹션을 선택하세요'}
+          </div>
+          {section ? (
+            <div className="mt-0.5 text-[11px] font-medium ui-text-muted">
+              {documents.length} documents
+            </div>
+          ) : null}
         </div>
         {section ? (
           <button
@@ -517,7 +564,7 @@ function DocumentSidebar({
               setAdding(true)
               setNewTitle('')
             }}
-            className="ui-text-secondary hover:text-brand-primary transition-colors"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted ui-text-secondary transition-all hover:-translate-y-0.5 hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary hover:shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
             title="문서 추가"
           >
             <Plus className="size-4" />
@@ -525,7 +572,7 @@ function DocumentSidebar({
         ) : null}
       </div>
 
-      <div className="h-px w-full bg-[var(--surface-muted)]" />
+      <div className="h-px w-full bg-surface-border-soft" />
 
       <div className="flex flex-col gap-1 overflow-y-auto pr-1">
         <DndContext
@@ -647,7 +694,7 @@ function SortableDocumentItem({
       <div
         ref={setNodeRef}
         style={style}
-        className="flex items-center gap-1.5 rounded-[12px] border border-brand-border bg-brand-glass px-2 py-1.5"
+        className="flex items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-2 py-1.5 shadow-sm"
       >
         <input
           autoFocus
@@ -660,10 +707,10 @@ function SortableDocumentItem({
             if (e.key === 'Escape') onCancelEdit()
           }}
         />
-        <button onClick={onSubmitEdit} className="text-brand-primary hover:brightness-110">
+        <button onClick={onSubmitEdit} className="rounded-md p-1 text-brand-primary transition-colors hover:bg-brand-glass hover:brightness-110">
           <Check className="size-3.5" />
         </button>
-        <button onClick={onCancelEdit} className="ui-text-muted hover:ui-text-secondary">
+        <button onClick={onCancelEdit} className="rounded-md p-1 ui-text-muted transition-colors hover:bg-surface-muted hover:ui-text-secondary">
           <X className="size-3.5" />
         </button>
       </div>
@@ -674,38 +721,51 @@ function SortableDocumentItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-1 rounded-[12px] transition-all ${
+      className={`group relative flex items-center gap-1 overflow-hidden rounded-md border transition-all duration-200 ${
         isActive
-          ? 'text-brand-primary bg-brand-glass font-bold border-l-[3px] border-brand-border pl-[5px]'
-          : 'ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] border-l-[3px] border-transparent pl-[5px]'
+          ? 'translate-x-0.5 border-brand-border bg-brand-glass font-bold text-brand-primary shadow-[0_10px_28px_color-mix(in_srgb,var(--primary)_10%,transparent)]'
+          : 'border-transparent ui-text-secondary hover:translate-x-0.5 hover:border-brand-border/40 hover:bg-brand-glass/60 hover:text-text-primary hover:shadow-[0_8px_22px_color-mix(in_srgb,var(--primary)_7%,transparent)]'
       }`}
     >
+      <span
+        className={`absolute left-0 top-[18%] h-[64%] w-1 rounded-r-full bg-brand-primary transition-opacity ${
+          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-70'
+        }`}
+      />
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing py-2 ui-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
+        className="cursor-grab active:cursor-grabbing py-2 pl-2 ui-text-muted opacity-0 transition-opacity group-hover:opacity-100"
         aria-label="Drag"
       >
         <GripVertical className="size-3" />
       </button>
       <button
         onClick={onSelect}
-        className="flex-1 flex items-center gap-2 py-2 text-left text-[13px] min-w-0"
+        className="flex-1 flex items-center gap-2 py-2 text-left text-[13px] min-w-0 focus-visible:outline-none"
       >
-        <Hash className="size-3.5 opacity-60 shrink-0" />
+        <span
+          className={`flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors ${
+            isActive
+              ? 'border-brand-border bg-surface-raised text-brand-primary'
+              : 'border-surface-border-soft bg-surface-muted text-text-muted group-hover:border-brand-border group-hover:bg-surface-raised group-hover:text-brand-primary'
+          }`}
+        >
+          <Hash className="size-3.5" />
+        </span>
         <span className="truncate">{doc.title}</span>
       </button>
-      <div className="flex items-center gap-0.5 pr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex translate-x-2 items-center gap-0.5 pr-1 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100">
         <button
           onClick={onStartEdit}
-          className="p-1 ui-text-secondary hover:text-brand-primary"
+          className="rounded-md p-1 ui-text-secondary transition-colors hover:bg-surface-raised hover:text-brand-primary"
           title="이름 변경"
         >
           <Pencil className="size-3" />
         </button>
         <button
           onClick={onDelete}
-          className="p-1 ui-text-secondary hover:text-danger-500"
+          className="rounded-md p-1 ui-text-secondary transition-colors hover:bg-danger-glass hover:text-destructive"
           title="삭제"
         >
           <Trash2 className="size-3" />

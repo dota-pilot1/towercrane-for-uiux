@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
@@ -6,17 +6,25 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { ListPlugin } from '@lexical/react/LexicalListPlugin'
+import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin'
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin'
+import { HorizontalRulePlugin } from '@lexical/react/LexicalHorizontalRulePlugin'
+import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode'
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { CodeNode, CodeHighlightNode, registerCodeHighlighting } from '@lexical/code'
 import { HeadingNode, QuoteNode } from '@lexical/rich-text'
 import { ListNode, ListItemNode } from '@lexical/list'
 import { LinkNode } from '@lexical/link'
+import { TableNode, TableCellNode, TableRowNode } from '@lexical/table'
 import { type EditorState } from 'lexical'
 import { editorTheme } from './theme'
 import { LexicalToolbar } from './toolbar'
 import { ImageNode } from './nodes/image-node'
+import { YoutubeNode } from './nodes/youtube-node'
 import { DragDropImagePlugin, ImagePlugin } from './plugins/image-plugin'
+import { YoutubePlugin } from './plugins/youtube-plugin'
+import { TableActionMenuPlugin } from './plugins/table-action-plugin'
 import { uploadImageToS3 } from './utils/upload-image'
 
 type LexicalEditorProps = {
@@ -41,26 +49,13 @@ function EditablePlugin({ readOnly }: { readOnly: boolean }) {
   return null
 }
 
-function InitialContentPlugin({ initialState }: { initialState?: string }) {
-  const [editor] = useLexicalComposerContext()
-  const initialized = useRef(false)
-
-  useEffect(() => {
-    if (initialized.current) return
-    initialized.current = true
-    if (!initialState) return
-
-    try {
-      const parsed = JSON.parse(initialState)
-      if (!parsed?.root) return
-      const editorState = editor.parseEditorState(initialState)
-      editor.setEditorState(editorState)
-    } catch {
-      // 유효한 Lexical JSON 아니면 그냥 빈 에디터로 시작
-    }
-  }, [editor, initialState])
-
-  return null
+function isValidLexicalJson(value: string): boolean {
+  try {
+    const parsed = JSON.parse(value)
+    return Boolean(parsed?.root)
+  } catch {
+    return false
+  }
 }
 
 export function LexicalEditor({
@@ -77,34 +72,46 @@ export function LexicalEditor({
     [onChange],
   )
 
-  const initialConfig = {
-    namespace: 'DocuNoteEditor',
-    theme: editorTheme,
-    editable: !readOnly,
-    nodes: [
-      HeadingNode,
-      QuoteNode,
-      ListNode,
-      ListItemNode,
-      CodeNode,
-      CodeHighlightNode,
-      LinkNode,
-      ImageNode,
-    ],
-    onError: (error: Error) => {
-      console.error('Lexical error:', error)
-    },
-  }
+  const initialConfig = useMemo(
+    () => ({
+      namespace: 'DocuNoteEditor',
+      theme: editorTheme,
+      editable: !readOnly,
+      editorState:
+        initialState && isValidLexicalJson(initialState) ? initialState : undefined,
+      nodes: [
+        HeadingNode,
+        QuoteNode,
+        ListNode,
+        ListItemNode,
+        CodeNode,
+        CodeHighlightNode,
+        LinkNode,
+        HorizontalRuleNode,
+        TableNode,
+        TableCellNode,
+        TableRowNode,
+        ImageNode,
+        YoutubeNode,
+      ],
+      onError: (error: Error) => {
+        console.error('Lexical error:', error)
+      },
+    }),
+    // initialState is only used as the mount seed; block remount churn while typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [readOnly],
+  )
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className="flex flex-col">
+      <div className="flex flex-col bg-surface-raised">
         {readOnly ? null : <LexicalToolbar onImageUpload={uploadImageToS3} />}
         <div className="relative">
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className="px-5 py-4 text-sm text-text-primary outline-none leading-relaxed"
+                className="px-5 py-5 text-sm leading-relaxed text-text-primary outline-none"
                 style={{ minHeight }}
               />
             }
@@ -120,12 +127,16 @@ export function LexicalEditor({
         </div>
         {readOnly ? null : <HistoryPlugin />}
         <ListPlugin />
+        <CheckListPlugin />
         <LinkPlugin />
+        <HorizontalRulePlugin />
+        <TablePlugin hasHorizontalScroll />
         <CodeHighlightPlugin />
         {readOnly ? null : <ImagePlugin />}
         {readOnly ? null : <DragDropImagePlugin onUpload={uploadImageToS3} />}
+        {readOnly ? null : <YoutubePlugin />}
+        {readOnly ? null : <TableActionMenuPlugin />}
         <OnChangePlugin onChange={handleChange} />
-        <InitialContentPlugin initialState={initialState} />
         <EditablePlugin readOnly={readOnly} />
       </div>
     </LexicalComposer>

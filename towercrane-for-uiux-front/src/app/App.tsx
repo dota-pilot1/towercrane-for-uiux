@@ -1,4 +1,4 @@
-import { Bot, FileText, GitBranch, UserCog } from 'lucide-react'
+import { Bot, FileText, GitBranch, LayoutGrid, MessagesSquare, UserCog } from 'lucide-react'
 import { useEffect } from 'react'
 import { Toaster } from 'sonner'
 import { useCurrentUser } from '../shared/api/auth'
@@ -11,7 +11,11 @@ import { useSessionStore } from '../shared/store/session-store'
 import { Button } from '../shared/ui/button'
 import { Card } from '../shared/ui/card'
 import { useUiStore } from '../shared/store/ui-store'
+import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
 import { AppHeader } from '../widgets/app-header/ui/app-header'
+
+import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
+import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 
 export function AppRoot() {
   const activeSection = useUiStore((state) => state.activeSection)
@@ -34,9 +38,12 @@ export function AppRoot() {
       prototype: 'Prototype Registry',
       docu: 'Documentation Workspace',
       chatbot: 'Workspace Assistant',
+      meeting: 'Meeting Room',
       readme: 'Project Readme',
       users: 'User Administration',
       readme_admin: 'Readme Administration',
+      menu_admin: 'Menu Administration',
+      ai_methodology: 'AI Methodology',
     }
 
     const currentSectionTitle = sectionTitles[activeSection] ?? 'Console'
@@ -106,6 +113,14 @@ export function AppRoot() {
 
     if (activeSection === 'readme') {
       return <ReadmePage />
+    }
+
+    if (activeSection === 'meeting') {
+      return <MeetingPage />
+    }
+
+    if (activeSection === 'ai_methodology') {
+      return <AiMethodologyPage />
     }
 
     if (activeSection === 'users') {
@@ -193,6 +208,10 @@ export function AppRoot() {
       )
     }
 
+    if (activeSection === 'menu_admin') {
+      return <MenuAdminPage />
+    }
+
     return (
       <Card className="rounded-md p-6">
         <h1 className="max-w-3xl text-3xl font-semibold tracking-tight ui-text-primary">
@@ -214,11 +233,11 @@ export function AppRoot() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-1.5 sm:px-5 lg:px-6">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-[1600px]">
         <Toaster position="top-center" richColors />
         <AppHeader />
-        <main>{renderContent()}</main>
+        <main className="px-4 pb-10 sm:px-5 lg:px-6">{renderContent()}</main>
       </div>
     </div>
   )
