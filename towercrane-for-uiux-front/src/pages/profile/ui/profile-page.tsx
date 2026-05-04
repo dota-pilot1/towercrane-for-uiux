@@ -111,8 +111,8 @@ export function ProfilePage({ user }: ProfilePageProps) {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-[1280px] min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-      <Card className="min-h-[620px] min-w-0 rounded-md p-5 sm:p-6">
+    <div className="grid w-full min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <Card className="min-h-[620px] min-w-0 overflow-hidden rounded-md p-5 sm:p-6">
         <div className="mb-6 flex flex-col gap-3 border-b border-surface-border-soft pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary">Profile Console</p>
@@ -127,8 +127,8 @@ export function ProfilePage({ user }: ProfilePageProps) {
           </span>
         </div>
 
-        <div className="grid min-w-0 gap-5 md:grid-cols-[190px_minmax(0,1fr)]">
-          <div className="flex gap-2 overflow-x-auto pb-1 md:block md:space-y-2 md:overflow-visible md:pb-0">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[190px_minmax(0,1fr)]">
+          <nav className="flex min-w-0 gap-2 overflow-x-auto pb-1 lg:block lg:space-y-2 lg:overflow-visible lg:pb-0">
             {tabs.map((tab) => {
               const Icon = tab.icon
               const isActive = activeTab === tab.id
@@ -137,24 +137,24 @@ export function ProfilePage({ user }: ProfilePageProps) {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex h-11 shrink-0 items-center gap-2 rounded-md border px-3 text-left text-sm font-bold transition-all md:w-full ${
+                  className={`flex h-11 shrink-0 items-center gap-2 rounded-md border px-3 text-left text-sm font-bold transition-all lg:w-full ${
                     isActive
                       ? 'border-brand-border bg-brand-glass text-brand-primary shadow-sm'
                       : 'border-surface-border-soft bg-surface-muted/30 text-text-secondary hover:border-surface-border hover:bg-surface-muted hover:text-text-primary'
                   }`}
                 >
-                  <Icon className="size-4" />
+                  <Icon className="size-4 shrink-0" />
                   {tab.label}
                 </button>
               )
             })}
-          </div>
+          </nav>
 
-          <section className="grid min-w-0 gap-3 lg:grid-cols-2">
+          <section className="grid min-w-0 gap-3 md:grid-cols-2">
             {tabPanels[activeTab].map((item) => {
               const Icon = item.icon
               return (
-                <div key={item.label} className="ui-panel-soft min-h-[116px] p-4">
+                <div key={item.label} className="ui-panel-soft min-h-[112px] p-4">
                   <div className="mb-4 flex size-9 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
                     <Icon className="size-4" />
                   </div>
@@ -167,7 +167,7 @@ export function ProfilePage({ user }: ProfilePageProps) {
         </div>
       </Card>
 
-      <aside className="min-w-0 space-y-4 xl:w-[280px]">
+      <aside className="min-w-0">
         <Card className="rounded-md p-5">
           <div className="flex flex-col items-center text-center">
             <div className="relative flex size-28 items-center justify-center overflow-hidden rounded-md border border-brand-border bg-brand-glass text-3xl font-black text-brand-primary shadow-sm">
@@ -216,20 +216,17 @@ export function ProfilePage({ user }: ProfilePageProps) {
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-2">
-            <div className="ui-panel-soft p-3 text-center">
+            <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3 text-center">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-text-muted">Role</p>
               <p className="mt-1 text-sm font-black text-text-primary">{user?.role ?? '-'}</p>
             </div>
-            <div className="ui-panel-soft p-3 text-center">
+            <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3 text-center">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-text-muted">Status</p>
               <p className="mt-1 text-sm font-black text-brand-primary">Active</p>
             </div>
           </div>
-        </Card>
 
-        <Card className="rounded-md p-5">
-          <h3 className="text-sm font-black text-text-primary">부가 정보</h3>
-          <dl className="mt-4 space-y-3 text-sm">
+          <dl className="mt-5 space-y-3 border-t border-surface-border-soft pt-4 text-sm">
             <div className="flex items-start justify-between gap-3">
               <dt className="text-text-secondary">가입일</dt>
               <dd className="text-right font-bold text-text-primary">{joinedAt}</dd>

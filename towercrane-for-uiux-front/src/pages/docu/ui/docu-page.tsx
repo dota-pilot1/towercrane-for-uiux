@@ -110,7 +110,7 @@ export function DocuPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-4 animate-in fade-in">
+    <div className="grid h-[calc(100vh-8rem)] min-h-0 grid-cols-[240px_260px_minmax(0,1fr)] gap-3 animate-in fade-in">
       <SectionSidebar
         prototypeId={activePrototypeId}
         sections={sections}
@@ -120,7 +120,6 @@ export function DocuPage() {
           setActiveDocumentId(null)
         }}
         prototypeTitle={prototypeInfo?.prototype.title ?? null}
-        onBack={() => setActiveSection('prototype')}
         isLoading={treeQuery.isLoading}
       />
       <DocumentSidebar
@@ -134,6 +133,7 @@ export function DocuPage() {
         section={currentSection}
         documentId={activeDocumentId}
         documents={documents}
+        onBack={() => setActiveSection('prototype')}
       />
     </div>
   )
@@ -148,7 +148,6 @@ function SectionSidebar({
   activeSectionId,
   onSelect,
   prototypeTitle,
-  onBack,
   isLoading,
 }: {
   prototypeId: string
@@ -156,7 +155,6 @@ function SectionSidebar({
   activeSectionId: string | null
   onSelect: (id: string) => void
   prototypeTitle: string | null
-  onBack: () => void
   isLoading: boolean
 }) {
   const [adding, setAdding] = useState(false)
@@ -213,23 +211,11 @@ function SectionSidebar({
   }
 
   return (
-    <div className="w-64 shrink-0 ui-panel p-5 flex flex-col gap-5 overflow-hidden border border-surface-border-soft bg-[linear-gradient(180deg,color-mix(in_srgb,var(--primary)_4%,var(--card))_0%,var(--card)_10rem)] shadow-[0_14px_36px_color-mix(in_srgb,var(--primary)_5%,transparent)]">
-      <div className="space-y-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="group inline-flex items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-[11px] font-semibold uppercase tracking-widest ui-text-muted transition-all hover:-translate-y-0.5 hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary hover:shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
-        >
-          <span className="flex size-5 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised transition-colors group-hover:border-brand-border group-hover:text-brand-primary">
-            <ArrowLeft className="size-3" />
-          </span>
-          Prototype
-        </button>
+    <div className="flex min-h-0 flex-col gap-3 overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised p-4 shadow-sm">
+      <div className="space-y-2.5">
 
-        <button
-          type="button"
-          onClick={onBack}
-          className="group w-full rounded-lg border border-surface-border-soft bg-surface-raised/80 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-border hover:bg-brand-glass hover:shadow-[0_14px_30px_color-mix(in_srgb,var(--primary)_9%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+        <div
+          className="group w-full rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2.5 text-left shadow-sm transition-all hover:border-brand-border/40 hover:bg-brand-glass/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
           title={prototypeTitle ?? ''}
         >
           <div className="flex items-center justify-between gap-3">
@@ -245,12 +231,10 @@ function SectionSidebar({
               <Layers className="size-4" />
             </div>
           </div>
-        </button>
+        </div>
       </div>
 
-      <div className="h-px w-full bg-surface-border-soft" />
-
-      <div className="flex items-center justify-between rounded-lg border border-surface-border-soft bg-surface-raised/70 px-3 py-2 shadow-sm">
+      <div className="flex items-center justify-between rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2 shadow-sm">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary">
             Sections
@@ -271,83 +255,85 @@ function SectionSidebar({
         </button>
       </div>
 
-      <div className="flex flex-col gap-1 overflow-y-auto pr-1">
-        {isLoading && sections.length === 0 ? (
-          <div className="text-xs ui-text-muted text-center py-6">로딩 중...</div>
-        ) : null}
+      <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-surface-border-soft bg-[var(--surface-muted)]/60 p-1.5">
+        <div className="flex h-full flex-col gap-1 overflow-y-auto pr-1">
+          {isLoading && sections.length === 0 ? (
+            <div className="text-xs ui-text-muted text-center py-6">로딩 중...</div>
+          ) : null}
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={sections.map((s) => s.id)}
-            strategy={verticalListSortingStrategy}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            {sections.map((sec) => (
-              <SortableSectionItem
-                key={sec.id}
-                section={sec}
-                isActive={activeSectionId === sec.id}
-                isEditing={editingId === sec.id}
-                editingTitle={editingTitle}
-                onSelect={() => onSelect(sec.id)}
-                onStartEdit={() => {
-                  setEditingId(sec.id)
-                  setEditingTitle(sec.title)
-                }}
-                onChangeTitle={setEditingTitle}
-                onSubmitEdit={() => submitRename(sec.id)}
-                onCancelEdit={() => setEditingId(null)}
-                onDelete={() => {
-                  if (
-                    window.confirm(
-                      `섹션 "${sec.title}" 를 삭제할까요? 하위 문서/블록도 함께 삭제됩니다.`,
-                    )
-                  ) {
-                    deleteMutation.mutate(sec.id)
-                  }
+            <SortableContext
+              items={sections.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {sections.map((sec) => (
+                <SortableSectionItem
+                  key={sec.id}
+                  section={sec}
+                  isActive={activeSectionId === sec.id}
+                  isEditing={editingId === sec.id}
+                  editingTitle={editingTitle}
+                  onSelect={() => onSelect(sec.id)}
+                  onStartEdit={() => {
+                    setEditingId(sec.id)
+                    setEditingTitle(sec.title)
+                  }}
+                  onChangeTitle={setEditingTitle}
+                  onSubmitEdit={() => submitRename(sec.id)}
+                  onCancelEdit={() => setEditingId(null)}
+                  onDelete={() => {
+                    if (
+                      window.confirm(
+                        `섹션 "${sec.title}" 를 삭제할까요? 하위 문서/블록도 함께 삭제됩니다.`,
+                      )
+                    ) {
+                      deleteMutation.mutate(sec.id)
+                    }
+                  }}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+
+          {adding ? (
+            <div className="flex items-center gap-1.5 rounded-[12px] border border-brand-border bg-brand-glass px-2 py-1.5 mt-1">
+              <input
+                autoFocus
+                className="flex-1 bg-transparent text-sm ui-text-primary placeholder:ui-text-muted outline-none"
+                placeholder="섹션 이름"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.nativeEvent.isComposing) return
+                  if (e.key === 'Enter') submitAdd()
+                  if (e.key === 'Escape') setAdding(false)
                 }}
               />
-            ))}
-          </SortableContext>
-        </DndContext>
+              <button
+                onClick={submitAdd}
+                className="text-brand-primary hover:brightness-110"
+              >
+                <Check className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setAdding(false)}
+                className="ui-text-muted hover:ui-text-secondary"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ) : null}
 
-        {adding ? (
-          <div className="flex items-center gap-1.5 rounded-[12px] border border-brand-border bg-brand-glass px-2 py-1.5 mt-1">
-            <input
-              autoFocus
-              className="flex-1 bg-transparent text-sm ui-text-primary placeholder:ui-text-muted outline-none"
-              placeholder="섹션 이름"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.nativeEvent.isComposing) return
-                if (e.key === 'Enter') submitAdd()
-                if (e.key === 'Escape') setAdding(false)
-              }}
-            />
-            <button
-              onClick={submitAdd}
-              className="text-brand-primary hover:brightness-110"
-            >
-              <Check className="size-3.5" />
-            </button>
-            <button
-              onClick={() => setAdding(false)}
-              className="ui-text-muted hover:ui-text-secondary"
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        ) : null}
-
-        {!isLoading && sections.length === 0 && !adding ? (
-          <div className="text-xs ui-text-muted text-center py-6">
-            섹션이 없습니다. + 버튼으로 추가하세요.
-          </div>
-        ) : null}
+          {!isLoading && sections.length === 0 && !adding ? (
+            <div className="text-xs ui-text-muted text-center py-6">
+              섹션이 없습니다. + 버튼으로 추가하세요.
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   )
@@ -543,8 +529,8 @@ function DocumentSidebar({
   }
 
   return (
-    <div className="w-72 shrink-0 ui-panel p-5 flex flex-col gap-5 overflow-hidden border border-surface-border-soft bg-[linear-gradient(180deg,color-mix(in_srgb,var(--primary)_3%,var(--card))_0%,var(--card)_10rem)] shadow-[0_14px_36px_color-mix(in_srgb,var(--primary)_5%,transparent)]">
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-surface-border-soft bg-surface-raised/70 px-4 py-3 shadow-sm transition-colors hover:border-brand-border/60 hover:bg-brand-glass/50">
+    <div className="flex min-h-0 flex-col gap-3 overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2.5 shadow-sm transition-colors hover:border-brand-border/60 hover:bg-brand-glass/50">
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-primary">
             Documents
@@ -572,86 +558,86 @@ function DocumentSidebar({
         ) : null}
       </div>
 
-      <div className="h-px w-full bg-surface-border-soft" />
-
-      <div className="flex flex-col gap-1 overflow-y-auto pr-1">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={documents.map((d) => d.id)}
-            strategy={verticalListSortingStrategy}
+      <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-surface-border-soft bg-[var(--surface-muted)]/60 p-1.5">
+        <div className="flex h-full flex-col gap-1 overflow-y-auto pr-1">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            {documents.map((doc) => (
-              <SortableDocumentItem
-                key={doc.id}
-                document={doc}
-                isActive={activeDocumentId === doc.id}
-                isEditing={editingId === doc.id}
-                editingTitle={editingTitle}
-                onSelect={() => onSelect(doc.id)}
-                onStartEdit={() => {
-                  setEditingId(doc.id)
-                  setEditingTitle(doc.title)
-                }}
-                onChangeTitle={setEditingTitle}
-                onSubmitEdit={() => submitRename(doc.id)}
-                onCancelEdit={() => setEditingId(null)}
-                onDelete={() => {
-                  if (
-                    window.confirm(
-                      `문서 "${doc.title}" 를 삭제할까요? 블록도 함께 삭제됩니다.`,
-                    )
-                  ) {
-                    deleteMutation.mutate(doc.id)
-                  }
+            <SortableContext
+              items={documents.map((d) => d.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {documents.map((doc) => (
+                <SortableDocumentItem
+                  key={doc.id}
+                  document={doc}
+                  isActive={activeDocumentId === doc.id}
+                  isEditing={editingId === doc.id}
+                  editingTitle={editingTitle}
+                  onSelect={() => onSelect(doc.id)}
+                  onStartEdit={() => {
+                    setEditingId(doc.id)
+                    setEditingTitle(doc.title)
+                  }}
+                  onChangeTitle={setEditingTitle}
+                  onSubmitEdit={() => submitRename(doc.id)}
+                  onCancelEdit={() => setEditingId(null)}
+                  onDelete={() => {
+                    if (
+                      window.confirm(
+                        `문서 "${doc.title}" 를 삭제할까요? 블록도 함께 삭제됩니다.`,
+                      )
+                    ) {
+                      deleteMutation.mutate(doc.id)
+                    }
+                  }}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+
+          {adding && section ? (
+            <div className="flex items-center gap-1.5 rounded-[12px] border border-brand-border bg-brand-glass px-2 py-1.5 mt-1">
+              <input
+                autoFocus
+                className="flex-1 bg-transparent text-sm ui-text-primary placeholder:ui-text-muted outline-none"
+                placeholder="문서 제목"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.nativeEvent.isComposing) return
+                  if (e.key === 'Enter') submitAdd()
+                  if (e.key === 'Escape') setAdding(false)
                 }}
               />
-            ))}
-          </SortableContext>
-        </DndContext>
+              <button
+                onClick={submitAdd}
+                className="text-brand-primary hover:brightness-110"
+              >
+                <Check className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setAdding(false)}
+                className="ui-text-muted hover:ui-text-secondary"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ) : null}
 
-        {adding && section ? (
-          <div className="flex items-center gap-1.5 rounded-[12px] border border-brand-border bg-brand-glass px-2 py-1.5 mt-1">
-            <input
-              autoFocus
-              className="flex-1 bg-transparent text-sm ui-text-primary placeholder:ui-text-muted outline-none"
-              placeholder="문서 제목"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.nativeEvent.isComposing) return
-                if (e.key === 'Enter') submitAdd()
-                if (e.key === 'Escape') setAdding(false)
-              }}
-            />
-            <button
-              onClick={submitAdd}
-              className="text-brand-primary hover:brightness-110"
-            >
-              <Check className="size-3.5" />
-            </button>
-            <button
-              onClick={() => setAdding(false)}
-              className="ui-text-muted hover:ui-text-secondary"
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        ) : null}
-
-        {section && documents.length === 0 && !adding ? (
-          <div className="text-xs ui-text-muted text-center py-6">
-            문서가 없습니다.
-          </div>
-        ) : null}
-        {!section ? (
-          <div className="text-xs ui-text-muted text-center py-6">
-            왼쪽에서 섹션을 선택하세요.
-          </div>
-        ) : null}
+          {section && documents.length === 0 && !adding ? (
+            <div className="text-xs ui-text-muted text-center py-6">
+              문서가 없습니다.
+            </div>
+          ) : null}
+          {!section ? (
+            <div className="text-xs ui-text-muted text-center py-6">
+              왼쪽에서 섹션을 선택하세요.
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   )
@@ -783,11 +769,13 @@ function MainPanel({
   section,
   documentId,
   documents,
+  onBack,
 }: {
   prototypeId: string
   section: DocSection | null
   documentId: string | null
   documents: DocDocumentSummary[]
+  onBack: () => void
 }) {
   const activeDoc = documents.find((d) => d.id === documentId) ?? null
   const documentQuery = useDocuDocument(documentId)
@@ -877,6 +865,16 @@ function MainPanel({
                   ) : null}
                 </div>
               )}
+            </div>
+            <div className="shrink-0">
+              <button
+                type="button"
+                onClick={onBack}
+                className="group flex items-center gap-2 rounded-xl border border-surface-border-soft bg-surface-muted px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.2em] text-brand-primary shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-border hover:bg-brand-glass hover:shadow-[0_8px_20px_color-mix(in_srgb,var(--primary)_10%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+              >
+                <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-1" />
+                Go Back
+              </button>
             </div>
           </div>
           <div className="flex-1 min-h-0">

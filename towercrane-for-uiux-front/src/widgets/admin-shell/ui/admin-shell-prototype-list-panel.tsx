@@ -30,6 +30,7 @@ type AdminShellPrototypeListPanelProps = {
   onSearchSubmit: () => void
   onSearchEscape: () => void
   onSortChange: (value: PrototypeListSort) => void
+  onSelectPrototype: (prototypeId: string) => void
   onOpenDoc: (prototypeId: string) => void
   onPrevPage: () => void
   onNextPage: () => void
@@ -53,6 +54,7 @@ export function AdminShellPrototypeListPanel({
   onSearchSubmit,
   onSearchEscape,
   onSortChange,
+  onSelectPrototype,
   onOpenDoc,
   onPrevPage,
   onNextPage,
@@ -115,11 +117,19 @@ export function AdminShellPrototypeListPanel({
             return (
               <div
                 key={proto.id}
-                className="group relative overflow-hidden rounded-sm border border-surface-border-soft bg-background px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-brand-border/50 hover:bg-[color:color-mix(in_srgb,var(--primary)_3%,var(--background))] hover:shadow-[0_12px_32px_color-mix(in_srgb,var(--primary)_8%,transparent)]"
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelectPrototype(proto.id)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onSelectPrototype(proto.id)
+                  }
+                }}
+                className="group relative cursor-pointer overflow-hidden rounded-sm border border-surface-border bg-surface-raised px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-border/70 hover:bg-surface-muted hover:shadow-[0_12px_28px_color-mix(in_srgb,var(--primary)_7%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
               >
-                <div className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-brand-primary opacity-100" />
                 <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1 space-y-2 pl-1">
+                  <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="ui-text-primary text-base font-semibold tracking-tight">
                         {proto.title}
@@ -149,6 +159,7 @@ export function AdminShellPrototypeListPanel({
                           href={demoUrl}
                           target="_blank"
                           rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
                           aria-label={`${proto.title} 운영 데모 새 창으로 열기`}
                           className="inline-flex min-h-8 max-w-full items-center gap-2 rounded-sm border border-brand-border bg-brand-glass px-3 py-1.5 text-xs font-bold text-brand-primary transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
                         >
@@ -171,7 +182,10 @@ export function AdminShellPrototypeListPanel({
                       ))}
                     </div>
                   </div>
-                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                  <div
+                    className="flex shrink-0 flex-wrap items-center justify-end gap-1.5"
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     {isAuthenticated && canManagePrototype && (
                       <div className="mr-1.5 flex items-center gap-1.5 border-r border-surface-border-soft pr-1.5">
                         <EditPrototypeDialog

@@ -107,7 +107,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-[100] mb-8 w-full border-b border-surface-border-soft bg-background/80 px-4 py-3 backdrop-blur-md">
+    <header className="sticky top-0 z-[100] w-full border-b border-surface-border bg-surface-muted/95 px-4 py-3 shadow-sm backdrop-blur-md">
       <div className="flex items-center justify-between gap-4">
         <button
           type="button"

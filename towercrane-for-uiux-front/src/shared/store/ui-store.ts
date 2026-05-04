@@ -13,13 +13,13 @@ type UiStoreState = {
   activeCategoryId: string
   activePrototypeId: string | null
   activeWorkspace: 'overview' | 'prototypes' | 'backend'
-  themeColor: 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light'
+  themeColor: 'default' | 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light'
   filters: WorkbenchFilters
   setActiveSection: (section: string) => void
   setActiveCategory: (id: string) => void
   setActivePrototypeId: (id: string | null) => void
   setActiveWorkspace: (workspace: 'overview' | 'prototypes' | 'backend') => void
-  setThemeColor: (color: 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light') => void
+  setThemeColor: (color: 'default' | 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light') => void
   applyFilters: (filters: WorkbenchFilters) => void
 }
 
@@ -36,7 +36,7 @@ export const useUiStore = create<UiStoreState>()(
       activeCategoryId: seedScenarioCategories[0]?.id ?? 'fsd-architecture',
       activePrototypeId: null,
       activeWorkspace: 'overview',
-      themeColor: 'light',
+      themeColor: 'default',
       filters: defaultFilters,
       setActiveSection: (activeSection) => set({ activeSection }),
       setActiveCategory: (activeCategoryId) => set({ activeCategoryId }),

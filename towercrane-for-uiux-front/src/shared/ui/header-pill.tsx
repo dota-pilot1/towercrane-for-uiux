@@ -7,7 +7,7 @@ export type HeaderPillVariant = 'default' | 'active' | 'static'
 const variantStyles: Record<HeaderPillVariant, string> = {
   default:
     'border-transparent bg-transparent ui-text-secondary hover:bg-surface-muted hover:ui-text-primary hover:border-surface-border hover:scale-[1.02] active:scale-[0.98]',
-  active: 'border-brand-border bg-brand-glass text-brand-primary font-semibold shadow-sm shadow-brand-primary/5',
+  active: 'border-primary bg-primary text-primary-foreground font-semibold shadow-md shadow-primary/20 hover:brightness-110',
   static: 'border-surface-border bg-transparent ui-text-primary',
 }
 

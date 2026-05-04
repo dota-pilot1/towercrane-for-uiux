@@ -5,7 +5,7 @@ import { useUiStore } from '../store/ui-store'
 import { HeaderPill } from './header-pill'
 
 const themes = [
-  { id: 'light', color: '#7dd3fc', label: 'Light' },
+  { id: 'default', color: '#111111', label: 'Default' },
   { id: 'emerald', color: '#10b981', label: 'Emerald' },
   { id: 'blue', color: '#3b82f6', label: 'Blue' },
   { id: 'violet', color: '#8b5cf6', label: 'Violet' },
@@ -19,7 +19,8 @@ export function ThemeSwitcher() {
   const setThemeColor = useUiStore((state) => state.setThemeColor)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const activeTheme = themes.find((t) => t.id === themeColor) || themes[0]
+  const normalizedThemeColor = themeColor === 'light' ? 'default' : themeColor
+  const activeTheme = themes.find((t) => t.id === normalizedThemeColor) || themes[0]
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -68,8 +69,8 @@ export function ThemeSwitcher() {
                 }}
                 className={clsx(
                   'flex w-full items-center justify-between gap-2.5 rounded-md px-2.5 py-2 text-sm transition-all duration-300',
-                  themeColor === theme.id 
-                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/5' 
+                  normalizedThemeColor === theme.id
+                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/5'
                     : 'text-muted-foreground hover:bg-surface-muted hover:ui-text-primary hover:scale-[1.02] active:scale-[0.98]'
                 )}
               >
@@ -80,7 +81,7 @@ export function ThemeSwitcher() {
                   />
                   <span className="text-[13px] font-semibold">{theme.label}</span>
                 </div>
-                {themeColor === theme.id && <Check className="size-4 font-black" />}
+                {normalizedThemeColor === theme.id && <Check className="size-4 font-black" />}
               </button>
             ))}
           </div>

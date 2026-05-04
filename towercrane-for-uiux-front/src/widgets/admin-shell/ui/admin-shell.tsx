@@ -41,8 +41,8 @@ export function AdminShell() {
   const mainPanelInsetClass = 'px-5'
 
   return (
-    <div className="bg-[linear-gradient(180deg,color-mix(in_srgb,var(--primary)_5%,var(--background))_0%,var(--background)_18rem)] pb-8">
-      <div className="grid min-h-[calc(100vh-6rem)] gap-3 lg:grid-cols-[300px_minmax(0,1fr)] max-w-[1600px] mx-auto">
+    <div className="w-full min-w-0 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--primary)_5%,var(--background))_0%,var(--background)_18rem)] pb-8">
+      <div className="grid min-h-[calc(100vh-6rem)] min-w-0 gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
         <AdminShellSidebar
           activeCategoryId={activeCategoryId}
           categories={categories}
@@ -107,6 +107,10 @@ export function AdminShell() {
                     onSortChange={(value) => {
                       setSort(value)
                       setPage(1)
+                    }}
+                    onSelectPrototype={(prototypeId) => {
+                      setActivePrototypeId(prototypeId)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                     onOpenDoc={(prototypeId) => {
                       setActivePrototypeId(prototypeId)

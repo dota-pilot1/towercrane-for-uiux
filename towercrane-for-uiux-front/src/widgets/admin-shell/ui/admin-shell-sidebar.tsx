@@ -128,7 +128,6 @@ export function AdminShellSidebar({
                     {categories.length} categories
                   </div>
                 </div>
-                <div className="h-8 w-1 rounded-full bg-brand-primary" />
               </div>
 
               {isAuthenticated ? (
@@ -178,13 +177,10 @@ export function AdminShellSidebar({
                           onClick={() => onSelectCategory(category.id)}
                           className={`group relative flex h-11 w-full items-center gap-3 overflow-hidden rounded-md border px-4 transition-all duration-200 ${
                             activeCategoryId === category.id
-                              ? 'border-brand-border bg-brand-glass text-brand-primary shadow-[0_8px_24px_color-mix(in_srgb,var(--primary)_12%,transparent)]'
+                              ? 'border-surface-border bg-surface-strong text-text-primary shadow-sm'
                               : 'border-transparent text-text-muted hover:border-surface-border-soft hover:bg-surface-muted/60 hover:text-text-primary'
                           }`}
                         >
-                          {activeCategoryId === category.id ? (
-                            <div className="absolute left-0 top-[15%] h-[70%] w-1 rounded-r-full bg-brand-primary" />
-                          ) : null}
                           <div className="shrink-0">
                             <Icon className="size-4" />
                           </div>
@@ -247,21 +243,17 @@ function SortableCategoryItem({
       style={style}
       className={`group relative flex h-14 w-full items-center gap-2 overflow-hidden rounded-md border transition-all duration-200 ${
         isActive
-          ? 'translate-x-0.5 border-brand-border bg-brand-glass text-brand-primary shadow-[0_8px_24px_color-mix(in_srgb,var(--primary)_12%,transparent)]'
+          ? 'border-surface-border bg-surface-strong text-text-primary shadow-sm'
           : 'border-transparent text-text-muted hover:border-surface-border-soft hover:bg-surface-muted/60 hover:text-text-primary'
       }`}
     >
-      {isActive ? (
-        <div className="absolute left-0 top-[15%] h-[70%] w-1 rounded-r-full bg-brand-primary" />
-      ) : null}
-
       <div className="flex items-center gap-1 pl-2">
         <button
           type="button"
           {...attributes}
           {...listeners}
           className={`flex h-8 w-6 shrink-0 cursor-grab items-center justify-center transition-colors active:cursor-grabbing ${
-            isActive ? 'text-brand-primary' : 'text-text-muted hover:text-text-primary'
+            isActive ? 'text-text-primary' : 'text-text-muted hover:text-text-primary'
           }`}
         >
           <GripVertical className="size-3.5" />
@@ -275,7 +267,7 @@ function SortableCategoryItem({
       >
         <div
           className={`truncate text-sm transition-all ${
-            isActive ? 'font-black tracking-tight' : 'font-medium'
+            isActive ? 'font-black tracking-tight text-text-primary' : 'font-medium'
           }`}
         >
           {item.title}

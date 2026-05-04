@@ -173,7 +173,7 @@ export function MenuAdminPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[600px]">
         {/* Tree Sidebar */}
-        <div className="lg:col-span-4 lg:border-r border-surface-border bg-surface-strong p-4 flex flex-col">
+        <div className="lg:col-span-4 lg:border-r border-surface-border bg-surface-muted/20 p-5 flex flex-col">
           <div className="flex items-center justify-between mb-6 px-1">
             <h3 className="text-xs font-black uppercase tracking-widest ui-text-secondary">메뉴 트리</h3>
             <button 
@@ -207,7 +207,7 @@ export function MenuAdminPage() {
         </div>
 
         {/* Editor Panel */}
-        <div className="lg:col-span-8 bg-background p-6 lg:p-10 relative">
+        <div className="lg:col-span-8 bg-surface-muted/5 p-6 lg:p-12 relative">
           {selectedMenu ? (
             <MenuEditor 
               key={`${selectedMenu.id}:${selectedMenu.updatedAt}`}
@@ -408,12 +408,12 @@ function MenuEditor({
       
       <div className="space-y-8 flex-1">
         {/* Basic Settings */}
-        <section>
-          <h4 className="text-xs font-black uppercase tracking-widest ui-text-secondary mb-4 flex items-center gap-2">
-            <div className="w-4 h-[1px] bg-surface-border-soft" />
-            Basic Info
+        <section className="space-y-4">
+          <h4 className="text-[11px] font-black uppercase tracking-[0.2em] ui-text-secondary flex items-center gap-2">
+            <div className="size-1.5 rounded-full bg-brand-primary" />
+            Basic Configuration
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="ui-panel p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-2">
               <label className="text-[13px] font-bold ui-text-primary">메뉴 표시 이름</label>
               <input 
@@ -441,12 +441,12 @@ function MenuEditor({
         </section>
 
         {/* Routing & Order */}
-        <section>
-          <h4 className="text-xs font-black uppercase tracking-widest ui-text-secondary mb-4 flex items-center gap-2">
-            <div className="w-4 h-[1px] bg-surface-border-soft" />
-            Routing & Display
+        <section className="space-y-4">
+          <h4 className="text-[11px] font-black uppercase tracking-[0.2em] ui-text-secondary flex items-center gap-2">
+            <div className="size-1.5 rounded-full bg-brand-primary" />
+            Navigation & Layout
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="ui-panel p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-2">
               <label className="text-[13px] font-bold ui-text-primary">Section ID <span className="text-[10px] font-normal ui-text-muted ml-1">(SPA State)</span></label>
               <input 
@@ -474,13 +474,13 @@ function MenuEditor({
         </section>
 
         {/* Access Control */}
-        <section>
-          <h4 className="text-xs font-black uppercase tracking-widest ui-text-secondary mb-4 flex items-center gap-2">
-            <div className="w-4 h-[1px] bg-surface-border-soft" />
-            Access Control
+        <section className="space-y-4">
+          <h4 className="text-[11px] font-black uppercase tracking-[0.2em] ui-text-secondary flex items-center gap-2">
+            <div className="size-1.5 rounded-full bg-brand-primary" />
+            Security & Visibility
           </h4>
           
-          <div className="flex flex-col gap-6 p-5 rounded-lg border border-surface-border-soft bg-surface-muted/20">
+          <div className="ui-panel p-6 flex flex-col gap-6">
             {/* Visibility Toggle */}
             <div className="flex items-center justify-between">
               <div>

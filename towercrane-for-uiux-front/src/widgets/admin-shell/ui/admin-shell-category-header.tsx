@@ -17,7 +17,6 @@ export function AdminShellCategoryHeader({
 }: AdminShellCategoryHeaderProps) {
   return (
     <div className="ui-panel relative overflow-hidden border-brand-border/40 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_13%,var(--card))_0%,var(--card)_48%,color-mix(in_srgb,var(--primary)_5%,var(--card))_100%)] shadow-[0_16px_48px_color-mix(in_srgb,var(--primary)_10%,transparent)]">
-      <div className="absolute inset-x-0 top-0 h-1 bg-brand-primary" />
       <div className={`flex items-start justify-between gap-3 ${insetClassName} py-5`}>
         <div className="flex min-w-0 items-start gap-4">
           <div className="mt-1 flex size-11 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary shadow-sm">

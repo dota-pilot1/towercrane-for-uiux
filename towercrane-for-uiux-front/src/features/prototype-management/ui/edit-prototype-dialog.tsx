@@ -147,7 +147,7 @@ export function EditPrototypeDialog({
         <Dialog.Overlay className="fixed inset-0 ui-overlay" />
         <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[95vw] max-w-[1280px] max-h-[85vh] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-0 flex flex-col overflow-hidden shadow-2xl z-50 border border-surface-border-soft">
           {/* Header */}
-          <div className="flex shrink-0 items-center justify-between px-8 py-5 border-b border-surface-border-soft bg-surface-muted/30">
+          <div className="flex shrink-0 items-center justify-between px-8 py-4 border-b border-surface-border-soft bg-surface-muted/30">
             <div>
               <Dialog.Title className="text-xl font-bold text-text-primary">
                 프로토타입 수정
@@ -168,16 +168,16 @@ export function EditPrototypeDialog({
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+          <div className="flex-1 overflow-y-auto bg-surface-muted/10 custom-scrollbar">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start max-w-[1240px] mx-auto px-8 py-6 pb-24">
               {/* Column 1: Core Specifications */}
               <div className="space-y-8">
-                <div className="flex items-center gap-2 border-b border-surface-border-soft pb-3">
-                  <div className="flex size-6 items-center justify-center rounded-full bg-brand-glass text-xs font-bold text-brand-primary">1</div>
-                  <h4 className="text-sm font-bold text-text-primary">기본 정보</h4>
+                <div className="flex items-center gap-3">
+                  <div className="flex size-7 items-center justify-center rounded-full border-2 border-brand-primary text-[11px] font-black text-brand-primary">01</div>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-text-primary">기본 정보</h4>
                 </div>
-                
-                <div className="space-y-5">
+
+                <div className="ui-panel p-6 space-y-6">
                   <div className="space-y-1.5">
                     <span className="text-[13px] font-medium text-text-secondary ml-1">이름</span>
                     <Input {...register('title')} placeholder="기능 명칭을 입력하세요" className="h-11" />
@@ -221,9 +221,12 @@ export function EditPrototypeDialog({
                   </div>
                 </div>
 
-                <div className="pt-4 space-y-6">
+                <div className="ui-panel p-6 space-y-6">
                   <div className="space-y-3">
-                    <span className="text-[13px] font-medium text-text-secondary ml-1">작업 상태</span>
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-[13px] font-bold ui-text-primary">작업 상태</span>
+                      <span className="text-[10px] uppercase font-black ui-text-muted tracking-tighter">Current Phase</span>
+                    </div>
                     <Controller
                       name="status"
                       control={control}
@@ -243,8 +246,11 @@ export function EditPrototypeDialog({
                   </div>
 
                   <div className="space-y-3">
-                    <span className="text-[13px] font-medium text-text-secondary ml-1">공개 여부</span>
-                    <div className="flex h-12 flex-1 items-center px-4 rounded-xl border border-surface-border-soft bg-surface-muted/30">
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-[13px] font-bold ui-text-primary">공개 범위</span>
+                      <span className="text-[10px] uppercase font-black ui-text-muted tracking-tighter">Visibility</span>
+                    </div>
+                    <div className="flex h-12 flex-1 items-center px-4 rounded-xl border border-surface-border bg-background shadow-sm">
                       <Controller
                         name="visibility"
                         control={control}
@@ -263,14 +269,14 @@ export function EditPrototypeDialog({
 
               {/* Column 2: Visual Documentation */}
               <div className="space-y-8 h-full flex flex-col">
-                <div className="flex items-center gap-2 border-b border-surface-border-soft pb-3">
-                  <div className="flex size-6 items-center justify-center rounded-full bg-brand-glass text-xs font-bold text-brand-primary">2</div>
-                  <h4 className="text-sm font-bold text-text-primary">상세 이미지</h4>
+                <div className="flex items-center gap-3">
+                  <div className="flex size-7 items-center justify-center rounded-full border-2 border-brand-primary text-[11px] font-black text-brand-primary">02</div>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-text-primary">상세 이미지</h4>
                 </div>
                 
                 <div className="flex-1 flex flex-col gap-4">
-                  <div className="flex-1 ui-panel-soft min-h-[300px] rounded-[24px] p-5 flex flex-col">
-                    <div className="flex-1 overflow-y-auto pr-2 pb-4">
+                  <div className="flex-1 ui-panel min-h-[400px] p-6 flex flex-col">
+                    <div className="flex-1 overflow-y-auto pr-2 pb-6">
                       {currentImages.length === 0 ? (
                         <div className="h-full min-h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-surface-border-soft rounded-2xl gap-3 text-text-muted">
                           <ImageIcon className="size-10 opacity-30" />
@@ -316,14 +322,14 @@ export function EditPrototypeDialog({
 
               {/* Column 3: Implementation Checklist */}
               <div className="space-y-8 h-full flex flex-col">
-                <div className="flex items-center gap-2 border-b border-surface-border-soft pb-3">
-                  <div className="flex size-6 items-center justify-center rounded-full bg-brand-glass text-xs font-bold text-brand-primary">3</div>
-                  <h4 className="text-sm font-bold text-text-primary">구현 체크리스트</h4>
+                <div className="flex items-center gap-3">
+                  <div className="flex size-7 items-center justify-center rounded-full bg-brand-primary text-[10px] font-black text-primary-foreground shadow-lg shadow-brand-primary/20">03</div>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-text-primary">구현 체크리스트</h4>
                 </div>
                 
                 <div className="flex-1 flex flex-col gap-4">
-                  <div className="flex-1 ui-panel-soft min-h-[300px] rounded-[24px] p-5 flex flex-col">
-                    <div className="flex-1 overflow-y-auto pr-2 space-y-2 pb-4">
+                  <div className="flex-1 ui-panel min-h-[400px] p-6 flex flex-col">
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-2.5 pb-6">
                       {currentChecklist.length === 0 ? (
                         <div className="h-full min-h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-surface-border-soft rounded-2xl gap-3 text-text-muted">
                           <div className="size-10 rounded-full bg-surface-muted flex items-center justify-center">

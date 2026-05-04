@@ -1,9 +1,9 @@
 import { ChevronDown, PenSquare } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '../../../shared/ui/button'
 import { Textarea } from '../../../shared/ui/textarea'
 import { StarRating } from './star-rating'
-import { useCreateReview, useMyReview, useUpdateMyReview } from '../../../shared/api/reviews'
+import { useCreateReview, useMyReview } from '../../../shared/api/reviews'
 
 type Props = {
   prototypeId: string
@@ -14,36 +14,20 @@ type Props = {
 export function ReviewForm({ prototypeId, disabled = false, inlineTrigger = false }: Props) {
   const myReviewQuery = useMyReview(prototypeId)
   const createMutation = useCreateReview(prototypeId)
-  const updateMutation = useUpdateMyReview(prototypeId)
 
   const existing = myReviewQuery.data ?? null
   const [rating, setRating] = useState(0)
   const [content, setContent] = useState('')
   const [open, setOpen] = useState(false)
 
-  useEffect(() => {
-    if (existing) {
-      setRating(existing.rating)
-      setContent(existing.content)
-      setOpen(false)
-    } else {
-      setRating(0)
-      setContent('')
-    }
-  }, [existing])
-
-  const pending = createMutation.isPending || updateMutation.isPending
+  const pending = createMutation.isPending
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (rating < 1 || content.trim().length === 0) return
 
     const payload = { rating, content: content.trim() }
-    if (existing) {
-      updateMutation.mutate(payload)
-    } else {
-      createMutation.mutate(payload)
-    }
+    createMutation.mutate(payload)
   }
 
   if (disabled) {
@@ -65,7 +49,8 @@ export function ReviewForm({ prototypeId, disabled = false, inlineTrigger = fals
         <Button
           type="button"
           variant="secondary"
-          className="h-8 gap-1.5 px-3 text-xs"
+          size="sm"
+          className="gap-1.5 text-xs"
           onClick={() => setOpen((prev) => !prev)}
         >
           <PenSquare className="size-3.5" />
@@ -95,7 +80,8 @@ export function ReviewForm({ prototypeId, disabled = false, inlineTrigger = fals
               <Button
                 type="button"
                 variant="secondary"
-                className="h-8 px-4 text-xs"
+                size="sm"
+                className="text-xs"
                 onClick={() => setOpen(false)}
                 disabled={pending}
               >
@@ -104,7 +90,8 @@ export function ReviewForm({ prototypeId, disabled = false, inlineTrigger = fals
               <Button
                 type="submit"
                 disabled={pending || rating < 1 || content.trim().length === 0}
-                className="h-8 px-4 text-xs"
+                size="sm"
+                className="text-xs"
               >
                 {pending ? '저장 중...' : '등록'}
               </Button>
@@ -124,7 +111,8 @@ export function ReviewForm({ prototypeId, disabled = false, inlineTrigger = fals
         <Button
           type="button"
           variant="secondary"
-          className="h-8 gap-1.5 px-3 text-xs"
+          size="sm"
+          className="gap-1.5 text-xs"
           onClick={() => setOpen((prev) => !prev)}
         >
           <PenSquare className="size-3.5" />
@@ -155,7 +143,8 @@ export function ReviewForm({ prototypeId, disabled = false, inlineTrigger = fals
             <Button
               type="button"
               variant="secondary"
-              className="h-8 px-4 text-xs"
+              size="sm"
+              className="text-xs"
               onClick={() => setOpen(false)}
               disabled={pending}
             >
@@ -164,7 +153,8 @@ export function ReviewForm({ prototypeId, disabled = false, inlineTrigger = fals
             <Button
               type="submit"
               disabled={pending || rating < 1 || content.trim().length === 0}
-              className="h-8 px-4 text-xs"
+              size="sm"
+              className="text-xs"
             >
               {pending ? '저장 중...' : '등록'}
             </Button>

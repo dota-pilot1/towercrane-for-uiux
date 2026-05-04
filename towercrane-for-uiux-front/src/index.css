@@ -167,13 +167,13 @@ body {
   }
 
   .ui-overlay {
-    background-color: color-mix(in srgb, var(--background) 60%, transparent);
-    backdrop-filter: blur(8px);
+    background-color: color-mix(in srgb, var(--background) 30%, transparent);
+    backdrop-filter: blur(2px);
   }
 
   .glass-panel {
-    background-color: color-mix(in srgb, var(--card) 95%, transparent);
-    backdrop-filter: blur(16px);
+    background-color: color-mix(in srgb, var(--card) 99%, transparent);
+    backdrop-filter: blur(4px);
     @apply border border-surface-border-soft shadow-2xl;
   }
 

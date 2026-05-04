@@ -32,7 +32,7 @@ export function AppRoot() {
   const usersListQuery = useUsersList()
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', themeColor)
+    document.documentElement.setAttribute('data-theme', themeColor === 'light' ? 'default' : themeColor)
   }, [themeColor])
 
   useEffect(() => {
@@ -254,11 +254,9 @@ export function AppRoot() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-[1600px]">
-        <Toaster position="top-center" richColors />
-        <AppHeader />
-        <main className="px-4 pb-10 sm:px-5 lg:px-6">{renderContent()}</main>
-      </div>
+      <Toaster position="top-center" richColors />
+      <AppHeader />
+      <main className="w-full min-w-0 px-4 pb-10 pt-5 sm:px-5 lg:px-6">{renderContent()}</main>
     </div>
   )
 }
