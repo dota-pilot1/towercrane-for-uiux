@@ -369,19 +369,19 @@ export function LoginPage() {
           </form>
         </div>
 
-        <div className="switch-overlay pointer-events-none absolute left-1/2 top-0 z-30 hidden h-full w-1/2 overflow-hidden transition-transform duration-500 ease-in-out lg:block">
-          <div className="switch-track relative -left-full flex h-full w-[200%] bg-[linear-gradient(135deg,var(--brand-primary),var(--interactive-bg))] transition-transform duration-500 ease-in-out">
+        <div className="switch-overlay pointer-events-none absolute left-1/2 top-0 z-30 hidden h-full w-1/2 overflow-hidden border-l border-surface-border-soft bg-surface-strong transition-transform duration-500 ease-in-out lg:block">
+          <div className="switch-track relative -left-full flex h-full w-[200%] bg-surface-strong transition-transform duration-500 ease-in-out">
             <SwitchPanel
               align="left"
               title="다시 오셨나요?"
-              description="로그인하면 저장된 프로토타입과 회의, 문서 작업 공간으로 바로 돌아갑니다."
+              description="프로토타입 공유 및 개발 커뮤니티에서 저장된 문서, 회의, 피드백으로 바로 돌아갑니다."
               buttonLabel="로그인"
               onClick={() => setIsSignup(false)}
             />
             <SwitchPanel
               align="right"
-              title="프로토타입을 공유해볼까요?"
-              description="아이디어, 기능 흐름, 문서 초안을 초기 버전으로 올리고 함께 발전시킵니다."
+              title="같이 만들어볼까요?"
+              description="아이디어, 기능 흐름, 문서 초안을 프로토타입으로 공유하고 개발자들과 함께 발전시킵니다."
               buttonLabel="회원가입"
               onClick={() => setIsSignup(true)}
             />
@@ -472,17 +472,42 @@ type SwitchPanelProps = {
 function SwitchPanel({ align, title, description, buttonLabel, onClick }: SwitchPanelProps) {
   return (
     <div
-      className={`pointer-events-auto flex h-full w-1/2 flex-col items-center justify-center px-10 text-center text-text-on-brand transition-transform duration-500 ${
+      className={`pointer-events-auto flex h-full w-1/2 flex-col items-center justify-center px-10 text-center text-text-primary transition-transform duration-500 ${
         align === 'left' ? '-translate-x-[12%]' : ''
       }`}
     >
-      <Mail className="mb-5 size-9" />
+      <div className="mb-7 w-full max-w-[300px] rounded-lg border border-surface-border-soft bg-surface-raised p-4 text-left shadow-xl">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
+              <Mail className="size-4" />
+            </div>
+            <span className="text-xs font-black uppercase tracking-[0.18em] text-brand-primary">
+              Dev Community
+            </span>
+          </div>
+          <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
+            Share
+          </span>
+        </div>
+        <div className="grid gap-2">
+          {['Prototype', 'Feedback', 'Build Notes'].map((item) => (
+            <div
+              key={item}
+              className="flex items-center justify-between rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2"
+            >
+              <span className="text-xs font-semibold text-text-secondary">{item}</span>
+              <span className="size-1.5 rounded-full bg-brand-primary" />
+            </div>
+          ))}
+        </div>
+      </div>
       <h2 className="text-3xl font-black">{title}</h2>
-      <p className="mt-5 max-w-[320px] text-sm leading-7 opacity-90">{description}</p>
+      <p className="mt-5 max-w-[320px] text-sm leading-7 text-text-secondary">{description}</p>
       <Button
         type="button"
-        variant="secondary"
-        className="mt-7 border-text-on-brand/40 bg-transparent px-8 text-text-on-brand hover:bg-brand-glass"
+        variant="primary"
+        className="mt-7 px-8"
         onClick={onClick}
       >
         {buttonLabel}
