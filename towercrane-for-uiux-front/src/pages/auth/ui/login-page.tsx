@@ -25,19 +25,31 @@ export function LoginPage() {
                 Prototype Registry
               </p>
               <h1 className="mt-4 text-5xl font-black leading-tight text-text-primary">
-                팀의 UI 실험과 문서를 한 곳에서 관리합니다.
+                아이디어를 프로토타입으로 공유하고 발전시킵니다.
               </h1>
               <p className="mt-5 max-w-[420px] text-sm leading-7 text-text-secondary">
-                이메일 인증으로 계정을 만들고, 프로토타입과 회의실, 문서 작업 공간에 바로 접근합니다.
+                화면, 기능 흐름, 서비스 컨셉, 문서 초안까지 초기 버전을 모아 함께 검토하고 다음 단계로 이어갑니다.
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              {['Prototype', 'README', 'Meeting'].map((item) => (
-                <div key={item} className="rounded-md border border-surface-border-soft bg-surface-raised px-4 py-3">
-                  <p className="text-xs font-semibold text-text-secondary">{item}</p>
+            <div className="grid gap-3">
+              <div className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-primary">
+                    Prototype Board
+                  </span>
+                  <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
+                    Share
+                  </span>
                 </div>
-              ))}
+                <div className="grid grid-cols-3 gap-2">
+                  {['Concept', 'Flow', 'Spec'].map((item) => (
+                    <div key={item} className="rounded-sm border border-surface-border-soft bg-surface-muted px-3 py-2">
+                      <p className="text-xs font-semibold text-text-secondary">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>
