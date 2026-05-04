@@ -1,10 +1,11 @@
 import {
   Injectable,
-  InternalServerErrorException,
   Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import nodemailer, { type Transporter } from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 @Injectable()
 export class MailService {
@@ -68,7 +69,7 @@ export class MailService {
     const password = this.configService.get<string>('MAIL_PASSWORD');
 
     if (!username || !password) {
-      throw new InternalServerErrorException(
+      throw new ServiceUnavailableException(
         'Mail credentials are not configured',
       );
     }
@@ -80,12 +81,22 @@ export class MailService {
     const fromAddress =
       this.configService.get<string>('MAIL_FROM_ADDRESS') ?? username;
 
-    await transporter.sendMail({
-      to: input.to,
-      from: `"${fromName}" <${fromAddress}>`,
-      subject: input.subject,
-      html: input.html,
-    });
+    try {
+      await transporter.sendMail({
+        to: input.to,
+        from: `"${fromName}" <${fromAddress}>`,
+        subject: input.subject,
+        html: input.html,
+      });
+    } catch (error) {
+      this.transporter = null;
+      this.logger.error(
+        `Mail delivery failed: ${this.getMailErrorSummary(error)}`,
+      );
+      throw new ServiceUnavailableException(
+        '메일 발송 설정을 확인해 주세요. Gmail 앱 비밀번호가 올바르지 않거나 만료되었습니다.',
+      );
+    }
   }
 
   private getTransporter() {
@@ -93,7 +104,10 @@ export class MailService {
       return this.transporter;
     }
 
-    this.transporter = nodemailer.createTransport({
+    const authMethod = this.configService
+      .get<string>('MAIL_AUTH_METHOD')
+      ?.trim();
+    const transportOptions: SMTPTransport.Options = {
       host: this.configService.get<string>('MAIL_HOST') ?? 'smtp.gmail.com',
       port: Number(this.configService.get<string>('MAIL_PORT') ?? 587),
       secure: this.configService.get<string>('MAIL_SECURE') === 'true',
@@ -101,12 +115,16 @@ export class MailService {
         user: this.configService.get<string>('MAIL_USERNAME'),
         pass: this.configService.get<string>('MAIL_PASSWORD'),
       },
-      authMethod:
-        this.configService.get<string>('MAIL_AUTH_METHOD')?.trim() || 'LOGIN',
       connectionTimeout: 5000,
       greetingTimeout: 5000,
       socketTimeout: 5000,
-    });
+    };
+
+    if (authMethod) {
+      transportOptions.authMethod = authMethod;
+    }
+
+    this.transporter = nodemailer.createTransport(transportOptions);
 
     return this.transporter;
   }
@@ -157,5 +175,26 @@ export class MailService {
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
+  }
+
+  private getMailErrorSummary(error: unknown) {
+    if (!(error instanceof Error)) {
+      return 'Unknown mail error';
+    }
+
+    const details = error as Error & {
+      code?: string;
+      responseCode?: number;
+      command?: string;
+    };
+
+    return [
+      details.message,
+      details.code ? `code=${details.code}` : null,
+      details.responseCode ? `responseCode=${details.responseCode}` : null,
+      details.command ? `command=${details.command}` : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
   }
 }
