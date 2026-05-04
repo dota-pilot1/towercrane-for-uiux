@@ -64,13 +64,12 @@ if [[ -f data/towercrane-catalog.sqlite ]]; then
   cp data/towercrane-catalog.sqlite "data/backups/towercrane-catalog.\$(date +%Y%m%d-%H%M%S).sqlite"
 fi
 
-if [[ -f pnpm-lock.yaml ]] && ! command -v pnpm >/dev/null 2>&1 && command -v corepack >/dev/null 2>&1; then
-  corepack enable
-fi
-
 if [[ -f pnpm-lock.yaml ]] && command -v pnpm >/dev/null 2>&1; then
   pnpm install --frozen-lockfile
   pnpm build
+elif [[ -f pnpm-lock.yaml ]] && command -v corepack >/dev/null 2>&1; then
+  corepack pnpm install --frozen-lockfile
+  corepack pnpm build
 elif [[ -f package-lock.json ]] && command -v npm >/dev/null 2>&1; then
   npm ci
   npm run build
@@ -128,13 +127,12 @@ fi
 git checkout "\$ROLLBACK_COMMIT"
 cd "$REMOTE_SERVER_DIR"
 
-if [[ -f pnpm-lock.yaml ]] && ! command -v pnpm >/dev/null 2>&1 && command -v corepack >/dev/null 2>&1; then
-  corepack enable
-fi
-
 if [[ -f pnpm-lock.yaml ]] && command -v pnpm >/dev/null 2>&1; then
   pnpm install --frozen-lockfile
   pnpm build
+elif [[ -f pnpm-lock.yaml ]] && command -v corepack >/dev/null 2>&1; then
+  corepack pnpm install --frozen-lockfile
+  corepack pnpm build
 elif [[ -f package-lock.json ]] && command -v npm >/dev/null 2>&1; then
   npm ci
   npm run build
