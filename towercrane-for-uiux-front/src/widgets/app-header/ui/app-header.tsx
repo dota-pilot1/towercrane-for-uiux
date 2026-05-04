@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import * as LucideIcons from 'lucide-react'
-import { InlineAuthBar } from '../../../features/auth/ui/inline-auth-bar'
+import { HeaderAuthButtons } from '../../../features/auth/ui/inline-auth-bar'
 import { useLogout } from '../../../shared/api/auth'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { useUiStore } from '../../../shared/store/ui-store'
@@ -12,7 +12,8 @@ import type { MenuItem } from '../../../entities/menu/model/types'
 
 function getIcon(iconName: string | null): React.ElementType {
   if (!iconName) return LucideIcons.FileText;
-  const Icon = (LucideIcons as any)[iconName];
+  const icons = LucideIcons as unknown as Record<string, React.ElementType>;
+  const Icon = icons[iconName];
   return Icon || LucideIcons.FileText;
 }
 
@@ -88,6 +89,10 @@ export function AppHeader() {
   }, [flatMenus, userRole]);
 
   const handleNavigation = (id: string) => {
+    if (window.location.pathname === '/login') {
+      window.history.pushState(null, '', '/')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    }
     setActiveSection(id)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -180,7 +185,7 @@ export function AppHeader() {
               </button>
             </>
           ) : (
-            <InlineAuthBar />
+            <HeaderAuthButtons />
           )}
         </div>
       </div>

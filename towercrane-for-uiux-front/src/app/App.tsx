@@ -1,5 +1,5 @@
 import { Bot, FileText, GitBranch, LayoutGrid, MessagesSquare, UserCog } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Toaster } from 'sonner'
 import { useCurrentUser } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
@@ -16,8 +16,10 @@ import { AppHeader } from '../widgets/app-header/ui/app-header'
 
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
+import { LoginPage } from '../pages/auth/ui/login-page'
 
 export function AppRoot() {
+  const [pathname, setPathname] = useState(() => window.location.pathname)
   const activeSection = useUiStore((state) => state.activeSection)
   const setActiveSection = useUiStore((state) => state.setActiveSection)
   const themeColor = useUiStore((state) => state.themeColor)
@@ -32,6 +34,12 @@ export function AppRoot() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', themeColor)
   }, [themeColor])
+
+  useEffect(() => {
+    const handlePathChange = () => setPathname(window.location.pathname)
+    window.addEventListener('popstate', handlePathChange)
+    return () => window.removeEventListener('popstate', handlePathChange)
+  }, [])
 
   useEffect(() => {
     const sectionTitles: Record<string, string> = {
@@ -64,6 +72,16 @@ export function AppRoot() {
 
   if (!hasHydrated) {
     return null
+  }
+
+  if (pathname === '/login') {
+    return (
+      <div className="min-h-screen bg-background ui-text-primary">
+        <AppHeader />
+        <LoginPage />
+        <Toaster richColors position="top-right" />
+      </div>
+    )
   }
 
   const projectPurposeCards = [

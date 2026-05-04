@@ -13,7 +13,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import type { UseFormRegisterReturn } from 'react-hook-form'
+import type { FieldErrors, UseFormRegister, UseFormRegisterReturn } from 'react-hook-form'
 import { z } from 'zod'
 import {
   useCheckEmail,
@@ -56,7 +56,11 @@ const signupSchema = z
 type LoginFormValues = z.infer<typeof loginSchema>
 type SignupFormValues = z.infer<typeof signupSchema>
 
-export function InlineAuthBar() {
+type InlineAuthBarProps = {
+  embedded?: boolean
+}
+
+export function InlineAuthBar({ embedded = false }: InlineAuthBarProps) {
   const [loginOpen, setLoginOpen] = useState(false)
   const [signupOpen, setSignupOpen] = useState(false)
   const [loginWarning, setLoginWarning] = useState<string | null>(null)
@@ -241,6 +245,108 @@ export function InlineAuthBar() {
     setLoginOpen(false)
     setSignupOpen(false)
     setForgotPasswordOpen(true)
+  }
+
+  if (embedded) {
+    return (
+      <>
+        <form className="space-y-4" onSubmit={handleLoginSubmit(onLoginSubmit)}>
+          <label className="block space-y-2">
+            <span className="text-sm text-text-secondary">이메일</span>
+            <Input
+              {...registerLogin('email')}
+              type="email"
+              placeholder="you@example.com"
+              autoComplete="email"
+            />
+            {loginErrors.email ? (
+              <span className="text-sm text-destructive">{loginErrors.email.message}</span>
+            ) : null}
+          </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm text-text-secondary">비밀번호</span>
+            <Input
+              {...registerLogin('password')}
+              type="password"
+              placeholder="8자 이상 입력"
+              autoComplete="current-password"
+            />
+            {loginErrors.password ? (
+              <span className="text-sm text-destructive">{loginErrors.password.message}</span>
+            ) : null}
+          </label>
+
+          <Button type="submit" className="w-full gap-2" disabled={loginMutation.isPending}>
+            <ArrowRight className="size-4" />
+            {loginMutation.isPending ? '로그인 중...' : '로그인'}
+          </Button>
+        </form>
+
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+          <button
+            type="button"
+            className="text-text-secondary underline transition hover:text-text-primary"
+            onClick={openForgotPassword}
+          >
+            비밀번호 찾기
+          </button>
+          <button
+            type="button"
+            className="font-semibold text-brand-primary underline"
+            onClick={() => setSignupOpen(true)}
+          >
+            회원가입
+          </button>
+        </div>
+
+        <SignupDialog
+          open={signupOpen}
+          onOpenChange={setSignupOpen}
+          emailVerified={emailVerified}
+          signupErrors={signupErrors}
+          signupEmailRegister={signupEmailRegister}
+          checkEmailPending={checkEmailMutation.isPending}
+          sendCodePending={sendVerificationCodeMutation.isPending}
+          verifyCodePending={verifyEmailCodeMutation.isPending}
+          codeSent={codeSent}
+          duplicateEmail={duplicateEmail}
+          code={code}
+          countdown={countdown}
+          codeError={codeError}
+          showPassword={showPassword}
+          isPass={Boolean(isPass)}
+          signupPending={signupMutation.isPending}
+          signupError={signupMutation.error?.message}
+          registerSignup={registerSignup}
+          handleSignupSubmit={handleSignupSubmit(onSignupSubmit)}
+          sendSignupCode={sendSignupCode}
+          verifySignupCode={verifySignupCode}
+          openForgotPassword={openForgotPassword}
+          setCode={setCode}
+          setCodeError={setCodeError}
+          togglePassword={() => setShowPassword((value) => !value)}
+        />
+
+        <WarningDialog
+          open={loginWarning !== null}
+          title="로그인할 수 없습니다"
+          description={loginWarning ?? ''}
+          onOpenChange={(open) => {
+            if (!open) {
+              setLoginWarning(null)
+              loginMutation.reset()
+            }
+          }}
+        />
+
+        <ForgotPasswordDialog
+          open={forgotPasswordOpen}
+          initialEmail={loginEmail || signupEmail || ''}
+          onOpenChange={setForgotPasswordOpen}
+        />
+      </>
+    )
   }
 
   return (
@@ -533,6 +639,27 @@ export function InlineAuthBar() {
   )
 }
 
+export function HeaderAuthButtons() {
+  const goToLogin = () => {
+    window.history.pushState(null, '', '/login')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-1.5">
+      <Button variant="secondary" size="sm" className="gap-2" onClick={goToLogin}>
+        <UserPlus className="size-4" />
+        회원가입
+      </Button>
+      <Button size="sm" className="gap-2" onClick={goToLogin}>
+        <LogIn className="size-4" />
+        로그인
+      </Button>
+    </div>
+  )
+}
+
 type DialogHeaderProps = {
   icon: LucideIcon
   title: string
@@ -564,6 +691,235 @@ function DialogHeader({ icon: Icon, title, description }: DialogHeaderProps) {
         </button>
       </Dialog.Close>
     </div>
+  )
+}
+
+type SignupDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  emailVerified: boolean
+  signupErrors: FieldErrors<SignupFormValues>
+  signupEmailRegister: UseFormRegisterReturn
+  checkEmailPending: boolean
+  sendCodePending: boolean
+  verifyCodePending: boolean
+  codeSent: boolean
+  duplicateEmail: string | null
+  code: string
+  countdown: number
+  codeError: string | null
+  showPassword: boolean
+  isPass: boolean
+  signupPending: boolean
+  signupError?: string
+  registerSignup: UseFormRegister<SignupFormValues>
+  handleSignupSubmit: () => void
+  sendSignupCode: () => void
+  verifySignupCode: () => void
+  openForgotPassword: () => void
+  setCode: (code: string) => void
+  setCodeError: (error: string | null) => void
+  togglePassword: () => void
+}
+
+function SignupDialog({
+  open,
+  onOpenChange,
+  emailVerified,
+  signupErrors,
+  signupEmailRegister,
+  checkEmailPending,
+  sendCodePending,
+  verifyCodePending,
+  codeSent,
+  duplicateEmail,
+  code,
+  countdown,
+  codeError,
+  showPassword,
+  isPass,
+  signupPending,
+  signupError,
+  registerSignup,
+  handleSignupSubmit,
+  sendSignupCode,
+  verifySignupCode,
+  openForgotPassword,
+  setCode,
+  setCodeError,
+  togglePassword,
+}: SignupDialogProps) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 ui-overlay backdrop-blur-sm" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2">
+          <Card className="rounded-lg p-6">
+            <DialogHeader
+              icon={UserPlus}
+              title="회원가입"
+              description="이메일 인증 후 계정을 만들고 바로 진입합니다."
+            />
+
+            <form className="mt-5 space-y-4" onSubmit={handleSignupSubmit}>
+              <label className="block space-y-2">
+                <span className="text-sm text-text-secondary">이름</span>
+                <Input {...registerSignup('name')} placeholder="홍길동" disabled={!emailVerified} />
+                {signupErrors.name ? (
+                  <span className="text-sm text-destructive">{signupErrors.name.message}</span>
+                ) : null}
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-sm text-text-secondary">이메일</span>
+                <div className="flex gap-2">
+                  <Input
+                    {...signupEmailRegister}
+                    type="email"
+                    placeholder="you@example.com"
+                    disabled={emailVerified}
+                  />
+                  {!emailVerified ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="shrink-0"
+                      disabled={checkEmailPending || sendCodePending}
+                      onClick={sendSignupCode}
+                    >
+                      {sendCodePending ? '발송 중...' : codeSent ? '재발송' : '인증코드 발송'}
+                    </Button>
+                  ) : (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-3 text-sm font-semibold text-brand-primary">
+                      <CheckCircle2 className="size-4" />
+                      인증 완료
+                    </span>
+                  )}
+                </div>
+                {signupErrors.email ? (
+                  <span className="text-sm text-destructive">{signupErrors.email.message}</span>
+                ) : null}
+              </label>
+
+              {duplicateEmail ? (
+                <div className="rounded-md border border-surface-border-soft bg-danger-glass px-3 py-2 text-sm text-text-secondary">
+                  가입된 이메일입니다.{' '}
+                  <button
+                    type="button"
+                    className="font-semibold text-brand-primary underline"
+                    onClick={openForgotPassword}
+                  >
+                    비밀번호 찾기
+                  </button>
+                  를 진행해 주세요.
+                </div>
+              ) : null}
+
+              {codeSent && !emailVerified ? (
+                <div className="space-y-2">
+                  <span className="text-sm text-text-secondary">인증코드</span>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        value={code}
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="6자리"
+                        className="pr-16"
+                        onChange={(event) => {
+                          setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
+                          setCodeError(null)
+                        }}
+                      />
+                      {countdown > 0 ? (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted tabular-nums">
+                          {formatTime(countdown)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <Button
+                      type="button"
+                      disabled={verifyCodePending || code.length !== 6}
+                      onClick={verifySignupCode}
+                    >
+                      {verifyCodePending ? '확인 중...' : '확인'}
+                    </Button>
+                  </div>
+                  {countdown === 0 ? (
+                    <button
+                      type="button"
+                      className="text-sm text-brand-primary underline"
+                      onClick={sendSignupCode}
+                    >
+                      인증코드 재발송
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {codeError ? (
+                <div className="rounded-md border border-surface-border-soft bg-danger-glass px-3 py-2 text-sm text-destructive">
+                  {codeError}
+                </div>
+              ) : null}
+
+              <PasswordField
+                label="비밀번호"
+                registration={registerSignup('password')}
+                visible={showPassword}
+                disabled={!emailVerified}
+                error={signupErrors.password?.message}
+                onToggle={togglePassword}
+              />
+
+              <label className="block space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-text-secondary">비밀번호 확인</span>
+                  {isPass ? (
+                    <span className="inline-flex items-center gap-1 rounded border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase text-brand-primary">
+                      <Check className="size-3" />
+                      Pass
+                    </span>
+                  ) : null}
+                </div>
+                <div className="relative">
+                  <Input
+                    {...registerSignup('confirmPassword')}
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="비밀번호 다시 입력"
+                    className="pr-10"
+                    disabled={!emailVerified}
+                  />
+                  <PasswordToggle visible={showPassword} onToggle={togglePassword} />
+                </div>
+                {signupErrors.confirmPassword ? (
+                  <span className="text-sm text-destructive">
+                    {signupErrors.confirmPassword.message}
+                  </span>
+                ) : null}
+              </label>
+
+              {signupError ? (
+                <div className="rounded-md border border-surface-border-soft bg-danger-glass px-4 py-3 text-sm text-destructive">
+                  {signupError}
+                </div>
+              ) : null}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Dialog.Close asChild>
+                  <Button type="button" variant="secondary">
+                    취소
+                  </Button>
+                </Dialog.Close>
+                <Button type="submit" disabled={signupPending || !emailVerified}>
+                  {signupPending ? '처리 중...' : '계정 만들기'}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
