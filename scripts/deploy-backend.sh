@@ -86,6 +86,23 @@ if [[ ! -f "\$ENTRYPOINT" ]]; then
   ENTRYPOINT="dist/main.js"
 fi
 
+load_env_file() {
+  if [[ ! -f .env ]]; then
+    return
+  fi
+
+  while IFS='=' read -r key value; do
+    if [[ -z "\$key" || "\$key" =~ ^[[:space:]]*# ]]; then
+      continue
+    fi
+    if [[ "\$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      export "\$key=\$value"
+    fi
+  done < .env
+}
+
+load_env_file
+
 if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
   pm2 restart "$PM2_APP_NAME" --update-env
 else
@@ -140,6 +157,23 @@ elif command -v npm >/dev/null 2>&1; then
   npm install --no-package-lock
   npm run build
 fi
+
+load_env_file() {
+  if [[ ! -f .env ]]; then
+    return
+  fi
+
+  while IFS='=' read -r key value; do
+    if [[ -z "\$key" || "\$key" =~ ^[[:space:]]*# ]]; then
+      continue
+    fi
+    if [[ "\$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      export "\$key=\$value"
+    fi
+  done < .env
+}
+
+load_env_file
 
 pm2 restart "$PM2_APP_NAME" --update-env
 pm2 save
