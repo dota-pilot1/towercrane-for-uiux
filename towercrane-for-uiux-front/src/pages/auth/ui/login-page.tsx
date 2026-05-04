@@ -266,7 +266,7 @@ export function LoginPage() {
 
             <label className="block space-y-2 text-left">
               <span className="text-sm text-text-secondary">이메일</span>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_136px]">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_118px]">
                 <Input
                   {...signupEmailRegister}
                   type="email"
@@ -278,7 +278,7 @@ export function LoginPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-12 px-0"
+                    className="h-12 px-0 text-sm"
                     disabled={checkEmailMutation.isPending || sendCodeMutation.isPending}
                     onClick={sendSignupCode}
                   >
@@ -374,14 +374,12 @@ export function LoginPage() {
         <div className="switch-overlay pointer-events-none absolute left-1/2 top-0 z-30 hidden h-full w-1/2 overflow-hidden border-l border-surface-border bg-surface-muted transition-transform duration-500 ease-in-out lg:block">
           <div className="switch-track relative -left-full flex h-full w-[200%] bg-surface-muted transition-transform duration-500 ease-in-out">
             <SwitchPanel
-              align="left"
               title="다시 오셨나요?"
               description="프로토타입 공유 및 개발 커뮤니티에서 저장된 문서, 회의, 피드백으로 바로 돌아갑니다."
               buttonLabel="로그인"
               onClick={() => setIsSignup(false)}
             />
             <SwitchPanel
-              align="right"
               title="같이 만들어볼까요?"
               description="아이디어, 기능 흐름, 문서 초안을 프로토타입으로 공유하고 개발자들과 함께 발전시킵니다."
               buttonLabel="회원가입"
@@ -464,24 +462,19 @@ function PasswordInput({
 }
 
 type SwitchPanelProps = {
-  align: 'left' | 'right'
   title: string
   description: string
   buttonLabel: string
   onClick: () => void
 }
 
-function SwitchPanel({ align, title, description, buttonLabel, onClick }: SwitchPanelProps) {
+function SwitchPanel({ title, description, buttonLabel, onClick }: SwitchPanelProps) {
   return (
-    <div
-      className={`pointer-events-auto flex h-full w-1/2 flex-col items-center justify-center px-10 text-center text-text-primary transition-transform duration-500 ${
-        align === 'left' ? '-translate-x-[12%]' : ''
-      }`}
-    >
-      <div className="mb-7 w-full max-w-[300px] rounded-lg border border-surface-border-soft bg-surface-raised p-4 text-left shadow-xl">
-        <div className="mb-3 flex items-center justify-between">
+    <div className="pointer-events-auto flex h-full w-1/2 flex-col items-center justify-center px-10 text-center text-text-primary transition-transform duration-500">
+      <div className="mb-8 w-full max-w-[340px] rounded-lg border border-surface-border-soft bg-surface-raised p-5 text-left shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
+            <div className="flex size-9 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
               <Mail className="size-4" />
             </div>
             <span className="text-xs font-black uppercase tracking-[0.18em] text-brand-primary">
@@ -496,7 +489,7 @@ function SwitchPanel({ align, title, description, buttonLabel, onClick }: Switch
           {['Prototype', 'Feedback', 'Build Notes'].map((item) => (
             <div
               key={item}
-              className="flex items-center justify-between rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2"
+              className="flex items-center justify-between rounded-md border border-surface-border-soft bg-surface-muted px-4 py-2.5"
             >
               <span className="text-xs font-semibold text-text-secondary">{item}</span>
               <span className="size-1.5 rounded-full bg-brand-primary" />
@@ -504,12 +497,12 @@ function SwitchPanel({ align, title, description, buttonLabel, onClick }: Switch
           ))}
         </div>
       </div>
-      <h2 className="text-3xl font-black">{title}</h2>
-      <p className="mt-5 max-w-[320px] text-sm leading-7 text-text-secondary">{description}</p>
+      <h2 className="text-4xl font-black">{title}</h2>
+      <p className="mt-5 max-w-[360px] text-sm leading-7 text-text-secondary">{description}</p>
       <Button
         type="button"
         variant="primary"
-        className="mt-7 h-11 min-w-[112px] px-8"
+        className="mt-7 h-12 min-w-[128px] px-8"
         onClick={onClick}
       >
         {buttonLabel}
