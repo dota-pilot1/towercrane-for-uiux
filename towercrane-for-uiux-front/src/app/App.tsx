@@ -1,11 +1,10 @@
-import { Bot, FileText, GitBranch, LayoutGrid, MessagesSquare, UserCog } from 'lucide-react'
+import { Bot, FileText, GitBranch, UserCog } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Toaster } from 'sonner'
 import { useCurrentUser } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
 import { WorkbenchPage } from '../pages/workbench/ui/workbench-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
-import { IntroView } from '../pages/intro/ui/intro-view'
 import { ReadmePage } from '../pages/readme/ui/readme-page'
 import { useSessionStore } from '../shared/store/session-store'
 import { Button } from '../shared/ui/button'
@@ -17,6 +16,7 @@ import { AppHeader } from '../widgets/app-header/ui/app-header'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { LoginPage } from '../pages/auth/ui/login-page'
+import { ProfilePage } from '../pages/profile/ui/profile-page'
 
 export function AppRoot() {
   const [pathname, setPathname] = useState(() => window.location.pathname)
@@ -69,6 +69,7 @@ export function AppRoot() {
       readme_admin: 'Readme Administration',
       menu_admin: 'Menu Administration',
       ai_methodology: 'AI Methodology',
+      profile: 'Profile',
     }
 
     const currentSectionTitle = sectionTitles[activeSection] ?? 'Console'
@@ -99,25 +100,6 @@ export function AppRoot() {
       </div>
     )
   }
-
-  const projectPurposeCards = [
-    {
-      title: '프로토타입 공유',
-      description: '실험 중인 UI와 패턴을 빠르게 모아 팀 단위로 공유합니다.',
-    },
-    {
-      title: '개발 문서 공유',
-      description: '의도, 구조, 구현 메모를 문서로 정리해 맥락을 남깁니다.',
-    },
-    {
-      title: '개발 챌린지 개최',
-      description: '시도와 해결 과정을 축적해 다음 작업의 기준점으로 씁니다.',
-    },
-    {
-      title: '챗봇 응답 지원',
-      description: '쌓인 문서와 패턴을 바탕으로 필요한 답을 더 빨리 찾습니다.',
-    },
-  ]
 
   const renderContent = () => {
     if (activeSection === 'prototype') {
@@ -155,6 +137,10 @@ export function AppRoot() {
 
     if (activeSection === 'ai_methodology') {
       return <AiMethodologyPage />
+    }
+
+    if (activeSection === 'profile') {
+      return <ProfilePage user={currentUserQuery.data} />
     }
 
     if (activeSection === 'users') {

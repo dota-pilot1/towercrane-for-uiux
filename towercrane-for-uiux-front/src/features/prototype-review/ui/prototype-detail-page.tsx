@@ -15,7 +15,6 @@ import {
   Lock,
   MessageSquareText,
   Plus,
-  Sparkles,
   Star,
   Tag,
   X,
@@ -141,6 +140,7 @@ export function PrototypeDetailPage({
   let copyButtonText = 'Copy Link'
   if (copyState === 'done') copyButtonText = 'Copied'
   if (copyState === 'error') copyButtonText = 'Error'
+  const demoUrl = prototype.demoUrl || prototype.figmaUrl
 
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto pr-2 pb-8">
@@ -207,7 +207,20 @@ export function PrototypeDetailPage({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+            {demoUrl && (
+              <a
+                href={demoUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`${prototype.title} 운영 데모 새 창으로 열기`}
+                className="inline-flex h-8 items-center gap-2 rounded-sm border border-brand-border bg-brand-glass px-3 text-[11px] font-black text-brand-primary shadow-sm transition-all hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+                onClick={() => toast.info('운영 URL로 이동합니다.')}
+              >
+                <ExternalLink className="size-3.5" aria-hidden />
+                운영 데모
+              </a>
+            )}
             <button
               onClick={handleCopyLink}
               className="size-8 flex items-center justify-center rounded-sm bg-background border border-border text-muted-foreground hover:text-foreground shadow-sm transition-all hover:bg-muted"
@@ -269,17 +282,6 @@ export function PrototypeDetailPage({
                 onClick={() => toast.info('소스 코드 저장소로 이동합니다.')}
               >
                 <GitBranch className="size-3 text-muted-foreground" /> Source Code
-              </a>
-            )}
-            {prototype.figmaUrl && (
-              <a 
-                href={prototype.figmaUrl} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="flex items-center gap-2 rounded-sm border border-border bg-background px-3 py-1.5 text-[11px] font-bold text-foreground transition-all hover:bg-muted shadow-sm"
-                onClick={() => toast.info('디자인 스펙 문서로 이동합니다.')}
-              >
-                <Sparkles className="size-3 text-muted-foreground" /> Design Spec
               </a>
             )}
           </div>

@@ -10,6 +10,7 @@ export const usersTable = sqliteTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   name: text('name').notNull(),
+  profileImageUrl: text('profile_image_url'),
   role: text('role').$type<'admin' | 'user'>().notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),

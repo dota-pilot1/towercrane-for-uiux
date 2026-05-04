@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, FileText, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, FileText, Star } from 'lucide-react'
 
 import { EditPrototypeDialog } from '../../../features/prototype-management/ui/edit-prototype-dialog'
 import { DeletePrototypeButton } from '../../../features/prototype-management/ui/delete-prototype-button'
@@ -109,39 +109,58 @@ export function AdminShellPrototypeListPanel({
             프로토타입 불러오는 중...
           </div>
         ) : prototypeList.length > 0 ? (
-          prototypeList.map((proto) => (
-            <div
-              key={proto.id}
-              className="group relative overflow-hidden rounded-sm border border-surface-border-soft bg-background px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-brand-border/50 hover:bg-[color:color-mix(in_srgb,var(--primary)_3%,var(--background))] hover:shadow-[0_12px_32px_color-mix(in_srgb,var(--primary)_8%,transparent)]"
-            >
-              <div className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-brand-primary opacity-0 transition-opacity group-hover:opacity-100" />
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="ui-text-primary text-base font-semibold tracking-tight">
-                      {proto.title}
-                    </h3>
-                    <span className="ui-text-muted font-mono text-[10px]">
-                      {new Date(proto.updatedAt).toLocaleDateString()}
-                    </span>
-                    <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase text-brand-primary">
-                      {proto.status}
-                    </span>
-                    {proto.reviewCount > 0 ? (
-                      <span className="inline-flex items-center gap-1 rounded-sm border border-[color:color-mix(in_srgb,var(--brand-500)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--brand-glass)_80%,transparent)] px-2 py-0.5 text-[10px] font-bold text-brand-primary">
-                        <Star className="size-3 fill-brand-primary text-brand-primary" />
-                        {proto.avgRating.toFixed(1)}
-                        <span className="font-normal text-brand-primary/60">
-                          ({proto.reviewCount})
-                        </span>
+          prototypeList.map((proto) => {
+            const demoUrl = proto.demoUrl || proto.figmaUrl
+
+            return (
+              <div
+                key={proto.id}
+                className="group relative overflow-hidden rounded-sm border border-surface-border-soft bg-background px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-brand-border/50 hover:bg-[color:color-mix(in_srgb,var(--primary)_3%,var(--background))] hover:shadow-[0_12px_32px_color-mix(in_srgb,var(--primary)_8%,transparent)]"
+              >
+                <div className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-brand-primary opacity-100" />
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1 space-y-2 pl-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="ui-text-primary text-base font-semibold tracking-tight">
+                        {proto.title}
+                      </h3>
+                      <span className="ui-text-muted font-mono text-[10px]">
+                        {new Date(proto.updatedAt).toLocaleDateString()}
                       </span>
-                    ) : null}
-                  </div>
-                  <p className="max-w-2xl text-sm leading-relaxed ui-text-secondary">
-                    {proto.summary}
-                  </p>
-                  {proto.tags.length > 0 ? (
-                    <div className="flex max-w-2xl flex-wrap gap-1.5">
+                      <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase text-brand-primary">
+                        {proto.status}
+                      </span>
+                      {proto.reviewCount > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
+                          <Star className="size-3 fill-brand-primary text-brand-primary" />
+                          {proto.avgRating.toFixed(1)}
+                          <span className="font-normal text-brand-primary/60">
+                            ({proto.reviewCount})
+                          </span>
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="max-w-2xl text-sm leading-relaxed ui-text-secondary">
+                      {proto.summary}
+                    </p>
+                    <div className="flex max-w-2xl flex-wrap items-center gap-2">
+                      {demoUrl ? (
+                        <a
+                          href={demoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={`${proto.title} 운영 데모 새 창으로 열기`}
+                          className="inline-flex min-h-8 max-w-full items-center gap-2 rounded-sm border border-brand-border bg-brand-glass px-3 py-1.5 text-xs font-bold text-brand-primary transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+                        >
+                          <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+                          <span className="truncate">운영 데모 열기</span>
+                        </a>
+                      ) : (
+                        <span className="inline-flex min-h-8 items-center gap-2 rounded-sm border border-surface-border-soft bg-surface-muted px-3 py-1.5 text-xs font-bold text-text-muted">
+                          <ExternalLink className="size-3.5" aria-hidden />
+                          데모 링크 없음
+                        </span>
+                      )}
                       {proto.tags.map((tag) => (
                         <span
                           key={`${proto.id}-${tag}`}
@@ -151,37 +170,37 @@ export function AdminShellPrototypeListPanel({
                         </span>
                       ))}
                     </div>
-                    ) : null}
-                </div>
-                <div className="flex items-center gap-1.5 opacity-0 transition-all duration-200 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0">
-                  {isAuthenticated && canManagePrototype && (
-                    <div className="flex items-center gap-1.5 pr-1.5 mr-1.5 border-r border-surface-border-soft">
-                      <EditPrototypeDialog
-                        categoryId={selectedCategory.id}
-                        prototype={proto}
-                        asIcon
-                        size="sm-icon"
-                      />
-                      <DeletePrototypeButton
-                        categoryId={selectedCategory.id}
-                        prototypeId={proto.id}
-                        asIcon
-                        size="sm-icon"
-                      />
-                    </div>
-                  )}
-                  <ActionIconButton
-                    icon={FileText}
-                    size="sm-icon"
-                    onClick={() => onOpenDoc(proto.id)}
-                    title="문서 보기"
-                    aria-label="문서 보기"
-                  />
-                  <PrototypeDetailDialog prototype={proto} size="sm-icon" />
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                    {isAuthenticated && canManagePrototype && (
+                      <div className="mr-1.5 flex items-center gap-1.5 border-r border-surface-border-soft pr-1.5">
+                        <EditPrototypeDialog
+                          categoryId={selectedCategory.id}
+                          prototype={proto}
+                          asIcon
+                          size="sm-icon"
+                        />
+                        <DeletePrototypeButton
+                          categoryId={selectedCategory.id}
+                          prototypeId={proto.id}
+                          asIcon
+                          size="sm-icon"
+                        />
+                      </div>
+                    )}
+                    <ActionIconButton
+                      icon={FileText}
+                      size="sm-icon"
+                      onClick={() => onOpenDoc(proto.id)}
+                      title="문서 보기"
+                      aria-label="문서 보기"
+                    />
+                    <PrototypeDetailDialog prototype={proto} size="sm-icon" />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            )
+          })
         ) : (
           <div className="rounded-sm border border-dashed border-[var(--surface-border)] bg-[var(--surface-muted)] py-10 text-center">
             <p className="text-sm ui-text-muted">

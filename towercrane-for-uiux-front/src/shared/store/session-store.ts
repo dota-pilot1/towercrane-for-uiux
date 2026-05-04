@@ -11,6 +11,7 @@ type SessionStoreState = {
   userId: string
   userEmail: string
   userName: string
+  profileImageUrl: string | null
   userRole: string
   hasHydrated: boolean
   setAuthMode: (mode: AuthMode) => void
@@ -29,6 +30,7 @@ export const useSessionStore = create<SessionStoreState>()(
       userId: '',
       userEmail: '',
       userName: '',
+      profileImageUrl: null,
       userRole: '',
       hasHydrated: false,
       setAuthMode: (authMode) => set({ authMode }),
@@ -40,6 +42,7 @@ export const useSessionStore = create<SessionStoreState>()(
           userId: user.id,
           userEmail: user.email,
           userName: user.name,
+          profileImageUrl: user.profileImageUrl ?? null,
           userRole: user.role,
           authMode: 'login',
         }),
@@ -49,6 +52,7 @@ export const useSessionStore = create<SessionStoreState>()(
           userId: user.id,
           userEmail: user.email,
           userName: user.name,
+          profileImageUrl: user.profileImageUrl ?? null,
           userRole: user.role,
         }),
       clearSession: () =>
@@ -58,6 +62,7 @@ export const useSessionStore = create<SessionStoreState>()(
           userId: '',
           userEmail: '',
           userName: '',
+          profileImageUrl: null,
           userRole: '',
           authMode: 'login',
         }),

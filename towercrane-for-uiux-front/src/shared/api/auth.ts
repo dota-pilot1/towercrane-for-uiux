@@ -5,6 +5,7 @@ export type SessionUser = {
   id: string
   email: string
   name: string
+  profileImageUrl?: string | null
   role: 'admin' | 'user'
   createdAt: string
   updatedAt: string
@@ -156,5 +157,20 @@ export function useCurrentUser(enabled: boolean) {
     queryFn: () => apiRequest<SessionUser>('/auth/me'),
     enabled,
     retry: false,
+  })
+}
+
+export function useUpdateProfileImage() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (profileImageUrl: string | null) =>
+      apiRequest<SessionUser>('/users/me/profile-image', {
+        method: 'PATCH',
+        body: JSON.stringify({ profileImageUrl }),
+      }),
+    onSuccess: (user) => {
+      queryClient.setQueryData(['auth', 'me'], user)
+    },
   })
 }

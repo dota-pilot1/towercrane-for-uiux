@@ -172,7 +172,12 @@ export function AppHeader() {
           <ThemeSwitcher />
           {isAuthenticated ? (
             <>
-              <HeaderPill as="span" variant="static">
+              <HeaderPill
+                icon={LucideIcons.UserRound}
+                variant={activeSection === 'profile' ? 'active' : 'static'}
+                onClick={() => handleNavigation('profile')}
+                title="프로필"
+              >
                 {userName || userEmail}
               </HeaderPill>
               <button

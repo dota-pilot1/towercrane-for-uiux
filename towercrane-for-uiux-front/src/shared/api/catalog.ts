@@ -54,7 +54,7 @@ export type UpdateCategoryPayload = Partial<CreateCategoryPayload> & {
 
 export type CreatePrototypePayload = {
   title: string
-  repoUrl: string
+  repoUrl?: string
   demoUrl?: string
   figmaUrl?: string
   summary: string

@@ -40,7 +40,7 @@ const basePrototypeColumns = [
   columnHelper.display({
     id: 'link',
     header: '링크',
-    cell: ({ row }) => (
+    cell: ({ row }) => row.original.repoUrl ? (
       <a
         href={row.original.repoUrl}
         target="_blank"
@@ -50,6 +50,8 @@ const basePrototypeColumns = [
         열기
         <ArrowUpRight className="size-4" />
       </a>
+    ) : (
+      <span className="text-xs text-text-muted">없음</span>
     ),
   }),
 ]
@@ -75,8 +77,8 @@ export function OrderTable({ categories, activeCategoryId }: OrderTableProps) {
         const query = filters.query.trim().toLowerCase()
         const matchesQuery =
           query.length === 0 ||
-          [prototype.title, prototype.summary, prototype.repoUrl].some((value) =>
-            value.toLowerCase().includes(query),
+          [prototype.title, prototype.summary, prototype.repoUrl, prototype.demoUrl, prototype.figmaUrl].some((value) =>
+            (value ?? '').toLowerCase().includes(query),
           )
         const matchesStatus =
           filters.status === 'all' || prototype.status === filters.status
@@ -253,9 +255,9 @@ export function OrderTable({ categories, activeCategoryId }: OrderTableProps) {
 
         <Tabs.Content value="backend" className="p-5">
           <div className="grid gap-3 lg:grid-cols-2">
-            <div className="rounded-[22px] border border-dashed border-sky-200/25 bg-sky-300/5 p-5 text-sm text-text-primary">
+            <div className="rounded-[22px] border border-dashed border-brand-border bg-brand-glass p-5 text-sm text-text-primary">
               <div className="flex items-center gap-3">
-                <DatabaseZap className="size-5 text-sky-200" />
+                <DatabaseZap className="size-5 text-brand-primary" />
                 `towercrane-for-uiux-server`
               </div>
             </div>

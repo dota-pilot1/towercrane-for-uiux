@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Pencil } from 'lucide-react'
+import { ExternalLink, GitBranch, Pencil } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form'
 import { z } from 'zod'
@@ -16,8 +16,9 @@ import { uploadFile } from '../../../shared/api/upload'
 
 const schema = z.object({
   title: z.string().min(2).max(50),
-  repoUrl: z.string(),
-  figmaUrl: z.string(),
+  repoUrl: z.string().max(2048).optional().or(z.literal('')),
+  demoUrl: z.string().max(2048).optional().or(z.literal('')),
+  figmaUrl: z.string().max(2048).optional().or(z.literal('')),
   summary: z.string().min(2).max(160),
   status: z.enum(['draft', 'building', 'ready']),
   visibility: z.enum(['public', 'private']),
@@ -57,6 +58,9 @@ export function EditPrototypeDialog({
     resolver: zodResolver(schema),
     defaultValues: {
       ...prototype,
+      repoUrl: prototype.repoUrl ?? '',
+      demoUrl: prototype.demoUrl ?? prototype.figmaUrl ?? '',
+      figmaUrl: '',
       images: prototype.images ?? [],
       checklist: prototype.checklist ?? [],
     },
@@ -70,14 +74,20 @@ export function EditPrototypeDialog({
   useEffect(() => {
     reset({
       ...prototype,
+      repoUrl: prototype.repoUrl ?? '',
+      demoUrl: prototype.demoUrl ?? prototype.figmaUrl ?? '',
+      figmaUrl: '',
       images: prototype.images ?? [],
       checklist: prototype.checklist ?? [],
     })
   }, [prototype, reset])
 
-  const onSubmit = async (values: any) => {
+  const onSubmit: SubmitHandler<FormValues> = async (values) => {
     try {
-      await updatePrototype.mutateAsync(values)
+      await updatePrototype.mutateAsync({
+        ...values,
+        figmaUrl: '',
+      })
       setOpen(false)
     } catch (e) {
       console.error('Submit error:', e)
@@ -175,15 +185,31 @@ export function EditPrototypeDialog({
                   </div>
 
                   <div className="space-y-1.5">
-                    <span className="text-[13px] font-medium text-text-secondary ml-1">GitHub 링크</span>
-                    <Input {...register('repoUrl')} className="h-11" placeholder="https://github.com/..." />
+                    <span className="text-[13px] font-medium text-text-secondary ml-1">GitHub 링크 (선택)</span>
+                    <div className="relative">
+                      <GitBranch className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
+                      <Input
+                        {...register('repoUrl')}
+                        className="h-11"
+                        placeholder="https://github.com/..."
+                        style={{ paddingLeft: '2.75rem' }}
+                      />
+                    </div>
                     {errors.repoUrl ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.repoUrl.message}</p> : null}
                   </div>
 
                   <div className="space-y-1.5">
-                    <span className="text-[13px] font-medium text-text-secondary ml-1">Figma 링크</span>
-                    <Input {...register('figmaUrl')} placeholder="https://www.figma.com/file/..." className="h-11" />
-                    {errors.figmaUrl ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.figmaUrl.message}</p> : null}
+                    <span className="text-[13px] font-medium text-text-secondary ml-1">운영 URL (선택)</span>
+                    <div className="relative">
+                      <ExternalLink className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
+                      <Input
+                        {...register('demoUrl')}
+                        placeholder="https://service.example.com"
+                        className="h-11"
+                        style={{ paddingLeft: '2.75rem' }}
+                      />
+                    </div>
+                    {errors.demoUrl ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.demoUrl.message}</p> : null}
                   </div>
 
                   <div className="space-y-1.5">

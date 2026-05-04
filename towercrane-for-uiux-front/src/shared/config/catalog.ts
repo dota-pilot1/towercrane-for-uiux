@@ -4,7 +4,7 @@ export type PrototypeVisibility = 'public' | 'private'
 export type PrototypeItem = {
   id: string
   title: string
-  repoUrl: string
+  repoUrl?: string
   demoUrl?: string
   figmaUrl?: string
   summary: string

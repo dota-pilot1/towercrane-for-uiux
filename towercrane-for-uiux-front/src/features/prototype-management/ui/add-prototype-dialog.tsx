@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { GitBranch, Plus, ImagePlus, X, Image as ImageIcon, Loader2 } from 'lucide-react'
+import { GitBranch, Plus, ImagePlus, X, Image as ImageIcon, Loader2, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form'
 import { z } from 'zod'
@@ -14,8 +14,9 @@ import { uploadFile } from '../../../shared/api/upload'
 
 const schema = z.object({
   title: z.string().min(2).max(50),
-  repoUrl: z.string(),
-  figmaUrl: z.string(),
+  repoUrl: z.string().max(2048).optional().or(z.literal('')),
+  demoUrl: z.string().max(2048).optional().or(z.literal('')),
+  figmaUrl: z.string().max(2048).optional().or(z.literal('')),
   summary: z.string().min(2).max(160),
   status: z.enum(['draft', 'building', 'ready']),
   visibility: z.enum(['public', 'private']),
@@ -53,7 +54,8 @@ export function AddPrototypeDialog({
     resolver: zodResolver(schema),
     defaultValues: {
       title: '',
-      repoUrl: 'https://github.com/dota-pilot1/towercrane-for-uiux',
+      repoUrl: '',
+      demoUrl: '',
       figmaUrl: '',
       summary: '',
       status: 'draft',
@@ -105,9 +107,12 @@ export function AddPrototypeDialog({
     )
   }
 
-  const onSubmit = async (values: any) => {
+  const onSubmit: SubmitHandler<FormValues> = async (values) => {
     try {
-      await createPrototype.mutateAsync(values)
+      await createPrototype.mutateAsync({
+        ...values,
+        figmaUrl: '',
+      })
       reset()
       setOpen(false)
     } catch (e) {
@@ -170,18 +175,31 @@ export function AddPrototypeDialog({
                   </div>
 
                   <div className="space-y-1.5">
-                    <span className="text-[13px] font-medium text-text-secondary ml-1">GitHub 링크</span>
+                    <span className="text-[13px] font-medium text-text-secondary ml-1">GitHub 링크 (선택)</span>
                     <div className="relative">
-                      <GitBranch className="pointer-events-none absolute left-3.5 top-3.5 size-4 text-text-muted" />
-                      <Input {...register('repoUrl')} className="pl-10 h-11" />
+                      <GitBranch className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
+                      <Input
+                        {...register('repoUrl')}
+                        placeholder="https://github.com/..."
+                        className="h-11"
+                        style={{ paddingLeft: '2.75rem' }}
+                      />
                     </div>
                     {errors.repoUrl ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.repoUrl.message}</p> : null}
                   </div>
 
                   <div className="space-y-1.5">
-                    <span className="text-[13px] font-medium text-text-secondary ml-1">Figma 링크</span>
-                    <Input {...register('figmaUrl')} placeholder="https://www.figma.com/file/..." className="h-11" />
-                    {errors.figmaUrl ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.figmaUrl.message}</p> : null}
+                    <span className="text-[13px] font-medium text-text-secondary ml-1">운영 URL (선택)</span>
+                    <div className="relative">
+                      <ExternalLink className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
+                      <Input
+                        {...register('demoUrl')}
+                        placeholder="https://service.example.com"
+                        className="h-11"
+                        style={{ paddingLeft: '2.75rem' }}
+                      />
+                    </div>
+                    {errors.demoUrl ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.demoUrl.message}</p> : null}
                   </div>
 
                   <div className="space-y-1.5">

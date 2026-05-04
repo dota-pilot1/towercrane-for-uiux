@@ -50,6 +50,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         email TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
         name TEXT NOT NULL,
+        profile_image_url TEXT,
         role TEXT NOT NULL DEFAULT 'user',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -478,6 +479,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'users',
       'role',
       "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user' NOT NULL",
+    );
+    this.ensureColumn(
+      'users',
+      'profile_image_url',
+      'ALTER TABLE users ADD COLUMN profile_image_url TEXT',
     );
     this.ensureColumn(
       'categories',
