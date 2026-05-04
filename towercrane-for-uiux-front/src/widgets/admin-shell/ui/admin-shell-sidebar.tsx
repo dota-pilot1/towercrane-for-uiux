@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   ListChecks,
   LoaderCircle,
+  MoreVertical,
   MousePointerClick,
   Move3D,
   Package,
@@ -40,6 +41,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useEffect, useRef, useState } from 'react'
 
 import { AddCategoryDialog } from '../../../features/category-management/ui/add-category-dialog'
 import { DeleteCategoryButton } from '../../../features/category-management/ui/delete-category-button'
@@ -221,6 +223,8 @@ function SortableCategoryItem({
   isActive,
   onSelect,
 }: SortableCategoryItemProps) {
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const actionsRef = useRef<HTMLDivElement | null>(null)
   const {
     attributes,
     listeners,
@@ -237,11 +241,23 @@ function SortableCategoryItem({
     zIndex: isDragging ? 50 : undefined,
   }
 
+  useEffect(() => {
+    if (!actionsOpen) return
+
+    const closeActions = (event: MouseEvent) => {
+      if (actionsRef.current?.contains(event.target as Node)) return
+      setActionsOpen(false)
+    }
+
+    window.addEventListener('click', closeActions)
+    return () => window.removeEventListener('click', closeActions)
+  }, [actionsOpen])
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative flex h-14 w-full items-center gap-2 overflow-hidden rounded-md border transition-all duration-200 ${
+      className={`group relative flex h-14 w-full items-center gap-2 rounded-md border transition-all duration-200 ${
         isActive
           ? 'border-brand-border bg-brand-glass text-text-primary shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_10%,transparent)] before:absolute before:left-0 before:top-2 before:h-10 before:w-1 before:rounded-r-sm before:bg-brand-primary'
           : 'border-transparent text-text-muted hover:border-surface-border-soft hover:bg-surface-muted/60 hover:text-text-primary'
@@ -275,9 +291,29 @@ function SortableCategoryItem({
         <div className="truncate text-[10px] opacity-60 font-medium">{item.summary}</div>
       </button>
 
-      <div className="flex shrink-0 items-center gap-1 pr-2 opacity-0 transition-all duration-200 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0">
-        <EditCategoryDialog category={item} asIcon size="sm-icon" />
-        <DeleteCategoryButton categoryId={item.id} asIcon size="sm-icon" />
+      <div
+        ref={actionsRef}
+        className="relative shrink-0 pr-2"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className={`flex size-7 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised ui-text-secondary shadow-sm transition-all hover:border-surface-border hover:bg-surface-muted hover:ui-text-primary ${
+            actionsOpen || isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
+          aria-label={`${item.title} 카테고리 작업`}
+          aria-expanded={actionsOpen}
+          onClick={() => setActionsOpen((open) => !open)}
+        >
+          <MoreVertical className="size-3.5" />
+        </button>
+
+        {actionsOpen ? (
+          <div className="absolute right-2 top-[calc(100%+0.35rem)] z-50 flex items-center gap-1 rounded-md border border-surface-border bg-surface-raised p-1 shadow-2xl">
+            <EditCategoryDialog category={item} asIcon size="sm-icon" />
+            <DeleteCategoryButton categoryId={item.id} asIcon size="sm-icon" />
+          </div>
+        ) : null}
       </div>
     </div>
   )

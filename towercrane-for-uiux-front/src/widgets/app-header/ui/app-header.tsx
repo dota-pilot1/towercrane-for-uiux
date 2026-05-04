@@ -186,7 +186,7 @@ export function AppHeader() {
               </HeaderPill>
               <button
                 onClick={handleLogout}
-                className="flex size-8 items-center justify-center rounded-sm border border-surface-border bg-surface-muted ui-text-secondary transition-all hover:bg-surface-strong hover:scale-[1.05] active:scale-[0.95]"
+                className="flex size-8 items-center justify-center rounded-sm border border-surface-border bg-surface-muted ui-text-secondary shadow-[0_1px_0_color-mix(in_srgb,var(--surface-border)_45%,transparent)] transition-all hover:bg-surface-strong hover:shadow-sm hover:scale-[1.05] active:scale-[0.95]"
                 aria-label="로그아웃"
                 title="로그아웃"
               >

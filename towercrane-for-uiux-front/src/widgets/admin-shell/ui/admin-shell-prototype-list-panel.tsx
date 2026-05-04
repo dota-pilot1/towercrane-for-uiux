@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, FileText, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileText, MoreVertical, Star } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 import { EditPrototypeDialog } from '../../../features/prototype-management/ui/edit-prototype-dialog'
 import { DeletePrototypeButton } from '../../../features/prototype-management/ui/delete-prototype-button'
@@ -124,7 +125,7 @@ export function AdminShellPrototypeListPanel({
                     onSelectPrototype(proto.id)
                   }
                 }}
-                className="group relative cursor-pointer overflow-hidden rounded-sm border border-surface-border bg-surface-raised px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-border/70 hover:bg-surface-muted hover:shadow-[0_12px_28px_color-mix(in_srgb,var(--primary)_7%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+                className="group relative cursor-pointer overflow-visible rounded-sm border border-surface-border bg-surface-raised px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-border/70 hover:bg-surface-muted hover:shadow-[0_12px_28px_color-mix(in_srgb,var(--primary)_7%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1 space-y-2">
@@ -162,35 +163,13 @@ export function AdminShellPrototypeListPanel({
                       ))}
                     </div>
                   </div>
-                  <div
-                    className="flex shrink-0 flex-wrap items-center justify-end gap-1.5"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    {isAuthenticated && canManagePrototype && (
-                      <div className="mr-1.5 flex items-center gap-1.5 border-r border-surface-border-soft pr-1.5">
-                        <EditPrototypeDialog
-                          categoryId={selectedCategory.id}
-                          prototype={proto}
-                          asIcon
-                          size="sm-icon"
-                        />
-                        <DeletePrototypeButton
-                          categoryId={selectedCategory.id}
-                          prototypeId={proto.id}
-                          asIcon
-                          size="sm-icon"
-                        />
-                      </div>
-                    )}
-                    <ActionIconButton
-                      icon={FileText}
-                      size="sm-icon"
-                      onClick={() => onOpenDoc(proto.id)}
-                      title="문서 보기"
-                      aria-label="문서 보기"
-                    />
-                    <PrototypeDetailDialog prototype={proto} size="sm-icon" />
-                  </div>
+                  <PrototypeActionsMenu
+                    categoryId={selectedCategory.id}
+                    prototype={proto}
+                    isAuthenticated={isAuthenticated}
+                    canManagePrototype={canManagePrototype}
+                    onOpenDoc={onOpenDoc}
+                  />
                 </div>
               </div>
             )
@@ -231,6 +210,84 @@ export function AdminShellPrototypeListPanel({
               <ChevronRight className="size-4" />
             </button>
           </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+type PrototypeActionsMenuProps = {
+  categoryId: string
+  prototype: PrototypeListItem
+  isAuthenticated: boolean
+  canManagePrototype: boolean
+  onOpenDoc: (prototypeId: string) => void
+}
+
+function PrototypeActionsMenu({
+  categoryId,
+  prototype,
+  isAuthenticated,
+  canManagePrototype,
+  onOpenDoc,
+}: PrototypeActionsMenuProps) {
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const actionsRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!actionsOpen) return
+
+    const closeActions = (event: MouseEvent) => {
+      if (actionsRef.current?.contains(event.target as Node)) return
+      setActionsOpen(false)
+    }
+
+    window.addEventListener('click', closeActions)
+    return () => window.removeEventListener('click', closeActions)
+  }, [actionsOpen])
+
+  return (
+    <div
+      ref={actionsRef}
+      className="relative ml-auto shrink-0"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        className="flex size-8 items-center justify-center rounded-sm border border-surface-border bg-surface-muted ui-text-secondary shadow-sm transition-all hover:border-brand-border hover:bg-surface-strong hover:ui-text-primary"
+        aria-label={`${prototype.title} 작업`}
+        aria-expanded={actionsOpen}
+        onClick={() => setActionsOpen((open) => !open)}
+      >
+        <MoreVertical className="size-4" />
+      </button>
+
+      {actionsOpen ? (
+        <div className="absolute right-0 top-[calc(100%+0.4rem)] z-50 flex items-center gap-1 rounded-md border border-surface-border bg-surface-raised p-1 shadow-2xl">
+          {isAuthenticated && canManagePrototype ? (
+            <>
+              <EditPrototypeDialog
+                categoryId={categoryId}
+                prototype={prototype}
+                asIcon
+                size="sm-icon"
+              />
+              <DeletePrototypeButton
+                categoryId={categoryId}
+                prototypeId={prototype.id}
+                asIcon
+                size="sm-icon"
+              />
+            </>
+          ) : null}
+          <ActionIconButton
+            icon={FileText}
+            size="sm-icon"
+            onClick={() => onOpenDoc(prototype.id)}
+            title="문서 보기"
+            aria-label="문서 보기"
+          />
+          <PrototypeDetailDialog prototype={prototype} size="sm-icon" />
         </div>
       ) : null}
     </div>
