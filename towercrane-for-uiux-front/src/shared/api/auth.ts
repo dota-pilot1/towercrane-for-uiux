@@ -23,6 +23,17 @@ export type LoginPayload = {
 
 export type SignupPayload = LoginPayload & {
   name: string
+  verifiedToken: string
+}
+
+export type VerifyEmailCodeResponse = {
+  verifiedToken: string
+}
+
+export type ResetPasswordWithCodePayload = {
+  email: string
+  verifiedToken: string
+  newPassword: string
 }
 
 export function useLogin() {
@@ -54,6 +65,73 @@ export function useSignup() {
     onSuccess: (data) => {
       queryClient.setQueryData(['auth', 'me'], data.user)
     },
+  })
+}
+
+export function useCheckEmail() {
+  return useMutation({
+    mutationFn: (email: string) =>
+      apiRequest<{ available: boolean }>(
+        `/auth/check-email?email=${encodeURIComponent(email)}`,
+        {
+          skipAuth: true,
+        },
+      ),
+  })
+}
+
+export function useSendVerificationCode() {
+  return useMutation({
+    mutationFn: (email: string) =>
+      apiRequest<void>('/auth/email/send-code', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+        skipAuth: true,
+      }),
+  })
+}
+
+export function useVerifyEmailCode() {
+  return useMutation({
+    mutationFn: (payload: { email: string; code: string }) =>
+      apiRequest<VerifyEmailCodeResponse>('/auth/email/verify-code', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        skipAuth: true,
+      }),
+  })
+}
+
+export function useRequestPasswordResetCode() {
+  return useMutation({
+    mutationFn: (email: string) =>
+      apiRequest<void>('/auth/password-reset/request-code', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+        skipAuth: true,
+      }),
+  })
+}
+
+export function useVerifyPasswordResetCode() {
+  return useMutation({
+    mutationFn: (payload: { email: string; code: string }) =>
+      apiRequest<VerifyEmailCodeResponse>('/auth/password-reset/verify-code', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        skipAuth: true,
+      }),
+  })
+}
+
+export function useResetPasswordWithCode() {
+  return useMutation({
+    mutationFn: (payload: ResetPasswordWithCodePayload) =>
+      apiRequest<void>('/auth/password-reset/reset-with-code', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        skipAuth: true,
+      }),
   })
 }
 

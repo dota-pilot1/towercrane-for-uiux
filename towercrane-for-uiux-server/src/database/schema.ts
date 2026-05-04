@@ -1,4 +1,9 @@
-import { sqliteTable, text, integer, AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
+import {
+  sqliteTable,
+  text,
+  integer,
+  AnySQLiteColumn,
+} from 'drizzle-orm/sqlite-core';
 
 export const usersTable = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -18,6 +23,20 @@ export const sessionsTable = sqliteTable('sessions', {
   token: text('token').notNull().unique(),
   createdAt: text('created_at').notNull(),
   expiresAt: text('expires_at').notNull(),
+});
+
+export const emailVerificationsTable = sqliteTable('email_verifications', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull(),
+  purpose: text('purpose').$type<'signup' | 'password_reset'>().notNull(),
+  codeHash: text('code_hash').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  failCount: integer('fail_count').notNull().default(0),
+  verified: integer('verified', { mode: 'boolean' }).notNull().default(false),
+  verifiedTokenHash: text('verified_token_hash').unique(),
+  verifiedTokenExpiresAt: text('verified_token_expires_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
 });
 
 export const categoriesTable = sqliteTable('categories', {
@@ -49,7 +68,10 @@ export const prototypesTable = sqliteTable('prototypes', {
   status: text('status').notNull(),
   visibility: text('visibility').notNull(),
   tags: text('tags', { mode: 'json' }).$type<string[]>().notNull(),
-  checklist: text('checklist', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  checklist: text('checklist', { mode: 'json' })
+    .$type<string[]>()
+    .notNull()
+    .default([]),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -125,7 +147,9 @@ export const prototypeImagesTable = sqliteTable('prototype_images', {
 
 export const menusTable = sqliteTable('menus', {
   id: text('id').primaryKey(),
-  parentId: text('parent_id').references((): AnySQLiteColumn => menusTable.id, { onDelete: 'cascade' }),
+  parentId: text('parent_id').references((): AnySQLiteColumn => menusTable.id, {
+    onDelete: 'cascade',
+  }),
   name: text('name').notNull(),
   sectionId: text('section_id'),
   icon: text('icon'),
@@ -137,7 +161,11 @@ export const menusTable = sqliteTable('menus', {
 });
 
 export type MeetingRoomType = 'ANNOUNCE' | 'INTERNAL' | 'FREE' | 'QNA' | 'DM';
-export type MeetingMessageType = 'TEXT' | 'SYSTEM' | 'COMMAND_RESULT' | 'BOT_REPLY';
+export type MeetingMessageType =
+  | 'TEXT'
+  | 'SYSTEM'
+  | 'COMMAND_RESULT'
+  | 'BOT_REPLY';
 
 export const meetingRoomsTable = sqliteTable('meeting_rooms', {
   id: text('id').primaryKey(),
@@ -146,7 +174,9 @@ export const meetingRoomsTable = sqliteTable('meeting_rooms', {
   description: text('description'),
   orderIdx: integer('order_idx').notNull().default(0),
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
-  createdBy: text('created_by').references(() => usersTable.id, { onDelete: 'set null' }),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
@@ -162,8 +192,14 @@ export const meetingMessagesTable = sqliteTable('meeting_messages', {
   senderName: text('sender_name').notNull(),
   senderRole: text('sender_role'),
   content: text('content').notNull(),
-  messageType: text('message_type').$type<MeetingMessageType>().notNull().default('TEXT'),
-  payload: text('payload', { mode: 'json' }).$type<Record<string, unknown> | null>(),
+  messageType: text('message_type')
+    .$type<MeetingMessageType>()
+    .notNull()
+    .default('TEXT'),
+  payload: text('payload', { mode: 'json' }).$type<Record<
+    string,
+    unknown
+  > | null>(),
   createdAt: text('created_at').notNull(),
 });
 
@@ -184,6 +220,7 @@ export const meetingDmPairsTable = sqliteTable('meeting_dm_pairs', {
 export const schema = {
   usersTable,
   sessionsTable,
+  emailVerificationsTable,
   categoriesTable,
   prototypesTable,
   prototypeReviewsTable,
@@ -201,6 +238,9 @@ export type UserRow = typeof usersTable.$inferSelect;
 export type UserInsert = typeof usersTable.$inferInsert;
 export type SessionRow = typeof sessionsTable.$inferSelect;
 export type SessionInsert = typeof sessionsTable.$inferInsert;
+export type EmailVerificationRow = typeof emailVerificationsTable.$inferSelect;
+export type EmailVerificationInsert =
+  typeof emailVerificationsTable.$inferInsert;
 export type CategoryRow = typeof categoriesTable.$inferSelect;
 export type CategoryInsert = typeof categoriesTable.$inferInsert;
 export type PrototypeRow = typeof prototypesTable.$inferSelect;

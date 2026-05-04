@@ -2,18 +2,36 @@ import {
   ConflictException,
   Injectable,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { eq, sql } from 'drizzle-orm';
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import {
+  randomBytes,
+  randomUUID,
+  scryptSync,
+  timingSafeEqual,
+} from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
 import { sessionsTable, usersTable, type UserRow } from '../database/schema';
-import { loginSchema, signupSchema } from './auth.schemas';
+import {
+  emailSchema,
+  loginSchema,
+  resetPasswordWithCodeSchema,
+  signupSchema,
+  verifyEmailCodeSchema,
+} from './auth.schemas';
+import { EmailVerificationService } from './email-verification.service';
+import { MailService } from '../mail/mail.service';
 
 const SESSION_TTL_DAYS = 30;
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly emailVerificationService: EmailVerificationService,
+    private readonly mailService: MailService,
+  ) {}
 
   signup(payload: unknown) {
     const input = signupSchema.parse(payload);
@@ -27,11 +45,18 @@ export class AuthService {
       throw new ConflictException('Email is already registered');
     }
 
+    this.emailVerificationService.consumeVerifiedToken({
+      email: input.email,
+      purpose: 'signup',
+      verifiedToken: input.verifiedToken,
+    });
+
     const now = new Date().toISOString();
-    const userCount = this.databaseService.db
-      .select({ count: sql<number>`count(*)` })
-      .from(usersTable)
-      .get()?.count ?? 0;
+    const userCount =
+      this.databaseService.db
+        .select({ count: sql<number>`count(*)` })
+        .from(usersTable)
+        .get()?.count ?? 0;
 
     const user = {
       id: randomUUID(),
@@ -61,6 +86,80 @@ export class AuthService {
     }
 
     return this.createSession(user);
+  }
+
+  checkEmail(payload: unknown) {
+    const input = emailSchema.parse(payload);
+    return {
+      available: this.emailVerificationService.isEmailAvailable(input.email),
+    };
+  }
+
+  async sendSignupCode(payload: unknown) {
+    const input = emailSchema.parse(payload);
+    await this.emailVerificationService.sendSignupCode(input.email);
+    return { success: true };
+  }
+
+  verifySignupCode(payload: unknown) {
+    const input = verifyEmailCodeSchema.parse(payload);
+    return this.emailVerificationService.verifyCode(
+      input.email,
+      'signup',
+      input.code,
+    );
+  }
+
+  async requestPasswordResetCode(payload: unknown) {
+    const input = emailSchema.parse(payload);
+    await this.emailVerificationService.sendPasswordResetCode(input.email);
+    return { success: true };
+  }
+
+  verifyPasswordResetCode(payload: unknown) {
+    const input = verifyEmailCodeSchema.parse(payload);
+    return this.emailVerificationService.verifyCode(
+      input.email,
+      'password_reset',
+      input.code,
+    );
+  }
+
+  async resetPasswordWithCode(payload: unknown) {
+    const input = resetPasswordWithCodeSchema.parse(payload);
+    this.emailVerificationService.consumeVerifiedToken({
+      email: input.email,
+      purpose: 'password_reset',
+      verifiedToken: input.verifiedToken,
+    });
+
+    const user = this.databaseService.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, input.email))
+      .get();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updatedAt = new Date().toISOString();
+    this.databaseService.db
+      .update(usersTable)
+      .set({
+        passwordHash: this.hashPassword(input.newPassword),
+        updatedAt,
+      })
+      .where(eq(usersTable.id, user.id))
+      .run();
+
+    this.databaseService.db
+      .delete(sessionsTable)
+      .where(eq(sessionsTable.userId, user.id))
+      .run();
+
+    await this.mailService.sendPasswordChanged(user.email, user.name);
+    return { success: true };
   }
 
   logout(token: string) {
@@ -112,13 +211,16 @@ export class AuthService {
     ).toISOString();
     const token = randomBytes(32).toString('hex');
 
-    this.databaseService.db.insert(sessionsTable).values({
-      id: randomUUID(),
-      userId: user.id,
-      token,
-      createdAt,
-      expiresAt,
-    }).run();
+    this.databaseService.db
+      .insert(sessionsTable)
+      .values({
+        id: randomUUID(),
+        userId: user.id,
+        token,
+        createdAt,
+        expiresAt,
+      })
+      .run();
 
     return {
       token,

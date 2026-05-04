@@ -64,6 +64,26 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
+      CREATE TABLE IF NOT EXISTS email_verifications (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        code_hash TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        fail_count INTEGER NOT NULL DEFAULT 0,
+        verified INTEGER NOT NULL DEFAULT 0,
+        verified_token_hash TEXT UNIQUE,
+        verified_token_expires_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_email_verifications_email_purpose_created
+        ON email_verifications(email, purpose, created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_email_verifications_verified_token
+        ON email_verifications(verified_token_hash);
+
       CREATE TABLE IF NOT EXISTS categories (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -151,6 +171,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         FOREIGN KEY(prototype_id) REFERENCES prototypes(id) ON DELETE CASCADE
       );
 
+      CREATE TABLE IF NOT EXISTS menus (
+        id TEXT PRIMARY KEY,
+        parent_id TEXT,
+        name TEXT NOT NULL,
+        section_id TEXT,
+        icon TEXT,
+        display_order INTEGER NOT NULL DEFAULT 0,
+        is_visible INTEGER NOT NULL DEFAULT 1,
+        required_role TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(parent_id) REFERENCES menus(id) ON DELETE CASCADE
+      );
+
       CREATE TABLE IF NOT EXISTS meeting_rooms (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -220,14 +254,102 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (existingMenus.count === 0) {
       const adminMenuId = randomUUID();
       const initialMenus = [
-        { id: randomUUID(), name: 'Prototype', sectionId: 'prototype', icon: 'GitBranch', displayOrder: 0, isVisible: true, requiredRole: null, parentId: null, createdAt: now, updatedAt: now },
-        { id: randomUUID(), name: 'Chatbot', sectionId: 'chatbot', icon: 'Bot', displayOrder: 1, isVisible: true, requiredRole: null, parentId: null, createdAt: now, updatedAt: now },
-        { id: randomUUID(), name: 'README', sectionId: 'readme', icon: 'BookOpenText', displayOrder: 2, isVisible: true, requiredRole: null, parentId: null, createdAt: now, updatedAt: now },
-        { id: randomUUID(), name: 'AI 개발 방법론', sectionId: 'ai_methodology', icon: 'Zap', displayOrder: 3, isVisible: true, requiredRole: null, parentId: null, createdAt: now, updatedAt: now },
-        { id: adminMenuId, name: 'Admin', sectionId: 'admin_dropdown', icon: 'ShieldCheck', displayOrder: 4, isVisible: true, requiredRole: 'admin', parentId: null, createdAt: now, updatedAt: now },
-        { id: randomUUID(), name: '유저 관리', sectionId: 'users', icon: 'UserCog', displayOrder: 0, isVisible: true, requiredRole: 'admin', parentId: adminMenuId, createdAt: now, updatedAt: now },
-        { id: randomUUID(), name: 'README 관리', sectionId: 'readme_admin', icon: 'FileText', displayOrder: 1, isVisible: true, requiredRole: 'admin', parentId: adminMenuId, createdAt: now, updatedAt: now },
-        { id: randomUUID(), name: '메뉴 관리', sectionId: 'menu_admin', icon: 'LayoutGrid', displayOrder: 2, isVisible: true, requiredRole: 'admin', parentId: adminMenuId, createdAt: now, updatedAt: now },
+        {
+          id: randomUUID(),
+          name: 'Prototype',
+          sectionId: 'prototype',
+          icon: 'GitBranch',
+          displayOrder: 0,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          name: 'Chatbot',
+          sectionId: 'chatbot',
+          icon: 'Bot',
+          displayOrder: 1,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          name: 'README',
+          sectionId: 'readme',
+          icon: 'BookOpenText',
+          displayOrder: 2,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          name: 'AI 개발 방법론',
+          sectionId: 'ai_methodology',
+          icon: 'Zap',
+          displayOrder: 3,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: adminMenuId,
+          name: 'Admin',
+          sectionId: 'admin_dropdown',
+          icon: 'ShieldCheck',
+          displayOrder: 4,
+          isVisible: true,
+          requiredRole: 'admin',
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          name: '유저 관리',
+          sectionId: 'users',
+          icon: 'UserCog',
+          displayOrder: 0,
+          isVisible: true,
+          requiredRole: 'admin',
+          parentId: adminMenuId,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          name: 'README 관리',
+          sectionId: 'readme_admin',
+          icon: 'FileText',
+          displayOrder: 1,
+          isVisible: true,
+          requiredRole: 'admin',
+          parentId: adminMenuId,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          name: '메뉴 관리',
+          sectionId: 'menu_admin',
+          icon: 'LayoutGrid',
+          displayOrder: 2,
+          isVisible: true,
+          requiredRole: 'admin',
+          parentId: adminMenuId,
+          createdAt: now,
+          updatedAt: now,
+        },
       ];
       this.db.insert(menusTable).values(initialMenus).run();
     }
@@ -237,52 +359,55 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .get() as { count: number };
 
     if (existingMeetingRooms.count === 0) {
-      this.db.insert(meetingRoomsTable).values([
-        {
-          id: 'meeting-notice',
-          name: '공지',
-          roomType: 'ANNOUNCE',
-          description: '프로젝트 공지와 변경사항',
-          orderIdx: 0,
-          archived: false,
-          createdBy: demoUser.id,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: 'meeting-internal',
-          name: '매장-내부',
-          roomType: 'INTERNAL',
-          description: '운영 회의와 결정사항',
-          orderIdx: 1,
-          archived: false,
-          createdBy: demoUser.id,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: 'meeting-free',
-          name: '자유',
-          roomType: 'FREE',
-          description: '가벼운 공유와 질문',
-          orderIdx: 2,
-          archived: false,
-          createdBy: demoUser.id,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: 'meeting-qna',
-          name: '디자이너-Q&A',
-          roomType: 'QNA',
-          description: '공개 질문과 답변',
-          orderIdx: 3,
-          archived: false,
-          createdBy: demoUser.id,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ]).run();
+      this.db
+        .insert(meetingRoomsTable)
+        .values([
+          {
+            id: 'meeting-notice',
+            name: '공지',
+            roomType: 'ANNOUNCE',
+            description: '프로젝트 공지와 변경사항',
+            orderIdx: 0,
+            archived: false,
+            createdBy: demoUser.id,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'meeting-internal',
+            name: '매장-내부',
+            roomType: 'INTERNAL',
+            description: '운영 회의와 결정사항',
+            orderIdx: 1,
+            archived: false,
+            createdBy: demoUser.id,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'meeting-free',
+            name: '자유',
+            roomType: 'FREE',
+            description: '가벼운 공유와 질문',
+            orderIdx: 2,
+            archived: false,
+            createdBy: demoUser.id,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'meeting-qna',
+            name: '디자이너-Q&A',
+            roomType: 'QNA',
+            description: '공개 질문과 답변',
+            orderIdx: 3,
+            archived: false,
+            createdBy: demoUser.id,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ])
+        .run();
     }
 
     if (existing.count > 0) {
@@ -445,7 +570,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .run();
   }
 
-  private ensureColumn(tableName: string, columnName: string, statement: string) {
+  private ensureColumn(
+    tableName: string,
+    columnName: string,
+    statement: string,
+  ) {
     const columns = this.sqlite
       .prepare(`PRAGMA table_info(${tableName})`)
       .all() as Array<{ name: string }>;

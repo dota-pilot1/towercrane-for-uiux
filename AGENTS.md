@@ -1,5 +1,19 @@
 # AGENTS.md
 
+## 배포 지침
+
+배포 관련 작업을 할 때는 먼저 `/Users/terecal/beauty-book-hair/배포 가이드` 디렉터리의 문서를 참고한다.
+
+특히 아래 문서를 우선 확인한다.
+- `/Users/terecal/beauty-book-hair/배포 가이드/아키텍처.md`
+- `/Users/terecal/beauty-book-hair/배포 가이드/서버 정보.md`
+- `/Users/terecal/beauty-book-hair/배포 가이드/백엔드 배포.md`
+- `/Users/terecal/beauty-book-hair/배포 가이드/프론트엔드 배포.md`
+- `/Users/terecal/beauty-book-hair/배포 가이드/CORS 설정 가이드.md`
+- `/Users/terecal/beauty-book-hair/배포 가이드/배포 완료 가이드.md`
+
+배포 중 오류가 나면 `/Users/terecal/beauty-book-hair/배포 가이드/배포 과정 오류 히스토리`와 `/Users/terecal/beauty-book-hair/배포 가이드/배포 과정 문제점 정리.md`를 먼저 확인한다.
+
 ## 테마 / 스타일 규칙 (중요)
 
 ### 금지
