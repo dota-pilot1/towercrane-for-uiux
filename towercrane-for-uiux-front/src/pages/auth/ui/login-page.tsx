@@ -23,6 +23,7 @@ import { Button } from '../../../shared/ui/button'
 import { WarningDialog } from '../../../shared/ui/warning-dialog'
 
 const CODE_TTL = 300
+const RESEND_COOLDOWN = 5
 
 const loginSchema = z.object({
   email: z.email('올바른 이메일 형식이 필요합니다.'),
@@ -59,8 +60,10 @@ export function LoginPage() {
   const [codeSent, setCodeSent] = useState(false)
   const [code, setCode] = useState('')
   const [countdown, setCountdown] = useState(0)
+  const [resendCountdown, setResendCountdown] = useState(0)
   const [codeError, setCodeError] = useState<string | null>(null)
   const timerRef = useRef<number | null>(null)
+  const resendTimerRef = useRef<number | null>(null)
   const setSession = useSessionStore((state) => state.setSession)
   const loginMutation = useLogin()
   const signupMutation = useSignup()
@@ -97,6 +100,9 @@ export function LoginPage() {
       if (timerRef.current) {
         window.clearInterval(timerRef.current)
       }
+      if (resendTimerRef.current) {
+        window.clearInterval(resendTimerRef.current)
+      }
     }
   }, [])
 
@@ -107,8 +113,12 @@ export function LoginPage() {
     setCode('')
     setCodeError(null)
     setCountdown(0)
+    setResendCountdown(0)
     if (timerRef.current) {
       window.clearInterval(timerRef.current)
+    }
+    if (resendTimerRef.current) {
+      window.clearInterval(resendTimerRef.current)
     }
   }
 
@@ -130,6 +140,24 @@ export function LoginPage() {
     }, 1000)
   }
 
+  const startResendTimer = () => {
+    if (resendTimerRef.current) {
+      window.clearInterval(resendTimerRef.current)
+    }
+    setResendCountdown(RESEND_COOLDOWN)
+    resendTimerRef.current = window.setInterval(() => {
+      setResendCountdown((value) => {
+        if (value <= 1) {
+          if (resendTimerRef.current) {
+            window.clearInterval(resendTimerRef.current)
+          }
+          return 0
+        }
+        return value - 1
+      })
+    }, 1000)
+  }
+
   const onLogin = async (values: LoginFormValues) => {
     try {
       const response = await loginMutation.mutateAsync(values)
@@ -142,6 +170,10 @@ export function LoginPage() {
   }
 
   const sendSignupCode = async () => {
+    if (resendCountdown > 0) {
+      return
+    }
+
     const email = signupEmail.trim()
     if (!z.email().safeParse(email).success) {
       setSignupError('email', { type: 'manual', message: '올바른 이메일 형식이 필요합니다.' })
@@ -159,8 +191,12 @@ export function LoginPage() {
       setCodeSent(true)
       setCode('')
       startTimer()
+      startResendTimer()
     } catch (error) {
-      setCodeError(getErrorMessage(error, '인증코드 발송에 실패했습니다.'))
+      if (isResendCooldownError(error)) {
+        startResendTimer()
+      }
+      setCodeError(getAuthErrorMessage(error, '인증코드 발송에 실패했습니다.'))
     }
   }
 
@@ -180,7 +216,7 @@ export function LoginPage() {
         window.clearInterval(timerRef.current)
       }
     } catch (error) {
-      setCodeError(getErrorMessage(error, '인증코드가 올바르지 않습니다.'))
+      setCodeError(getAuthErrorMessage(error, '인증코드가 올바르지 않습니다.'))
     }
   }
 
@@ -275,10 +311,18 @@ export function LoginPage() {
                       type="button"
                       variant="secondary"
                       className="w-full px-0 text-xs"
-                      disabled={checkEmailMutation.isPending || sendCodeMutation.isPending}
+                      disabled={
+                        checkEmailMutation.isPending ||
+                        sendCodeMutation.isPending ||
+                        resendCountdown > 0
+                      }
                       onClick={sendSignupCode}
                     >
-                      {sendCodeMutation.isPending ? '발송중' : codeSent ? '재발송' : '코드 발송'}
+                      {getSendCodeButtonLabel({
+                        pending: sendCodeMutation.isPending,
+                        codeSent,
+                        resendCountdown,
+                      })}
                     </AuthButton>
                   ) : (
                     <span className="inline-flex h-11 w-full items-center justify-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2 text-xs font-semibold text-brand-primary">
@@ -488,6 +532,41 @@ function getLoginErrorMessage(error: unknown) {
   return message || '로그인 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.'
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback
+function getAuthErrorMessage(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : ''
+  if (isResendCooldownError(error)) {
+    return '이미 인증코드를 보냈습니다. 5초 후 다시 발송할 수 있습니다.'
+  }
+  if (/email is already registered/i.test(message)) {
+    return '이미 사용 중인 이메일입니다.'
+  }
+  if (/invalid email verification code/i.test(message)) {
+    return '인증코드가 올바르지 않습니다.'
+  }
+  if (/email verification code expired/i.test(message)) {
+    return '인증코드가 만료되었습니다. 코드를 다시 발송해 주세요.'
+  }
+  return message || fallback
+}
+
+function isResendCooldownError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (/please wait before requesting another code/i.test(error.message) ||
+      /이미 인증코드를 보냈습니다/.test(error.message))
+  )
+}
+
+function getSendCodeButtonLabel(input: {
+  pending: boolean
+  codeSent: boolean
+  resendCountdown: number
+}) {
+  if (input.pending) {
+    return '발송중'
+  }
+  if (input.resendCountdown > 0) {
+    return `${input.resendCountdown}초 후`
+  }
+  return input.codeSent ? '재발송' : '코드 발송'
 }

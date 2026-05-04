@@ -14,6 +14,7 @@ import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
 
 const CODE_TTL = 300
+const RESEND_COOLDOWN = 5
 
 const passwordSchema = z
   .object({
@@ -49,8 +50,10 @@ export function ForgotPasswordDialog({
   const [code, setCode] = useState('')
   const [verifiedToken, setVerifiedToken] = useState('')
   const [countdown, setCountdown] = useState(0)
+  const [resendCountdown, setResendCountdown] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const timerRef = useRef<number | null>(null)
+  const resendTimerRef = useRef<number | null>(null)
   const requestCodeMutation = useRequestPasswordResetCode()
   const verifyCodeMutation = useVerifyPasswordResetCode()
   const resetPasswordMutation = useResetPasswordWithCode()
@@ -75,6 +78,7 @@ export function ForgotPasswordDialog({
       setCode('')
       setVerifiedToken('')
       setCountdown(0)
+      setResendCountdown(0)
       setError(null)
       reset()
     }
@@ -84,6 +88,9 @@ export function ForgotPasswordDialog({
     return () => {
       if (timerRef.current) {
         window.clearInterval(timerRef.current)
+      }
+      if (resendTimerRef.current) {
+        window.clearInterval(resendTimerRef.current)
       }
     }
   }, [])
@@ -106,7 +113,29 @@ export function ForgotPasswordDialog({
     }, 1000)
   }
 
+  const startResendTimer = () => {
+    if (resendTimerRef.current) {
+      window.clearInterval(resendTimerRef.current)
+    }
+    setResendCountdown(RESEND_COOLDOWN)
+    resendTimerRef.current = window.setInterval(() => {
+      setResendCountdown((value) => {
+        if (value <= 1) {
+          if (resendTimerRef.current) {
+            window.clearInterval(resendTimerRef.current)
+          }
+          return 0
+        }
+        return value - 1
+      })
+    }, 1000)
+  }
+
   const requestCode = async () => {
+    if (resendCountdown > 0) {
+      return
+    }
+
     const trimmedEmail = email.trim()
     if (!z.email().safeParse(trimmedEmail).success) {
       setError('올바른 이메일 형식이 필요합니다.')
@@ -119,8 +148,12 @@ export function ForgotPasswordDialog({
       setStep('code')
       setCode('')
       startTimer()
+      startResendTimer()
     } catch (mutationError) {
-      setError(getErrorMessage(mutationError, '인증코드 발송에 실패했습니다.'))
+      if (isResendCooldownError(mutationError)) {
+        startResendTimer()
+      }
+      setError(getAuthErrorMessage(mutationError, '인증코드 발송에 실패했습니다.'))
     }
   }
 
@@ -142,7 +175,7 @@ export function ForgotPasswordDialog({
         window.clearInterval(timerRef.current)
       }
     } catch (mutationError) {
-      setError(getErrorMessage(mutationError, '인증코드가 올바르지 않습니다.'))
+      setError(getAuthErrorMessage(mutationError, '인증코드가 올바르지 않습니다.'))
     }
   }
 
@@ -156,7 +189,7 @@ export function ForgotPasswordDialog({
       })
       onOpenChange(false)
     } catch (mutationError) {
-      setError(getErrorMessage(mutationError, '비밀번호 변경에 실패했습니다.'))
+      setError(getAuthErrorMessage(mutationError, '비밀번호 변경에 실패했습니다.'))
     }
   })
 
@@ -217,10 +250,14 @@ export function ForgotPasswordDialog({
                   <Button
                     type="button"
                     className="w-full"
-                    disabled={requestCodeMutation.isPending}
+                    disabled={requestCodeMutation.isPending || resendCountdown > 0}
                     onClick={requestCode}
                   >
-                    {requestCodeMutation.isPending ? '발송 중...' : '인증코드 발송'}
+                    {requestCodeMutation.isPending
+                      ? '발송 중...'
+                      : resendCountdown > 0
+                        ? `${resendCountdown}초 후 재발송`
+                        : '인증코드 발송'}
                   </Button>
                 </>
               ) : null}
@@ -257,15 +294,21 @@ export function ForgotPasswordDialog({
                       </Button>
                     </div>
                   </div>
-                  {countdown === 0 ? (
-                    <button
+                  <div className="flex justify-end">
+                    <Button
                       type="button"
-                      className="text-sm text-brand-primary underline"
+                      variant="ghost"
+                      size="sm"
+                      disabled={requestCodeMutation.isPending || resendCountdown > 0}
                       onClick={requestCode}
                     >
-                      인증코드 재발송
-                    </button>
-                  ) : null}
+                      {requestCodeMutation.isPending
+                        ? '발송 중...'
+                        : resendCountdown > 0
+                          ? `${resendCountdown}초 후 재발송`
+                          : '인증코드 재발송'}
+                    </Button>
+                  </div>
                 </>
               ) : null}
 
@@ -330,6 +373,27 @@ function formatTime(seconds: number) {
   ).padStart(2, '0')}`
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback
+function getAuthErrorMessage(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : ''
+  if (isResendCooldownError(error)) {
+    return '이미 인증코드를 보냈습니다. 5초 후 다시 발송할 수 있습니다.'
+  }
+  if (/user not found/i.test(message)) {
+    return '가입된 이메일을 찾을 수 없습니다.'
+  }
+  if (/invalid email verification code/i.test(message)) {
+    return '인증코드가 올바르지 않습니다.'
+  }
+  if (/email verification code expired/i.test(message)) {
+    return '인증코드가 만료되었습니다. 코드를 다시 발송해 주세요.'
+  }
+  return message || fallback
+}
+
+function isResendCooldownError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (/please wait before requesting another code/i.test(error.message) ||
+      /이미 인증코드를 보냈습니다/.test(error.message))
+  )
 }

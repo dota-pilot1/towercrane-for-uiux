@@ -17,7 +17,7 @@ type VerificationPurpose = 'signup' | 'password_reset';
 const CODE_TTL_MS = 5 * 60 * 1000;
 const VERIFIED_TOKEN_TTL_MS = 30 * 60 * 1000;
 const MAX_FAIL_COUNT = 5;
-const RESEND_COOLDOWN_MS = 60 * 1000;
+const RESEND_COOLDOWN_MS = 5 * 1000;
 
 @Injectable()
 export class EmailVerificationService {
@@ -210,7 +210,7 @@ export class EmailVerificationService {
       Date.now() - new Date(latest.createdAt).getTime() < RESEND_COOLDOWN_MS
     ) {
       throw new HttpException(
-        'Please wait before requesting another code',
+        '이미 인증코드를 보냈습니다. 5초 후 다시 발송할 수 있습니다.',
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
