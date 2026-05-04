@@ -209,7 +209,7 @@ export function LoginPage() {
       >
         <div
           className={`signin-panel absolute left-0 top-0 flex h-full w-full items-center justify-center px-6 py-10 transition-all duration-500 ease-in-out lg:w-1/2 lg:px-12 ${
-            isSignup ? 'z-10 opacity-0 lg:z-20 lg:opacity-100' : 'z-20 opacity-100'
+            isSignup ? 'z-10 opacity-0' : 'z-20 opacity-100'
           }`}
         >
           <form className="w-full max-w-[380px] space-y-4" onSubmit={handleLoginSubmit(onLogin)}>
