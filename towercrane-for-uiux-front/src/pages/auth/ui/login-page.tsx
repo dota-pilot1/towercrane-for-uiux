@@ -1,9 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowRight, CheckCircle2, Eye, EyeOff, KeyRound, Mail, UserPlus } from 'lucide-react'
+import { ArrowRight, CheckCircle2, KeyRound, Mail, UserPlus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import type { UseFormRegisterReturn } from 'react-hook-form'
 import { z } from 'zod'
+import {
+  AuthButton,
+  AuthEmailActionRow,
+  AuthField,
+  AuthInput,
+  AuthPasswordField,
+} from '../../../features/auth/ui/auth-form-controls'
 import { ForgotPasswordDialog } from '../../../features/auth/ui/forgot-password-dialog'
 import {
   useCheckEmail,
@@ -14,12 +20,9 @@ import {
 } from '../../../shared/api/auth'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { Button } from '../../../shared/ui/button'
-import { Input } from '../../../shared/ui/input'
 import { WarningDialog } from '../../../shared/ui/warning-dialog'
 
 const CODE_TTL = 300
-const inputClassName = 'h-[44px] rounded-md'
-const formButtonClassName = 'h-[44px] rounded-md py-0 leading-none'
 
 const loginSchema = z.object({
   email: z.email('올바른 이메일 형식이 필요합니다.'),
@@ -223,13 +226,11 @@ export function LoginPage() {
               <p className="mt-2 text-sm text-text-secondary">계정으로 Prototype Registry에 진입합니다.</p>
             </div>
 
-            <label className="block space-y-2 text-left">
-              <span className="text-sm text-text-secondary">이메일</span>
-              <Input {...registerLogin('email')} className={inputClassName} type="email" placeholder="you@example.com" />
-              {loginErrors.email ? <span className="text-sm text-destructive">{loginErrors.email.message}</span> : null}
-            </label>
+            <AuthField label="이메일" error={loginErrors.email?.message}>
+              <AuthInput {...registerLogin('email')} type="email" placeholder="you@example.com" />
+            </AuthField>
 
-            <PasswordInput
+            <AuthPasswordField
               label="비밀번호"
               registration={registerLogin('password')}
               visible={showPassword}
@@ -245,10 +246,10 @@ export function LoginPage() {
               비밀번호 찾기
             </button>
 
-            <Button type="submit" className={`${formButtonClassName} w-full gap-2`} disabled={loginMutation.isPending}>
+            <AuthButton type="submit" className="w-full gap-2" disabled={loginMutation.isPending}>
               <ArrowRight className="size-4" />
               {loginMutation.isPending ? '로그인 중...' : '로그인'}
-            </Button>
+            </AuthButton>
           </form>
         </div>
 
@@ -266,47 +267,59 @@ export function LoginPage() {
               <p className="mt-2 text-sm text-text-secondary">이메일 인증 후 계정을 만듭니다.</p>
             </div>
 
-            <label className="block space-y-2 text-left">
-              <span className="text-sm text-text-secondary">이메일</span>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_96px]">
-                <Input
+            <AuthField label="이메일" error={signupErrors.email?.message}>
+              <AuthEmailActionRow
+                action={
+                  !emailVerified ? (
+                    <AuthButton
+                      type="button"
+                      variant="secondary"
+                      className="w-full px-0 text-xs"
+                      disabled={checkEmailMutation.isPending || sendCodeMutation.isPending}
+                      onClick={sendSignupCode}
+                    >
+                      {sendCodeMutation.isPending ? '발송중' : codeSent ? '재발송' : '코드 발송'}
+                    </AuthButton>
+                  ) : (
+                    <span className="inline-flex h-11 w-full items-center justify-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2 text-xs font-semibold text-brand-primary">
+                      <CheckCircle2 className="size-4" />
+                      완료
+                    </span>
+                  )
+                }
+              >
+                <AuthInput
                   {...signupEmailRegister}
                   type="email"
                   placeholder="you@example.com"
                   disabled={emailVerified}
-                  className={inputClassName}
                 />
-                {!emailVerified ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className={`${formButtonClassName} px-0 text-xs`}
-                    disabled={checkEmailMutation.isPending || sendCodeMutation.isPending}
-                    onClick={sendSignupCode}
-                  >
-                    {sendCodeMutation.isPending ? '발송중' : codeSent ? '재발송' : '코드 발송'}
-                  </Button>
-                ) : (
-                  <span className="inline-flex h-11 items-center justify-center gap-1 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-semibold text-brand-primary">
-                    <CheckCircle2 className="size-4" />
-                    완료
-                  </span>
-                )}
-              </div>
-              {signupErrors.email ? <span className="text-sm text-destructive">{signupErrors.email.message}</span> : null}
-            </label>
+              </AuthEmailActionRow>
+            </AuthField>
 
             {codeSent && !emailVerified ? (
               <div className="space-y-2 text-left">
                 <span className="text-sm text-text-secondary">인증코드</span>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_72px]">
+                <AuthEmailActionRow
+                  actionWidth="compact"
+                  action={
+                    <AuthButton
+                      type="button"
+                      className="w-full px-0 text-xs"
+                      disabled={verifyCodeMutation.isPending || code.length !== 6}
+                      onClick={verifySignupCode}
+                    >
+                      {verifyCodeMutation.isPending ? '확인중' : '확인'}
+                    </AuthButton>
+                  }
+                >
                   <div className="relative flex-1">
-                    <Input
+                    <AuthInput
                       value={code}
                       inputMode="numeric"
                       maxLength={6}
                       placeholder="6자리"
-                      className={`${inputClassName} pr-16`}
+                      className="pr-16"
                       onChange={(event) => {
                         setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
                         setCodeError(null)
@@ -318,15 +331,7 @@ export function LoginPage() {
                       </span>
                     ) : null}
                   </div>
-                  <Button
-                    type="button"
-                    className={`${formButtonClassName} px-0 text-xs`}
-                    disabled={verifyCodeMutation.isPending || code.length !== 6}
-                    onClick={verifySignupCode}
-                  >
-                    {verifyCodeMutation.isPending ? '확인 중...' : '확인'}
-                  </Button>
-                </div>
+                </AuthEmailActionRow>
               </div>
             ) : null}
 
@@ -336,13 +341,11 @@ export function LoginPage() {
               </div>
             ) : null}
 
-            <label className="block space-y-2 text-left">
-              <span className="text-sm text-text-secondary">이름</span>
-              <Input {...registerSignup('name')} className={inputClassName} placeholder="홍길동" disabled={!emailVerified} />
-              {signupErrors.name ? <span className="text-sm text-destructive">{signupErrors.name.message}</span> : null}
-            </label>
+            <AuthField label="이름" error={signupErrors.name?.message}>
+              <AuthInput {...registerSignup('name')} placeholder="홍길동" disabled={!emailVerified} />
+            </AuthField>
 
-            <PasswordInput
+            <AuthPasswordField
               label="비밀번호"
               registration={registerSignup('password')}
               visible={showPassword}
@@ -351,7 +354,7 @@ export function LoginPage() {
               onToggle={() => setShowPassword((value) => !value)}
             />
 
-            <PasswordInput
+            <AuthPasswordField
               label="비밀번호 확인"
               registration={registerSignup('confirmPassword')}
               visible={showPassword}
@@ -366,10 +369,10 @@ export function LoginPage() {
               </div>
             ) : null}
 
-            <Button type="submit" className={`${formButtonClassName} w-full gap-2`} disabled={signupMutation.isPending || !emailVerified}>
+            <AuthButton type="submit" className="w-full gap-2" disabled={signupMutation.isPending || !emailVerified}>
               <UserPlus className="size-4" />
               {signupMutation.isPending ? '처리 중...' : '계정 만들기'}
-            </Button>
+            </AuthButton>
           </form>
         </div>
 
@@ -418,48 +421,6 @@ export function LoginPage() {
         onOpenChange={setForgotPasswordOpen}
       />
     </main>
-  )
-}
-
-type PasswordInputProps = {
-  label: string
-  registration: UseFormRegisterReturn
-  visible: boolean
-  disabled?: boolean
-  error?: string
-  onToggle: () => void
-}
-
-function PasswordInput({
-  label,
-  registration,
-  visible,
-  disabled,
-  error,
-  onToggle,
-}: PasswordInputProps) {
-  return (
-    <label className="block space-y-2 text-left">
-      <span className="text-sm text-text-secondary">{label}</span>
-      <div className="relative">
-        <Input
-          {...registration}
-          type={visible ? 'text' : 'password'}
-          placeholder="8자 이상 입력"
-          className={`${inputClassName} pr-10`}
-          disabled={disabled}
-        />
-        <button
-          type="button"
-          onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition hover:text-text-primary"
-          aria-label={visible ? '비밀번호 숨기기' : '비밀번호 보기'}
-        >
-          {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-        </button>
-      </div>
-      {error ? <span className="text-sm text-destructive">{error}</span> : null}
-    </label>
   )
 }
 

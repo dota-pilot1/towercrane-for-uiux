@@ -3,7 +3,7 @@ import { cn } from '../lib/utils'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'secondary' | 'ghost'
-  size?: 'default' | 'sm' | 'icon' | 'sm-icon'
+  size?: 'default' | 'sm' | 'auth' | 'icon' | 'sm-icon'
   tone?: 'default' | 'brand' | 'danger'
 }
 
@@ -22,6 +22,7 @@ export function Button({
         'inline-flex items-center justify-center rounded-sm text-sm font-semibold transition duration-200',
         size === 'default' && 'px-4 py-2.5',
         size === 'sm' && 'h-8 px-3',
+        size === 'auth' && 'h-11 rounded-md px-4 py-0 leading-none',
         size === 'icon' && 'size-9 border',
         size === 'sm-icon' && 'size-7 border',
         variant === 'primary' &&
