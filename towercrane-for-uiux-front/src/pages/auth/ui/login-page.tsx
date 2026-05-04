@@ -208,7 +208,7 @@ export function LoginPage() {
         }`}
       >
         <div
-          className={`signin-panel absolute left-0 top-0 flex h-full w-full items-center justify-center px-6 py-10 transition-all duration-500 ease-in-out lg:w-1/2 lg:px-12 ${
+          className={`signin-panel absolute left-0 top-0 flex h-full w-full items-center justify-center bg-surface-raised px-6 py-10 transition-all duration-500 ease-in-out lg:w-1/2 lg:px-12 ${
             isSignup ? 'z-10 opacity-0' : 'z-20 opacity-100'
           }`}
         >
@@ -251,11 +251,11 @@ export function LoginPage() {
         </div>
 
         <div
-          className={`signup-panel absolute left-0 top-0 flex h-full w-full items-center justify-center px-6 py-10 transition-all duration-500 ease-in-out lg:w-1/2 lg:px-12 ${
+          className={`signup-panel absolute left-0 top-0 flex h-full w-full items-center justify-center bg-surface-raised px-6 py-10 transition-all duration-500 ease-in-out lg:w-1/2 lg:px-12 ${
             isSignup ? 'z-20 opacity-100' : 'z-10 opacity-0'
           }`}
         >
-          <form className="w-full max-w-[420px] space-y-4" onSubmit={handleSignupSubmit(onSignup)}>
+          <form className="w-full max-w-[400px] space-y-4" onSubmit={handleSignupSubmit(onSignup)}>
             <div className="mb-6 text-center">
               <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
                 <UserPlus className="size-5" />
@@ -266,25 +266,26 @@ export function LoginPage() {
 
             <label className="block space-y-2 text-left">
               <span className="text-sm text-text-secondary">이메일</span>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_136px]">
                 <Input
                   {...signupEmailRegister}
                   type="email"
                   placeholder="you@example.com"
                   disabled={emailVerified}
+                  className="h-12"
                 />
                 {!emailVerified ? (
                   <Button
                     type="button"
                     variant="secondary"
-                    className="shrink-0"
+                    className="h-12 px-0"
                     disabled={checkEmailMutation.isPending || sendCodeMutation.isPending}
                     onClick={sendSignupCode}
                   >
                     {sendCodeMutation.isPending ? '발송 중...' : codeSent ? '재발송' : '인증코드 발송'}
                   </Button>
                 ) : (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-3 text-sm font-semibold text-brand-primary">
+                  <span className="inline-flex h-12 items-center justify-center gap-1 rounded-md border border-brand-border bg-brand-glass px-3 text-sm font-semibold text-brand-primary">
                     <CheckCircle2 className="size-4" />
                     인증 완료
                   </span>
@@ -296,14 +297,14 @@ export function LoginPage() {
             {codeSent && !emailVerified ? (
               <div className="space-y-2 text-left">
                 <span className="text-sm text-text-secondary">인증코드</span>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_88px]">
                   <div className="relative flex-1">
                     <Input
                       value={code}
                       inputMode="numeric"
                       maxLength={6}
                       placeholder="6자리"
-                      className="pr-16"
+                      className="h-12 pr-16"
                       onChange={(event) => {
                         setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
                         setCodeError(null)
@@ -317,6 +318,7 @@ export function LoginPage() {
                   </div>
                   <Button
                     type="button"
+                    className="h-12 px-0"
                     disabled={verifyCodeMutation.isPending || code.length !== 6}
                     onClick={verifySignupCode}
                   >
@@ -334,7 +336,7 @@ export function LoginPage() {
 
             <label className="block space-y-2 text-left">
               <span className="text-sm text-text-secondary">이름</span>
-              <Input {...registerSignup('name')} placeholder="홍길동" disabled={!emailVerified} />
+              <Input {...registerSignup('name')} className="h-12" placeholder="홍길동" disabled={!emailVerified} />
               {signupErrors.name ? <span className="text-sm text-destructive">{signupErrors.name.message}</span> : null}
             </label>
 
@@ -362,15 +364,15 @@ export function LoginPage() {
               </div>
             ) : null}
 
-            <Button type="submit" className="w-full gap-2" disabled={signupMutation.isPending || !emailVerified}>
+            <Button type="submit" className="h-12 w-full gap-2" disabled={signupMutation.isPending || !emailVerified}>
               <UserPlus className="size-4" />
               {signupMutation.isPending ? '처리 중...' : '계정 만들기'}
             </Button>
           </form>
         </div>
 
-        <div className="switch-overlay pointer-events-none absolute left-1/2 top-0 z-30 hidden h-full w-1/2 overflow-hidden border-l border-surface-border-soft bg-surface-strong transition-transform duration-500 ease-in-out lg:block">
-          <div className="switch-track relative -left-full flex h-full w-[200%] bg-surface-strong transition-transform duration-500 ease-in-out">
+        <div className="switch-overlay pointer-events-none absolute left-1/2 top-0 z-30 hidden h-full w-1/2 overflow-hidden border-l border-surface-border bg-surface-muted transition-transform duration-500 ease-in-out lg:block">
+          <div className="switch-track relative -left-full flex h-full w-[200%] bg-surface-muted transition-transform duration-500 ease-in-out">
             <SwitchPanel
               align="left"
               title="다시 오셨나요?"
@@ -507,7 +509,7 @@ function SwitchPanel({ align, title, description, buttonLabel, onClick }: Switch
       <Button
         type="button"
         variant="primary"
-        className="mt-7 px-8"
+        className="mt-7 h-11 min-w-[112px] px-8"
         onClick={onClick}
       >
         {buttonLabel}
