@@ -18,8 +18,8 @@ import { Input } from '../../../shared/ui/input'
 import { WarningDialog } from '../../../shared/ui/warning-dialog'
 
 const CODE_TTL = 300
-const inputClassName = 'h-11 rounded-md'
-const formButtonClassName = 'h-11 rounded-md'
+const inputClassName = 'h-[44px] rounded-md'
+const formButtonClassName = 'h-[44px] rounded-md py-0 leading-none'
 
 const loginSchema = z.object({
   email: z.email('올바른 이메일 형식이 필요합니다.'),
@@ -268,7 +268,7 @@ export function LoginPage() {
 
             <label className="block space-y-2 text-left">
               <span className="text-sm text-text-secondary">이메일</span>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_96px] sm:items-end">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_96px]">
                 <Input
                   {...signupEmailRegister}
                   type="email"
@@ -280,14 +280,14 @@ export function LoginPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-10 rounded-md px-0 text-xs sm:mb-0.5"
+                    className={`${formButtonClassName} px-0 text-xs`}
                     disabled={checkEmailMutation.isPending || sendCodeMutation.isPending}
                     onClick={sendSignupCode}
                   >
                     {sendCodeMutation.isPending ? '발송중' : codeSent ? '재발송' : '코드 발송'}
                   </Button>
                 ) : (
-                  <span className="inline-flex h-10 items-center justify-center gap-1 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-semibold text-brand-primary sm:mb-0.5">
+                  <span className="inline-flex h-11 items-center justify-center gap-1 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-semibold text-brand-primary">
                     <CheckCircle2 className="size-4" />
                     완료
                   </span>
