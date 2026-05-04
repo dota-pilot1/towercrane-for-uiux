@@ -127,3 +127,15 @@ pnpm start:dev   # NestJS watch 모드
 pnpm build       # 프로덕션 빌드
 pnpm test        # 단위 테스트
 ```
+
+## Deployment
+
+운영 배포 문서는 `docs-for-배포/`에 있고, 실행 스크립트는 `scripts/`에 있습니다.
+
+```bash
+./scripts/deploy-all.sh       # 백엔드 후 프론트 전체 배포
+./scripts/deploy-backend.sh   # EC2 pull/build/PM2 restart
+./scripts/deploy-frontend.sh  # Vite build/S3 sync/CloudFront invalidation
+```
+
+민감 정보가 포함된 `docs-for-배포/hibot-d-server-key.pem`과 운영 `.env`는 커밋하지 않습니다.
