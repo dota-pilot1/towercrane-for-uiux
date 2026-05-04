@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, ExternalLink, FileText, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileText, Star } from 'lucide-react'
 
 import { EditPrototypeDialog } from '../../../features/prototype-management/ui/edit-prototype-dialog'
 import { DeletePrototypeButton } from '../../../features/prototype-management/ui/delete-prototype-button'
@@ -112,8 +112,6 @@ export function AdminShellPrototypeListPanel({
           </div>
         ) : prototypeList.length > 0 ? (
           prototypeList.map((proto) => {
-            const demoUrl = proto.demoUrl || proto.figmaUrl
-
             return (
               <div
                 key={proto.id}
@@ -153,29 +151,11 @@ export function AdminShellPrototypeListPanel({
                     <p className="max-w-2xl text-sm leading-relaxed ui-text-secondary">
                       {proto.summary}
                     </p>
-                    <div className="flex max-w-2xl flex-wrap items-center gap-2">
-                      {demoUrl ? (
-                        <a
-                          href={demoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(event) => event.stopPropagation()}
-                          aria-label={`${proto.title} 운영 데모 새 창으로 열기`}
-                          className="inline-flex min-h-8 max-w-full items-center gap-2 rounded-sm border border-brand-border bg-brand-glass px-3 py-1.5 text-xs font-bold text-brand-primary transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
-                        >
-                          <ExternalLink className="size-3.5 shrink-0" aria-hidden />
-                          <span className="truncate">운영 데모 열기</span>
-                        </a>
-                      ) : (
-                        <span className="inline-flex min-h-8 items-center gap-2 rounded-sm border border-surface-border-soft bg-surface-muted px-3 py-1.5 text-xs font-bold text-text-muted">
-                          <ExternalLink className="size-3.5" aria-hidden />
-                          데모 링크 없음
-                        </span>
-                      )}
+                    <div className="flex max-w-2xl flex-wrap items-center gap-2.5">
                       {proto.tags.map((tag) => (
                         <span
                           key={`${proto.id}-${tag}`}
-                          className="rounded-sm border border-[var(--surface-border)] bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-medium ui-text-secondary"
+                          className="inline-flex min-h-7 items-center rounded-sm border border-brand-border bg-brand-glass px-3 py-1 text-xs font-bold text-brand-primary"
                         >
                           #{tag}
                         </span>
