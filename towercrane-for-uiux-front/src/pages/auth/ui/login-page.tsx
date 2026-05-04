@@ -18,6 +18,8 @@ import { Input } from '../../../shared/ui/input'
 import { WarningDialog } from '../../../shared/ui/warning-dialog'
 
 const CODE_TTL = 300
+const inputClassName = 'h-11 rounded-md'
+const formButtonClassName = 'h-11 rounded-md'
 
 const loginSchema = z.object({
   email: z.email('올바른 이메일 형식이 필요합니다.'),
@@ -203,7 +205,7 @@ export function LoginPage() {
   return (
     <main className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-[1120px] items-center px-4 py-10">
       <section
-        className={`relative min-h-[640px] w-full overflow-hidden rounded-lg border border-surface-border-soft bg-surface-raised shadow-2xl transition-colors ${
+        className={`relative min-h-[620px] w-full overflow-hidden rounded-lg border border-surface-border-soft bg-surface-raised shadow-2xl transition-colors ${
           isSignup ? 'lg:[&_.signin-panel]:translate-x-full lg:[&_.signup-panel]:translate-x-full lg:[&_.signup-panel]:opacity-100 lg:[&_.signup-panel]:z-20 lg:[&_.switch-overlay]:-translate-x-full lg:[&_.switch-track]:translate-x-1/2' : ''
         }`}
       >
@@ -212,8 +214,8 @@ export function LoginPage() {
             isSignup ? 'z-10 opacity-0' : 'z-20 opacity-100'
           }`}
         >
-          <form className="w-full max-w-[380px] space-y-4" onSubmit={handleLoginSubmit(onLogin)}>
-            <div className="mb-8 text-center">
+          <form className="w-full max-w-[360px] space-y-4" onSubmit={handleLoginSubmit(onLogin)}>
+            <div className="mb-7 text-center">
               <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
                 <KeyRound className="size-5" />
               </div>
@@ -223,7 +225,7 @@ export function LoginPage() {
 
             <label className="block space-y-2 text-left">
               <span className="text-sm text-text-secondary">이메일</span>
-              <Input {...registerLogin('email')} className="h-11" type="email" placeholder="you@example.com" />
+              <Input {...registerLogin('email')} className={inputClassName} type="email" placeholder="you@example.com" />
               {loginErrors.email ? <span className="text-sm text-destructive">{loginErrors.email.message}</span> : null}
             </label>
 
@@ -243,7 +245,7 @@ export function LoginPage() {
               비밀번호 찾기
             </button>
 
-            <Button type="submit" className="h-11 w-full gap-2" disabled={loginMutation.isPending}>
+            <Button type="submit" className={`${formButtonClassName} w-full gap-2`} disabled={loginMutation.isPending}>
               <ArrowRight className="size-4" />
               {loginMutation.isPending ? '로그인 중...' : '로그인'}
             </Button>
@@ -255,7 +257,7 @@ export function LoginPage() {
             isSignup ? 'z-20 opacity-100' : 'z-10 opacity-0'
           }`}
         >
-          <form className="w-full max-w-[400px] space-y-4" onSubmit={handleSignupSubmit(onSignup)}>
+          <form className="w-full max-w-[380px] space-y-4" onSubmit={handleSignupSubmit(onSignup)}>
             <div className="mb-6 text-center">
               <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
                 <UserPlus className="size-5" />
@@ -266,28 +268,28 @@ export function LoginPage() {
 
             <label className="block space-y-2 text-left">
               <span className="text-sm text-text-secondary">이메일</span>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_104px]">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_96px] sm:items-end">
                 <Input
                   {...signupEmailRegister}
                   type="email"
                   placeholder="you@example.com"
                   disabled={emailVerified}
-                  className="h-11"
+                  className={inputClassName}
                 />
                 {!emailVerified ? (
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-11 px-0 text-xs"
+                    className="h-10 rounded-md px-0 text-xs sm:mb-0.5"
                     disabled={checkEmailMutation.isPending || sendCodeMutation.isPending}
                     onClick={sendSignupCode}
                   >
-                    {sendCodeMutation.isPending ? '발송 중...' : codeSent ? '재발송' : '인증코드 발송'}
+                    {sendCodeMutation.isPending ? '발송중' : codeSent ? '재발송' : '코드 발송'}
                   </Button>
                 ) : (
-                  <span className="inline-flex h-11 items-center justify-center gap-1 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-semibold text-brand-primary">
+                  <span className="inline-flex h-10 items-center justify-center gap-1 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-semibold text-brand-primary sm:mb-0.5">
                     <CheckCircle2 className="size-4" />
-                    인증 완료
+                    완료
                   </span>
                 )}
               </div>
@@ -304,7 +306,7 @@ export function LoginPage() {
                       inputMode="numeric"
                       maxLength={6}
                       placeholder="6자리"
-                      className="h-11 pr-16"
+                      className={`${inputClassName} pr-16`}
                       onChange={(event) => {
                         setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
                         setCodeError(null)
@@ -318,7 +320,7 @@ export function LoginPage() {
                   </div>
                   <Button
                     type="button"
-                    className="h-11 px-0 text-xs"
+                    className={`${formButtonClassName} px-0 text-xs`}
                     disabled={verifyCodeMutation.isPending || code.length !== 6}
                     onClick={verifySignupCode}
                   >
@@ -336,7 +338,7 @@ export function LoginPage() {
 
             <label className="block space-y-2 text-left">
               <span className="text-sm text-text-secondary">이름</span>
-              <Input {...registerSignup('name')} className="h-11" placeholder="홍길동" disabled={!emailVerified} />
+              <Input {...registerSignup('name')} className={inputClassName} placeholder="홍길동" disabled={!emailVerified} />
               {signupErrors.name ? <span className="text-sm text-destructive">{signupErrors.name.message}</span> : null}
             </label>
 
@@ -364,7 +366,7 @@ export function LoginPage() {
               </div>
             ) : null}
 
-            <Button type="submit" className="h-11 w-full gap-2" disabled={signupMutation.isPending || !emailVerified}>
+            <Button type="submit" className={`${formButtonClassName} w-full gap-2`} disabled={signupMutation.isPending || !emailVerified}>
               <UserPlus className="size-4" />
               {signupMutation.isPending ? '처리 중...' : '계정 만들기'}
             </Button>
@@ -444,7 +446,7 @@ function PasswordInput({
           {...registration}
           type={visible ? 'text' : 'password'}
           placeholder="8자 이상 입력"
-          className="h-11 pr-10"
+          className={`${inputClassName} pr-10`}
           disabled={disabled}
         />
         <button
@@ -471,7 +473,7 @@ type SwitchPanelProps = {
 function SwitchPanel({ title, description, buttonLabel, onClick }: SwitchPanelProps) {
   return (
     <div className="pointer-events-auto flex h-full w-1/2 flex-col items-center justify-center px-10 text-center text-text-primary transition-transform duration-500">
-      <div className="mb-8 w-full max-w-[340px] rounded-lg border border-surface-border-soft bg-surface-raised p-5 text-left shadow-xl">
+      <div className="mb-8 w-full max-w-[320px] rounded-lg border border-surface-border-soft bg-surface-raised p-5 text-left shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex size-9 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
@@ -497,12 +499,12 @@ function SwitchPanel({ title, description, buttonLabel, onClick }: SwitchPanelPr
           ))}
         </div>
       </div>
-      <h2 className="text-4xl font-black">{title}</h2>
-      <p className="mt-5 max-w-[360px] text-sm leading-7 text-text-secondary">{description}</p>
+      <h2 className="text-3xl font-black">{title}</h2>
+      <p className="mt-5 max-w-[340px] text-sm leading-7 text-text-secondary">{description}</p>
       <Button
         type="button"
-        variant="secondary"
-        className="mt-7 h-10 min-w-[104px] px-5 text-sm"
+        variant="primary"
+        className="mt-7 h-9 min-w-[96px] rounded-md px-4 text-sm shadow-none"
         onClick={onClick}
       >
         {buttonLabel}
