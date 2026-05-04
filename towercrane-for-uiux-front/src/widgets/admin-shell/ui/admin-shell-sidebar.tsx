@@ -177,7 +177,7 @@ export function AdminShellSidebar({
                           onClick={() => onSelectCategory(category.id)}
                           className={`group relative flex h-11 w-full items-center gap-3 overflow-hidden rounded-md border px-4 transition-all duration-200 ${
                             activeCategoryId === category.id
-                              ? 'border-surface-border bg-surface-strong text-text-primary shadow-sm'
+                              ? 'border-brand-border bg-brand-glass text-text-primary shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_10%,transparent)] before:absolute before:left-0 before:top-2 before:h-7 before:w-1 before:rounded-r-sm before:bg-brand-primary'
                               : 'border-transparent text-text-muted hover:border-surface-border-soft hover:bg-surface-muted/60 hover:text-text-primary'
                           }`}
                         >
@@ -243,7 +243,7 @@ function SortableCategoryItem({
       style={style}
       className={`group relative flex h-14 w-full items-center gap-2 overflow-hidden rounded-md border transition-all duration-200 ${
         isActive
-          ? 'border-surface-border bg-surface-strong text-text-primary shadow-sm'
+          ? 'border-brand-border bg-brand-glass text-text-primary shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_10%,transparent)] before:absolute before:left-0 before:top-2 before:h-10 before:w-1 before:rounded-r-sm before:bg-brand-primary'
           : 'border-transparent text-text-muted hover:border-surface-border-soft hover:bg-surface-muted/60 hover:text-text-primary'
       }`}
     >
