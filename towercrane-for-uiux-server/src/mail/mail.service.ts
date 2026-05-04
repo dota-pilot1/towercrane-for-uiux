@@ -101,6 +101,7 @@ export class MailService {
         user: this.configService.get<string>('MAIL_USERNAME'),
         pass: this.configService.get<string>('MAIL_PASSWORD'),
       },
+      authMethod: this.configService.get<string>('MAIL_AUTH_METHOD') ?? 'LOGIN',
       connectionTimeout: 5000,
       greetingTimeout: 5000,
       socketTimeout: 5000,

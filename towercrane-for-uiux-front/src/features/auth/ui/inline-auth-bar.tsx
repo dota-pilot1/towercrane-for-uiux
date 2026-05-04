@@ -1,8 +1,19 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowRight, Plus, X, UserPlus, Eye, EyeOff, Check, CheckCircle2 } from 'lucide-react'
+import {
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  LogIn,
+  UserPlus,
+  X,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import type { UseFormRegisterReturn } from 'react-hook-form'
 import { z } from 'zod'
 import {
   useCheckEmail,
@@ -16,7 +27,6 @@ import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
 import { WarningDialog } from '../../../shared/ui/warning-dialog'
-import { AuthIconButton } from './auth-icon-button'
 import { ForgotPasswordDialog } from './forgot-password-dialog'
 
 const CODE_TTL = 300
@@ -47,6 +57,7 @@ type LoginFormValues = z.infer<typeof loginSchema>
 type SignupFormValues = z.infer<typeof signupSchema>
 
 export function InlineAuthBar() {
+  const [loginOpen, setLoginOpen] = useState(false)
   const [signupOpen, setSignupOpen] = useState(false)
   const [loginWarning, setLoginWarning] = useState<string | null>(null)
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
@@ -70,6 +81,7 @@ export function InlineAuthBar() {
     register: registerLogin,
     handleSubmit: handleLoginSubmit,
     watch: watchLogin,
+    reset: resetLogin,
     formState: { errors: loginErrors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -113,6 +125,8 @@ export function InlineAuthBar() {
     try {
       const response = await loginMutation.mutateAsync(values)
       setSession(response)
+      setLoginOpen(false)
+      resetLogin({ email: values.email, password: '' })
     } catch (error) {
       setLoginWarning(getLoginErrorMessage(error))
     }
@@ -223,81 +237,108 @@ export function InlineAuthBar() {
     }
   }
 
+  const openForgotPassword = () => {
+    setLoginOpen(false)
+    setSignupOpen(false)
+    setForgotPasswordOpen(true)
+  }
+
   return (
     <>
-      <form
-        onSubmit={handleLoginSubmit(onLoginSubmit)}
-        className="flex items-center justify-end gap-1.5"
-      >
-        <Input
-          {...registerLogin('email')}
-          placeholder="이메일"
-          className="h-[34px] w-[150px] rounded-md border-surface-border-soft bg-surface-muted px-3.5 text-[13px] focus:border-brand-border focus:ring-brand-border/20"
-        />
-        <Input
-          {...registerLogin('password')}
-          type="password"
-          placeholder="비밀번호"
-          className="h-[34px] w-[110px] rounded-md border-surface-border-soft bg-surface-muted px-3.5 text-[13px] focus:border-brand-border focus:ring-brand-border/20"
-        />
-        
-        <AuthIconButton
-          type="submit"
-          variant="emerald"
-          icon={ArrowRight}
-          disabled={loginMutation.isPending}
-          aria-label="로그인"
-          title="로그인"
-        />
+      <div className="flex items-center justify-end gap-1.5">
+        <Dialog.Root open={loginOpen} onOpenChange={setLoginOpen}>
+          <Dialog.Trigger asChild>
+            <Button size="sm" className="gap-2">
+              <LogIn className="size-4" />
+              로그인
+            </Button>
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-40 ui-overlay backdrop-blur-sm" />
+            <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,440px)] -translate-x-1/2 -translate-y-1/2">
+              <Card className="rounded-lg p-6">
+                <DialogHeader
+                  icon={LogIn}
+                  title="로그인"
+                  description="계정으로 Prototype 워크스페이스에 진입합니다."
+                />
 
-        <button
-          type="button"
-          className="h-[34px] px-2 text-[12px] text-text-secondary underline transition hover:text-text-primary"
-          onClick={() => setForgotPasswordOpen(true)}
-        >
-          찾기
-        </button>
+                <form className="mt-6 space-y-4" onSubmit={handleLoginSubmit(onLoginSubmit)}>
+                  <label className="block space-y-2">
+                    <span className="text-sm text-text-secondary">이메일</span>
+                    <Input
+                      {...registerLogin('email')}
+                      type="email"
+                      placeholder="you@example.com"
+                      autoComplete="email"
+                    />
+                    {loginErrors.email ? (
+                      <span className="text-sm text-destructive">{loginErrors.email.message}</span>
+                    ) : null}
+                  </label>
+
+                  <label className="block space-y-2">
+                    <span className="text-sm text-text-secondary">비밀번호</span>
+                    <Input
+                      {...registerLogin('password')}
+                      type="password"
+                      placeholder="8자 이상 입력"
+                      autoComplete="current-password"
+                    />
+                    {loginErrors.password ? (
+                      <span className="text-sm text-destructive">
+                        {loginErrors.password.message}
+                      </span>
+                    ) : null}
+                  </label>
+
+                  <Button type="submit" className="w-full gap-2" disabled={loginMutation.isPending}>
+                    <ArrowRight className="size-4" />
+                    {loginMutation.isPending ? '로그인 중...' : '로그인'}
+                  </Button>
+                </form>
+
+                <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+                  <button
+                    type="button"
+                    className="text-text-secondary underline transition hover:text-text-primary"
+                    onClick={openForgotPassword}
+                  >
+                    비밀번호 찾기
+                  </button>
+                  <button
+                    type="button"
+                    className="font-semibold text-brand-primary underline"
+                    onClick={() => {
+                      setLoginOpen(false)
+                      setSignupOpen(true)
+                    }}
+                  >
+                    회원가입
+                  </button>
+                </div>
+              </Card>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
 
         <Dialog.Root open={signupOpen} onOpenChange={setSignupOpen}>
           <Dialog.Trigger asChild>
-            <AuthIconButton
-              type="button"
-              variant="white"
-              icon={Plus}
-              aria-label="회원가입"
-              title="회원가입"
-            />
+            <Button variant="secondary" size="sm" className="gap-2">
+              <UserPlus className="size-4" />
+              회원가입
+            </Button>
           </Dialog.Trigger>
 
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 z-40 ui-overlay backdrop-blur-sm" />
             <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2">
               <Card className="rounded-lg p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-md border border-brand-border bg-brand-glass p-3 text-brand-primary">
-                      <UserPlus className="size-5" />
-                    </div>
-                    <div>
-                      <Dialog.Title className="text-2xl font-semibold text-text-primary">
-                        회원가입
-                      </Dialog.Title>
-                      <Dialog.Description className="mt-2 text-sm text-text-secondary">
-                        계정을 만들고 바로 Prototype 워크스페이스로 진입합니다.
-                      </Dialog.Description>
-                    </div>
-                  </div>
-
-                  <Dialog.Close asChild>
-                    <button
-                      type="button"
-                      className="rounded-md border border-surface-border-soft bg-surface-muted p-2 text-text-secondary transition hover:bg-surface-muted"
-                      aria-label="닫기"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </Dialog.Close>
-                </div>
+                <DialogHeader
+                  icon={UserPlus}
+                  title="회원가입"
+                  description="이메일 인증 후 계정을 만들고 바로 진입합니다."
+                />
 
                 <form className="mt-5 space-y-4" onSubmit={handleSignupSubmit(onSignupSubmit)}>
                   <label className="block space-y-2">
@@ -308,7 +349,7 @@ export function InlineAuthBar() {
                       disabled={!emailVerified}
                     />
                     {signupErrors.name ? (
-                      <span className="text-sm text-rose-300">{signupErrors.name.message}</span>
+                      <span className="text-sm text-destructive">{signupErrors.name.message}</span>
                     ) : null}
                   </label>
 
@@ -356,7 +397,7 @@ export function InlineAuthBar() {
                       <button
                         type="button"
                         className="font-semibold text-brand-primary underline"
-                        onClick={() => setForgotPasswordOpen(true)}
+                        onClick={openForgotPassword}
                       >
                         비밀번호 찾기
                       </button>
@@ -412,38 +453,24 @@ export function InlineAuthBar() {
                     </div>
                   ) : null}
 
-                  <label className="block space-y-2">
-                    <span className="text-sm text-text-secondary">비밀번호</span>
-                    <div className="relative">
-                      <Input
-                        {...registerSignup('password')}
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="8자 이상 입력"
-                        className="pr-10"
-                        disabled={!emailVerified}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
-                      >
-                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                      </button>
-                    </div>
-                    {signupErrors.password ? (
-                      <span className="text-sm text-rose-300">{signupErrors.password.message}</span>
-                    ) : null}
-                  </label>
+                  <PasswordField
+                    label="비밀번호"
+                    registration={registerSignup('password')}
+                    visible={showPassword}
+                    disabled={!emailVerified}
+                    error={signupErrors.password?.message}
+                    onToggle={() => setShowPassword((value) => !value)}
+                  />
 
                   <label className="block space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-text-secondary">비밀번호 확인</span>
-                      {isPass && (
-                        <span className="inline-flex items-center gap-1 rounded border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-primary animate-in fade-in zoom-in duration-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                      {isPass ? (
+                        <span className="inline-flex items-center gap-1 rounded border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold uppercase text-brand-primary">
                           <Check className="size-3" />
                           Pass
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <div className="relative">
                       <Input
@@ -453,23 +480,17 @@ export function InlineAuthBar() {
                         className="pr-10"
                         disabled={!emailVerified}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
-                      >
-                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                      </button>
+                      <PasswordToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
                     </div>
                     {signupErrors.confirmPassword ? (
-                      <span className="text-sm text-rose-300">
+                      <span className="text-sm text-destructive">
                         {signupErrors.confirmPassword.message}
                       </span>
                     ) : null}
                   </label>
 
                   {signupMutation.error ? (
-                    <div className="rounded-md border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+                    <div className="rounded-md border border-surface-border-soft bg-danger-glass px-4 py-3 text-sm text-destructive">
                       {signupMutation.error.message}
                     </div>
                   ) : null}
@@ -489,16 +510,7 @@ export function InlineAuthBar() {
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
-      </form>
-
-      {loginErrors.email || loginErrors.password ? (
-        <div className="mt-1.5 text-right text-[11px] text-rose-200">
-          {loginErrors.email ? <span>{loginErrors.email.message}</span> : null}
-          {!loginErrors.email && loginErrors.password ? (
-            <span>{loginErrors.password.message}</span>
-          ) : null}
-        </div>
-      ) : null}
+      </div>
 
       <WarningDialog
         open={loginWarning !== null}
@@ -521,6 +533,88 @@ export function InlineAuthBar() {
   )
 }
 
+type DialogHeaderProps = {
+  icon: LucideIcon
+  title: string
+  description: string
+}
+
+function DialogHeader({ icon: Icon, title, description }: DialogHeaderProps) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <div className="rounded-md border border-brand-border bg-brand-glass p-3 text-brand-primary">
+          <Icon className="size-5" />
+        </div>
+        <div>
+          <Dialog.Title className="text-2xl font-semibold text-text-primary">{title}</Dialog.Title>
+          <Dialog.Description className="mt-2 text-sm text-text-secondary">
+            {description}
+          </Dialog.Description>
+        </div>
+      </div>
+
+      <Dialog.Close asChild>
+        <button
+          type="button"
+          className="rounded-md border border-surface-border-soft bg-surface-muted p-2 text-text-secondary transition hover:bg-surface-muted"
+          aria-label="닫기"
+        >
+          <X className="size-4" />
+        </button>
+      </Dialog.Close>
+    </div>
+  )
+}
+
+type PasswordFieldProps = {
+  label: string
+  registration: UseFormRegisterReturn
+  visible: boolean
+  disabled?: boolean
+  error?: string
+  onToggle: () => void
+}
+
+function PasswordField({
+  label,
+  registration,
+  visible,
+  disabled,
+  error,
+  onToggle,
+}: PasswordFieldProps) {
+  return (
+    <label className="block space-y-2">
+      <span className="text-sm text-text-secondary">{label}</span>
+      <div className="relative">
+        <Input
+          {...registration}
+          type={visible ? 'text' : 'password'}
+          placeholder="8자 이상 입력"
+          className="pr-10"
+          disabled={disabled}
+        />
+        <PasswordToggle visible={visible} onToggle={onToggle} />
+      </div>
+      {error ? <span className="text-sm text-destructive">{error}</span> : null}
+    </label>
+  )
+}
+
+function PasswordToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary transition-colors hover:text-text-primary"
+      aria-label={visible ? '비밀번호 숨기기' : '비밀번호 보기'}
+    >
+      {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+    </button>
+  )
+}
+
 function formatTime(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(
     seconds % 60,
@@ -533,4 +627,8 @@ function getLoginErrorMessage(error: unknown) {
     return '이메일 또는 비밀번호가 올바르지 않습니다. 입력한 정보를 확인한 뒤 다시 시도해 주세요.'
   }
   return message || '로그인 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.'
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback
 }
