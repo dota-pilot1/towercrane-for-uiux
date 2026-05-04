@@ -85,7 +85,11 @@ export function AppHeader() {
   const { data: flatMenus = [] } = useMenus();
 
   const menuTree = useMemo(() => {
-    return buildTree(flatMenus, userRole);
+    return buildTree(flatMenus, userRole).filter((item) => {
+      if (item.sectionId === 'readme') return false;
+      if (!item.sectionId && item.children.length === 0) return false;
+      return true;
+    });
   }, [flatMenus, userRole]);
 
   const handleNavigation = (id: string) => {

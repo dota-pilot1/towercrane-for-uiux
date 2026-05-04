@@ -100,8 +100,8 @@ function ChannelSidebar({
   onSelect: (roomId: string) => void
 }) {
   return (
-    <aside className="ui-panel flex min-h-0 w-full flex-col overflow-hidden lg:w-72">
-      <div className="border-b border-surface-border-soft px-5 py-4">
+    <aside className="ui-panel flex min-h-0 w-full flex-col overflow-hidden bg-surface-raised lg:w-72">
+      <div className="border-b border-surface-border-soft bg-surface-muted px-5 py-4">
         <p className="text-[11px] font-black uppercase tracking-[0.22em] ui-text-muted">Workroom</p>
         <div className="mt-1 flex items-center justify-between">
           <h2 className="text-lg font-black ui-text-primary">워크룸</h2>
@@ -131,7 +131,7 @@ function ChannelSidebar({
               onClick={() => onSelect(room.id)}
               className={`flex w-full items-center gap-3 rounded-md border px-3 py-3 text-left transition-all ${
                 isActive
-                  ? 'border-brand-border bg-brand-glass text-brand-primary shadow-sm'
+                  ? 'border-brand-border bg-surface-strong text-text-primary shadow-sm'
                   : 'border-transparent ui-text-secondary hover:border-surface-border-soft hover:bg-surface-muted'
               }`}
             >
@@ -161,7 +161,7 @@ function ChannelSidebar({
                     onClick={() => onSelect(room.id)}
                     className={`flex w-full items-center gap-3 rounded-md border px-3 py-3 text-left transition-all ${
                       isActive
-                        ? 'border-brand-border bg-brand-glass text-brand-primary shadow-sm'
+                        ? 'border-brand-border bg-surface-strong text-text-primary shadow-sm'
                         : 'border-transparent ui-text-secondary hover:border-surface-border-soft hover:bg-surface-muted'
                     }`}
                   >
@@ -323,8 +323,8 @@ function MessageArea({
   onSend: (content: string) => void
 }) {
   return (
-    <section className="ui-panel flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between border-b border-surface-border-soft px-5 py-4">
+    <section className="ui-panel flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-raised">
+      <div className="flex shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-raised px-5 py-4">
         <div>
           <div className="flex items-center gap-2">
             <RoomIcon type={room.roomType} className="size-4 text-brand-primary" />
@@ -341,7 +341,7 @@ function MessageArea({
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto bg-background px-5 py-5">
+      <div className="flex-1 space-y-4 overflow-y-auto bg-surface-muted px-5 py-5">
         {isLoading ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="mb-3 flex size-12 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted">
@@ -392,8 +392,8 @@ function MemberPanel({
   )
 
   return (
-    <aside className="ui-panel hidden min-h-0 w-64 flex-col overflow-hidden xl:flex">
-      <div className="space-y-3 border-b border-surface-border-soft px-5 py-4">
+    <aside className="ui-panel hidden min-h-0 w-64 flex-col overflow-hidden bg-surface-raised xl:flex">
+      <div className="space-y-3 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
         <CurrentRoomCard room={selectedRoom} />
         <div className="flex items-center justify-between border-t border-surface-border-soft pt-3">
           <h2 className="text-sm font-black ui-text-primary">멤버</h2>
@@ -416,7 +416,7 @@ function MemberPanel({
 
 function CurrentRoomCard({ room }: { room: MeetingRoom | null }) {
   return (
-    <section className="ui-panel-soft px-3 py-3">
+    <section className="rounded-md border border-surface-border-soft bg-surface-raised px-3 py-3">
       <div className="mb-2 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] ui-text-muted">
         <MapPin className="size-3.5" />
         현재 채널
@@ -483,7 +483,7 @@ function MemberList({
               key={member.id}
               className={`flex items-center gap-2 rounded-md border px-2 py-2 ${
                 isCurrentUser
-                  ? 'border-brand-border bg-brand-glass'
+                  ? 'border-brand-border bg-surface-strong'
                   : 'border-transparent hover:bg-surface-muted'
               }`}
               onContextMenu={(event) => {
@@ -500,7 +500,7 @@ function MemberList({
                 <span className="flex min-w-0 items-center gap-1.5">
                   <span className="truncate text-sm font-semibold ui-text-primary">{member.name}</span>
                   {isCurrentUser ? (
-                    <span className="shrink-0 rounded-sm border border-brand-border bg-surface-raised px-1.5 py-0.5 text-[10px] font-bold text-brand-primary">
+                    <span className="shrink-0 rounded-sm border border-brand-border bg-brand-glass px-1.5 py-0.5 text-[10px] font-bold text-brand-primary">
                       나
                     </span>
                   ) : null}
@@ -509,7 +509,7 @@ function MemberList({
               </span>
               <span
                 title={displayRoom ? `현재 위치: ${displayRoom.name}` : '현재 위치: 대기 중'}
-                className="ml-auto max-w-24 shrink-0 truncate rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-right text-[11px] font-bold ui-text-secondary"
+                className="ml-auto max-w-24 shrink-0 truncate rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-right text-[11px] font-bold ui-text-secondary"
               >
                 {displayRoom ? displayRoom.name : '대기 중'}
               </span>
@@ -589,7 +589,7 @@ export function MeetingPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-132px)] min-h-[680px] overflow-hidden">
+    <div className="h-[calc(100vh-132px)] min-h-[680px] overflow-hidden rounded-md bg-surface-muted p-1">
       <div className="grid h-full gap-4 lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)_16rem]">
         <ChannelSidebar
           rooms={rooms}

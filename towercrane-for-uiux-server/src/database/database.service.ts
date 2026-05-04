@@ -353,6 +353,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.db.insert(menusTable).values(initialMenus).run();
     }
 
+    this.sqlite
+      .prepare(
+        `
+          UPDATE menus
+          SET is_visible = 0, updated_at = ?
+          WHERE section_id = 'readme'
+            OR (parent_id IS NULL AND section_id IS NULL AND name = '새 메뉴')
+        `,
+      )
+      .run(now);
+
     const defaultMeetingRooms = [
       {
         id: 'meeting-notice',
