@@ -42,6 +42,23 @@ export function AppRoot() {
   }, [])
 
   useEffect(() => {
+    if (!hasHydrated) {
+      return
+    }
+
+    if (!isAuthenticated && pathname !== '/login') {
+      window.history.replaceState(null, '', '/login')
+      setPathname('/login')
+      return
+    }
+
+    if (isAuthenticated && pathname === '/login') {
+      window.history.replaceState(null, '', '/')
+      setPathname('/')
+    }
+  }, [hasHydrated, isAuthenticated, pathname])
+
+  useEffect(() => {
     const sectionTitles: Record<string, string> = {
       prototype: 'Prototype Registry',
       docu: 'Documentation Workspace',
@@ -74,10 +91,9 @@ export function AppRoot() {
     return null
   }
 
-  if (pathname === '/login') {
+  if (pathname === '/login' || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-background ui-text-primary">
-        <AppHeader />
         <LoginPage />
         <Toaster richColors position="top-right" />
       </div>

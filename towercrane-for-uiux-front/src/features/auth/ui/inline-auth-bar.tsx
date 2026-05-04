@@ -640,7 +640,10 @@ export function InlineAuthBar({ embedded = false }: InlineAuthBarProps) {
 }
 
 export function HeaderAuthButtons() {
+  const setAuthMode = useSessionStore((state) => state.setAuthMode)
+
   const goToLogin = () => {
+    setAuthMode('login')
     window.history.pushState(null, '', '/login')
     window.dispatchEvent(new PopStateEvent('popstate'))
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -648,10 +651,6 @@ export function HeaderAuthButtons() {
 
   return (
     <div className="flex items-center justify-end gap-1.5">
-      <Button variant="secondary" size="sm" className="gap-2" onClick={goToLogin}>
-        <UserPlus className="size-4" />
-        회원가입
-      </Button>
       <Button size="sm" className="gap-2" onClick={goToLogin}>
         <LogIn className="size-4" />
         로그인

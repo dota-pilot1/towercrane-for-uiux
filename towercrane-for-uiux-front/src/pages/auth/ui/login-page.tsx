@@ -18,6 +18,7 @@ import {
   useSignup,
   useVerifyEmailCode,
 } from '../../../shared/api/auth'
+import type { AuthMode } from '../../../shared/store/session-store'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { Button } from '../../../shared/ui/button'
 import { WarningDialog } from '../../../shared/ui/warning-dialog'
@@ -51,7 +52,9 @@ type LoginFormValues = z.infer<typeof loginSchema>
 type SignupFormValues = z.infer<typeof signupSchema>
 
 export function LoginPage() {
-  const [isSignup, setIsSignup] = useState(false)
+  const authMode = useSessionStore((state) => state.authMode)
+  const setAuthMode = useSessionStore((state) => state.setAuthMode)
+  const [isSignup, setIsSignup] = useState(() => getInitialAuthMode() === 'signup')
   const [showPassword, setShowPassword] = useState(false)
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
   const [loginWarning, setLoginWarning] = useState<string | null>(null)
@@ -70,6 +73,16 @@ export function LoginPage() {
   const checkEmailMutation = useCheckEmail()
   const sendCodeMutation = useSendVerificationCode()
   const verifyCodeMutation = useVerifyEmailCode()
+
+  useEffect(() => {
+    const mode = getInitialAuthMode()
+    setAuthMode(mode)
+    setIsSignup(mode === 'signup')
+  }, [setAuthMode])
+
+  useEffect(() => {
+    setIsSignup(authMode === 'signup')
+  }, [authMode])
 
   const {
     register: registerLogin,
@@ -120,6 +133,12 @@ export function LoginPage() {
     if (resendTimerRef.current) {
       window.clearInterval(resendTimerRef.current)
     }
+  }
+
+  const selectAuthMode = (mode: AuthMode) => {
+    setAuthMode(mode)
+    setIsSignup(mode === 'signup')
+    window.history.replaceState(null, '', mode === 'signup' ? '/login?mode=signup' : '/login')
   }
 
   const startTimer = () => {
@@ -242,9 +261,9 @@ export function LoginPage() {
   })
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-[1120px] items-center px-4 py-10">
+    <main className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-[1040px] items-center px-4 py-8">
       <section
-        className={`relative min-h-[620px] w-full overflow-hidden rounded-lg border border-surface-border-soft bg-surface-raised shadow-2xl transition-colors ${
+        className={`relative min-h-[560px] w-full overflow-hidden rounded-lg border border-surface-border-soft bg-surface-raised shadow-2xl transition-colors lg:min-h-[580px] ${
           isSignup ? 'lg:[&_.signin-panel]:translate-x-full lg:[&_.signup-panel]:translate-x-full lg:[&_.signup-panel]:opacity-100 lg:[&_.signup-panel]:z-20 lg:[&_.switch-overlay]:-translate-x-full lg:[&_.switch-track]:translate-x-1/2' : ''
         }`}
       >
@@ -426,22 +445,22 @@ export function LoginPage() {
               title="다시 오셨나요?"
               description="프로토타입 공유 및 개발 커뮤니티에서 저장된 문서, 회의, 피드백으로 바로 돌아갑니다."
               buttonLabel="로그인"
-              onClick={() => setIsSignup(false)}
+              onClick={() => selectAuthMode('login')}
             />
             <SwitchPanel
               title="같이 만들어볼까요?"
               description="아이디어, 기능 흐름, 문서 초안을 프로토타입으로 공유하고 개발자들과 함께 발전시킵니다."
               buttonLabel="회원가입"
-              onClick={() => setIsSignup(true)}
+              onClick={() => selectAuthMode('signup')}
             />
           </div>
         </div>
 
         <div className="absolute bottom-4 left-1/2 z-40 flex -translate-x-1/2 gap-2 lg:hidden">
-          <Button variant={!isSignup ? 'primary' : 'secondary'} size="sm" onClick={() => setIsSignup(false)}>
+          <Button variant={!isSignup ? 'primary' : 'secondary'} size="sm" onClick={() => selectAuthMode('login')}>
             로그인
           </Button>
-          <Button variant={isSignup ? 'primary' : 'secondary'} size="sm" onClick={() => setIsSignup(true)}>
+          <Button variant={isSignup ? 'primary' : 'secondary'} size="sm" onClick={() => selectAuthMode('signup')}>
             회원가입
           </Button>
         </div>
@@ -466,6 +485,10 @@ export function LoginPage() {
       />
     </main>
   )
+}
+
+function getInitialAuthMode(): AuthMode {
+  return new URLSearchParams(window.location.search).get('mode') === 'signup' ? 'signup' : 'login'
 }
 
 type SwitchPanelProps = {
@@ -509,7 +532,7 @@ function SwitchPanel({ title, description, buttonLabel, onClick }: SwitchPanelPr
       <Button
         type="button"
         variant="primary"
-        className="mt-7 h-9 min-w-[96px] rounded-md px-4 text-sm shadow-none"
+        className="mt-7 h-11 min-w-[160px] rounded-md px-6 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_24px_rgba(0,0,0,0.12)] hover:brightness-110 hover:-translate-y-0.5"
         onClick={onClick}
       >
         {buttonLabel}

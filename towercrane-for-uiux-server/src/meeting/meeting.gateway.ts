@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Server as HttpServer, IncomingMessage } from 'node:http';
 import { parse } from 'node:url';
-import { WebSocket, WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer, type RawData } from 'ws';
 import { AuthService } from '../auth/auth.service';
 
 type WsEnvelope = {
@@ -19,6 +19,13 @@ type PresenceMember = {
   currentRoomId: string | null;
 };
 
+function readRawMessage(raw: RawData) {
+  if (typeof raw === 'string') return raw;
+  if (raw instanceof Buffer) return raw.toString('utf8');
+  if (Array.isArray(raw)) return Buffer.concat(raw).toString('utf8');
+  return Buffer.from(new Uint8Array(raw)).toString('utf8');
+}
+
 @Injectable()
 export class MeetingGateway {
   private readonly logger = new Logger(MeetingGateway.name);
@@ -34,7 +41,9 @@ export class MeetingGateway {
     if (this.server) return;
 
     this.server = new WebSocketServer({ noServer: true });
-    this.server.on('connection', (socket, request) => this.handleConnection(socket, request));
+    this.server.on('connection', (socket, request) =>
+      this.handleConnection(socket, request),
+    );
 
     httpServer.on('upgrade', (request, socket, head) => {
       const { pathname, query } = parse(request.url ?? '', true);
@@ -44,7 +53,11 @@ export class MeetingGateway {
       try {
         const user = this.authService.getSessionUser(token);
         this.server?.handleUpgrade(request, socket, head, (ws) => {
-          this.socketUser.set(ws, { ...user, online: true, currentRoomId: null });
+          this.socketUser.set(ws, {
+            ...user,
+            online: true,
+            currentRoomId: null,
+          });
           this.server?.emit('connection', ws, request);
         });
       } catch {
@@ -69,11 +82,15 @@ export class MeetingGateway {
       const user = this.socketUser.get(socket);
       if (!user) continue;
 
-      const topic = this.socketTopic.get(socket);
+      const currentRoomId =
+        this.socketTopic.get(socket)?.replace('meeting/', '') ?? null;
+      const existing = deduped.get(user.id);
+      if (existing?.currentRoomId && !currentRoomId) continue;
+
       deduped.set(user.id, {
         ...user,
         online: true,
-        currentRoomId: topic?.replace('meeting/', '') ?? null,
+        currentRoomId,
       });
     }
 
@@ -83,11 +100,13 @@ export class MeetingGateway {
   private handleConnection(socket: WebSocket, request: IncomingMessage) {
     const user = this.socketUser.get(socket);
     this.sockets.add(socket);
-    this.logger.log(`meeting ws connected: ${user?.id ?? 'unknown'} ${request.url ?? ''}`);
+    this.logger.log(
+      `meeting ws connected: ${user?.id ?? 'unknown'} ${request.url ?? ''}`,
+    );
 
-    socket.on('message', (raw) => {
+    socket.on('message', (raw: RawData) => {
       try {
-        const message = JSON.parse(raw.toString()) as WsEnvelope;
+        const message = JSON.parse(readRawMessage(raw)) as WsEnvelope;
         this.handleMessage(socket, message);
       } catch {
         this.send(socket, { type: 'ERROR', data: { message: 'INVALID_JSON' } });

@@ -5,6 +5,7 @@ import {
   Hash,
   ListChecks,
   Lock,
+  MapPin,
   MessageSquare,
   MessagesSquare,
   Paperclip,
@@ -46,11 +47,18 @@ const slashCommands = [
   },
 ]
 
-function roomIcon(type: MeetingRoomType) {
-  if (type === 'DM') return MessageSquare
-  if (type === 'ANNOUNCE') return MessageSquare
-  if (type === 'INTERNAL') return Lock
-  return Hash
+function RoomIcon({ type, className }: { type: MeetingRoomType; className?: string }) {
+  if (type === 'DM' || type === 'ANNOUNCE') return <MessageSquare className={className} />
+  if (type === 'INTERNAL') return <Lock className={className} />
+  return <Hash className={className} />
+}
+
+function roomTypeLabel(type: MeetingRoomType) {
+  if (type === 'ANNOUNCE') return '공지'
+  if (type === 'INTERNAL') return '매장-내부'
+  if (type === 'FREE') return '자유'
+  if (type === 'QNA') return '디자이너-Q&A'
+  return 'DM'
 }
 
 function initials(name: string) {
@@ -101,7 +109,6 @@ function ChannelSidebar({
           </div>
         ) : null}
         {rooms.filter((room) => room.roomType !== 'DM').map((room) => {
-          const Icon = roomIcon(room.roomType)
           const isActive = selectedRoomId === room.id
           return (
             <button
@@ -114,7 +121,7 @@ function ChannelSidebar({
                   : 'border-transparent ui-text-secondary hover:border-surface-border-soft hover:bg-surface-muted'
               }`}
             >
-              <Icon className="size-4 shrink-0" />
+              <RoomIcon type={room.roomType} className="size-4 shrink-0" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold">{room.name}</span>
                 <span className="block truncate text-xs ui-text-muted">{room.description ?? '회의실 채널'}</span>
@@ -132,7 +139,6 @@ function ChannelSidebar({
             <p className="mb-2 px-2 text-[11px] font-black uppercase tracking-[0.18em] ui-text-muted">DM</p>
             <div className="space-y-1">
               {rooms.filter((room) => room.roomType === 'DM').map((room) => {
-                const Icon = roomIcon(room.roomType)
                 const isActive = selectedRoomId === room.id
                 return (
                   <button
@@ -145,7 +151,7 @@ function ChannelSidebar({
                         : 'border-transparent ui-text-secondary hover:border-surface-border-soft hover:bg-surface-muted'
                     }`}
                   >
-                    <Icon className="size-4 shrink-0" />
+                    <RoomIcon type={room.roomType} className="size-4 shrink-0" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-bold">{room.name}</span>
                       <span className="block truncate text-xs ui-text-muted">{room.description ?? '1:1 DM'}</span>
@@ -302,14 +308,12 @@ function MessageArea({
   isLoading?: boolean
   onSend: (content: string) => void
 }) {
-  const Icon = roomIcon(room.roomType)
-
   return (
     <section className="ui-panel flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center justify-between border-b border-surface-border-soft px-5 py-4">
         <div>
           <div className="flex items-center gap-2">
-            <Icon className="size-4 text-brand-primary" />
+            <RoomIcon type={room.roomType} className="size-4 text-brand-primary" />
             <h2 className="text-lg font-black ui-text-primary">{room.name}</h2>
             <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-bold ui-text-muted">
               {room.roomType}
@@ -352,14 +356,19 @@ function MessageArea({
 }
 
 function MemberPanel({
+  rooms,
+  selectedRoom,
   members,
   currentUserId,
   onOpenDm,
 }: {
+  rooms: MeetingRoom[]
+  selectedRoom: MeetingRoom | null
   members: MeetingMember[]
   currentUserId: string
   onOpenDm: (member: MeetingMember) => void
 }) {
+  const roomById = useMemo(() => new Map(rooms.map((room) => [room.id, room])), [rooms])
   const onlineMembers = useMemo(
     () =>
       members
@@ -370,27 +379,62 @@ function MemberPanel({
 
   return (
     <aside className="ui-panel hidden min-h-0 w-64 flex-col overflow-hidden xl:flex">
-      <div className="border-b border-surface-border-soft px-5 py-4">
-        <div className="flex items-center justify-between">
+      <div className="space-y-3 border-b border-surface-border-soft px-5 py-4">
+        <CurrentRoomCard room={selectedRoom} />
+        <div className="flex items-center justify-between border-t border-surface-border-soft pt-3">
           <h2 className="text-sm font-black ui-text-primary">멤버</h2>
           <span className="text-xs ui-text-muted">{onlineMembers.length}</span>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
-        <MemberList members={onlineMembers} currentUserId={currentUserId} onOpenDm={onOpenDm} />
+        <MemberList
+          members={onlineMembers}
+          currentUserId={currentUserId}
+          selectedRoom={selectedRoom}
+          roomById={roomById}
+          onOpenDm={onOpenDm}
+        />
       </div>
     </aside>
+  )
+}
+
+function CurrentRoomCard({ room }: { room: MeetingRoom | null }) {
+  return (
+    <section className="ui-panel-soft px-3 py-3">
+      <div className="mb-2 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] ui-text-muted">
+        <MapPin className="size-3.5" />
+        현재 카테고리
+      </div>
+      {room ? (
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
+            <RoomIcon type={room.roomType} className="size-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-black ui-text-primary">{room.name}</span>
+            <span className="mt-0.5 block truncate text-xs ui-text-secondary">{roomTypeLabel(room.roomType)}</span>
+          </span>
+        </div>
+      ) : (
+        <p className="text-xs ui-text-muted">입장한 카테고리가 없습니다.</p>
+      )}
+    </section>
   )
 }
 
 function MemberList({
   members,
   currentUserId,
+  selectedRoom,
+  roomById,
   onOpenDm,
 }: {
   members: MeetingMember[]
   currentUserId: string
+  selectedRoom: MeetingRoom | null
+  roomById: Map<string, MeetingRoom>
   onOpenDm: (member: MeetingMember) => void
 }) {
   const [menu, setMenu] = useState<{
@@ -418,6 +462,8 @@ function MemberList({
         ) : null}
         {members.map((member) => {
           const isCurrentUser = member.id === currentUserId
+          const currentRoom = member.currentRoomId ? roomById.get(member.currentRoomId) : null
+          const displayRoom = currentRoom ?? (isCurrentUser ? selectedRoom : null)
           return (
             <div
               key={member.id}
@@ -445,7 +491,9 @@ function MemberList({
                     </span>
                   ) : null}
                 </span>
-                <span className="block truncate text-xs ui-text-muted">{member.role}</span>
+                <span className="block truncate text-xs ui-text-muted">
+                  {displayRoom ? displayRoom.name : '대기 중'} · {member.role}
+                </span>
               </span>
             </div>
           )
@@ -477,22 +525,14 @@ function MemberList({
 export function MeetingPage() {
   const currentUserId = useSessionStore((state) => state.userId)
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
+  const [requestedRoomId, setRequestedRoomId] = useState<string | null>(null)
   const roomsQuery = useMeetingRooms()
-  const rooms = roomsQuery.data ?? []
-
-  useEffect(() => {
-    if (!selectedRoomId && rooms.length > 0) {
-      setSelectedRoomId(rooms[0].id)
-      return
-    }
-
-    if (selectedRoomId && rooms.length > 0 && !rooms.some((room) => room.id === selectedRoomId)) {
-      setSelectedRoomId(rooms[0].id)
-    }
-  }, [rooms, selectedRoomId])
-
-  const selectedRoom = rooms.find((room) => room.id === selectedRoomId) ?? rooms[0] ?? null
+  const rooms = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data])
+  const selectedRoomId =
+    requestedRoomId && rooms.some((room) => room.id === requestedRoomId)
+      ? requestedRoomId
+      : rooms[0]?.id ?? null
+  const selectedRoom = rooms.find((room) => room.id === selectedRoomId) ?? null
   const roomId = selectedRoom?.id ?? null
   const messagesQuery = useMeetingMessages(roomId)
   const membersQuery = useMeetingMembers(roomId)
@@ -511,7 +551,7 @@ export function MeetingPage() {
   const handleOpenDm = (member: MeetingMember) => {
     startDmMutation.mutate(member.id, {
       onSuccess: (room) => {
-        setSelectedRoomId(room.id)
+        setRequestedRoomId(room.id)
       },
     })
   }
@@ -537,7 +577,7 @@ export function MeetingPage() {
           rooms={rooms}
           selectedRoomId={selectedRoom?.id ?? null}
           isLoading={roomsQuery.isLoading}
-          onSelect={setSelectedRoomId}
+          onSelect={setRequestedRoomId}
         />
         {selectedRoom ? (
           <MessageArea
@@ -560,7 +600,13 @@ export function MeetingPage() {
             </div>
           </section>
         )}
-        <MemberPanel members={members} currentUserId={currentUserId} onOpenDm={handleOpenDm} />
+        <MemberPanel
+          rooms={rooms}
+          selectedRoom={selectedRoom}
+          members={members}
+          currentUserId={currentUserId}
+          onOpenDm={handleOpenDm}
+        />
       </div>
     </div>
   )
