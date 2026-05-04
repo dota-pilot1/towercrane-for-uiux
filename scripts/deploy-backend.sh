@@ -32,6 +32,16 @@ fi
 cd "$REMOTE_REPO_DIR"
 git fetch origin main
 git checkout main
+
+BACKUP_DIR="\$HOME/towercrane-deploy-backups"
+for file in towercrane-for-uiux-front/package-lock.json towercrane-for-uiux-server/package-lock.json; do
+  if [[ -f "\$file" ]] && ! git ls-files --error-unmatch "\$file" >/dev/null 2>&1; then
+    mkdir -p "\$BACKUP_DIR"
+    mv "\$file" "\$BACKUP_DIR/\$(basename "\$file").\$(date +%Y%m%d-%H%M%S)"
+    echo "Backed up untracked remote file: \$file"
+  fi
+done
+
 git pull --ff-only origin main
 
 cd "$REMOTE_SERVER_DIR"
@@ -68,6 +78,16 @@ pm2 status "$PM2_APP_NAME"
 EOF
 
 echo "==> Checking backend health"
-curl -fsS "$HEALTH_URL" | head -c 500
-echo
-echo "Backend deployed: https://api.hibot-docu.com"
+for attempt in {1..12}; do
+  if curl -fsS "$HEALTH_URL" | head -c 500; then
+    echo
+    echo "Backend deployed: https://api.hibot-docu.com"
+    exit 0
+  fi
+
+  echo "Health check failed, retrying in 5 seconds ($attempt/12)" >&2
+  sleep 5
+done
+
+echo "Backend health check failed: $HEALTH_URL" >&2
+exit 1
