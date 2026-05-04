@@ -151,11 +151,11 @@ export function AdminShellPrototypeListPanel({
                     <p className="max-w-2xl text-sm leading-relaxed ui-text-secondary">
                       {proto.summary}
                     </p>
-                    <div className="flex max-w-2xl flex-wrap items-center gap-2.5">
+                    <div className="flex max-w-2xl flex-wrap items-center gap-2">
                       {proto.tags.map((tag) => (
                         <span
                           key={`${proto.id}-${tag}`}
-                          className="inline-flex min-h-7 items-center rounded-sm border border-brand-border bg-brand-glass px-3 py-1 text-xs font-bold text-brand-primary"
+                          className="inline-flex min-h-6 items-center rounded-sm border border-surface-border-soft bg-surface-muted px-2.5 py-0.5 text-[11px] font-semibold ui-text-secondary"
                         >
                           #{tag}
                         </span>
