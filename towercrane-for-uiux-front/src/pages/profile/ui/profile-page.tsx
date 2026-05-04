@@ -93,7 +93,7 @@ export function ProfilePage({ user }: ProfilePageProps) {
     activity: [
       { label: '최근 작업 영역', value: 'Prototype Registry', icon: Sparkles },
       { label: '문서 참여', value: 'README / Docu Workspace', icon: FileText },
-      { label: '회의실 상태', value: '내부 채널 참여 가능', icon: MessageSquareText },
+      { label: '워크룸 상태', value: '프로젝트 채널 참여 가능', icon: MessageSquareText },
       { label: '계정 생성일', value: joinedAt, icon: CalendarDays },
     ],
     security: [
@@ -105,7 +105,7 @@ export function ProfilePage({ user }: ProfilePageProps) {
     workspace: [
       { label: '기본 진입 메뉴', value: 'Prototype', icon: Sparkles },
       { label: '문서 보기', value: 'Docu / README', icon: FileText },
-      { label: '커뮤니케이션', value: 'Meeting Room', icon: MessageSquareText },
+      { label: '커뮤니케이션', value: 'Workroom', icon: MessageSquareText },
       { label: '테마 동기화', value: '로컬 설정 유지', icon: BadgeCheck },
     ],
   }

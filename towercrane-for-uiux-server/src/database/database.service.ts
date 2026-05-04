@@ -13,10 +13,8 @@ import { catalogSeed } from '../catalog/catalog.seed';
 import {
   categoriesTable,
   menusTable,
-  meetingRoomsTable,
   prototypesTable,
   schema,
-  sessionsTable,
   usersTable,
   type PrototypeInsert,
   type UserInsert,
@@ -355,60 +353,78 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.db.insert(menusTable).values(initialMenus).run();
     }
 
-    const existingMeetingRooms = this.sqlite
-      .prepare('SELECT COUNT(*) as count FROM meeting_rooms')
-      .get() as { count: number };
+    const defaultMeetingRooms = [
+      {
+        id: 'meeting-notice',
+        name: '공지',
+        roomType: 'ANNOUNCE',
+        description: '프로젝트 공지와 변경사항',
+        orderIdx: 0,
+      },
+      {
+        id: 'meeting-internal',
+        name: '프로토타입 공유',
+        roomType: 'PROTOTYPE',
+        description: '새 프로토타입 등록과 공유',
+        orderIdx: 1,
+      },
+      {
+        id: 'meeting-free',
+        name: '피드백',
+        roomType: 'FEEDBACK',
+        description: 'UI/UX 리뷰와 의견',
+        orderIdx: 2,
+      },
+      {
+        id: 'meeting-qna',
+        name: '버그/이슈',
+        roomType: 'ISSUE',
+        description: '재현 문제와 동작 오류',
+        orderIdx: 3,
+      },
+      {
+        id: 'meeting-decision',
+        name: '결정사항',
+        roomType: 'DECISION',
+        description: '확정된 UX 방향과 스펙',
+        orderIdx: 4,
+      },
+      {
+        id: 'meeting-resource',
+        name: '자료',
+        roomType: 'RESOURCE',
+        description: '레퍼런스, 문서, 링크',
+        orderIdx: 5,
+      },
+    ];
 
-    if (existingMeetingRooms.count === 0) {
-      this.db
-        .insert(meetingRoomsTable)
-        .values([
-          {
-            id: 'meeting-notice',
-            name: '공지',
-            roomType: 'ANNOUNCE',
-            description: '프로젝트 공지와 변경사항',
-            orderIdx: 0,
-            archived: false,
-            createdBy: demoUser.id,
-            createdAt: now,
-            updatedAt: now,
-          },
-          {
-            id: 'meeting-internal',
-            name: '매장-내부',
-            roomType: 'INTERNAL',
-            description: '운영 회의와 결정사항',
-            orderIdx: 1,
-            archived: false,
-            createdBy: demoUser.id,
-            createdAt: now,
-            updatedAt: now,
-          },
-          {
-            id: 'meeting-free',
-            name: '자유',
-            roomType: 'FREE',
-            description: '가벼운 공유와 질문',
-            orderIdx: 2,
-            archived: false,
-            createdBy: demoUser.id,
-            createdAt: now,
-            updatedAt: now,
-          },
-          {
-            id: 'meeting-qna',
-            name: '디자이너-Q&A',
-            roomType: 'QNA',
-            description: '공개 질문과 답변',
-            orderIdx: 3,
-            archived: false,
-            createdBy: demoUser.id,
-            createdAt: now,
-            updatedAt: now,
-          },
-        ])
-        .run();
+    const upsertMeetingRoom = this.sqlite.prepare(`
+      INSERT INTO meeting_rooms (
+        id, name, room_type, description, order_idx, archived, created_by, created_at, updated_at
+      ) VALUES (
+        @id, @name, @roomType, @description, @orderIdx, 0, @createdBy, @createdAt, @updatedAt
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        room_type = excluded.room_type,
+        description = excluded.description,
+        order_idx = excluded.order_idx,
+        archived = 0,
+        updated_at = excluded.updated_at
+      WHERE meeting_rooms.name IS NOT excluded.name
+        OR meeting_rooms.room_type IS NOT excluded.room_type
+        OR meeting_rooms.description IS NOT excluded.description
+        OR meeting_rooms.order_idx IS NOT excluded.order_idx
+        OR meeting_rooms.archived IS NOT 0
+    `);
+
+    for (const room of defaultMeetingRooms) {
+      upsertMeetingRoom.run({
+        ...room,
+        createdBy: demoUser.id,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
 
     if (existing.count > 0) {

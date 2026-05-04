@@ -161,7 +161,17 @@ export const menusTable = sqliteTable('menus', {
   updatedAt: text('updated_at').notNull(),
 });
 
-export type MeetingRoomType = 'ANNOUNCE' | 'INTERNAL' | 'FREE' | 'QNA' | 'DM';
+export type MeetingRoomType =
+  | 'ANNOUNCE'
+  | 'PROTOTYPE'
+  | 'FEEDBACK'
+  | 'ISSUE'
+  | 'DECISION'
+  | 'RESOURCE'
+  | 'INTERNAL'
+  | 'FREE'
+  | 'QNA'
+  | 'DM';
 export type MeetingMessageType =
   | 'TEXT'
   | 'SYSTEM'

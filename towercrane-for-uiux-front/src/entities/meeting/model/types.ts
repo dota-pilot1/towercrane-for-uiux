@@ -1,4 +1,14 @@
-export type MeetingRoomType = 'ANNOUNCE' | 'INTERNAL' | 'FREE' | 'QNA' | 'DM'
+export type MeetingRoomType =
+  | 'ANNOUNCE'
+  | 'PROTOTYPE'
+  | 'FEEDBACK'
+  | 'ISSUE'
+  | 'DECISION'
+  | 'RESOURCE'
+  | 'INTERNAL'
+  | 'FREE'
+  | 'QNA'
+  | 'DM'
 export type MeetingMessageType = 'TEXT' | 'SYSTEM' | 'COMMAND_RESULT' | 'BOT_REPLY'
 
 export type MeetingRoom = {

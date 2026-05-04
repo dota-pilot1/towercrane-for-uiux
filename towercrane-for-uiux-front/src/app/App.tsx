@@ -63,7 +63,7 @@ export function AppRoot() {
       prototype: 'Prototype Registry',
       docu: 'Documentation Workspace',
       chatbot: 'Workspace Assistant',
-      meeting: 'Meeting Room',
+      meeting: 'Workroom',
       readme: 'Project Readme',
       users: 'User Administration',
       readme_admin: 'Readme Administration',
