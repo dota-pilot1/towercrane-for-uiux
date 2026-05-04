@@ -448,18 +448,6 @@ export function InlineAuthBar({ embedded = false }: InlineAuthBarProps) {
 
                 <form className="mt-5 space-y-4" onSubmit={handleSignupSubmit(onSignupSubmit)}>
                   <label className="block space-y-2">
-                    <span className="text-sm text-text-secondary">이름</span>
-                    <Input
-                      {...registerSignup('name')}
-                      placeholder="홍길동"
-                      disabled={!emailVerified}
-                    />
-                    {signupErrors.name ? (
-                      <span className="text-sm text-destructive">{signupErrors.name.message}</span>
-                    ) : null}
-                  </label>
-
-                  <label className="block space-y-2">
                     <span className="text-sm text-text-secondary">이메일</span>
                     <div className="flex gap-2">
                       <Input
@@ -558,6 +546,18 @@ export function InlineAuthBar({ embedded = false }: InlineAuthBarProps) {
                       {codeError}
                     </div>
                   ) : null}
+
+                  <label className="block space-y-2">
+                    <span className="text-sm text-text-secondary">이름</span>
+                    <Input
+                      {...registerSignup('name')}
+                      placeholder="홍길동"
+                      disabled={!emailVerified}
+                    />
+                    {signupErrors.name ? (
+                      <span className="text-sm text-destructive">{signupErrors.name.message}</span>
+                    ) : null}
+                  </label>
 
                   <PasswordField
                     label="비밀번호"
@@ -763,14 +763,6 @@ function SignupDialog({
 
             <form className="mt-5 space-y-4" onSubmit={handleSignupSubmit}>
               <label className="block space-y-2">
-                <span className="text-sm text-text-secondary">이름</span>
-                <Input {...registerSignup('name')} placeholder="홍길동" disabled={!emailVerified} />
-                {signupErrors.name ? (
-                  <span className="text-sm text-destructive">{signupErrors.name.message}</span>
-                ) : null}
-              </label>
-
-              <label className="block space-y-2">
                 <span className="text-sm text-text-secondary">이메일</span>
                 <div className="flex gap-2">
                   <Input
@@ -862,6 +854,14 @@ function SignupDialog({
                   {codeError}
                 </div>
               ) : null}
+
+              <label className="block space-y-2">
+                <span className="text-sm text-text-secondary">이름</span>
+                <Input {...registerSignup('name')} placeholder="홍길동" disabled={!emailVerified} />
+                {signupErrors.name ? (
+                  <span className="text-sm text-destructive">{signupErrors.name.message}</span>
+                ) : null}
+              </label>
 
               <PasswordField
                 label="비밀번호"
