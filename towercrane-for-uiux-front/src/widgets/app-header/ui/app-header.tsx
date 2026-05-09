@@ -134,14 +134,6 @@ export function AppHeader() {
         </button>
 
         <nav className="flex items-center justify-center gap-1.5 flex-1 min-w-0">
-          <HeaderPill
-            icon={LucideIcons.CheckSquare}
-            variant={activeSection === 'task' ? 'active' : 'default'}
-            onClick={() => handleNavigation('task')}
-            labelClassName="hidden sm:inline"
-          >
-            업무 관리
-          </HeaderPill>
           {menuTree.map((item) => {
             if (item.children && item.children.length > 0) {
               return (
