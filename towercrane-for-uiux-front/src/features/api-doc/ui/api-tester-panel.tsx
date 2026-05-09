@@ -416,7 +416,7 @@ export function ApiTesterPanel({
                 />
                 Auth
               </label>
-              <Button type="button" size="sm" onClick={handleSend} disabled={isSending || !content.url.trim()} className="h-9 lg:w-28">
+              <Button type="button" onClick={handleSend} disabled={isSending || !content.url.trim()} className="h-9 px-4 py-0 lg:w-28">
                 {isSending ? <Loader2 className="mr-1.5 size-4 animate-spin" /> : <Send className="mr-1.5 size-4" />}
                 Send
               </Button>
