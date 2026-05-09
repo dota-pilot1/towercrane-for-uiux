@@ -14,6 +14,7 @@ import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
 import { AppHeader } from '../widgets/app-header/ui/app-header'
 
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
+import { TaskPage } from '../pages/task/ui/task-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { LoginPage } from '../pages/auth/ui/login-page'
 import { ProfilePage } from '../pages/profile/ui/profile-page'
@@ -70,6 +71,7 @@ export function AppRoot() {
       menu_admin: 'Menu Administration',
       ai_methodology: 'AI Methodology',
       profile: 'Profile',
+      task: 'Task Management',
     }
 
     const currentSectionTitle = sectionTitles[activeSection] ?? 'Console'
@@ -226,6 +228,10 @@ export function AppRoot() {
           </div>
         </Card>
       )
+    }
+
+    if (activeSection === 'task') {
+      return <TaskPage />
     }
 
     if (activeSection === 'menu_admin') {
