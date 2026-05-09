@@ -18,6 +18,7 @@ import { TaskPage } from '../pages/task/ui/task-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { LoginPage } from '../pages/auth/ui/login-page'
 import { ProfilePage } from '../pages/profile/ui/profile-page'
+import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
 
 export function AppRoot() {
   const [pathname, setPathname] = useState(() => window.location.pathname)
@@ -72,6 +73,7 @@ export function AppRoot() {
       ai_methodology: 'AI Methodology',
       profile: 'Profile',
       task: 'Task Management',
+      api_doc: 'API Documentation',
     }
 
     const currentSectionTitle = sectionTitles[activeSection] ?? 'Console'
@@ -232,6 +234,10 @@ export function AppRoot() {
 
     if (activeSection === 'task') {
       return <TaskPage />
+    }
+
+    if (activeSection === 'api_doc') {
+      return <ApiDocPage />
     }
 
     if (activeSection === 'menu_admin') {

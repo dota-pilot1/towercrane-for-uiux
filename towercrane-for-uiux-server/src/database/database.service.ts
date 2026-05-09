@@ -184,6 +184,52 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         FOREIGN KEY(parent_id) REFERENCES menus(id) ON DELETE CASCADE
       );
 
+      CREATE TABLE IF NOT EXISTS api_doc_categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        icon TEXT,
+        emoji TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_api_doc_categories_order
+        ON api_doc_categories(order_idx);
+
+      CREATE TABLE IF NOT EXISTS api_doc_endpoints (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        method TEXT NOT NULL DEFAULT 'GET',
+        path TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES api_doc_categories(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_api_doc_endpoints_category_order
+        ON api_doc_endpoints(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS api_doc_blocks (
+        id TEXT PRIMARY KEY,
+        endpoint_id TEXT NOT NULL,
+        block_type TEXT NOT NULL DEFAULT 'API',
+        content TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(endpoint_id) REFERENCES api_doc_endpoints(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_api_doc_blocks_endpoint_order
+        ON api_doc_blocks(endpoint_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
@@ -402,11 +448,23 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           updatedAt: now,
         },
         {
+          id: randomUUID(),
+          name: 'API 문서',
+          sectionId: 'api_doc',
+          icon: 'FileJson',
+          displayOrder: 5,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
           id: adminMenuId,
           name: 'Admin',
           sectionId: 'admin_dropdown',
           icon: 'ShieldCheck',
-          displayOrder: 5,
+          displayOrder: 6,
           isVisible: true,
           requiredRole: 'admin',
           parentId: null,
@@ -476,6 +534,38 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           sectionId: 'task',
           icon: 'CheckSquare',
           displayOrder: 4,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+
+    const existingApiDocMenu = this.sqlite
+      .prepare("SELECT id FROM menus WHERE section_id = 'api_doc' LIMIT 1")
+      .get() as { id: string } | undefined;
+
+    if (!existingApiDocMenu) {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET display_order = display_order + 1, updated_at = ?
+            WHERE parent_id IS NULL AND display_order >= 5
+          `,
+        )
+        .run(now);
+
+      this.db
+        .insert(menusTable)
+        .values({
+          id: randomUUID(),
+          name: 'API 문서',
+          sectionId: 'api_doc',
+          icon: 'FileJson',
+          displayOrder: 5,
           isVisible: true,
           requiredRole: null,
           parentId: null,

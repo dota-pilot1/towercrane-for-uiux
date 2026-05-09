@@ -161,6 +161,50 @@ export const menusTable = sqliteTable('menus', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export type ApiDocHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+export type ApiDocBlockType = 'API';
+
+export const apiDocCategoriesTable = sqliteTable('api_doc_categories', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  icon: text('icon'),
+  emoji: text('emoji'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const apiDocEndpointsTable = sqliteTable('api_doc_endpoints', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id')
+    .notNull()
+    .references(() => apiDocCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  method: text('method').$type<ApiDocHttpMethod>().notNull().default('GET'),
+  path: text('path').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const apiDocBlocksTable = sqliteTable('api_doc_blocks', {
+  id: text('id').primaryKey(),
+  endpointId: text('endpoint_id')
+    .notNull()
+    .references(() => apiDocEndpointsTable.id, { onDelete: 'cascade' }),
+  blockType: text('block_type').$type<ApiDocBlockType>().notNull().default('API'),
+  content: text('content').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export type TaskType =
   | 'FEATURE'
   | 'BUG'
@@ -335,6 +379,9 @@ export const schema = {
   documentsTable,
   documentBlocksTable,
   menusTable,
+  apiDocCategoriesTable,
+  apiDocEndpointsTable,
+  apiDocBlocksTable,
   tasksTable,
   taskChecklistsTable,
   taskCommentsTable,
@@ -368,6 +415,12 @@ export type PrototypeReviewRow = typeof prototypeReviewsTable.$inferSelect;
 export type PrototypeReviewInsert = typeof prototypeReviewsTable.$inferInsert;
 export type MenuRow = typeof menusTable.$inferSelect;
 export type MenuInsert = typeof menusTable.$inferInsert;
+export type ApiDocCategoryRow = typeof apiDocCategoriesTable.$inferSelect;
+export type ApiDocCategoryInsert = typeof apiDocCategoriesTable.$inferInsert;
+export type ApiDocEndpointRow = typeof apiDocEndpointsTable.$inferSelect;
+export type ApiDocEndpointInsert = typeof apiDocEndpointsTable.$inferInsert;
+export type ApiDocBlockRow = typeof apiDocBlocksTable.$inferSelect;
+export type ApiDocBlockInsert = typeof apiDocBlocksTable.$inferInsert;
 export type TaskRow = typeof tasksTable.$inferSelect;
 export type TaskInsert = typeof tasksTable.$inferInsert;
 export type TaskChecklistRow = typeof taskChecklistsTable.$inferSelect;
