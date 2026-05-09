@@ -161,6 +161,101 @@ export const menusTable = sqliteTable('menus', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export type TaskType =
+  | 'FEATURE'
+  | 'BUG'
+  | 'DOCS'
+  | 'DESIGN'
+  | 'REFACTOR'
+  | 'QA'
+  | 'CHORE';
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'HOLD';
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type TaskActivityType =
+  | 'CREATED'
+  | 'STATUS'
+  | 'ASSIGNEE'
+  | 'PRIORITY'
+  | 'UPDATED'
+  | 'ARCHIVED'
+  | 'RESTORED';
+
+export const tasksTable = sqliteTable('tasks', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  taskType: text('task_type').$type<TaskType>().notNull().default('FEATURE'),
+  status: text('status').$type<TaskStatus>().notNull().default('TODO'),
+  priority: text('priority').$type<TaskPriority>().notNull().default('MEDIUM'),
+  reporterId: text('reporter_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  assigneeId: text('assignee_id').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  dueDate: text('due_date'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const taskChecklistsTable = sqliteTable('task_checklists', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => tasksTable.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const taskCommentsTable = sqliteTable('task_comments', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => tasksTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  deleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const taskAttachmentsTable = sqliteTable('task_attachments', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => tasksTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  fileName: text('file_name').notNull(),
+  fileUrl: text('file_url').notNull(),
+  contentType: text('content_type').notNull(),
+  fileSize: integer('file_size').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});
+
+export const taskActivityLogsTable = sqliteTable('task_activity_logs', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => tasksTable.id, { onDelete: 'cascade' }),
+  actorId: text('actor_id').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  activityType: text('activity_type').$type<TaskActivityType>().notNull(),
+  fromValue: text('from_value'),
+  toValue: text('to_value'),
+  message: text('message'),
+  createdAt: text('created_at').notNull(),
+});
+
 export type MeetingRoomType =
   | 'ANNOUNCE'
   | 'PROTOTYPE'
@@ -240,6 +335,11 @@ export const schema = {
   documentsTable,
   documentBlocksTable,
   menusTable,
+  tasksTable,
+  taskChecklistsTable,
+  taskCommentsTable,
+  taskAttachmentsTable,
+  taskActivityLogsTable,
   meetingRoomsTable,
   meetingMessagesTable,
   meetingDmPairsTable,
@@ -268,6 +368,16 @@ export type PrototypeReviewRow = typeof prototypeReviewsTable.$inferSelect;
 export type PrototypeReviewInsert = typeof prototypeReviewsTable.$inferInsert;
 export type MenuRow = typeof menusTable.$inferSelect;
 export type MenuInsert = typeof menusTable.$inferInsert;
+export type TaskRow = typeof tasksTable.$inferSelect;
+export type TaskInsert = typeof tasksTable.$inferInsert;
+export type TaskChecklistRow = typeof taskChecklistsTable.$inferSelect;
+export type TaskChecklistInsert = typeof taskChecklistsTable.$inferInsert;
+export type TaskCommentRow = typeof taskCommentsTable.$inferSelect;
+export type TaskCommentInsert = typeof taskCommentsTable.$inferInsert;
+export type TaskAttachmentRow = typeof taskAttachmentsTable.$inferSelect;
+export type TaskAttachmentInsert = typeof taskAttachmentsTable.$inferInsert;
+export type TaskActivityLogRow = typeof taskActivityLogsTable.$inferSelect;
+export type TaskActivityLogInsert = typeof taskActivityLogsTable.$inferInsert;
 export type MeetingRoomRow = typeof meetingRoomsTable.$inferSelect;
 export type MeetingRoomInsert = typeof meetingRoomsTable.$inferInsert;
 export type MeetingMessageRow = typeof meetingMessagesTable.$inferSelect;

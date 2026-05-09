@@ -11,6 +11,7 @@ import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
 import { MenusModule } from './menus/menus.module';
 import { MeetingModule } from './meeting/meeting.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { MeetingModule } from './meeting/meeting.module';
     UsersModule,
     MenusModule,
     MeetingModule,
+    TasksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -15,6 +15,11 @@ const updateProfileImageSchema = z.object({
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get('assignable')
+  findAssignable() {
+    return this.usersService.findAssignable();
+  }
+
   @Get()
   @Roles('admin')
   findAll() {
@@ -22,7 +27,10 @@ export class UsersController {
   }
 
   @Patch('me/profile-image')
-  updateMyProfileImage(@CurrentUser() user: { id: string }, @Body() body: unknown) {
+  updateMyProfileImage(
+    @CurrentUser() user: { id: string },
+    @Body() body: unknown,
+  ) {
     const input = updateProfileImageSchema.parse(body);
     return this.usersService.updateProfileImage(user.id, input.profileImageUrl);
   }

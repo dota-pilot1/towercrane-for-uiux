@@ -6,8 +6,17 @@ export type ManagedUser = {
   id: string
   email: string
   name: string
+  profileImageUrl?: string | null
   role: 'admin' | 'user'
   createdAt: string
+}
+
+export type AssignableUser = {
+  id: string
+  email: string
+  name: string
+  profileImageUrl?: string | null
+  role: 'admin' | 'user'
 }
 
 export function useUsersList() {
@@ -18,5 +27,15 @@ export function useUsersList() {
     queryKey: ['admin', 'users'],
     queryFn: () => apiRequest<ManagedUser[]>('/users'),
     enabled: isAuthenticated && userRole === 'admin',
+  })
+}
+
+export function useAssignableUsers() {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+
+  return useQuery({
+    queryKey: ['users', 'assignable'],
+    queryFn: () => apiRequest<AssignableUser[]>('/users/assignable'),
+    enabled: isAuthenticated,
   })
 }

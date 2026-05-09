@@ -184,6 +184,94 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         FOREIGN KEY(parent_id) REFERENCES menus(id) ON DELETE CASCADE
       );
 
+      CREATE TABLE IF NOT EXISTS tasks (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        task_type TEXT NOT NULL DEFAULT 'FEATURE',
+        status TEXT NOT NULL DEFAULT 'TODO',
+        priority TEXT NOT NULL DEFAULT 'MEDIUM',
+        reporter_id TEXT NOT NULL,
+        assignee_id TEXT,
+        due_date TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(reporter_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_tasks_status_order
+        ON tasks(status, order_idx);
+
+      CREATE INDEX IF NOT EXISTS idx_tasks_assignee_status
+        ON tasks(assignee_id, status);
+
+      CREATE INDEX IF NOT EXISTS idx_tasks_archived_updated
+        ON tasks(archived, updated_at);
+
+      CREATE TABLE IF NOT EXISTS task_checklists (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        completed INTEGER NOT NULL DEFAULT 0,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_task_checklists_task_order
+        ON task_checklists(task_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS task_comments (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_task_comments_task_created
+        ON task_comments(task_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS task_attachments (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        file_url TEXT NOT NULL,
+        content_type TEXT NOT NULL,
+        file_size INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_task_attachments_task_created
+        ON task_attachments(task_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS task_activity_logs (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        actor_id TEXT,
+        activity_type TEXT NOT NULL,
+        from_value TEXT,
+        to_value TEXT,
+        message TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+        FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_task_activity_logs_task_created
+        ON task_activity_logs(task_id, created_at);
+
       CREATE TABLE IF NOT EXISTS meeting_rooms (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -302,11 +390,23 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           updatedAt: now,
         },
         {
+          id: randomUUID(),
+          name: '업무 관리',
+          sectionId: 'task',
+          icon: 'CheckSquare',
+          displayOrder: 4,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
           id: adminMenuId,
           name: 'Admin',
           sectionId: 'admin_dropdown',
           icon: 'ShieldCheck',
-          displayOrder: 4,
+          displayOrder: 5,
           isVisible: true,
           requiredRole: 'admin',
           parentId: null,
@@ -351,6 +451,38 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
       ];
       this.db.insert(menusTable).values(initialMenus).run();
+    }
+
+    const existingTaskMenu = this.sqlite
+      .prepare("SELECT id FROM menus WHERE section_id = 'task' LIMIT 1")
+      .get() as { id: string } | undefined;
+
+    if (!existingTaskMenu) {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET display_order = display_order + 1, updated_at = ?
+            WHERE parent_id IS NULL AND display_order >= 4
+          `,
+        )
+        .run(now);
+
+      this.db
+        .insert(menusTable)
+        .values({
+          id: randomUUID(),
+          name: '업무 관리',
+          sectionId: 'task',
+          icon: 'CheckSquare',
+          displayOrder: 4,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
     }
 
     this.sqlite
