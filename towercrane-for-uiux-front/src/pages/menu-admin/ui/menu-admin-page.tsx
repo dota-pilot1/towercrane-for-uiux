@@ -108,19 +108,27 @@ export function MenuAdminPage() {
     if (!over || active.id === over.id) return;
 
     const activeMenu = flatMenus.find(m => m.id === active.id);
-    const overMenu = flatMenus.find(m => m.id === over.id);
+    let overMenu = flatMenus.find(m => m.id === over.id);
+
+    // If over is a child, find its parent for comparison
+    if (overMenu && overMenu.parentId !== activeMenu?.parentId) {
+      const potentialParent = flatMenus.find(m => m.id === overMenu?.parentId);
+      if (potentialParent && potentialParent.parentId === activeMenu?.parentId) {
+        overMenu = potentialParent;
+      }
+    }
 
     // Allow sorting only within the same parent
     if (activeMenu && overMenu && activeMenu.parentId === overMenu.parentId) {
       const siblings = flatMenus
         .filter(m => m.parentId === activeMenu.parentId)
         .sort((a, b) => a.displayOrder - b.displayOrder);
-      
+
       const oldIndex = siblings.findIndex(m => m.id === active.id);
       const newIndex = siblings.findIndex(m => m.id === over.id);
-      
+
       const newSiblings = arrayMove(siblings, oldIndex, newIndex);
-      
+
       // Update the display orders in the backend
       let hasChanges = false;
       newSiblings.forEach((m, idx) => {
