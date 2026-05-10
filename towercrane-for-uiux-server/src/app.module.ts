@@ -13,6 +13,7 @@ import { MenusModule } from './menus/menus.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ApiDocModule } from './api-doc/api-doc.module';
+import { IssuesModule } from './issues/issues.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ApiDocModule } from './api-doc/api-doc.module';
     MeetingModule,
     TasksModule,
     ApiDocModule,
+    IssuesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

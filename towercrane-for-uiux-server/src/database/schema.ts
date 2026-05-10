@@ -367,6 +367,46 @@ export const meetingDmPairsTable = sqliteTable('meeting_dm_pairs', {
   createdAt: text('created_at').notNull(),
 });
 
+export type IssueType = 'BUG' | 'FEATURE' | 'IMPROVEMENT' | 'QUESTION' | 'OTHER';
+export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'TESTING' | 'CLOSED';
+export type IssuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export const issuesTable = sqliteTable('issues', {
+  id: text('id').primaryKey(),
+  prototypeId: text('prototype_id')
+    .notNull()
+    .references(() => prototypesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  issueType: text('issue_type').$type<IssueType>().notNull().default('BUG'),
+  status: text('status').$type<IssueStatus>().notNull().default('OPEN'),
+  priority: text('priority').$type<IssuePriority>().notNull().default('MEDIUM'),
+  reporterId: text('reporter_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  assigneeId: text('assignee_id').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  dueDate: text('due_date'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const issueCommentsTable = sqliteTable('issue_comments', {
+  id: text('id').primaryKey(),
+  issueId: text('issue_id')
+    .notNull()
+    .references(() => issuesTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  deleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const schema = {
   usersTable,
   sessionsTable,
@@ -390,6 +430,8 @@ export const schema = {
   meetingRoomsTable,
   meetingMessagesTable,
   meetingDmPairsTable,
+  issuesTable,
+  issueCommentsTable,
 };
 
 export type UserRow = typeof usersTable.$inferSelect;
@@ -437,3 +479,7 @@ export type MeetingMessageRow = typeof meetingMessagesTable.$inferSelect;
 export type MeetingMessageInsert = typeof meetingMessagesTable.$inferInsert;
 export type MeetingDmPairRow = typeof meetingDmPairsTable.$inferSelect;
 export type MeetingDmPairInsert = typeof meetingDmPairsTable.$inferInsert;
+export type IssueRow = typeof issuesTable.$inferSelect;
+export type IssueInsert = typeof issuesTable.$inferInsert;
+export type IssueCommentRow = typeof issueCommentsTable.$inferSelect;
+export type IssueCommentInsert = typeof issueCommentsTable.$inferInsert;

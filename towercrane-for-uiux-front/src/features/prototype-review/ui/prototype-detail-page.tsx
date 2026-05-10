@@ -16,6 +16,7 @@ import {
   MessageSquareText,
   Pencil,
   Plus,
+  ShieldAlert,
   Star,
   Tag,
   X,
@@ -27,7 +28,7 @@ import {
 } from '../../../shared/api/catalog'
 import { DeletePrototypeButton } from '../../prototype-management/ui/delete-prototype-button'
 import { EditPrototypeDialog } from '../../prototype-management/ui/edit-prototype-dialog'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useNavigate, useParams, Link } from '@tanstack/react-router'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { ActionIconButton } from '../../../shared/ui/action-icon-button'
 import { Button } from '../../../shared/ui/button'
@@ -245,6 +246,15 @@ export function PrototypeDetailPage({
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+            <Link
+              to="/issues"
+              search={{ prototypeId: prototype.id }}
+              className="flex items-center gap-1.5 rounded-sm border border-brand-border bg-brand-glass px-2.5 py-1.5 text-xs font-bold text-brand-primary transition-colors hover:bg-surface-muted"
+              title="이슈 관리"
+            >
+              <ShieldAlert className="size-3.5" />
+              이슈 관리
+            </Link>
             <ActionIconButton
               icon={Copy}
               onClick={handleCopyLink}

@@ -17,6 +17,7 @@ import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
 import { TaskPage } from '../pages/task/ui/task-page'
+import { PrototypeIssuesPage } from '../pages/prototype-issues/ui/prototype-issues-page'
 import { ProfilePage } from '../pages/profile/ui/profile-page'
 import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
 import { useSessionStore } from '../shared/store/session-store'
@@ -224,6 +225,17 @@ const taskRoute = createRoute({
   component: TaskPage,
 })
 
+// ─── /issues ─────────────────────────────────────────────────────────────────
+
+const prototypeIssuesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/issues',
+  validateSearch: (search: Record<string, unknown>) => ({
+    prototypeId: typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
+  }),
+  component: PrototypeIssuesPage,
+})
+
 // ─── /profile ────────────────────────────────────────────────────────────────
 
 const profileRoute = createRoute({
@@ -374,6 +386,7 @@ export const router = createRouter({
       aiMethodologyRoute,
       apiDocRoute,
       taskRoute,
+      prototypeIssuesRoute,
       profileRoute,
       adminUsersRoute,
       adminMenuRoute,
