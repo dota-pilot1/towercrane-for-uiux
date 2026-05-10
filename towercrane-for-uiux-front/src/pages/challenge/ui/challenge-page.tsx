@@ -1,21 +1,33 @@
-import { Trophy } from 'lucide-react'
+import { useState } from 'react'
 import { Card } from '../../../shared/ui/card'
+import { ChallengeSidebar } from '../../../features/challenge/ui/challenge-sidebar'
+import { ChallengeTopicsList } from '../../../features/challenge/ui/challenge-topics-list'
+import { ChallengeMainPanel } from '../../../features/challenge/ui/challenge-main-panel'
 
 export function ChallengePage() {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedSection, setSelectedSection] = useState<string | null>(null)
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
+
   return (
-    <Card className="rounded-md p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="ui-icon-button-brand rounded-md p-2.5">
-          <Trophy className="size-5" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold ui-text-primary">Challenge with GPT</h2>
-          <p className="text-xs ui-text-secondary">자기 주도적 학습 챌린지 및 스터디 노트</p>
-        </div>
-      </div>
-      <div className="rounded-md border border-dashed border-[var(--surface-border-soft)] bg-[var(--surface-muted)] py-16 text-center">
-        <p className="ui-text-muted text-sm">M1: 기본 페이지 레이아웃 구현 중...</p>
-      </div>
-    </Card>
+    <div className="flex h-[calc(100vh-120px)] gap-3">
+      <ChallengeSidebar selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
+      {selectedSection && (
+        <ChallengeTopicsList
+          sectionId={selectedSection}
+          selectedTopic={selectedTopic}
+          onSelectTopic={setSelectedTopic}
+        />
+      )}
+      {selectedTopic ? (
+        <ChallengeMainPanel topicId={selectedTopic} />
+      ) : (
+        <Card className="flex-1 flex items-center justify-center rounded-md">
+          <div className="text-center">
+            <p className="ui-text-muted text-sm">주제를 선택하여 시작하세요</p>
+          </div>
+        </Card>
+      )}
+    </div>
   )
 }
