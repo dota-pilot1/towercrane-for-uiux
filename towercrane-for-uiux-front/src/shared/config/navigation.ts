@@ -1,13 +1,12 @@
 import {
-  BookOpenText,
-  Trophy,
+  BookOpen,
   GitBranch,
 } from 'lucide-react'
 
 export const navigationItems = [
   { id: 'prototype', label: 'Prototype', icon: GitBranch },
-  { id: 'chatbot', label: 'Challenge with GPT', icon: Trophy },
-  { id: 'readme', label: 'README', icon: BookOpenText },
+  { id: 'chatbot', label: 'Study Diary', icon: BookOpen },
+  { id: 'readme', label: 'README', icon: BookOpen },
 ] as const
 
 export const adminItems = [
