@@ -857,7 +857,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const existing = this.db
       .select()
       .from(usersTable)
-      .where(sql`${usersTable.email} = 'seed@towercrane.local'`)
+      .where(sql`${usersTable.email} = 'terecal@daum.net'`)
       .get();
 
     if (existing) {
@@ -866,8 +866,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     const demoUser: UserInsert = {
       id: randomUUID(),
-      email: 'seed@towercrane.local',
-      passwordHash: this.hashSeedPassword('towercrane-demo'),
+      email: 'terecal@daum.net',
+      passwordHash: this.hashSeedPassword('password123'),
       name: 'Seed User',
       role: 'admin',
       createdAt: now,
