@@ -14,6 +14,7 @@ import {
   Loader2,
   Lock,
   MessageSquareText,
+  Pencil,
   Plus,
   Star,
   Tag,
@@ -404,17 +405,21 @@ export function PrototypeDetailPage({
                       className="flex-1 bg-transparent text-sm font-medium text-foreground outline-none border-b border-primary focus:border-primary"
                     />
                   ) : (
-                    <span
-                      className={`text-sm font-medium flex-1 ${checked ? 'text-muted-foreground line-through opacity-50' : 'text-foreground'} ${canManagePrototype && !checked ? 'cursor-text hover:text-primary transition-colors' : ''}`}
-                      onClick={() => canManagePrototype && !checked && startEditingItem(i, item)}
-                    >
+                    <span className={`text-sm font-medium flex-1 ${checked ? 'text-muted-foreground line-through opacity-50' : 'text-foreground'}`}>
                       {checked ? item.slice(4) : item}
                     </span>
                   )}
                   {canManagePrototype && !isEditing && (
-                    <button onClick={() => removeChecklistItem(i)} className="opacity-0 text-muted-foreground hover:text-destructive transition-all group-hover:opacity-100">
-                      <X className="size-4" />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      {!checked && (
+                        <button onClick={() => startEditingItem(i, item)} className="text-muted-foreground hover:text-primary transition-colors">
+                          <Pencil className="size-3.5" />
+                        </button>
+                      )}
+                      <button onClick={() => removeChecklistItem(i)} className="text-muted-foreground hover:text-destructive transition-colors">
+                        <X className="size-4" />
+                      </button>
+                    </div>
                   )}
                 </div>
               )
