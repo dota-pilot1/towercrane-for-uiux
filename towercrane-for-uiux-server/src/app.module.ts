@@ -14,6 +14,7 @@ import { MeetingModule } from './meeting/meeting.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ApiDocModule } from './api-doc/api-doc.module';
 import { IssuesModule } from './issues/issues.module';
+import { ChallengeModule } from './challenge/challenge.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { IssuesModule } from './issues/issues.module';
     TasksModule,
     ApiDocModule,
     IssuesModule,
+    ChallengeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
