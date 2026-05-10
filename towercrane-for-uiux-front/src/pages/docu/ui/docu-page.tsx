@@ -27,7 +27,7 @@ import {
   X,
 } from 'lucide-react'
 import { Card } from '../../../shared/ui/card'
-import { useUiStore } from '../../../shared/store/ui-store'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useCatalogCategories } from '../../../shared/api/catalog'
 import {
   useCreateDocument,
@@ -46,8 +46,8 @@ import {
 import { BlockEditor } from '../../../features/docu/ui/block-editor'
 
 export function DocuPage() {
-  const activePrototypeId = useUiStore((state) => state.activePrototypeId)
-  const setActiveSection = useUiStore((state) => state.setActiveSection)
+  const { prototypeId: activePrototypeId } = useSearch({ from: '/docu' })
+  const navigate = useNavigate()
   const categoriesQuery = useCatalogCategories()
 
   const prototypeInfo = useMemo(() => {
@@ -100,7 +100,7 @@ export function DocuPage() {
           Prototype 화면에서 DOCU 버튼을 눌러 접근할 수 있습니다.
         </p>
         <button
-          onClick={() => setActiveSection('prototype')}
+          onClick={() => navigate({ to: '/prototype' })}
           className="inline-flex items-center gap-2 rounded-2xl border border-[var(--surface-border-soft)] bg-[var(--surface-muted)] px-4 py-2 text-sm ui-text-primary hover:bg-[var(--surface-muted)]"
         >
           <ArrowLeft className="size-4" /> Prototype 목록으로

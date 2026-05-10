@@ -1,0 +1,389 @@
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  useNavigate,
+} from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { Bot, FileText, UserCog } from 'lucide-react'
+import { Toaster } from 'sonner'
+
+import { AppHeader } from '../widgets/app-header/ui/app-header'
+import { LoginPage } from '../pages/auth/ui/login-page'
+import { WorkbenchPage } from '../pages/workbench/ui/workbench-page'
+import { DocuPage } from '../pages/docu/ui/docu-page'
+import { MeetingPage } from '../pages/meeting/ui/meeting-page'
+import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
+import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
+import { TaskPage } from '../pages/task/ui/task-page'
+import { ProfilePage } from '../pages/profile/ui/profile-page'
+import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
+import { useSessionStore } from '../shared/store/session-store'
+import { useCurrentUser } from '../shared/api/auth'
+import { useUsersList } from '../shared/api/users'
+import { useUiStore } from '../shared/store/ui-store'
+import { useCatalogCategories } from '../shared/api/catalog'
+import { Card } from '../shared/ui/card'
+
+// ─── Root ───────────────────────────────────────────────────────────────────
+
+const rootRoute = createRootRoute({
+  component: () => (
+    <>
+      <Outlet />
+      <Toaster position="top-center" richColors />
+    </>
+  ),
+})
+
+// ─── /login ─────────────────────────────────────────────────────────────────
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginRoute,
+})
+
+function LoginRoute() {
+  const hasHydrated = useSessionStore((s) => s.hasHydrated)
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (hasHydrated && isAuthenticated) {
+      navigate({ to: '/prototype', replace: true })
+    }
+  }, [hasHydrated, isAuthenticated, navigate])
+
+  return (
+    <div className="min-h-screen bg-background ui-text-primary">
+      <LoginPage />
+    </div>
+  )
+}
+
+// ─── App layout (auth guard) ─────────────────────────────────────────────────
+
+const appLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_app',
+  component: AppLayout,
+})
+
+function AppLayout() {
+  const hasHydrated = useSessionStore((s) => s.hasHydrated)
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated)
+  const token = useSessionStore((s) => s.token)
+  const syncUser = useSessionStore((s) => s.syncUser)
+  const clearSession = useSessionStore((s) => s.clearSession)
+  const themeColor = useUiStore((s) => s.themeColor)
+  const navigate = useNavigate()
+  const currentUserQuery = useCurrentUser(hasHydrated && token.length > 0)
+
+  useEffect(() => {
+    document.documentElement.setAttribute(
+      'data-theme',
+      themeColor === 'light' ? 'default' : themeColor,
+    )
+  }, [themeColor])
+
+  useEffect(() => {
+    if (!hasHydrated) return
+    if (!isAuthenticated) {
+      navigate({ to: '/login', replace: true })
+    }
+  }, [hasHydrated, isAuthenticated, navigate])
+
+  useEffect(() => {
+    if (currentUserQuery.data) syncUser(currentUserQuery.data)
+  }, [currentUserQuery.data, syncUser])
+
+  useEffect(() => {
+    if (currentUserQuery.error) clearSession()
+  }, [currentUserQuery.error, clearSession])
+
+  if (!hasHydrated || !isAuthenticated) return null
+
+  return (
+    <div className="min-h-screen bg-background">
+      <AppHeader />
+      <main className="w-full min-w-0 px-4 pb-10 pt-5 sm:px-5 lg:px-6">
+        <Outlet />
+      </main>
+    </div>
+  )
+}
+
+// ─── / → redirect to /prototype ─────────────────────────────────────────────
+
+const indexRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/',
+  component: RedirectToPrototype,
+})
+
+function RedirectToPrototype() {
+  const navigate = useNavigate()
+  const { data: categories } = useCatalogCategories()
+
+  useEffect(() => {
+    if (categories?.[0]) {
+      navigate({
+        to: '/prototype/$categoryId',
+        params: { categoryId: categories[0].id },
+        replace: true,
+      })
+    }
+  }, [categories, navigate])
+
+  return null
+}
+
+// ─── /prototype → redirect to first category ────────────────────────────────
+
+const prototypeIndexRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/prototype',
+  component: RedirectToPrototype,
+})
+
+// ─── /prototype/$categoryId ──────────────────────────────────────────────────
+
+export const prototypeCategoryRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/prototype/$categoryId',
+  validateSearch: (search: Record<string, unknown>) => ({
+    prototypeId: typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
+  }),
+  component: WorkbenchPage,
+})
+
+// ─── /chatbot ────────────────────────────────────────────────────────────────
+
+const chatbotRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot',
+  component: () => (
+    <Card className="rounded-md p-4">
+      <div className="flex items-start gap-3">
+        <div className="ui-icon-button-brand rounded-md p-2 shrink-0">
+          <Bot className="size-4" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm leading-6 ui-text-secondary">
+            프로토타입 정리 흐름이 안정화되면 카테고리 추천, 태그 정리, 비교 질문을 붙이는 보조
+            기능으로 확장합니다.
+          </p>
+        </div>
+      </div>
+    </Card>
+  ),
+})
+
+// ─── /meeting ────────────────────────────────────────────────────────────────
+
+const meetingRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/meeting',
+  component: MeetingPage,
+})
+
+// ─── /docu ───────────────────────────────────────────────────────────────────
+
+export const docuRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/docu',
+  validateSearch: (search: Record<string, unknown>) => ({
+    prototypeId: typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
+  }),
+  component: DocuPage,
+})
+
+// ─── /ai-methodology ─────────────────────────────────────────────────────────
+
+const aiMethodologyRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/ai-methodology',
+  component: AiMethodologyPage,
+})
+
+// ─── /api-doc ────────────────────────────────────────────────────────────────
+
+const apiDocRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/api-doc',
+  component: ApiDocPage,
+})
+
+// ─── /task ───────────────────────────────────────────────────────────────────
+
+const taskRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/task',
+  component: TaskPage,
+})
+
+// ─── /profile ────────────────────────────────────────────────────────────────
+
+const profileRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/profile',
+  component: ProfileRoute,
+})
+
+function ProfileRoute() {
+  const token = useSessionStore((s) => s.token)
+  const hasHydrated = useSessionStore((s) => s.hasHydrated)
+  const currentUserQuery = useCurrentUser(hasHydrated && token.length > 0)
+  return <ProfilePage user={currentUserQuery.data} />
+}
+
+// ─── /admin/users ────────────────────────────────────────────────────────────
+
+const adminUsersRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/admin/users',
+  component: AdminUsersRoute,
+})
+
+function AdminUsersRoute() {
+  const usersListQuery = useUsersList()
+  const users = usersListQuery.data || []
+
+  return (
+    <Card className="rounded-md p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="ui-icon-button-brand rounded-md p-2.5">
+            <UserCog className="size-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold ui-text-primary">유저 관리</h2>
+            <p className="text-xs ui-text-secondary">시스템 사용자 권한 및 계정을 관리합니다.</p>
+          </div>
+        </div>
+        <div className="text-[10px] ui-text-muted uppercase tracking-widest font-bold">
+          Total {users.length} Users
+        </div>
+      </div>
+
+      <div className="ui-panel-soft overflow-hidden rounded-md">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="ui-panel-soft border-b">
+              <th className="px-6 py-4 text-[11px] font-bold ui-text-secondary uppercase tracking-widest">
+                Name
+              </th>
+              <th className="px-6 py-4 text-[11px] font-bold ui-text-secondary uppercase tracking-widest">
+                Email
+              </th>
+              <th className="px-6 py-4 text-[11px] font-bold ui-text-secondary uppercase tracking-widest">
+                Role
+              </th>
+              <th className="px-6 py-4 text-[11px] font-bold ui-text-secondary uppercase tracking-widest">
+                Joined
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--surface-border-soft)]">
+            {usersListQuery.isLoading ? (
+              <tr>
+                <td colSpan={4} className="px-6 py-20 text-center ui-text-muted">
+                  Loading users...
+                </td>
+              </tr>
+            ) : users.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-6 py-20 text-center ui-text-muted">
+                  No users found.
+                </td>
+              </tr>
+            ) : (
+              users.map((u) => (
+                <tr key={u.id} className="transition-colors hover:bg-[var(--surface-muted)]">
+                  <td className="px-6 py-4 text-sm font-medium ui-text-primary">{u.name}</td>
+                  <td className="px-6 py-4 text-sm ui-text-secondary">{u.email}</td>
+                  <td className="px-6 py-4 text-sm">
+                    <span
+                      className={`inline-flex px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase border ${
+                        u.role === 'admin'
+                          ? 'border-brand-border bg-brand-glass text-brand-primary'
+                          : 'border-[var(--surface-border-soft)] bg-[var(--surface-muted)] ui-text-secondary'
+                      }`}
+                    >
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm ui-text-muted">
+                    {new Date(u.createdAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )
+}
+
+// ─── /admin/menu ─────────────────────────────────────────────────────────────
+
+const adminMenuRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/admin/menu',
+  component: MenuAdminPage,
+})
+
+// ─── /admin/readme ───────────────────────────────────────────────────────────
+
+const adminReadmeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/admin/readme',
+  component: () => (
+    <Card className="rounded-md p-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="ui-icon-button-brand rounded-md p-2.5">
+          <FileText className="size-5" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold ui-text-primary">README 관리</h2>
+          <p className="text-xs ui-text-secondary">프로젝트 문서 및 가이드를 관리합니다.</p>
+        </div>
+      </div>
+      <div className="rounded-md border border-dashed border-[var(--surface-border-soft)] bg-[var(--surface-muted)] py-16 text-center">
+        <p className="ui-text-muted text-sm">README 편집 기능이 곧 구현될 예정입니다.</p>
+      </div>
+    </Card>
+  ),
+})
+
+// ─── Router ──────────────────────────────────────────────────────────────────
+
+export const router = createRouter({
+  routeTree: rootRoute.addChildren([
+    loginRoute,
+    appLayoutRoute.addChildren([
+      indexRoute,
+      prototypeIndexRoute,
+      prototypeCategoryRoute,
+      chatbotRoute,
+      meetingRoute,
+      docuRoute,
+      aiMethodologyRoute,
+      apiDocRoute,
+      taskRoute,
+      profileRoute,
+      adminUsersRoute,
+      adminMenuRoute,
+      adminReadmeRoute,
+    ]),
+  ]),
+})
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router
+  }
+}

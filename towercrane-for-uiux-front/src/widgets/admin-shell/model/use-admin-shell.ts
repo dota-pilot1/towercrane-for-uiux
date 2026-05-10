@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 
 import {
   useCatalogCategories,
@@ -8,11 +9,16 @@ import {
 } from '../../../shared/api/catalog'
 import type { ScenarioCategory } from '../../../shared/config/catalog'
 import { useSessionStore } from '../../../shared/store/session-store'
-import { useUiStore } from '../../../shared/store/ui-store'
 import { useAdminShellQueryState } from './use-admin-shell-query-state'
-import { useAdminShellUrlSync } from './use-admin-shell-url-sync'
 
-export function useAdminShell() {
+type UseAdminShellParams = {
+  categoryId: string
+  prototypeId: string | undefined
+}
+
+export function useAdminShell({ categoryId, prototypeId }: UseAdminShellParams) {
+  const navigate = useNavigate()
+
   const {
     data: fetchedCategories = [],
     isLoading,
@@ -23,30 +29,27 @@ export function useAdminShell() {
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
   const currentUserId = useSessionStore((state) => state.userId)
   const userRole = useSessionStore((state) => state.userRole)
-  const activeCategoryId = useUiStore((state) => state.activeCategoryId)
-  const setActiveCategory = useUiStore((state) => state.setActiveCategory)
-  const setActiveSection = useUiStore((state) => state.setActiveSection)
-  const activePrototypeId = useUiStore((state) => state.activePrototypeId)
-  const setActivePrototypeId = useUiStore((state) => state.setActivePrototypeId)
 
   useEffect(() => {
-    if (fetchedCategories.length > 0 && categories.length === 0) {
-      setCategories(fetchedCategories)
-    } else if (fetchedCategories.length > 0) {
+    if (fetchedCategories.length > 0) {
       setCategories(fetchedCategories)
     }
-  }, [categories.length, fetchedCategories])
+  }, [fetchedCategories])
 
   const selectedCategory =
-    categories.find((category) => category.id === activeCategoryId) ?? categories[0]
+    categories.find((category) => category.id === categoryId) ?? categories[0]
   const fallbackCategoryId =
-    categories.find((category) => category.id !== activeCategoryId)?.id
+    categories.find((category) => category.id !== categoryId)?.id
 
   useEffect(() => {
-    if (!categories.some((category) => category.id === activeCategoryId) && categories[0]) {
-      setActiveCategory(categories[0].id)
+    if (!categories.some((category) => category.id === categoryId) && categories[0]) {
+      navigate({
+        to: '/prototype/$categoryId',
+        params: { categoryId: categories[0].id },
+        replace: true,
+      })
     }
-  }, [activeCategoryId, categories, setActiveCategory])
+  }, [categoryId, categories, navigate])
 
   const {
     page,
@@ -69,10 +72,11 @@ export function useAdminShell() {
   const prototypeList = prototypesQuery.data?.items ?? []
   const totalPages = prototypesQuery.data?.totalPages ?? 1
   const totalCount = prototypesQuery.data?.total ?? 0
+
   const activePrototypeFromCategory =
-    selectedCategory?.prototypes.find((prototype) => prototype.id === activePrototypeId) ?? null
+    selectedCategory?.prototypes.find((prototype) => prototype.id === prototypeId) ?? null
   const activePrototype: PrototypeListItem | null =
-    prototypeList.find((prototype) => prototype.id === activePrototypeId) ??
+    prototypeList.find((prototype) => prototype.id === prototypeId) ??
     (activePrototypeFromCategory
       ? {
           ...activePrototypeFromCategory,
@@ -85,15 +89,37 @@ export function useAdminShell() {
         }
       : null)
 
-  useAdminShellUrlSync({
-    activePrototypeId,
-    selectedCategory,
-    setActiveCategory,
-    setActivePrototypeId,
-  })
+  const selectCategory = (id: string) => {
+    navigate({ to: '/prototype/$categoryId', params: { categoryId: id } })
+  }
+
+  const selectPrototype = (id: string | null) => {
+    if (id) {
+      navigate({
+        to: '/prototype/$categoryId',
+        params: { categoryId },
+        search: { prototypeId: id },
+      })
+    } else {
+      navigate({ to: '/prototype/$categoryId', params: { categoryId } })
+    }
+  }
+
+  const openDoc = (id: string) => {
+    navigate({ to: '/docu', search: { prototypeId: id } })
+  }
+
+  useEffect(() => {
+    if (!prototypeId || !selectedCategory) return
+    const existsInCategory = selectedCategory.prototypes.some((p) => p.id === prototypeId)
+    const existsInList = prototypeList.some((p) => p.id === prototypeId)
+    if (!existsInCategory && prototypeList.length > 0 && !existsInList) {
+      navigate({ to: '/prototype/$categoryId', params: { categoryId }, replace: true })
+    }
+  }, [prototypeId, selectedCategory, prototypeList, categoryId, navigate])
 
   return {
-    activeCategoryId,
+    activeCategoryId: categoryId,
     activePrototype,
     categories,
     currentUserId,
@@ -101,15 +127,15 @@ export function useAdminShell() {
     isAuthenticated,
     isError,
     isLoading,
+    openDoc,
     page,
     prototypeList,
     prototypesQuery,
     search,
     searchInput,
+    selectCategory,
+    selectPrototype,
     selectedCategory,
-    setActiveCategory,
-    setActivePrototypeId,
-    setActiveSection,
     setCategories,
     setPage,
     setSearch,

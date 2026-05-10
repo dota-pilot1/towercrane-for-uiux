@@ -18,6 +18,7 @@ import {
   useSignup,
   useVerifyEmailCode,
 } from '../../../shared/api/auth'
+import { useNavigate } from '@tanstack/react-router'
 import type { AuthMode } from '../../../shared/store/session-store'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { Button } from '../../../shared/ui/button'
@@ -67,6 +68,7 @@ export function LoginPage() {
   const [codeError, setCodeError] = useState<string | null>(null)
   const timerRef = useRef<number | null>(null)
   const resendTimerRef = useRef<number | null>(null)
+  const navigate = useNavigate()
   const setSession = useSessionStore((state) => state.setSession)
   const loginMutation = useLogin()
   const signupMutation = useSignup()
@@ -138,7 +140,7 @@ export function LoginPage() {
   const selectAuthMode = (mode: AuthMode) => {
     setAuthMode(mode)
     setIsSignup(mode === 'signup')
-    window.history.replaceState(null, '', mode === 'signup' ? '/login?mode=signup' : '/login')
+    navigate({ to: '/login', search: { mode: mode === 'signup' ? 'signup' : undefined }, replace: true })
   }
 
   const startTimer = () => {
@@ -181,8 +183,7 @@ export function LoginPage() {
     try {
       const response = await loginMutation.mutateAsync(values)
       setSession(response)
-      window.history.pushState(null, '', '/')
-      window.dispatchEvent(new PopStateEvent('popstate'))
+      navigate({ to: '/prototype' })
     } catch (error) {
       setLoginWarning(getLoginErrorMessage(error))
     }
@@ -252,8 +253,7 @@ export function LoginPage() {
       verifiedToken,
     })
     setSession(response)
-    window.history.pushState(null, '', '/')
-    window.dispatchEvent(new PopStateEvent('popstate'))
+    navigate({ to: '/prototype' })
   }
 
   const signupEmailRegister = registerSignup('email', {

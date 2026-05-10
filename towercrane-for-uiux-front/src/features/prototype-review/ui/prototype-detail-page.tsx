@@ -26,8 +26,8 @@ import {
 } from '../../../shared/api/catalog'
 import { DeletePrototypeButton } from '../../prototype-management/ui/delete-prototype-button'
 import { EditPrototypeDialog } from '../../prototype-management/ui/edit-prototype-dialog'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { useSessionStore } from '../../../shared/store/session-store'
-import { useUiStore } from '../../../shared/store/ui-store'
 import { ActionIconButton } from '../../../shared/ui/action-icon-button'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
@@ -47,7 +47,8 @@ type PageProps = {
 }
 
 export function PrototypeDetailDialog({ prototype, size = 'icon' }: ButtonProps) {
-  const setActivePrototypeId = useUiStore((state) => state.setActivePrototypeId)
+  const navigate = useNavigate()
+  const { categoryId } = useParams({ strict: false })
 
   return (
     <ActionIconButton
@@ -55,7 +56,15 @@ export function PrototypeDetailDialog({ prototype, size = 'icon' }: ButtonProps)
       title="상세 보기"
       aria-label="상세 보기"
       size={size}
-      onClick={() => setActivePrototypeId(prototype.id)}
+      onClick={() => {
+        if (categoryId) {
+          navigate({
+            to: '/prototype/$categoryId',
+            params: { categoryId },
+            search: { prototypeId: prototype.id },
+          })
+        }
+      }}
     />
   )
 }

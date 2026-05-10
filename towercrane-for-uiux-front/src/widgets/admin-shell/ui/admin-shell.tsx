@@ -1,14 +1,16 @@
+import { useParams, useSearch } from '@tanstack/react-router'
 import { useAdminShell } from '../model/use-admin-shell'
 import { Card } from '../../../shared/ui/card'
-import {
-  PrototypeDetailPage,
-} from '../../../features/prototype-review/ui/prototype-detail-page'
+import { PrototypeDetailPage } from '../../../features/prototype-review/ui/prototype-detail-page'
 import { AdminShellCategoryHeader } from './admin-shell-category-header'
 import { AdminShellEmptyState } from './admin-shell-empty-state'
 import { AdminShellPrototypeListPanel } from './admin-shell-prototype-list-panel'
 import { AdminShellSidebar } from './admin-shell-sidebar'
 
 export function AdminShell() {
+  const { categoryId } = useParams({ from: '/prototype/$categoryId' })
+  const { prototypeId } = useSearch({ from: '/prototype/$categoryId' })
+
   const {
     activeCategoryId,
     activePrototype,
@@ -18,15 +20,15 @@ export function AdminShell() {
     isAuthenticated,
     isError,
     isLoading,
+    openDoc,
     page,
     prototypeList,
     prototypesQuery,
     search,
     searchInput,
+    selectCategory,
+    selectPrototype,
     selectedCategory,
-    setActiveCategory,
-    setActivePrototypeId,
-    setActiveSection,
     setCategories,
     setPage,
     setSearch,
@@ -36,7 +38,7 @@ export function AdminShell() {
     totalCount,
     totalPages,
     userRole,
-  } = useAdminShell()
+  } = useAdminShell({ categoryId, prototypeId })
 
   const mainPanelInsetClass = 'px-5'
 
@@ -49,7 +51,7 @@ export function AdminShell() {
           isAuthenticated={isAuthenticated}
           isLoading={isLoading}
           onCategoriesReorder={setCategories}
-          onSelectCategory={setActiveCategory}
+          onSelectCategory={selectCategory}
         />
 
         <div className="flex flex-col min-w-0 min-h-0">
@@ -67,7 +69,7 @@ export function AdminShell() {
                   canManagePrototype={
                     selectedCategory.userId === currentUserId || userRole === 'admin'
                   }
-                  onBack={() => setActivePrototypeId(null)}
+                  onBack={() => selectPrototype(null)}
                 />
               ) : (
                 <>
@@ -109,12 +111,11 @@ export function AdminShell() {
                       setPage(1)
                     }}
                     onSelectPrototype={(prototypeId) => {
-                      setActivePrototypeId(prototypeId)
+                      selectPrototype(prototypeId)
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                     onOpenDoc={(prototypeId) => {
-                      setActivePrototypeId(prototypeId)
-                      setActiveSection('docu')
+                      openDoc(prototypeId)
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                     onPrevPage={() => setPage((p) => Math.max(1, p - 1))}
