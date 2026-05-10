@@ -28,7 +28,7 @@ import {
 } from '../dto/challenge.schema';
 import type { SessionRequest } from '../../auth/types';
 
-@Controller('api/challenge')
+@Controller('challenge')
 @UseGuards(SessionGuard)
 export class ChallengeController {
   constructor(private readonly challengeService: ChallengeService) {}
