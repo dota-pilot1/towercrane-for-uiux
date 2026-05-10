@@ -1,5 +1,5 @@
 import { Card } from '../../../shared/ui/card'
-import { Code2, FileText, CheckSquare, Loader2, Plus, X } from 'lucide-react'
+import { Loader2, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { useSectionsByCategory, useCreateSection } from '../lib/hooks'
 
@@ -7,16 +7,6 @@ interface ChallengeTopicsListProps {
   sectionId: string
   selectedTopic: string | null
   onSelectTopic: (id: string) => void
-}
-
-const blockTypeIcons = {
-  NOTE: <FileText className="size-3.5" />,
-  MMD: <Code2 className="size-3.5" />,
-  CHECKLIST: <CheckSquare className="size-3.5" />,
-  GITHUB: <Code2 className="size-3.5" />,
-  FIGMA: <FileText className="size-3.5" />,
-  FILE: <FileText className="size-3.5" />,
-  DBTABLE: <Code2 className="size-3.5" />,
 }
 
 export function ChallengeTopicsList({ sectionId, selectedTopic, onSelectTopic }: ChallengeTopicsListProps) {
@@ -67,10 +57,7 @@ export function ChallengeTopicsList({ sectionId, selectedTopic, onSelectTopic }:
                   : 'ui-text-secondary hover:bg-surface-muted'
               }`}
             >
-              <span className="text-brand-primary">
-                {blockTypeIcons[topic.blockType as keyof typeof blockTypeIcons]}
-              </span>
-              <span className="truncate font-medium">{topic.blockTitle || '(제목 없음)'}</span>
+              <span className="truncate font-medium">{topic.title || '(제목 없음)'}</span>
             </button>
           ))
         )}
