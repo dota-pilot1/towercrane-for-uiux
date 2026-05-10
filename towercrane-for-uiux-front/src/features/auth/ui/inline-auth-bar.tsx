@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router'
 import * as Dialog from '@radix-ui/react-dialog'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -641,11 +642,11 @@ export function InlineAuthBar({ embedded = false }: InlineAuthBarProps) {
 
 export function HeaderAuthButtons() {
   const setAuthMode = useSessionStore((state) => state.setAuthMode)
+  const navigate = useNavigate()
 
   const goToLogin = () => {
     setAuthMode('login')
-    window.history.pushState(null, '', '/login')
-    window.dispatchEvent(new PopStateEvent('popstate'))
+    navigate({ to: '/login' })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 

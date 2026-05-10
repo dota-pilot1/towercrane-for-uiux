@@ -1,6 +1,6 @@
 import { Trash2 } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { useDeleteCategory } from '../../../shared/api/catalog'
-import { useUiStore } from '../../../shared/store/ui-store'
 import { Button } from '../../../shared/ui/button'
 import { ConfirmDeleteIconButton } from '../../../shared/ui/confirm-delete-icon-button'
 
@@ -20,13 +20,13 @@ export function DeleteCategoryButton({
   size = 'icon',
 }: DeleteCategoryButtonProps) {
   const deleteCategory = useDeleteCategory()
-  const setActiveCategory = useUiStore((state) => state.setActiveCategory)
+  const navigate = useNavigate()
 
   const runDelete = async () => {
     await deleteCategory.mutateAsync(categoryId)
 
     if (fallbackCategoryId && fallbackCategoryId !== categoryId) {
-      setActiveCategory(fallbackCategoryId)
+      navigate({ to: '/prototype/$categoryId', params: { categoryId: fallbackCategoryId } })
     }
   }
 

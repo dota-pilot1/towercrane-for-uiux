@@ -4,8 +4,8 @@ import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { useNavigate } from '@tanstack/react-router'
 import { useCreateCategory } from '../../../shared/api/catalog'
-import { useUiStore } from '../../../shared/store/ui-store'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 
@@ -22,7 +22,7 @@ interface AddCategoryDialogProps {
 
 export function AddCategoryDialog({ children }: AddCategoryDialogProps) {
   const [open, setOpen] = useState(false)
-  const setActiveCategory = useUiStore((state) => state.setActiveCategory)
+  const navigate = useNavigate()
   const createCategory = useCreateCategory()
 
   const {
@@ -41,7 +41,7 @@ export function AddCategoryDialog({ children }: AddCategoryDialogProps) {
 
   const onSubmit = async (values: FormValues) => {
     const category = await createCategory.mutateAsync(values)
-    setActiveCategory(category.id)
+    navigate({ to: '/prototype/$categoryId', params: { categoryId: category.id } })
     reset()
     setOpen(false)
   }

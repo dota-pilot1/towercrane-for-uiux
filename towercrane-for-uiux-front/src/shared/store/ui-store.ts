@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import { seedScenarioCategories, type PrototypeStatus, type PrototypeVisibility } from '../config/catalog'
+import type { PrototypeStatus, PrototypeVisibility } from '../config/catalog'
 
 export type WorkbenchFilters = {
   query: string
@@ -9,17 +9,13 @@ export type WorkbenchFilters = {
 }
 
 type UiStoreState = {
-  activeSection: string
-  activeCategoryId: string
-  activePrototypeId: string | null
   activeWorkspace: 'overview' | 'prototypes' | 'backend'
   themeColor: 'default' | 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light'
   filters: WorkbenchFilters
-  setActiveSection: (section: string) => void
-  setActiveCategory: (id: string) => void
-  setActivePrototypeId: (id: string | null) => void
   setActiveWorkspace: (workspace: 'overview' | 'prototypes' | 'backend') => void
-  setThemeColor: (color: 'default' | 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light') => void
+  setThemeColor: (
+    color: 'default' | 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light',
+  ) => void
   applyFilters: (filters: WorkbenchFilters) => void
 }
 
@@ -32,15 +28,9 @@ export const defaultFilters: WorkbenchFilters = {
 export const useUiStore = create<UiStoreState>()(
   persist(
     (set) => ({
-      activeSection: 'prototype',
-      activeCategoryId: seedScenarioCategories[0]?.id ?? 'fsd-architecture',
-      activePrototypeId: null,
       activeWorkspace: 'overview',
       themeColor: 'default',
       filters: defaultFilters,
-      setActiveSection: (activeSection) => set({ activeSection }),
-      setActiveCategory: (activeCategoryId) => set({ activeCategoryId }),
-      setActivePrototypeId: (activePrototypeId) => set({ activePrototypeId }),
       setActiveWorkspace: (activeWorkspace) => set({ activeWorkspace }),
       setThemeColor: (themeColor) => set({ themeColor }),
       applyFilters: (filters) => set({ filters }),
