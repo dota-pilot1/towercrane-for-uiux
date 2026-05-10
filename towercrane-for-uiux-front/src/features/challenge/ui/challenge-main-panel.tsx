@@ -12,6 +12,7 @@ import {
   useUpdateNote,
   useDeleteNote,
   useCreateSubmission,
+  useUpdateSubmission,
   useCreateGptThread,
   useSendGptMessage,
 } from '../lib/hooks'
@@ -21,14 +22,14 @@ import { SubmissionCard } from '../submission/ui/submission-card'
 import { UserNotesPanel } from '../user-notes/ui/user-notes-panel'
 
 interface ChallengeMainPanelProps {
-  topicId: string
+  topicId?: string | null
   sectionId?: string
 }
 
 export function ChallengeMainPanel({ topicId, sectionId }: ChallengeMainPanelProps) {
   const [activeTab, setActiveTab] = useState('topic')
-  const { data: topic, isLoading: topicLoading } = useTopicById(topicId)
-  const { data: submission, refetch: refetchSubmission } = useMySubmission(topicId)
+  const { data: topic, isLoading: topicLoading } = useTopicById(topicId || '')
+  const { data: submission, refetch: refetchSubmission } = useMySubmission(topicId || '')
   const sectionIdForNotes = sectionId || (topic?.sectionId as string)
   const { data: myNotes = [] } = useMyNotes(sectionIdForNotes)
   const { data: sharedNotes = [] } = useSharedNotes(sectionIdForNotes)
@@ -41,25 +42,25 @@ export function ChallengeMainPanel({ topicId, sectionId }: ChallengeMainPanelPro
 
   return (
     <Card className="flex-1 flex flex-col rounded-md overflow-hidden">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="border-b border-surface-border rounded-none bg-surface-muted px-4">
-          <TabsTrigger value="topic" className="flex items-center gap-2">
-            <BookOpen className="size-4" />
-            주제
-          </TabsTrigger>
-          <TabsTrigger value="submission" className="flex items-center gap-2">
-            <CheckCircle className="size-4" />
-            풀이
-          </TabsTrigger>
-          <TabsTrigger value="gpt" className="flex items-center gap-2">
-            <MessageCircle className="size-4" />
-            GPT
-          </TabsTrigger>
-          <TabsTrigger value="notes" className="flex items-center gap-2">
-            <NotebookPen className="size-4" />
-            노트
-          </TabsTrigger>
-        </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+          <TabsList className="border-b border-surface-border rounded-none bg-surface-muted px-4">
+            <TabsTrigger value="topic" className="flex items-center gap-2">
+              <BookOpen className="size-4" />
+              주제
+            </TabsTrigger>
+            <TabsTrigger value="submission" className="flex items-center gap-2">
+              <CheckCircle className="size-4" />
+              풀이
+            </TabsTrigger>
+            <TabsTrigger value="gpt" className="flex items-center gap-2">
+              <MessageCircle className="size-4" />
+              GPT
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="flex items-center gap-2">
+              <NotebookPen className="size-4" />
+              노트
+            </TabsTrigger>
+          </TabsList>
 
         <div className="flex-1 overflow-y-auto">
           <TabsContent value="topic" className="p-4">
@@ -100,12 +101,12 @@ export function ChallengeMainPanel({ topicId, sectionId }: ChallengeMainPanelPro
                   />
                 ) : (
                   <SubmissionForm
-                    topicId={topicId}
+                    topicId={topicId || ''}
                     blockType={topic.blockType}
                     blockTitle={topic.blockTitle}
                     onSubmit={async (content, checkedItems) => {
                       await createSubmission.mutateAsync({
-                        topicId,
+                        topicId: topicId || '',
                         content,
                         checkedItems,
                       })
@@ -124,7 +125,7 @@ export function ChallengeMainPanel({ topicId, sectionId }: ChallengeMainPanelPro
 
           <TabsContent value="gpt" className="p-4">
             {sectionIdForNotes && topic ? (
-              <GptChatContent sectionId={sectionIdForNotes} topicId={topicId} />
+              <GptChatContent sectionId={sectionIdForNotes} topicId={topicId || ''} />
             ) : (
               <div className="text-center py-8">
                 <p className="text-sm ui-text-muted">주제를 선택하세요</p>

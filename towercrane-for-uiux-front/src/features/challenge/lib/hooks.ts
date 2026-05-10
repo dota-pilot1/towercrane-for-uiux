@@ -22,12 +22,34 @@ export function useCategories() {
   })
 }
 
+export function useCreateCategory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { name: string }) =>
+      apiRequest('/challenge/categories', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.categories() })
+    },
+  })
+}
+
 // Sections
 export function useSectionsByCategory(categoryId: string) {
   return useQuery({
     queryKey: CHALLENGE_KEYS.sections(categoryId),
     queryFn: () => apiRequest<any[]>(`/challenge/categories/${categoryId}/sections`),
     enabled: !!categoryId,
+  })
+}
+
+export function useCreateSection() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { categoryId: string; title: string }) =>
+      apiRequest('/challenge/sections', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.sections(variables.categoryId) })
+    },
   })
 }
 
@@ -45,6 +67,17 @@ export function useTopicById(topicId: string) {
     queryKey: CHALLENGE_KEYS.topic(topicId),
     queryFn: () => apiRequest<any>(`/challenge/topics/${topicId}`),
     enabled: !!topicId,
+  })
+}
+
+export function useCreateTopic() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { sectionId: string; blockType: string; blockTitle: string; content?: string }) =>
+      apiRequest('/challenge/topics', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.topics(variables.sectionId) })
+    },
   })
 }
 

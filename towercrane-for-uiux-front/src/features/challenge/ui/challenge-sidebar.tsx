@@ -1,7 +1,7 @@
-import { ChevronDown, Trophy, Loader2 } from 'lucide-react'
+import { ChevronDown, Trophy, Loader2, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { Card } from '../../../shared/ui/card'
-import { useCategories, useSectionsByCategory } from '../lib/hooks'
+import { useCategories, useSectionsByCategory, useCreateCategory } from '../lib/hooks'
 
 interface ChallengeSidebarProps {
   selectedCategory: string | null
@@ -9,31 +9,33 @@ interface ChallengeSidebarProps {
 }
 
 export function ChallengeSidebar({ selectedCategory, onSelectCategory }: ChallengeSidebarProps) {
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
+  const [categoryName, setCategoryName] = useState('')
   const { data: categories = [], isLoading: categoriesLoading } = useCategories()
-  const [sectionsByCategory, setSectionsByCategory] = useState<Record<string, any[]>>({})
+  const createCategory = useCreateCategory()
 
-  const handleExpandCategory = async (categoryId: string) => {
-    if (expandedCategory === categoryId) {
-      setExpandedCategory(null)
-      return
-    }
-
-    if (!sectionsByCategory[categoryId]) {
-      const { data } = useSectionsByCategory(categoryId)
-      if (data) {
-        setSectionsByCategory((prev) => ({ ...prev, [categoryId]: data }))
-      }
-    }
-    setExpandedCategory(categoryId)
+  const handleAddCategory = async () => {
+    if (!categoryName.trim()) return
+    await createCategory.mutateAsync({ name: categoryName })
+    setCategoryName('')
+    setIsAddingCategory(false)
   }
 
   return (
     <Card className="w-[220px] overflow-y-auto rounded-md p-0">
       <div className="sticky top-0 border-b border-surface-border bg-surface-muted p-3">
-        <div className="flex items-center gap-2">
-          <Trophy className="size-4 text-brand-primary" />
-          <p className="text-xs font-bold ui-text-primary">챌린지</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Trophy className="size-4 text-brand-primary" />
+            <p className="text-xs font-bold ui-text-primary">1차 주제</p>
+          </div>
+          <button
+            onClick={() => setIsAddingCategory(true)}
+            className="p-1 hover:bg-surface-border rounded transition-colors"
+            title="카테고리 추가"
+          >
+            <Plus className="size-3.5 ui-text-secondary hover:ui-text-primary" />
+          </button>
         </div>
       </div>
 
@@ -44,55 +46,88 @@ export function ChallengeSidebar({ selectedCategory, onSelectCategory }: Challen
           </div>
         ) : (
           categories.map((category) => (
-            <div key={category.id}>
-              <button
-                onClick={() => handleExpandCategory(category.id)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm ui-text-secondary hover:bg-surface-muted hover:ui-text-primary transition-colors"
-              >
-                <ChevronDown
-                  className={`size-3 shrink-0 transition-transform ${
-                    expandedCategory === category.id ? 'rotate-180' : ''
-                  }`}
-                />
-                <span className="truncate font-medium">{category.name}</span>
-              </button>
-
-              {expandedCategory === category.id && (
-                <SectionList
-                  categoryId={category.id}
-                  sections={sectionsByCategory[category.id] || []}
-                  selectedCategory={selectedCategory}
-                  onSelectCategory={onSelectCategory}
-                />
-              )}
-            </div>
+            <button
+              key={category.id}
+              onClick={() => onSelectCategory(category.id)}
+              className={`flex w-full items-center rounded-md px-3 py-2 text-left text-xs transition-colors ${
+                selectedCategory === category.id
+                  ? 'bg-brand-glass ui-text-primary'
+                  : 'ui-text-secondary hover:bg-surface-muted'
+              }`}
+            >
+              <span className="truncate font-medium">{category.name}</span>
+            </button>
           ))
         )}
       </div>
+
+      {isAddingCategory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-96 p-4 rounded-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold ui-text-primary">1차 주제 추가</h3>
+              <button
+                onClick={() => {
+                  setIsAddingCategory(false)
+                  setCategoryName('')
+                }}
+                className="p-1 hover:bg-surface-muted rounded transition-colors"
+              >
+                <X className="size-4 ui-text-secondary" />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={categoryName}
+              onChange={(e) => setCategoryName(e.target.value)}
+              placeholder="카테고리명 입력"
+              className="ui-input w-full mb-4"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setIsAddingCategory(false)
+                  setCategoryName('')
+                }}
+                className="px-3 py-1.5 text-xs rounded border border-surface-border ui-text-secondary hover:bg-surface-muted transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleAddCategory}
+                disabled={createCategory.isPending || !categoryName.trim()}
+                className="px-3 py-1.5 text-xs rounded bg-brand-primary text-white hover:opacity-90 disabled:opacity-50 transition-colors"
+              >
+                {createCategory.isPending ? '추가 중...' : '추가'}
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
     </Card>
   )
 }
 
 function SectionList({
   categoryId,
-  sections,
   selectedCategory,
   onSelectCategory,
 }: {
   categoryId: string
-  sections: any[]
   selectedCategory: string | null
   onSelectCategory: (sectionId: string) => void
 }) {
-  const { data: fetchedSections = [], isLoading } = useSectionsByCategory(categoryId)
-  const displaySections = sections.length > 0 ? sections : fetchedSections
+  const { data: sections = [], isLoading } = useSectionsByCategory(categoryId)
 
   return (
     <div className="space-y-1 pl-6">
-      {isLoading && sections.length === 0 ? (
+      {isLoading ? (
         <div className="px-2 py-1.5 text-xs ui-text-muted">로딩 중...</div>
+      ) : sections.length === 0 ? (
+        <div className="px-2 py-1.5 text-xs ui-text-muted">섹션이 없습니다</div>
       ) : (
-        displaySections.map((section) => (
+        sections.map((section) => (
           <button
             key={section.id}
             onClick={() => onSelectCategory(section.id)}
