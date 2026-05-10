@@ -136,27 +136,33 @@ export function MenuAdminPage() {
     }
   }
 
+  const getAllItemIds = (items: MenuItem[]): string[] => {
+    let ids: string[] = [];
+    items.forEach(item => {
+      ids.push(item.id);
+      if (item.children.length > 0) {
+        ids = ids.concat(getAllItemIds(item.children));
+      }
+    });
+    return ids;
+  };
+
   const renderTree = (items: MenuItem[], level = 0) => {
     return (
-      <SortableContext 
-        items={items.map(i => i.id)} 
-        strategy={verticalListSortingStrategy}
-      >
-        <div className="flex flex-col w-full">
-          {items.map((item) => (
-            <SortableTreeItem 
-              key={item.id} 
-              item={item} 
-              level={level} 
-              isSelected={selectedMenuId === item.id}
-              onSelect={() => setSelectedMenuId(item.id)}
-              onAddChild={() => handleCreateChild(item.id)}
-              onDelete={() => handleDelete(item.id)}
-              renderChildren={() => item.children.length > 0 ? renderTree(item.children, level + 1) : null}
-            />
-          ))}
-        </div>
-      </SortableContext>
+      <div className="flex flex-col w-full">
+        {items.map((item) => (
+          <SortableTreeItem
+            key={item.id}
+            item={item}
+            level={level}
+            isSelected={selectedMenuId === item.id}
+            onSelect={() => setSelectedMenuId(item.id)}
+            onAddChild={() => handleCreateChild(item.id)}
+            onDelete={() => handleDelete(item.id)}
+            renderChildren={() => item.children.length > 0 ? renderTree(item.children, level + 1) : null}
+          />
+        ))}
+      </div>
     )
   }
 
@@ -201,7 +207,12 @@ export function MenuAdminPage() {
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                {renderTree(menuTree)}
+                <SortableContext
+                  items={getAllItemIds(menuTree)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {renderTree(menuTree)}
+                </SortableContext>
               </DndContext>
             )}
           </div>
