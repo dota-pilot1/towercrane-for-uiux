@@ -880,6 +880,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
 
   private hashSeedPassword(password: string) {
-    return scryptSync(password, 'towercrane-seed-salt', 64).toString('hex');
+    const salt = 'towercrane-seed-salt';
+    const hash = scryptSync(password, salt, 64).toString('hex');
+    return `${salt}:${hash}`;
   }
 }
