@@ -11,13 +11,14 @@ import { useMenus, useCreateMenu, useUpdateMenu, useDeleteMenu } from '../../../
 import { buildTree } from '../../../entities/menu/lib/build-tree'
 import type { MenuItem, MenuRecord } from '../../../entities/menu/model/types'
 import { toast } from 'sonner'
-import { 
-  DndContext, 
-  pointerWithin, 
-  KeyboardSensor, 
-  PointerSensor, 
-  useSensor, 
-  useSensors
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay
 } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { 
@@ -94,7 +95,7 @@ export function MenuAdminPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5, // 5px movement required to start drag
+        distance: 8,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -195,9 +196,9 @@ export function MenuAdminPage() {
                 <p className="text-sm ui-text-secondary">생성된 메뉴가 없습니다.</p>
               </div>
             ) : (
-              <DndContext 
+              <DndContext
                 sensors={sensors}
-                collisionDetection={pointerWithin}
+                collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
                 {renderTree(menuTree)}
