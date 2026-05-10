@@ -68,9 +68,16 @@ export const createNoteSchema = z.object({
   { message: 'sectionId or topicId must be provided' }
 );
 
-export const updateNoteSchema = createNoteSchema.partial().refine(
-  (data) => !(data.sectionId === undefined && data.topicId === undefined),
-  { message: 'Cannot clear both sectionId and topicId' }
+export const updateNoteSchema = z.object({
+  sectionId: z.string().uuid().optional(),
+  topicId: z.string().uuid().optional(),
+  title: z.string().max(255).optional(),
+  content: z.string().optional(),
+  visibility: z.enum(['private', 'shared', 'public']).optional(),
+  pinned: z.boolean().optional(),
+}).refine(
+  (data) => !(data.sectionId === undefined && data.topicId === undefined && data.content === undefined),
+  { message: 'Must update at least one field' }
 );
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
