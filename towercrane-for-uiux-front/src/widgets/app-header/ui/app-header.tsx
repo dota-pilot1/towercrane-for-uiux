@@ -196,7 +196,7 @@ export function AppHeader() {
                     onClick={() => handleNavigation('meeting')}
                     labelClassName="hidden sm:inline"
                   >
-                    워크룸
+                    회의실
                   </HeaderPill>
                 ) : null}
               </Fragment>

@@ -34,7 +34,7 @@ const slashCommands = [
   {
     command: '/도움말',
     title: '명령어 보기',
-    description: '사용 가능한 워크룸 명령어를 표시합니다.',
+    description: '사용 가능한 회의실 명령어를 표시합니다.',
     icon: ListChecks,
   },
   {
@@ -102,9 +102,9 @@ function ChannelSidebar({
   return (
     <aside className="ui-panel flex min-h-0 w-full flex-col overflow-hidden bg-surface-raised lg:w-72">
       <div className="border-b border-surface-border-soft bg-surface-muted px-5 py-4">
-        <p className="text-[11px] font-black uppercase tracking-[0.22em] ui-text-muted">Workroom</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] ui-text-muted">Meetingroom</p>
         <div className="mt-1 flex items-center justify-between">
-          <h2 className="text-lg font-black ui-text-primary">워크룸</h2>
+          <h2 className="text-lg font-black ui-text-primary">회의실</h2>
           <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
             LIVE
           </span>
@@ -119,7 +119,7 @@ function ChannelSidebar({
         ) : null}
         {!isLoading && rooms.length === 0 ? (
           <div className="rounded-md border border-surface-border-soft bg-surface-muted px-3 py-3 text-sm ui-text-muted">
-            생성된 워크룸 채널이 없습니다.
+            생성된 회의실 채널이 없습니다.
           </div>
         ) : null}
         {rooms.filter((room) => room.roomType !== 'DM').map((room) => {
@@ -582,7 +582,7 @@ export function MeetingPage() {
             <MessagesSquare className="size-5 ui-text-muted" />
           </div>
           <p className="text-sm font-bold ui-text-primary">로그인이 필요합니다</p>
-          <p className="mt-1 text-xs ui-text-secondary">워크룸 메시지는 로그인 후 확인할 수 있습니다.</p>
+          <p className="mt-1 text-xs ui-text-secondary">회의실 메시지는 로그인 후 확인할 수 있습니다.</p>
         </div>
       </div>
     )
@@ -613,7 +613,7 @@ export function MeetingPage() {
               <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted">
                 <MessagesSquare className="size-5 ui-text-muted" />
               </div>
-              <p className="text-sm font-bold ui-text-primary">워크룸을 준비하는 중입니다</p>
+              <p className="text-sm font-bold ui-text-primary">회의실을 준비하는 중입니다</p>
               <p className="mt-1 text-xs ui-text-secondary">기본 채널이 생성되면 바로 입장됩니다.</p>
             </div>
           </section>
