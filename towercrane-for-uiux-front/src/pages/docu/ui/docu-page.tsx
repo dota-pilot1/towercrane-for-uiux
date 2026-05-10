@@ -46,7 +46,7 @@ import {
 import { BlockEditor } from '../../../features/docu/ui/block-editor'
 
 export function DocuPage() {
-  const { prototypeId: activePrototypeId } = useSearch({ from: '/docu' })
+  const { prototypeId: activePrototypeId } = useSearch({ strict: false }) as { prototypeId?: string }
   const navigate = useNavigate()
   const categoriesQuery = useCatalogCategories()
 

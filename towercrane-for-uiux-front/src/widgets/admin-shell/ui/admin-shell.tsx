@@ -1,4 +1,3 @@
-import { useParams, useSearch } from '@tanstack/react-router'
 import { useAdminShell } from '../model/use-admin-shell'
 import { Card } from '../../../shared/ui/card'
 import { PrototypeDetailPage } from '../../../features/prototype-review/ui/prototype-detail-page'
@@ -7,9 +6,12 @@ import { AdminShellEmptyState } from './admin-shell-empty-state'
 import { AdminShellPrototypeListPanel } from './admin-shell-prototype-list-panel'
 import { AdminShellSidebar } from './admin-shell-sidebar'
 
-export function AdminShell() {
-  const { categoryId } = useParams({ from: '/prototype/$categoryId' })
-  const { prototypeId } = useSearch({ from: '/prototype/$categoryId' })
+type AdminShellProps = {
+  categoryId: string
+  prototypeId: string | undefined
+}
+
+export function AdminShell({ categoryId, prototypeId }: AdminShellProps) {
 
   const {
     activeCategoryId,
