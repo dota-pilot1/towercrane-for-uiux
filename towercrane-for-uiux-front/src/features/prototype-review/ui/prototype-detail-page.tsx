@@ -249,10 +249,10 @@ export function PrototypeDetailPage({
             <Link
               to="/issues"
               search={{ prototypeId: prototype.id }}
-              className="flex items-center gap-1.5 rounded-sm border border-brand-border bg-brand-glass px-2.5 py-1.5 text-xs font-bold text-brand-primary transition-colors hover:bg-surface-muted"
+              className="flex h-9 items-center gap-2 rounded-sm border border-brand-border bg-brand-glass px-3.5 text-sm font-bold text-brand-primary shadow-sm transition-all hover:bg-surface-muted"
               title="이슈 관리"
             >
-              <ShieldAlert className="size-3.5" />
+              <ShieldAlert className="size-4" />
               이슈 관리
             </Link>
             <ActionIconButton
