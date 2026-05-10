@@ -7,7 +7,7 @@ import {
   RefreshCw,
   ShieldAlert,
 } from 'lucide-react'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useSearch } from '@tanstack/react-router'
 import { useIssues } from '../../../features/issue/model/use-issue-queries'
 import { IssueKanbanView } from '../../../features/issue/ui/issue-kanban-view'
 import { IssueTableView } from '../../../features/issue/ui/issue-table-view'
@@ -25,7 +25,6 @@ const STATUS_ORDER: IssueStatus[] = ['OPEN', 'IN_PROGRESS', 'TESTING', 'CLOSED']
 
 export function PrototypeIssuesPage() {
   const { prototypeId } = useSearch({ strict: false }) as { prototypeId?: string }
-  const navigate = useNavigate()
 
   const [viewMode, setViewMode] = useState<ViewMode>('kanban')
   const [createOpen, setCreateOpen] = useState(false)
@@ -68,7 +67,7 @@ export function PrototypeIssuesPage() {
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate({ to: -1 as never })}
+            onClick={() => window.history.back()}
             className="ui-icon-button size-9 shrink-0"
             title="뒤로가기"
           >
