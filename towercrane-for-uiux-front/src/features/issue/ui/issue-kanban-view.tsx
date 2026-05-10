@@ -9,7 +9,6 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
 import { clsx } from 'clsx'
 import {
   ISSUE_STATUS_LABELS,
@@ -26,7 +25,7 @@ function DraggableIssueCard({
   issue: Issue
   onOpen: (id: string) => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: issue.id,
     data: { issue },
   })
@@ -34,8 +33,7 @@ function DraggableIssueCard({
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform) }}
-      className={clsx(isDragging && 'opacity-40')}
+      className={clsx('touch-none', isDragging && 'opacity-30')}
       {...attributes}
       {...listeners}
     >
@@ -141,9 +139,9 @@ export function IssueKanbanView({
         ))}
       </div>
 
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeIssue ? (
-          <div className="w-[260px]">
+          <div className="w-[260px] rotate-1 scale-105 shadow-2xl opacity-95">
             <IssueCard issue={activeIssue} onOpen={() => undefined} />
           </div>
         ) : null}
