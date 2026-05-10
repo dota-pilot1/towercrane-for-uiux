@@ -117,14 +117,11 @@ export function ApiDocPage() {
             <FileJson className="size-5" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-xl font-black text-text-primary">API 문서</h2>
+            <h2 className="text-xl font-black text-text-primary">Postman Lite</h2>
             <p className="mt-1 text-xs text-text-secondary">
               API 스펙을 정리하고 브라우저에서 요청을 실행합니다.
             </p>
           </div>
-        </div>
-        <div className="rounded-sm border border-brand-border bg-brand-glass px-3 py-1 text-xs font-bold text-brand-primary">
-          Postman Lite
         </div>
       </div>
 
