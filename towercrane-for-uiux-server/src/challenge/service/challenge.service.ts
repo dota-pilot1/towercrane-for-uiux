@@ -11,6 +11,7 @@ import {
   challengeGptMessagesTable,
   challengeUserNotesTable,
   type ChallengeSubmissionRow,
+  type GptMessageRole,
 } from '../../database/schema';
 import type {
   CreateCategoryInput,
@@ -378,7 +379,7 @@ export class ChallengeService {
       .all();
   }
 
-  async createGptMessage(threadId: string, role: string, content: string, tokensIn?: number, tokensOut?: number) {
+  async createGptMessage(threadId: string, role: GptMessageRole, content: string, tokensIn?: number, tokensOut?: number) {
     const id = randomUUID();
     const now = new Date().toISOString();
 
