@@ -1,238 +1,244 @@
-# 04. 프론트엔드 — 3패널 UI 골격 (카테고리 / 섹션 / 콘텐츠)
+# 04. 프론트엔드 — 3패널 UI 구조 (1차/2차/3차)
 
-> 마포-팔란티어 `ChallengePage.tsx` (1863줄, 단일 파일)를 **FSD 로 분해**하여 컴포넌트 단위로 짠다.
-> 산출물: 카테고리/섹션 선택이 가능하고, 가운데 영역에 "주제/풀이 탭" 자리가 잡힌 상태.
+> **Study Diary** 는 3단계 계층형 레이아웃이다: 1차 주제(카테고리) → 2차 주제(섹션) → 3차 본문(노트).
+> 산출물: 3개 사이드바 + 노트 영역이 연동되는 완전한 UI.
 
 ---
 
 ## 1. 화면 레이아웃
 
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│ 페이지 헤더 (Trophy + "Challenge with GPT" + 우측 작은 액션)         │
-├────────────┬──────────────┬──────────────────────────────────────┤
-│ 카테고리   │ 섹션(회차)   │ 메인 콘텐츠 (탭)                     │
-│ Sidebar    │ Sidebar      │  ┌──────────────────────────────────┐│
-│ (220px)    │ (260px)      │  │ [주제] [풀이] [GPT] [내 노트]   ││
-│ 가변,      │ 가변,        │  └──────────────────────────────────┘│
-│ resizable  │ resizable    │  탭별 콘텐츠 영역                     │
-│            │              │                                      │
-└────────────┴──────────────┴──────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│ 헤더: Trophy + "Study Diary" 메뉴                      │
+├──────────┬──────────┬──────────────────────────────────┤
+│ 1차 주제 │ 2차 주제 │ 3차 본문 (노트 목록 + 에디터)    │
+│(Category)│(Section) │                                 │
+│          │          │ ┌────────────────────────────┐  │
+│ Spring   │ 1회차 +  │ │ [+ 새 노트] [저장] [공유]   │  │
+│ React +  │ 2회차    │ │                            │  │
+│          │ 3회차    │ │ 노트 선택/작성 에디터      │  │
+│          │          │ │                            │  │
+└──────────┴──────────┴──────────────────────────────────┘
 ```
 
-높이: `h-[calc(100vh-132px)]` (헤더 높이 보정 — meeting 페이지와 동일 패턴).
+높이: `h-[calc(100vh-120px)]` (헤더 높이 보정).
 
 ---
 
-## 2. 컴포넌트 분해
+## 2. 컴포넌트 구조
 
-| 컴포넌트 | 위치 | 책임 |
+| 컴포넌트 | 파일 | 책임 |
 |---|---|---|
-| `ChallengePage` | `pages/challenge/ui/challenge-page.tsx` | 데이터 fetch + 선택 상태 + 레이아웃 조립 |
-| `CategorySidebar` | `features/challenge/category-sidebar/ui/category-sidebar.tsx` | 카테고리 목록 + 선택 + (admin) 추가/편집/삭제/드래그 |
-| `SectionSidebar` | `features/challenge/section-sidebar/ui/section-sidebar.tsx` | 선택된 카테고리의 섹션 목록 + (admin) CRUD/드래그 |
-| `ChallengeContentTabs` | `pages/challenge/ui/challenge-content-tabs.tsx` | 4개 탭 (주제/풀이/GPT/노트) — 컴포지션 |
-| `EmptyState` | `pages/challenge/ui/empty-state.tsx` | 카테고리/섹션 미선택 안내 |
+| `ChallengePage` | `pages/challenge/ui/challenge-page.tsx` | 선택 상태 + 레이아웃 조립 |
+| `ChallengeSidebar` | `features/challenge/ui/challenge-sidebar.tsx` | 1차 주제 목록 + "+" 버튼 + 선택 |
+| `ChallengeTopicsList` | `features/challenge/ui/challenge-topics-list.tsx` | 2차 주제 목록 + "+" 버튼 + 선택 |
+| `UserNotesPanel` | `features/challenge/user-notes/ui/user-notes-panel.tsx` | 3차 본문 (노트 CRUD) |
 
-각 사이드바는 **자체 React Query 훅**으로 데이터를 가져온다 (페이지가 prop drill 하지 않는다).
-
----
-
-## 3. 선택 상태 (URL 동기화)
-
-`/challenge?categoryId=...&sectionId=...` 로 직링크 가능하게.
-
-```ts
-// pages/challenge/lib/use-challenge-selection.ts
-import { useNavigate, useSearch } from '@tanstack/react-router'
-
-export function useChallengeSelection() {
-  const search = useSearch({ from: '/challenge' }) as {
-    categoryId?: string
-    sectionId?: string
-  }
-  const navigate = useNavigate({ from: '/challenge' })
-
-  const setCategoryId = (id: string | null) =>
-    navigate({ search: { ...search, categoryId: id ?? undefined, sectionId: undefined } })
-
-  const setSectionId = (id: string | null) =>
-    navigate({ search: { ...search, sectionId: id ?? undefined } })
-
-  return {
-    categoryId: search.categoryId ?? null,
-    sectionId: search.sectionId ?? null,
-    setCategoryId,
-    setSectionId,
-  }
-}
-```
-
-라우트 정의에 `validateSearch` 추가:
-```ts
-const challengeRoute = createRoute({
-  getParentRoute: () => authedLayoutRoute,
-  path: '/challenge',
-  validateSearch: (s: Record<string, unknown>) => ({
-    categoryId: typeof s.categoryId === 'string' ? s.categoryId : undefined,
-    sectionId: typeof s.sectionId === 'string' ? s.sectionId : undefined,
-  }),
-  component: lazy(() => import('../pages/challenge/ui/challenge-page')),
-})
-```
+각 컴포넌트는 **자체 React Query 훅**으로 독립적으로 데이터를 가져온다.
 
 ---
 
-## 4. 카테고리 사이드바
+## 3. 데이터 플로우
 
-### 4.1 데이터 훅
-
-```ts
-// entities/challenge/api/challenge-api.ts
-export function useChallengeCategories() {
-  return useQuery({
-    queryKey: ['challenge', 'categories'],
-    queryFn: () => apiRequest<ChallengeCategory[]>('/challenge/categories'),
-  })
-}
-
-export function useCreateCategory() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: CreateCategoryInput) =>
-      apiRequest('/challenge/categories', { method: 'POST', body: JSON.stringify(input) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['challenge', 'categories'] }),
-  })
-}
-// updateCategory, deleteCategory, reorderCategories 동일 패턴
+```
+페이지 상태 (selectedCategory, selectedSection)
+    ↓
+ChallengeSidebar ──(categoryId)──→ ChallengeTopicsList
+                                       ↓
+                              (sectionId)
+                                       ↓
+                              UserNotesPanel
 ```
 
-### 4.2 컴포넌트
+**선택 흐름**:
+1. 1차 주제(카테고리) 선택 → `selectedCategory` 상태 변경
+2. 자동으로 중앙 패널이 "+" 버튼과 함께 활성화
+3. 2차 주제(섹션) 선택 → `selectedSection` 상태 변경
+4. 우측 패널에 해당 섹션의 노트 목록 표시
+
+---
+
+## 4. 1차 주제 사이드바 (ChallengeSidebar)
+
+### 4.1 헤더 및 "+" 버튼
 
 ```tsx
-export function CategorySidebar({
-  selectedId,
-  onSelect,
-}: { selectedId: string | null; onSelect: (id: string) => void }) {
-  const { data: categories = [], isLoading } = useChallengeCategories()
-  const userRole = useSessionStore((s) => s.userRole)
-  const isAdmin = userRole === 'admin'
-
-  return (
-    <aside className="ui-panel flex min-h-0 w-56 flex-col overflow-hidden bg-surface-raised">
-      <header className="flex items-center justify-between border-b border-surface-border-soft bg-surface-muted px-4 py-3">
-        <h2 className="text-sm font-black ui-text-primary">카테고리</h2>
-        {isAdmin && <AddCategoryButton />}
-      </header>
-      <DndContext /* admin 일 때만 */>
-        <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-          <ul className="flex-1 overflow-y-auto p-2 space-y-1">
-            {categories.map((cat) => (
-              <CategoryRow
-                key={cat.id}
-                category={cat}
-                isSelected={selectedId === cat.id}
-                onSelect={() => onSelect(cat.id)}
-                isAdmin={isAdmin}
-              />
-            ))}
-          </ul>
-        </SortableContext>
-      </DndContext>
-    </aside>
-  )
-}
+<div className="sticky top-0 border-b border-surface-border bg-surface-muted p-3">
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-2">
+      <Trophy className="size-4 text-brand-primary" />
+      <p className="text-xs font-bold ui-text-primary">1차 주제</p>
+    </div>
+    <button
+      onClick={() => setIsAddingCategory(true)}
+      className="p-1 hover:bg-surface-border rounded transition-colors"
+      title="카테고리 추가"
+    >
+      <Plus className="size-3.5 ui-text-secondary hover:ui-text-primary" />
+    </button>
+  </div>
+</div>
 ```
 
-> 드래그 처리는 메뉴 관리에서 만든 패턴(상위 SortableContext 1개 + closestCenter + activationConstraint 8px) 그대로 재사용.
+### 4.2 카테고리 항목
 
-### 4.3 너비 저장
+각 카테고리는 클릭 가능한 버튼:
+- 선택됨: `bg-brand-glass ui-text-primary`
+- 미선택: `ui-text-secondary hover:bg-surface-muted`
+- 체크: `text-truncate` (긴 이름 생략)
 
-```ts
-const [width, setWidth] = useLocalStorage('challenge:cat-sidebar-width', 224)
-```
-
-`shared/lib/use-local-storage.ts` 가 없으면 추가. 양쪽 사이드바 모두 동일하게 사용.
-
----
-
-## 5. 섹션 사이드바
-
-기본 구조는 카테고리 사이드바와 동일. 차이점:
-- `useChallengeSections(categoryId)` 로 종속 fetch (`enabled: !!categoryId`)
-- 카테고리 미선택일 때 `<EmptyState message="좌측에서 카테고리를 선택하세요" />`
-- 섹션 카드에 `summary` (소제목) 한 줄 노출
-
----
-
-## 6. 메인 콘텐츠 — 탭 구성
-
-### 6.1 탭 정의
-
-| 탭 | 키 | 노출 조건 | 본문 |
-|---|---|---|---|
-| 주제 | `topics` | 항상 | `TopicViewer` (사용자) / `TopicEditor` (admin) — 05번 문서 |
-| 풀이 | `submissions` | 항상 | `SubmissionList` + `SubmissionForm` — 06번 문서 |
-| GPT | `gpt` | 항상 | `GptChatPanel` — 07번 문서 |
-| 내 노트 | `notes` | 항상 | `UserNotesPanel` — 08번 문서 |
-
-URL 에 `?tab=topics` 로 보존.
-
-### 6.2 탭 컴포넌트 (radix tabs 또는 자체)
-
-기존 프로젝트에 radix tabs가 이미 있는지 확인 후 재사용. 없으면 간단한 자체 구현:
+### 4.3 "+" 버튼 모달 (현재 구현)
 
 ```tsx
-const tabs = [
-  { id: 'topics', label: '주제', icon: BookOpen },
-  { id: 'submissions', label: '풀이', icon: ClipboardList },
-  { id: 'gpt', label: 'GPT', icon: Sparkles },
-  { id: 'notes', label: '내 노트', icon: NotebookPen },
-] as const
-```
-
----
-
-## 7. EmptyState 가이드
-
-| 상태 | 메시지 |
-|---|---|
-| 카테고리 0개 | "카테고리가 아직 없습니다. (admin) 좌측 상단의 + 로 추가하세요." |
-| 카테고리 선택 X | "왼쪽에서 카테고리를 선택하세요." |
-| 섹션 0개 | "이 카테고리에는 회차가 없습니다." |
-| 섹션 선택 X | "회차를 선택하면 주제와 풀이가 보입니다." |
-
-각각 `ui-panel-soft` 안에 `Trophy`/`BookOpen` 아이콘 + 문구.
-
----
-
-## 8. 페이지 컴포넌트 조립 (스니펫)
-
-```tsx
-export default function ChallengePage() {
-  const { categoryId, sectionId, setCategoryId, setSectionId } = useChallengeSelection()
-
-  return (
-    <div className="h-[calc(100vh-132px)] min-h-[680px] overflow-hidden p-1">
-      <div className="grid h-full gap-3 lg:grid-cols-[14rem_16rem_minmax(0,1fr)]">
-        <CategorySidebar selectedId={categoryId} onSelect={setCategoryId} />
-
-        {categoryId ? (
-          <SectionSidebar
-            categoryId={categoryId}
-            selectedId={sectionId}
-            onSelect={setSectionId}
-          />
-        ) : (
-          <EmptyState variant="no-category" />
-        )}
-
-        {sectionId ? (
-          <ChallengeContentTabs sectionId={sectionId} />
-        ) : (
-          <EmptyState variant="no-section" />
-        )}
+{isAddingCategory && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <Card className="w-96 p-4 rounded-md">
+      <h3 className="text-sm font-bold ui-text-primary mb-4">1차 주제 추가</h3>
+      <input
+        type="text"
+        placeholder="카테고리명 입력"
+        className="ui-input w-full mb-4"
+      />
+      <div className="flex gap-2 justify-end">
+        <button className="px-3 py-1.5 text-xs...">취소</button>
+        <button className="px-3 py-1.5 text-xs... bg-brand-primary">추가</button>
       </div>
+    </Card>
+  </div>
+)}
+```
+
+---
+
+## 5. 2차 주제 사이드바 (ChallengeTopicsList)
+
+### 5.1 헤더 및 "+" 버튼
+
+```tsx
+<div className="sticky top-0 border-b border-surface-border bg-surface-muted p-3">
+  <div className="flex items-center justify-between">
+    <p className="text-xs font-bold ui-text-primary">2차 주제 ({sections.length})</p>
+    <button
+      onClick={() => setIsAddingSection(true)}
+      className="p-1 hover:bg-surface-border rounded transition-colors"
+      title="섹션 추가"
+    >
+      <Plus className="size-3.5 ui-text-secondary hover:ui-text-primary" />
+    </button>
+  </div>
+</div>
+```
+
+### 5.2 섹션 항목
+
+- 1차 주제 미선택: 빈 상태 표시
+- 1차 주제 선택: 해당 섹션들 로드 + 표시
+- 각 섹션: `title` 필드 표시
+
+### 5.3 "+" 버튼 모달
+
+```tsx
+{isAddingSection && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <Card className="w-96 p-4 rounded-md">
+      <h3 className="text-sm font-bold ui-text-primary mb-4">2차 주제 추가</h3>
+      <input
+        type="text"
+        placeholder="주제명 입력"
+        className="ui-input w-full mb-4"
+      />
+      <div className="flex gap-2 justify-end">
+        <button>취소</button>
+        <button className="bg-brand-primary">추가</button>
+      </div>
+    </Card>
+  </div>
+)}
+```
+
+---
+
+## 6. 3차 본문 영역 (UserNotesPanel)
+
+### 6.1 헤더
+
+```tsx
+<div className="border-b border-surface-border bg-surface-muted p-4 flex items-center justify-between">
+  <h2 className="text-sm font-bold ui-text-primary">3차 본문</h2>
+  <button className="px-3 py-1.5 text-xs bg-brand-primary text-white">+ 새 노트</button>
+</div>
+```
+
+### 6.2 노트 목록 (좌측)
+
+```tsx
+<div className="w-64 border-r border-surface-border overflow-y-auto">
+  {notes.map((note) => (
+    <button
+      key={note.id}
+      onClick={() => setSelectedNoteId(note.id)}
+      className={`w-full p-3 text-left border-b ${
+        selectedNoteId === note.id
+          ? 'bg-brand-glass ui-text-primary'
+          : 'ui-text-secondary hover:bg-surface-muted'
+      }`}
+    >
+      <div className="font-medium truncate">{note.title || '(제목 없음)'}</div>
+      <div className="text-xs ui-text-muted mt-1">
+        {new Date(note.updatedAt).toLocaleDateString()}
+      </div>
+    </button>
+  ))}
+</div>
+```
+
+### 6.3 노트 에디터 (우측)
+
+선택된 노트의:
+- 제목 입력
+- 마크다운/텍스트 에디터
+- 저장 버튼
+- 공개 토글 (private/shared)
+- 삭제 버튼
+
+---
+
+## 7. 전체 페이지 조립
+
+```tsx
+export function ChallengePage() {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedSection, setSelectedSection] = useState<string | null>(null)
+
+  return (
+    <div className="flex h-[calc(100vh-120px)] gap-3">
+      {/* 1차 주제 */}
+      <ChallengeSidebar 
+        selectedCategory={selectedCategory} 
+        onSelectCategory={setSelectedCategory} 
+      />
+
+      {/* 2차 주제 */}
+      {selectedCategory && (
+        <ChallengeTopicsList
+          sectionId={selectedCategory}
+          selectedTopic={selectedSection}
+          onSelectTopic={setSelectedSection}
+        />
+      )}
+
+      {/* 3차 본문 */}
+      {selectedSection ? (
+        <Card className="flex-1 flex flex-col rounded-md overflow-hidden">
+          <UserNotesPanel sectionId={selectedSection} />
+        </Card>
+      ) : (
+        <Card className="flex-1 flex items-center justify-center rounded-md">
+          <div className="text-center">
+            <p className="ui-text-muted text-sm">2차 주제를 선택하여 시작하세요</p>
+          </div>
+        </Card>
+      )}
     </div>
   )
 }
@@ -240,35 +246,51 @@ export default function ChallengePage() {
 
 ---
 
-## 9. 스타일 토큰 사용 (CLAUDE.md 규칙 준수)
+## 8. 스타일 규칙 (CLAUDE.md 준수)
 
-| 용도 | 클래스 |
+| 요소 | 스타일 |
 |---|---|
-| 사이드바 패널 | `ui-panel bg-surface-raised` |
-| 헤더 strip | `bg-surface-muted border-b border-surface-border-soft` |
-| 선택된 항목 | `border-brand-border bg-surface-strong text-text-primary` |
-| 비선택 항목 | `border-transparent ui-text-secondary hover:bg-surface-muted` |
-| 강조 배지 | `border-brand-border bg-brand-glass text-brand-primary` |
-| 본문 카드 | `ui-panel-soft p-4` |
+| 사이드바 배경 | `bg-surface-muted` |
+| 헤더 구분선 | `border-b border-surface-border` |
+| 선택된 항목 | `bg-brand-glass ui-text-primary` |
+| 비선택 항목 | `ui-text-secondary hover:bg-surface-muted` |
+| "+" 버튼 | `p-1 hover:bg-surface-border rounded` |
+| 모달 배경 | `fixed inset-0 bg-black/50` |
+| 모달 버튼 | `bg-brand-primary text-white` or `border border-surface-border` |
 
-> `text-white`, `bg-slate-*` 같은 raw 팔레트 절대 금지.
+> **절대 금지**: `text-white`, `bg-slate-*`, `text-emerald-*` 등 raw 팔레트
+
+---
+
+## 9. 현재 구현 상태 (2026-05-11)
+
+✅ **완료**:
+- `ChallengeSidebar` with "+" 버튼 + 모달 (카테고리 추가)
+- `ChallengeTopicsList` with "+" 버튼 + 모달 (섹션 추가)
+- `UserNotesPanel` (노트 목록)
+- 3패널 선택 흐름 동작
+- 헤더 라벨 (1차 주제, 2차 주제)
+
+🔄 **진행 중**:
+- 노트 에디터 (작성/수정/삭제 UI)
+- 공개 토글
 
 ---
 
 ## 10. 점검 체크리스트
 
-- [ ] `/challenge` 진입 시 좌측 카테고리 사이드바 표시 (시드 카테고리 1개 보임)
-- [ ] 카테고리 클릭 → URL 에 `?categoryId=...` 반영
-- [ ] 카테고리 선택 후 가운데 섹션 사이드바 활성화
-- [ ] 섹션 선택 → URL `?sectionId=...` 반영, 우측 탭 영역 활성화
-- [ ] 직접 URL 에 `categoryId/sectionId` 로 진입 가능 (새로고침 후에도 선택 유지)
-- [ ] admin 만 카테고리/섹션 추가 버튼 보임
-- [ ] 사이드바 너비 변경 → 새로고침 후 유지 (localStorage)
-- [ ] 비어있을 때 EmptyState 4종 모두 정상 노출
-- [ ] 모바일 폭 (lg 미만) 에서도 깨지지 않음 (단계별 표시)
+- [x] 1차 주제 선택 가능
+- [x] "+" 버튼으로 카테고리 추가 가능
+- [x] 1차 주제 선택 후 2차 주제 사이드바 활성화
+- [x] 2차 주제 선택 가능
+- [x] "+" 버튼으로 섹션 추가 가능
+- [x] 2차 주제 선택 후 노트 패널 활성화
+- [ ] 노트 작성/수정/삭제 완성
+- [ ] 노트 공개 토글 구현
+- [ ] 모바일 레이아웃 대응
 
 ---
 
-## 11. 다음 단계
+## 다음 단계
 
-→ `05-block-editor.md` — 주제 블록 에디터 (NOTE/MMD/CHECKLIST/...)
+→ `05-block-editor.md` 또는 M5 구현 (노트 CRUD UI)
