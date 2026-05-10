@@ -82,6 +82,8 @@ export function PrototypeDetailPage({
   const [checklistDraft, setChecklistDraft] = useState('')
   const [tagDraft, setTagDraft] = useState('')
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null)
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editingDraft, setEditingDraft] = useState('')
 
   const checklist = prototype.checklist ?? []
   const tags = prototype.tags ?? []
@@ -128,6 +130,31 @@ export function PrototypeDetailPage({
   const removeChecklistItem = async (index: number) => {
     const nextChecklist = checklist.filter((_, i) => i !== index)
     await updatePrototype.mutateAsync({ checklist: nextChecklist } as any)
+  }
+
+  const startEditingItem = (index: number, item: string) => {
+    const text = item.startsWith('[x] ') ? item.slice(4) : item
+    setEditingIndex(index)
+    setEditingDraft(text)
+  }
+
+  const commitEditingItem = async () => {
+    if (editingIndex === null) return
+    const newText = editingDraft.trim()
+    if (newText) {
+      const item = checklist[editingIndex]
+      const prefix = item.startsWith('[x] ') ? '[x] ' : ''
+      const nextChecklist = [...checklist]
+      nextChecklist[editingIndex] = prefix + newText
+      await updatePrototype.mutateAsync({ checklist: nextChecklist } as any)
+    }
+    setEditingIndex(null)
+    setEditingDraft('')
+  }
+
+  const cancelEditingItem = () => {
+    setEditingIndex(null)
+    setEditingDraft('')
   }
 
   const addTag = async () => {
@@ -358,15 +385,33 @@ export function PrototypeDetailPage({
           <div className="space-y-3">
             {checklist.map((item, i) => {
               const checked = item.startsWith('[x] ')
+              const isEditing = editingIndex === i
               return (
                 <div key={i} className="group flex items-center gap-3 rounded-sm bg-background p-3 border border-border/40 transition-all hover:shadow-sm hover:border-primary/20">
-                  <button onClick={() => toggleChecklistItem(i)} className={`flex size-5 items-center justify-center rounded-[2px] border-2 transition-all ${checked ? 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/25' : 'border-border bg-muted/30 hover:border-primary/40'}`}>
+                  <button onClick={() => toggleChecklistItem(i)} className={`flex size-5 shrink-0 items-center justify-center rounded-[2px] border-2 transition-all ${checked ? 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/25' : 'border-border bg-muted/30 hover:border-primary/40'}`}>
                     <Check className={`size-3 ${checked ? 'opacity-100' : 'opacity-0'}`} />
                   </button>
-                  <span className={`text-sm font-medium flex-1 ${checked ? 'text-muted-foreground line-through opacity-50' : 'text-foreground'}`}>
-                    {checked ? item.slice(4) : item}
-                  </span>
-                  {canManagePrototype && (
+                  {isEditing ? (
+                    <input
+                      autoFocus
+                      value={editingDraft}
+                      onChange={e => setEditingDraft(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') commitEditingItem()
+                        if (e.key === 'Escape') cancelEditingItem()
+                      }}
+                      onBlur={commitEditingItem}
+                      className="flex-1 bg-transparent text-sm font-medium text-foreground outline-none border-b border-primary focus:border-primary"
+                    />
+                  ) : (
+                    <span
+                      className={`text-sm font-medium flex-1 ${checked ? 'text-muted-foreground line-through opacity-50' : 'text-foreground'} ${canManagePrototype && !checked ? 'cursor-text hover:text-primary transition-colors' : ''}`}
+                      onClick={() => canManagePrototype && !checked && startEditingItem(i, item)}
+                    >
+                      {checked ? item.slice(4) : item}
+                    </span>
+                  )}
+                  {canManagePrototype && !isEditing && (
                     <button onClick={() => removeChecklistItem(i)} className="opacity-0 text-muted-foreground hover:text-destructive transition-all group-hover:opacity-100">
                       <X className="size-4" />
                     </button>
