@@ -13,7 +13,7 @@ import type { MenuItem } from '../../../entities/menu/model/types'
 function sectionIdToPath(sectionId: string): string {
   const map: Record<string, string> = {
     prototype: '/prototype',
-    chatbot: '/chatbot',
+    challenge: '/challenge',
     meeting: '/meeting',
     docu: '/docu',
     ai_methodology: '/ai-methodology',
@@ -29,7 +29,7 @@ function sectionIdToPath(sectionId: string): string {
 
 function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/prototype')) return 'prototype'
-  if (pathname.startsWith('/chatbot')) return 'chatbot'
+  if (pathname.startsWith('/challenge')) return 'challenge'
   if (pathname.startsWith('/meeting')) return 'meeting'
   if (pathname.startsWith('/docu')) return 'docu'
   if (pathname.startsWith('/ai-methodology')) return 'ai_methodology'
@@ -180,26 +180,15 @@ export function AppHeader() {
 
             const Icon = getIcon(item.icon)
             return (
-              <Fragment key={item.id}>
-                <HeaderPill
-                  icon={Icon}
-                  variant={activeSection === item.sectionId ? 'active' : 'default'}
-                  onClick={() => item.sectionId && handleNavigation(item.sectionId)}
-                  labelClassName="hidden sm:inline"
-                >
-                  {item.name}
-                </HeaderPill>
-                {item.sectionId === 'chatbot' ? (
-                  <HeaderPill
-                    icon={LucideIcons.MessagesSquare}
-                    variant={activeSection === 'meeting' ? 'active' : 'default'}
-                    onClick={() => handleNavigation('meeting')}
-                    labelClassName="hidden sm:inline"
-                  >
-                    회의실
-                  </HeaderPill>
-                ) : null}
-              </Fragment>
+              <HeaderPill
+                key={item.id}
+                icon={Icon}
+                variant={activeSection === item.sectionId ? 'active' : 'default'}
+                onClick={() => item.sectionId && handleNavigation(item.sectionId)}
+                labelClassName="hidden sm:inline"
+              >
+                {item.name}
+              </HeaderPill>
             )
           })}
         </nav>

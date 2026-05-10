@@ -12,6 +12,8 @@ import { dirname, isAbsolute, join } from 'node:path';
 import { catalogSeed } from '../catalog/catalog.seed';
 import {
   categoriesTable,
+  challengeCategoriesTable,
+  challengeSectionsTable,
   menusTable,
   prototypesTable,
   schema,
@@ -362,6 +364,120 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE UNIQUE INDEX IF NOT EXISTS idx_meeting_dm_pairs_users
         ON meeting_dm_pairs(user_a_id, user_b_id);
+
+      CREATE TABLE IF NOT EXISTS challenge_categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        summary TEXT,
+        icon TEXT NOT NULL DEFAULT 'Trophy',
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS challenge_sections (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES challenge_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_challenge_sections_category
+        ON challenge_sections(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS challenge_topics (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        block_type TEXT NOT NULL,
+        block_title TEXT,
+        content TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES challenge_sections(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_challenge_topics_section
+        ON challenge_topics(section_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS challenge_submissions (
+        id TEXT PRIMARY KEY,
+        topic_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        score INTEGER NOT NULL DEFAULT 0,
+        max_score INTEGER NOT NULL DEFAULT 0,
+        checked_items TEXT NOT NULL DEFAULT '[]',
+        admin_rating INTEGER,
+        admin_feedback TEXT,
+        rated_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(topic_id) REFERENCES challenge_topics(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(rated_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_challenge_submissions_topic_user
+        ON challenge_submissions(topic_id, user_id);
+
+      CREATE TABLE IF NOT EXISTS challenge_gpt_threads (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        model TEXT NOT NULL DEFAULT 'gpt-4o-mini',
+        is_shared INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES challenge_sections(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_challenge_gpt_threads_section_user
+        ON challenge_gpt_threads(section_id, user_id);
+
+      CREATE TABLE IF NOT EXISTS challenge_gpt_messages (
+        id TEXT PRIMARY KEY,
+        thread_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        tokens_in INTEGER,
+        tokens_out INTEGER,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(thread_id) REFERENCES challenge_gpt_threads(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_challenge_gpt_messages_thread_created
+        ON challenge_gpt_messages(thread_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS challenge_user_notes (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        section_id TEXT,
+        topic_id TEXT,
+        title TEXT,
+        content TEXT NOT NULL,
+        visibility TEXT NOT NULL DEFAULT 'private',
+        pinned INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(section_id) REFERENCES challenge_sections(id) ON DELETE CASCADE,
+        FOREIGN KEY(topic_id) REFERENCES challenge_topics(id) ON DELETE CASCADE,
+        CHECK((section_id IS NOT NULL) OR (topic_id IS NOT NULL))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_challenge_user_notes_user_section
+        ON challenge_user_notes(user_id, section_id, visibility);
+
+      CREATE INDEX IF NOT EXISTS idx_challenge_user_notes_user_topic
+        ON challenge_user_notes(user_id, topic_id, visibility);
     `);
 
     this.migrateLegacySchema();
@@ -449,9 +565,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
-          name: 'Chatbot',
-          sectionId: 'chatbot',
-          icon: 'Bot',
+          name: 'Challenge with GPT',
+          sectionId: 'challenge',
+          icon: 'Trophy',
           displayOrder: 5,
           isVisible: true,
           requiredRole: null,
@@ -670,6 +786,41 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         createdAt: now,
         updatedAt: now,
       });
+    }
+
+    // Seed Challenge category and section (idempotent)
+    const existingChallengeCategory = this.db
+      .select()
+      .from(challengeCategoriesTable)
+      .get();
+
+    if (!existingChallengeCategory) {
+      const categoryId = randomUUID();
+      this.db
+        .insert(challengeCategoriesTable)
+        .values({
+          id: categoryId,
+          name: 'Spring Boot',
+          summary: 'Spring Framework 기초 학습',
+          icon: 'Trophy',
+          createdBy: demoUser.id,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      this.db
+        .insert(challengeSectionsTable)
+        .values({
+          id: randomUUID(),
+          categoryId: categoryId,
+          title: '1회차',
+          summary: 'Spring Boot 시작하기',
+          orderIdx: 0,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
     }
 
     if (existing.count > 0) {

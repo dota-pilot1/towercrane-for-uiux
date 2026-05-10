@@ -407,6 +407,112 @@ export const issueCommentsTable = sqliteTable('issue_comments', {
   updatedAt: text('updated_at').notNull(),
 });
 
+// ─── Challenge Module Tables ────────────────────────────────────────────
+
+export type ChallengeBlockType = 'NOTE' | 'MMD' | 'CHECKLIST' | 'GITHUB' | 'FIGMA' | 'FILE' | 'DBTABLE';
+
+export const challengeCategoriesTable = sqliteTable('challenge_categories', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  summary: text('summary'),
+  icon: text('icon').notNull().default('Trophy'),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const challengeSectionsTable = sqliteTable('challenge_sections', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id')
+    .notNull()
+    .references(() => challengeCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const challengeTopicsTable = sqliteTable('challenge_topics', {
+  id: text('id').primaryKey(),
+  sectionId: text('section_id')
+    .notNull()
+    .references(() => challengeSectionsTable.id, { onDelete: 'cascade' }),
+  blockType: text('block_type').$type<ChallengeBlockType>().notNull(),
+  blockTitle: text('block_title'),
+  content: text('content').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const challengeSubmissionsTable = sqliteTable('challenge_submissions', {
+  id: text('id').primaryKey(),
+  topicId: text('topic_id')
+    .notNull()
+    .references(() => challengeTopicsTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  score: integer('score').notNull().default(0),
+  maxScore: integer('max_score').notNull().default(0),
+  checkedItems: text('checked_items', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  adminRating: integer('admin_rating'),
+  adminFeedback: text('admin_feedback'),
+  ratedBy: text('rated_by').references(() => usersTable.id, { onDelete: 'set null' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const challengeGptThreadsTable = sqliteTable('challenge_gpt_threads', {
+  id: text('id').primaryKey(),
+  sectionId: text('section_id')
+    .notNull()
+    .references(() => challengeSectionsTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  model: text('model').notNull().default('gpt-4o-mini'),
+  isShared: integer('is_shared', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type GptMessageRole = 'user' | 'assistant' | 'system';
+
+export const challengeGptMessagesTable = sqliteTable('challenge_gpt_messages', {
+  id: text('id').primaryKey(),
+  threadId: text('thread_id')
+    .notNull()
+    .references(() => challengeGptThreadsTable.id, { onDelete: 'cascade' }),
+  role: text('role').$type<GptMessageRole>().notNull(),
+  content: text('content').notNull(),
+  tokensIn: integer('tokens_in'),
+  tokensOut: integer('tokens_out'),
+  createdAt: text('created_at').notNull(),
+});
+
+export type NoteVisibility = 'private' | 'shared' | 'public';
+
+export const challengeUserNotesTable = sqliteTable('challenge_user_notes', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  sectionId: text('section_id').references(() => challengeSectionsTable.id, { onDelete: 'cascade' }),
+  topicId: text('topic_id').references(() => challengeTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title'),
+  content: text('content').notNull(),
+  visibility: text('visibility').$type<NoteVisibility>().notNull().default('private'),
+  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const schema = {
   usersTable,
   sessionsTable,
@@ -432,6 +538,13 @@ export const schema = {
   meetingDmPairsTable,
   issuesTable,
   issueCommentsTable,
+  challengeCategoriesTable,
+  challengeSectionsTable,
+  challengeTopicsTable,
+  challengeSubmissionsTable,
+  challengeGptThreadsTable,
+  challengeGptMessagesTable,
+  challengeUserNotesTable,
 };
 
 export type UserRow = typeof usersTable.$inferSelect;
@@ -483,3 +596,17 @@ export type IssueRow = typeof issuesTable.$inferSelect;
 export type IssueInsert = typeof issuesTable.$inferInsert;
 export type IssueCommentRow = typeof issueCommentsTable.$inferSelect;
 export type IssueCommentInsert = typeof issueCommentsTable.$inferInsert;
+export type ChallengeCategoryRow = typeof challengeCategoriesTable.$inferSelect;
+export type ChallengeCategoryInsert = typeof challengeCategoriesTable.$inferInsert;
+export type ChallengeSectionRow = typeof challengeSectionsTable.$inferSelect;
+export type ChallengeSectionInsert = typeof challengeSectionsTable.$inferInsert;
+export type ChallengeTopicRow = typeof challengeTopicsTable.$inferSelect;
+export type ChallengeTopicInsert = typeof challengeTopicsTable.$inferInsert;
+export type ChallengeSubmissionRow = typeof challengeSubmissionsTable.$inferSelect;
+export type ChallengeSubmissionInsert = typeof challengeSubmissionsTable.$inferInsert;
+export type ChallengeGptThreadRow = typeof challengeGptThreadsTable.$inferSelect;
+export type ChallengeGptThreadInsert = typeof challengeGptThreadsTable.$inferInsert;
+export type ChallengeGptMessageRow = typeof challengeGptMessagesTable.$inferSelect;
+export type ChallengeGptMessageInsert = typeof challengeGptMessagesTable.$inferInsert;
+export type ChallengeUserNoteRow = typeof challengeUserNotesTable.$inferSelect;
+export type ChallengeUserNoteInsert = typeof challengeUserNotesTable.$inferInsert;

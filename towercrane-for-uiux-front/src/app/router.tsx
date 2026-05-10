@@ -6,7 +6,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
-import { Bot, FileText, UserCog } from 'lucide-react'
+import { FileText, UserCog } from 'lucide-react'
 import { Toaster } from 'sonner'
 
 import { AppHeader } from '../widgets/app-header/ui/app-header'
@@ -20,6 +20,7 @@ import { TaskPage } from '../pages/task/ui/task-page'
 import { PrototypeIssuesPage } from '../pages/prototype-issues/ui/prototype-issues-page'
 import { ProfilePage } from '../pages/profile/ui/profile-page'
 import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
+import { ChallengePage } from '../pages/challenge/ui/challenge-page'
 import { useSessionStore } from '../shared/store/session-store'
 import { useCurrentUser } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
@@ -160,27 +161,31 @@ export const prototypeCategoryRoute = createRoute({
   component: WorkbenchPage,
 })
 
-// ─── /chatbot ────────────────────────────────────────────────────────────────
+// ─── /challenge ──────────────────────────────────────────────────────────────
 
-const chatbotRoute = createRoute({
+const challengeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/challenge',
+  component: ChallengePage,
+})
+
+// ─── /chatbot → /challenge redirect ──────────────────────────────────────────
+
+const chatbotRedirectRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot',
-  component: () => (
-    <Card className="rounded-md p-4">
-      <div className="flex items-start gap-3">
-        <div className="ui-icon-button-brand rounded-md p-2 shrink-0">
-          <Bot className="size-4" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm leading-6 ui-text-secondary">
-            프로토타입 정리 흐름이 안정화되면 카테고리 추천, 태그 정리, 비교 질문을 붙이는 보조
-            기능으로 확장합니다.
-          </p>
-        </div>
-      </div>
-    </Card>
-  ),
+  component: ChatbotRedirect,
 })
+
+function ChatbotRedirect() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    navigate({ to: '/challenge', replace: true })
+  }, [navigate])
+
+  return null
+}
 
 // ─── /meeting ────────────────────────────────────────────────────────────────
 
@@ -380,7 +385,8 @@ export const router = createRouter({
       indexRoute,
       prototypeIndexRoute,
       prototypeCategoryRoute,
-      chatbotRoute,
+      challengeRoute,
+      chatbotRedirectRoute,
       meetingRoute,
       docuRoute,
       aiMethodologyRoute,
