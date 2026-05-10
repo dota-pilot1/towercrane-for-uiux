@@ -1,14 +1,39 @@
 import { useState } from 'react'
 import { Card } from '../../../shared/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../shared/ui/tabs'
-import { BookOpen, CheckCircle, MessageCircle, NotebookPen } from 'lucide-react'
+import { BookOpen, CheckCircle, MessageCircle, NotebookPen, Loader2 } from 'lucide-react'
+import {
+  useTopicById,
+  useMySubmission,
+  useMyNotes,
+  useSharedNotes,
+  useGptThreads,
+  useCreateNote,
+  useUpdateNote,
+  useDeleteNote,
+} from '../lib/hooks'
+import { BlockRenderer } from '../block-editor/ui/block-renderer'
+import { SubmissionForm } from '../submission/ui/submission-form'
+import { SubmissionCard } from '../submission/ui/submission-card'
+import { GptChatPanel } from '../gpt-chat/ui/gpt-chat-panel'
+import { UserNotesPanel } from '../user-notes/ui/user-notes-panel'
 
 interface ChallengeMainPanelProps {
   topicId: string
+  sectionId?: string
 }
 
-export function ChallengeMainPanel({ topicId }: ChallengeMainPanelProps) {
+export function ChallengeMainPanel({ topicId, sectionId }: ChallengeMainPanelProps) {
   const [activeTab, setActiveTab] = useState('topic')
+  const { data: topic, isLoading: topicLoading } = useTopicById(topicId)
+  const { data: submission } = useMySubmission(topicId)
+  const sectionIdForNotes = sectionId || (topic?.sectionId as string)
+  const { data: myNotes = [] } = useMyNotes(sectionIdForNotes)
+  const { data: sharedNotes = [] } = useSharedNotes(sectionIdForNotes)
+  const { data: gptThreads = [] } = useGptThreads(sectionIdForNotes)
+  const createNote = useCreateNote()
+  const updateNote = useUpdateNote()
+  const deleteNote = useDeleteNote()
 
   return (
     <Card className="flex-1 flex flex-col rounded-md overflow-hidden">
@@ -34,39 +59,85 @@ export function ChallengeMainPanel({ topicId }: ChallengeMainPanelProps) {
 
         <div className="flex-1 overflow-y-auto">
           <TabsContent value="topic" className="p-4">
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-bold ui-text-primary mb-2">주제 제목</h3>
-                <p className="text-sm ui-text-secondary">주제 설명과 내용이 여기에 표시됩니다</p>
+            {topicLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="size-5 animate-spin ui-text-secondary" />
               </div>
-              <div className="ui-panel-soft p-4 rounded-md">
-                <p className="text-sm ui-text-secondary">블록 타입에 따른 렌더링 (NOTE, CHECKLIST 등)</p>
+            ) : topic ? (
+              <div className="space-y-4">
+                {topic.blockTitle && (
+                  <div>
+                    <h3 className="font-bold ui-text-primary mb-2">{topic.blockTitle}</h3>
+                  </div>
+                )}
+                <div className="ui-panel-soft p-4 rounded-md">
+                  <BlockRenderer topic={topic} />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm ui-text-muted">주제를 찾을 수 없습니다</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="submission" className="p-4">
-            <div className="space-y-4">
-              <div className="ui-panel-soft p-4 rounded-md">
-                <p className="text-sm ui-text-secondary">풀이 폼 (M6에서 구현)</p>
+            {topic ? (
+              <div className="space-y-4">
+                {submission ? (
+                  <SubmissionCard
+                    id={submission.id}
+                    score={submission.score}
+                    maxScore={submission.maxScore}
+                    content={submission.content}
+                    adminRating={submission.adminRating}
+                    adminFeedback={submission.adminFeedback}
+                    isOwn={true}
+                  />
+                ) : (
+                  <SubmissionForm
+                    topicId={topicId}
+                    blockType={topic.blockType}
+                    blockTitle={topic.blockTitle}
+                    onSubmit={async (content, checkedItems) => {
+                      // Implementation will be added with mutation
+                    }}
+                  />
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm ui-text-muted">주제를 선택하세요</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="gpt" className="p-4">
-            <div className="space-y-4">
-              <div className="ui-panel-soft p-4 rounded-md">
-                <p className="text-sm ui-text-secondary">GPT 챗 인터페이스 (M7에서 구현)</p>
+            {sectionIdForNotes && topic ? (
+              <GptChatPanel sectionId={sectionIdForNotes} topicId={topicId} />
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm ui-text-muted">주제를 선택하세요</p>
               </div>
-            </div>
+            )}
           </TabsContent>
 
           <TabsContent value="notes" className="p-4">
-            <div className="space-y-4">
-              <div className="ui-panel-soft p-4 rounded-md">
-                <p className="text-sm ui-text-secondary">노트 목록 및 에디터 (M8에서 구현)</p>
+            {sectionIdForNotes && topic ? (
+              <UserNotesPanel
+                sectionId={sectionIdForNotes}
+                myNotes={myNotes}
+                sharedNotes={sharedNotes}
+                onCreateNote={(data) => createNote.mutateAsync({ sectionId: sectionIdForNotes, ...data })}
+                onUpdateNote={(id, data) => updateNote.mutateAsync({ id, data })}
+                onDeleteNote={(id) => deleteNote.mutateAsync(id)}
+                loading={createNote.isPending || updateNote.isPending || deleteNote.isPending}
+              />
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm ui-text-muted">주제를 선택하세요</p>
               </div>
-            </div>
+            )}
           </TabsContent>
         </div>
       </Tabs>

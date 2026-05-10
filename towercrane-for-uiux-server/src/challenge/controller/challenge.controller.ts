@@ -142,6 +142,11 @@ export class ChallengeController {
     return this.challengeService.getSubmissionsByTopic(topicId);
   }
 
+  @Get('topics/:topicId/submissions/my')
+  async getMySubmission(@Param('topicId') topicId: string, @Req() req: SessionRequest) {
+    return this.challengeService.getMySubmission(topicId, req.user.id);
+  }
+
   @Get('submissions/:id')
   async getSubmission(@Param('id') id: string, @Req() req: SessionRequest) {
     const submission = await this.challengeService.getSubmissionById(id);

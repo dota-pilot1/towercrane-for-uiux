@@ -5,13 +5,12 @@ import { ChallengeTopicsList } from '../../../features/challenge/ui/challenge-to
 import { ChallengeMainPanel } from '../../../features/challenge/ui/challenge-main-panel'
 
 export function ChallengePage() {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedSection, setSelectedSection] = useState<string | null>(null)
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
 
   return (
     <div className="flex h-[calc(100vh-120px)] gap-3">
-      <ChallengeSidebar selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
+      <ChallengeSidebar selectedCategory={selectedSection} onSelectCategory={setSelectedSection} />
       {selectedSection && (
         <ChallengeTopicsList
           sectionId={selectedSection}
@@ -20,7 +19,7 @@ export function ChallengePage() {
         />
       )}
       {selectedTopic ? (
-        <ChallengeMainPanel topicId={selectedTopic} />
+        <ChallengeMainPanel topicId={selectedTopic} sectionId={selectedSection} />
       ) : (
         <Card className="flex-1 flex items-center justify-center rounded-md">
           <div className="text-center">
