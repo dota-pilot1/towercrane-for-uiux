@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { BookOpen } from 'lucide-react'
 import { Card } from '../../../shared/ui/card'
+import { PageHeader } from '../../../shared/ui/page-header'
 import { ChallengeSidebar } from '../../../features/challenge/ui/challenge-sidebar'
 import { ChallengeTopicsList } from '../../../features/challenge/ui/challenge-topics-list'
 import { useMyNotes, useSharedNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../../../features/challenge/lib/hooks'
@@ -16,7 +18,13 @@ export function ChallengePage() {
   const deleteNote = useDeleteNote()
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-3">
+    <section className="space-y-4 ui-page-bg pb-4">
+      <PageHeader
+        icon={BookOpen}
+        title="Study Diary"
+        description="학습 주제와 노트를 관리합니다."
+      />
+    <div className="flex h-[calc(100vh-200px)] gap-3">
       {/* 1차: 카테고리 */}
       <ChallengeSidebar selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
 
@@ -36,7 +44,7 @@ export function ChallengePage() {
             sharedNotes={sharedNotes}
             onCreateNote={(data) => createNote.mutateAsync({ sectionId: selectedSection, ...data })}
             onUpdateNote={(id, data) => updateNote.mutateAsync({ id, data })}
-            onDeleteNote={(id) => deleteNote.mutateAsync(id)}
+            onDeleteNote={(id) => deleteNote.mutate(id)}
             loading={createNote.isPending || updateNote.isPending || deleteNote.isPending}
           />
         </Card>
@@ -48,5 +56,6 @@ export function ChallengePage() {
         </Card>
       )}
     </div>
+    </section>
   )
 }
