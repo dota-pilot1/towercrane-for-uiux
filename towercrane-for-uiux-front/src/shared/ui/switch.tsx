@@ -13,25 +13,33 @@ export function Switch({ checked, onCheckedChange, label, id }: SwitchProps) {
       <button
         type="button"
         role="switch"
+        id={id}
         aria-checked={checked}
         onClick={() => onCheckedChange(!checked)}
         className={clsx(
-          'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2',
-          checked ? 'bg-brand-primary' : 'bg-surface-strong'
+          'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out outline-none focus-visible:ring-2 focus-visible:ring-text-primary focus-visible:ring-offset-2',
+          checked
+            ? 'bg-text-primary border-transparent'
+            : 'bg-background border-text-primary'
         )}
       >
         <span
           aria-hidden="true"
           className={clsx(
-            'pointer-events-none inline-block size-5 transform rounded-full bg-text-on-brand shadow ring-0 transition duration-200 ease-in-out',
-            checked ? 'translate-x-5' : 'translate-x-0'
+            'pointer-events-none inline-block size-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out',
+            checked
+              ? 'translate-x-5 bg-background'
+              : 'translate-x-0 bg-text-primary'
           )}
         />
       </button>
       {label && (
-        <label htmlFor={id} className="text-sm font-medium text-text-secondary cursor-pointer select-none">
+        <span
+          className="text-sm font-medium text-text-secondary cursor-pointer select-none"
+          onClick={() => onCheckedChange(!checked)}
+        >
           {label}
-        </label>
+        </span>
       )}
     </div>
   )

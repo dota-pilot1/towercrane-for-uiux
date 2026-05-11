@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -41,7 +41,7 @@ import {
   useUpdateTaskPriority,
   useUpdateTaskStatus,
 } from '../model/use-task-queries'
-import { TaskStatusBadge, TaskTypeBadge } from './task-badges'
+import { TaskTypeBadge } from './task-badges'
 
 function formatDate(value?: string | null, fallback = '-') {
   if (!value) return fallback
@@ -80,7 +80,8 @@ function SortableTableRow({
       }}
       onClick={() => onOpenTask(row.original.id)}
       className={clsx(
-        'cursor-pointer bg-surface-raised transition-colors hover:bg-surface-muted',
+        'cursor-pointer transition-colors hover:bg-surface-muted',
+        row.index % 2 === 0 ? 'bg-background' : 'bg-surface-raised',
         isDragging && 'relative z-10 opacity-70 shadow-lg',
       )}
     >
@@ -117,6 +118,7 @@ export function TaskTableView({
   canReorder,
   isLoading,
   onOpenTask,
+  onSelectionChange,
 }: {
   tasks: Task[]
   users: AssignableUser[]
@@ -124,6 +126,7 @@ export function TaskTableView({
   canReorder: boolean
   isLoading?: boolean
   onOpenTask: (taskId: string) => void
+  onSelectionChange?: (ids: string[]) => void
 }) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const sensors = useSensors(
@@ -327,6 +330,10 @@ export function TaskTableView({
   const bulkAction = archived ? restoreTasks : archiveTasks
   const rowIds = tasks.map((task) => task.id)
 
+  useEffect(() => {
+    onSelectionChange?.(selectedIds)
+  }, [selectedIds.join(',')])
+
   const handleBulkAction = async () => {
     if (selectedIds.length === 0) return
     await bulkAction.mutateAsync(selectedIds)
@@ -357,30 +364,6 @@ export function TaskTableView({
 
   return (
     <div className="ui-panel overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-border-soft bg-surface-muted px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-          <TaskStatusBadge status={archived ? 'HOLD' : 'TODO'} />
-          <span>{selectedIds.length}개 선택</span>
-          <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-0.5 text-text-muted">
-            {canReorder ? '핸들을 드래그해 순서 저장' : '수동 순서/진행 업무에서 순서 변경 가능'}
-          </span>
-        </div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          disabled={selectedIds.length === 0 || bulkAction.isPending}
-          onClick={handleBulkAction}
-        >
-          {archived ? (
-            <ArchiveRestore className="mr-2 size-4" />
-          ) : (
-            <Archive className="mr-2 size-4" />
-          )}
-          {archived ? '선택 복원' : '선택 보관'}
-        </Button>
-      </div>
-
       <div className="overflow-x-auto">
         <DndContext
           sensors={sensors}
@@ -389,7 +372,7 @@ export function TaskTableView({
         >
           <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
             <table className="w-full min-w-[1140px] border-collapse text-left">
-              <thead>
+              <thead className="bg-surface-muted">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id} className="border-b border-surface-border-soft">
                     <th className="px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-text-muted">

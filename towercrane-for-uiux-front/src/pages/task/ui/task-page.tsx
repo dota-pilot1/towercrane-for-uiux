@@ -1,23 +1,31 @@
 import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
+  Archive,
+  ArchiveRestore,
   CheckSquare,
   ChevronsLeft,
   ChevronsRight,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
-import type { TaskFilters } from '../../../entities/task/model/types'
+import {
+  TASK_STATUS_LABELS,
+  TASK_STATUS_ORDER,
+} from '../../../entities/task/model/constants'
+import type { TaskFilters, TaskStatus } from '../../../entities/task/model/types'
 import { useAssignableUsers } from '../../../shared/api/users'
 import { Button } from '../../../shared/ui/button'
 import { CompactSelect } from '../../../shared/ui/compact-select'
+import { Switch } from '../../../shared/ui/switch'
+import { ToggleGroup } from '../../../shared/ui/toggle-group'
 import { TaskCardView } from '../../../features/task/ui/task-card-view'
 import { TaskDetailDialog } from '../../../features/task/ui/task-detail-dialog'
 import { TaskFormDialog } from '../../../features/task/ui/task-form-dialog'
 import { TaskKanbanView } from '../../../features/task/ui/task-kanban-view'
 import { TaskTableView } from '../../../features/task/ui/task-table-view'
 import { TaskToolbar, type TaskViewMode } from '../../../features/task/ui/task-toolbar'
-import { useTasks } from '../../../features/task/model/use-task-queries'
+import { useArchiveTasks, useRestoreTasks, useTasks } from '../../../features/task/model/use-task-queries'
 
 const initialFilters: TaskFilters = {
   archived: false,
@@ -53,7 +61,7 @@ function TaskPagination({
   const end = Math.min(safePage * pageSize, total)
 
   return (
-    <div className="ui-panel-soft flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-md border border-surface-border-soft bg-surface-muted px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-sm text-text-secondary">
         <span className="font-bold text-text-primary">{start}-{end}</span>
         <span> / {total}개</span>
@@ -68,7 +76,7 @@ function TaskPagination({
         <CompactSelect
           value={String(pageSize)}
           wrapperClassName="w-28"
-          className="h-10 pl-3 pr-9 text-sm font-bold"
+          className="h-9 pl-3 pr-9 text-sm font-bold"
           onChange={(event) =>
             onChange({
               page: 1,
@@ -88,7 +96,7 @@ function TaskPagination({
           <Button
             type="button"
             variant="ghost"
-            size="sm-icon"
+            size="icon"
             onClick={() => onChange({ page: 1, pageSize })}
             disabled={safePage <= 1}
             aria-label="첫 페이지"
@@ -99,7 +107,7 @@ function TaskPagination({
           <Button
             type="button"
             variant="ghost"
-            size="sm-icon"
+            size="icon"
             onClick={() => onChange({ page: safePage - 1, pageSize })}
             disabled={safePage <= 1}
             aria-label="이전 페이지"
@@ -107,13 +115,13 @@ function TaskPagination({
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="flex h-8 min-w-20 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised px-3 text-xs font-bold text-text-secondary">
+          <span className="flex h-9 min-w-20 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised px-3 text-xs font-bold text-text-secondary">
             {safePage} / {totalPages}
           </span>
           <Button
             type="button"
             variant="ghost"
-            size="sm-icon"
+            size="icon"
             onClick={() => onChange({ page: safePage + 1, pageSize })}
             disabled={safePage >= totalPages}
             aria-label="다음 페이지"
@@ -124,7 +132,7 @@ function TaskPagination({
           <Button
             type="button"
             variant="ghost"
-            size="sm-icon"
+            size="icon"
             onClick={() => onChange({ page: totalPages, pageSize })}
             disabled={safePage >= totalPages}
             aria-label="마지막 페이지"
@@ -144,6 +152,7 @@ export function TaskPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const normalizedFilters = useMemo(
     () => ({
@@ -155,11 +164,28 @@ export function TaskPage() {
 
   const tasksQuery = useTasks(normalizedFilters)
   const assignableUsersQuery = useAssignableUsers()
+  const archiveTasks = useArchiveTasks()
+  const restoreTasks = useRestoreTasks()
   const tasks = tasksQuery.data?.items ?? []
   const users = assignableUsersQuery.data ?? []
   const total = tasksQuery.data?.total ?? 0
   const page = normalizedFilters.page ?? 1
   const pageSize = normalizedFilters.pageSize ?? 50
+
+  const statusCounts = TASK_STATUS_ORDER.reduce<Record<TaskStatus, number>>(
+    (acc, status) => {
+      acc[status] = tasks.filter((t) => t.status === status).length
+      return acc
+    },
+    { TODO: 0, IN_PROGRESS: 0, REVIEW: 0, DONE: 0, HOLD: 0 },
+  )
+
+  const handleBulkAction = async () => {
+    if (selectedIds.length === 0) return
+    const action = normalizedFilters.archived ? restoreTasks : archiveTasks
+    await action.mutateAsync(selectedIds)
+    setSelectedIds([])
+  }
 
   const handleOpenTask = (taskId: string) => {
     setSelectedTaskId(taskId)
@@ -173,35 +199,117 @@ export function TaskPage() {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-md border border-surface-border-soft bg-surface-raised px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="ui-icon-button-brand size-10 shrink-0">
-            <CheckSquare className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-xl font-black text-text-primary">Task 관리</h2>
-            <p className="mt-1 text-xs text-text-secondary">
-              프로젝트 업무, 담당자, 체크리스트와 댓글을 관리합니다.
-            </p>
-          </div>
+      <div className="flex min-w-0 items-center gap-3 rounded-md bg-text-primary px-5 py-4">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-background/20 bg-background/10 text-background">
+          <CheckSquare className="size-5" />
         </div>
-        <div className="rounded-sm border border-brand-border bg-brand-glass px-3 py-1 text-xs font-bold text-brand-primary">
-          Phase 1
+        <div className="min-w-0">
+          <h2 className="text-xl font-black text-background">Task 관리</h2>
+          <p className="mt-1 text-xs text-background/60">
+            프로젝트 업무, 담당자, 체크리스트와 댓글을 관리합니다.
+          </p>
         </div>
       </div>
 
       <TaskToolbar
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
         filters={normalizedFilters}
         onFiltersChange={setFilters}
-        tasks={tasks}
         users={users}
-        total={total}
         isFetching={tasksQuery.isFetching}
         onCreate={() => setIsFormOpen(true)}
         onRefresh={() => tasksQuery.refetch()}
       />
+
+      {/* content bar: 상태 필터(좌) + 선택 보관 + 뷰 토글(우) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-4 py-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setFilters((f) => ({ ...f, status: undefined, page: 1 }))}
+            className={`inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-md border px-3 text-xs font-bold transition-colors ${
+              !normalizedFilters.status
+                ? 'bg-text-primary text-background border-text-primary'
+                : 'bg-background text-text-secondary border-surface-border hover:bg-surface-muted'
+            }`}
+          >
+            전체 {total}
+          </button>
+          {TASK_STATUS_ORDER.map((status) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() =>
+                setFilters((f) => ({
+                  ...f,
+                  status: f.status === status ? undefined : status,
+                  page: 1,
+                }))
+              }
+              className={`inline-flex h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-3 text-xs transition-colors ${
+                normalizedFilters.status === status
+                  ? 'bg-text-primary text-background border-text-primary font-bold'
+                  : 'bg-background text-text-secondary border-surface-border hover:bg-surface-muted'
+              }`}
+            >
+              {TASK_STATUS_LABELS[status]}
+              <span className="font-black">{statusCounts[status]}</span>
+            </button>
+          ))}
+          <div className="ml-1 border-l border-surface-border-soft pl-3">
+            <Switch
+              checked={Boolean(normalizedFilters.archived)}
+              onCheckedChange={(checked) =>
+                setFilters((f) => ({ ...f, archived: checked, page: 1 }))
+              }
+              label={normalizedFilters.archived ? '보관함 보기' : '진행 업무 보기'}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              setFilters({
+                page: 1,
+                pageSize: normalizedFilters.pageSize ?? 50,
+                archived: false,
+                sort: 'order',
+              })
+            }
+          >
+            필터 초기화
+          </Button>
+          {viewMode === 'table' && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-9"
+              disabled={selectedIds.length === 0 || archiveTasks.isPending || restoreTasks.isPending}
+              onClick={handleBulkAction}
+            >
+              {normalizedFilters.archived ? (
+                <ArchiveRestore className="mr-1.5 size-3.5" />
+              ) : (
+                <Archive className="mr-1.5 size-3.5" />
+              )}
+              {selectedIds.length > 0 ? `${selectedIds.length}개 ` : ''}
+              {normalizedFilters.archived ? '선택 복원' : '선택 보관'}
+            </Button>
+          )}
+          <ToggleGroup<TaskViewMode>
+            value={viewMode}
+            onChange={setViewMode}
+            options={[
+              { value: 'table', label: '테이블' },
+              { value: 'kanban', label: '칸반' },
+              { value: 'card', label: '카드' },
+            ]}
+          />
+        </div>
+      </div>
 
       {tasksQuery.error ? (
         <div className="flex items-start gap-3 rounded-md border border-destructive bg-danger-glass px-4 py-3 text-destructive">
@@ -239,6 +347,7 @@ export function TaskPage() {
               tasks={tasks}
               users={users}
               archived={Boolean(normalizedFilters.archived)}
+              onSelectionChange={setSelectedIds}
               canReorder={
                 !normalizedFilters.archived &&
                 normalizedFilters.sort === 'order' &&
