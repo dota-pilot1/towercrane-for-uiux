@@ -9,3 +9,5 @@
 /data/sql-practice/runtime/*.sqlite-shm
 /data/sql-practice/runtime/*.sqlite-wal
 /data/sql-practice/runtime/*.seedhash
+/data/sql-practice/seeds/
+/data/sql-practice/active-seed.json

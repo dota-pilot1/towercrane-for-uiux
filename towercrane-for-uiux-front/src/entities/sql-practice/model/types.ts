@@ -1,9 +1,40 @@
+export type SqlPracticeSeedSource = 'builtin' | 'uploaded'
+
+export type SqlPracticeSeedLevel = 'beginner' | 'basic' | 'intermediate' | 'advanced'
+
+export type SqlPracticeSeedSummary = {
+  source: SqlPracticeSeedSource
+  fileName: string
+  slug: string
+  title: string
+  level: SqlPracticeSeedLevel
+  description: string
+  topics: string[]
+  tables: string[]
+  recommendedQueries: string[]
+  hash: string
+  sizeBytes: number
+  updatedAt: string | null
+  isActive: boolean
+  isUpload: boolean
+}
+
+export type SqlPracticeSeedListResponse = {
+  active: {
+    source: SqlPracticeSeedSource
+    fileName: string
+    slug: string
+  }
+  seeds: SqlPracticeSeedSummary[]
+}
+
 export type SqlPracticeMeta = {
   seedFile: string
   seedHash: string
   dbFile: string
   lastLoadedAt: string | null
   tableCount: number
+  activeSeed: SqlPracticeSeedSummary
 }
 
 export type ColumnInfo = {
@@ -45,4 +76,8 @@ export type SqlResetResponse = {
   success: boolean
   message: string
   seedHash: string
+}
+
+export type SqlActivateSeedResponse = SqlResetResponse & {
+  activeSeed: SqlPracticeSeedSummary
 }

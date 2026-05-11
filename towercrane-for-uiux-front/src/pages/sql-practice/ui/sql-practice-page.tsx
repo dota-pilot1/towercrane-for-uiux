@@ -61,7 +61,12 @@ export function SqlPracticePage() {
   }
 
   const handleReset = async () => {
-    if (!window.confirm('SQL 연습 DB를 seed.sql 기준으로 초기화할까요? 현재 직접 만든 테이블과 데이터는 삭제됩니다.')) {
+    const seedFile = metaQuery.data?.seedFile ?? '현재 seed'
+    if (
+      !window.confirm(
+        `SQL 연습 DB를 ${seedFile} 기준으로 초기화할까요? 현재 직접 만든 테이블과 데이터는 삭제됩니다.`,
+      )
+    ) {
       return
     }
     await resetMutation.mutateAsync()
@@ -70,10 +75,16 @@ export function SqlPracticePage() {
   }
 
   const handleReloadSeed = async () => {
-    if (!window.confirm('seed.sql을 다시 적용할까요? 현재 연습 DB는 새로 만들어집니다.')) {
+    const seedFile = metaQuery.data?.seedFile ?? '현재 seed'
+    if (!window.confirm(`${seedFile}을 다시 적용할까요? 현재 연습 DB는 새로 만들어집니다.`)) {
       return
     }
     await reloadSeedMutation.mutateAsync()
+    setHistory([])
+    setSelectedTable(null)
+  }
+
+  const handleSeedActivated = () => {
     setHistory([])
     setSelectedTable(null)
   }
@@ -117,6 +128,7 @@ export function SqlPracticePage() {
               isLoading={metaQuery.isLoading || tablesQuery.isLoading}
               tableCount={tables.length}
               seedFile={metaQuery.data?.seedFile}
+              recommendedQuery={metaQuery.data?.activeSeed.recommendedQueries[0]}
             />
           ) : (
             <div className="space-y-6">
@@ -142,6 +154,7 @@ export function SqlPracticePage() {
         onRefresh={handleRefresh}
         onReset={handleReset}
         onReloadSeed={handleReloadSeed}
+        onSeedActivated={handleSeedActivated}
       />
     </div>
   )
@@ -151,10 +164,12 @@ function EmptyState({
   isLoading,
   tableCount,
   seedFile,
+  recommendedQuery,
 }: {
   isLoading: boolean
   tableCount: number
   seedFile?: string
+  recommendedQuery?: string
 }) {
   if (isLoading) {
     return (
@@ -172,11 +187,11 @@ function EmptyState({
       </div>
       <h2 className="text-base font-bold text-text-primary">SQL을 실행해보세요</h2>
       <p className="mt-2 max-w-md text-sm leading-6 text-text-secondary">
-        {seedFile ?? 'seed.sql'} 기준으로 {tableCount}개 테이블이 준비되어 있습니다.
+        {seedFile ?? '01_board_basic.sql'} 기준으로 {tableCount}개 테이블이 준비되어 있습니다.
         아래 입력창에서 SQL을 작성하면 결과가 여기에 쌓입니다.
       </p>
       <pre className="mt-5 rounded-md border border-surface-border-soft bg-surface-muted px-4 py-3 text-left font-mono text-xs text-text-secondary">
-        SELECT * FROM users LIMIT 10;
+        {recommendedQuery ?? 'SELECT * FROM users LIMIT 10;'}
       </pre>
     </div>
   )

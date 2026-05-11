@@ -12,6 +12,16 @@ export class SqlPracticeController {
     return this.sqlPracticeService.getMeta();
   }
 
+  @Get('seeds')
+  seeds() {
+    return this.sqlPracticeService.listSeeds();
+  }
+
+  @Post('seeds/activate')
+  activateSeed(@Body() body: unknown) {
+    return this.sqlPracticeService.activateSeed(body);
+  }
+
   @Get('tables')
   tables() {
     return this.sqlPracticeService.getTables();

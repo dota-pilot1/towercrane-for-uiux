@@ -1,9 +1,15 @@
-import { Database, Info, RefreshCw, RotateCcw, Table2, UploadCloud } from 'lucide-react'
+import { Database, Info, RefreshCw, RotateCcw, Settings, Table2, UploadCloud } from 'lucide-react'
 import { useState } from 'react'
 import type {
   SqlPracticeMeta,
+  SqlPracticeSeedSummary,
   TableInfo,
 } from '../../../entities/sql-practice/model/types'
+import {
+  useActivateSqlPracticeSeed,
+  useSqlPracticeSeeds,
+} from '../model/use-sql-practice-queries'
+import { SqlSeedManagerDialog } from './sql-seed-manager-dialog'
 import { SqlTableSchemaDialog } from './sql-table-schema-dialog'
 
 type SqlSchemaSidebarProps = {
@@ -17,6 +23,7 @@ type SqlSchemaSidebarProps = {
   onRefresh: () => void
   onReset: () => void
   onReloadSeed: () => void
+  onSeedActivated: () => void
 }
 
 export function SqlSchemaSidebar({
@@ -30,8 +37,27 @@ export function SqlSchemaSidebar({
   onRefresh,
   onReset,
   onReloadSeed,
+  onSeedActivated,
 }: SqlSchemaSidebarProps) {
   const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null)
+  const [seedDialogOpen, setSeedDialogOpen] = useState(false)
+  const seedsQuery = useSqlPracticeSeeds()
+  const activateSeedMutation = useActivateSqlPracticeSeed({
+    onSuccess: () => {
+      onSeedActivated()
+      setSeedDialogOpen(false)
+    },
+  })
+
+  const activeSeed =
+    seedsQuery.data?.seeds.find((seed) => seed.isActive) ?? meta?.activeSeed
+
+  const handleActivateSeed = (seed: SqlPracticeSeedSummary) => {
+    return activateSeedMutation.mutateAsync({
+      source: seed.source,
+      fileName: seed.fileName,
+    })
+  }
 
   return (
     <>
@@ -41,15 +67,26 @@ export function SqlSchemaSidebar({
             <h2 className="text-sm font-bold text-text-primary">테이블 정보</h2>
             <p className="text-[11px] text-text-muted">현재 연습 DB 기준</p>
           </div>
-          <button
-            className="ui-icon-button size-8"
-            type="button"
-            aria-label="새로고침"
-            onClick={onRefresh}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`size-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              className="ui-icon-button size-8"
+              type="button"
+              aria-label="SQL 연습 파일 관리"
+              title="SQL 연습 파일 관리"
+              onClick={() => setSeedDialogOpen(true)}
+            >
+              <Settings className="size-3.5" />
+            </button>
+            <button
+              className="ui-icon-button size-8"
+              type="button"
+              aria-label="새로고침"
+              onClick={onRefresh}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`size-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
 
         <div className="border-b border-surface-border p-3">
@@ -59,7 +96,7 @@ export function SqlSchemaSidebar({
               {meta?.dbFile ?? 'practice.sqlite'}
             </div>
             <div className="mt-2 space-y-1 text-[11px] text-text-secondary">
-              <p>seed: {meta?.seedFile ?? 'seed.sql'}</p>
+              <p>seed: {meta?.seedFile ?? '01_board_basic.sql'}</p>
               <p>tables: {meta?.tableCount ?? tables.length}</p>
               <p>hash: {meta?.seedHash ? meta.seedHash.slice(0, 10) : 'loading'}</p>
             </div>
@@ -81,7 +118,7 @@ export function SqlSchemaSidebar({
               className="ui-icon-button h-8 gap-1.5 text-xs"
               onClick={onReloadSeed}
               disabled={isResetting || isReloading}
-              title="seed.sql 다시 적용"
+              title="현재 seed 다시 적용"
             >
               <UploadCloud className={`size-3.5 ${isReloading ? 'animate-spin' : ''}`} />
               Seed
@@ -95,7 +132,7 @@ export function SqlSchemaSidebar({
               <Table2 className="mb-3 size-9 text-text-muted" />
               <p className="text-sm font-semibold text-text-primary">테이블이 없습니다</p>
               <p className="mt-1 text-xs leading-5 text-text-secondary">
-                CREATE TABLE을 실행하거나 Reset으로 seed.sql을 다시 적용하세요.
+                CREATE TABLE을 실행하거나 Reset으로 현재 seed를 다시 적용하세요.
               </p>
             </div>
           ) : (
@@ -149,6 +186,16 @@ export function SqlSchemaSidebar({
       {schemaDialog && (
         <SqlTableSchemaDialog table={schemaDialog} onClose={() => setSchemaDialog(null)} />
       )}
+
+      <SqlSeedManagerDialog
+        open={seedDialogOpen}
+        activeSeed={activeSeed}
+        seeds={seedsQuery.data?.seeds ?? []}
+        isLoading={seedsQuery.isLoading || seedsQuery.isFetching}
+        isActivating={activateSeedMutation.isPending}
+        onClose={() => setSeedDialogOpen(false)}
+        onActivate={handleActivateSeed}
+      />
     </>
   )
 }

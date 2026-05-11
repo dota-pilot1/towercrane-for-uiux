@@ -11,24 +11,47 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
-import { basename, dirname, isAbsolute, join } from 'node:path';
-import { executeSqlSchema } from './sql-practice.schemas';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
+import { activateSeedSchema, executeSqlSchema, seedFileNameSchema } from './sql-practice.schemas';
 import { sanitizeSql } from './sql-safety';
 import type {
   ColumnInfo,
+  SqlActivateSeedResponse,
   SqlExecuteResponse,
   SqlPracticeMeta,
+  SqlPracticeSeedLevel,
+  SqlPracticeSeedListResponse,
+  SqlPracticeSeedMeta,
+  SqlPracticeSeedSource,
+  SqlPracticeSeedSummary,
   SqlQueryType,
   SqlResetResponse,
   TableInfo,
 } from './sql-practice.types';
 
+const DEFAULT_BUILTIN_SEED_FILE = '01_board_basic.sql';
+const LEGACY_SEED_FILE = 'seed.sql';
+const SEED_LEVELS: SqlPracticeSeedLevel[] = ['beginner', 'basic', 'intermediate', 'advanced'];
+
 type SeedState = {
   seedHash: string;
   loadedAt: string;
+  source?: SqlPracticeSeedSource;
+  fileName?: string;
+};
+
+type ActiveSeedState = {
+  source: SqlPracticeSeedSource;
+  fileName: string;
+};
+
+type ResolvedSeed = ActiveSeedState & {
+  filePath: string;
 };
 
 type Freshness = {
@@ -43,19 +66,70 @@ export class SqlPracticeService {
 
   getMeta(): SqlPracticeMeta {
     const freshness = this.ensureDatabaseFresh();
+    const activeSeed = this.getActiveSeedSummary(freshness.seedHash);
     const db = this.openDatabase();
 
     try {
       return {
-        seedFile: basename(this.getSeedFile()),
+        seedFile: activeSeed.fileName,
         seedHash: freshness.seedHash,
         dbFile: basename(this.getDatabaseFile()),
         lastLoadedAt: freshness.loadedAt,
         tableCount: this.listTableNames(db).length,
+        activeSeed,
       };
     } finally {
       db.close();
     }
+  }
+
+  listSeeds(): SqlPracticeSeedListResponse {
+    const activeSeed = this.resolveActiveSeedFile();
+    const seeds = [
+      ...this.scanSeedDirectory('builtin', activeSeed),
+      ...this.scanSeedDirectory('uploaded', activeSeed),
+    ];
+
+    if (!seeds.some((seed) => seed.isActive)) {
+      seeds.unshift(this.buildSeedSummary(activeSeed, activeSeed));
+    }
+
+    const activeSummary =
+      seeds.find((seed) => seed.isActive) ?? this.buildSeedSummary(activeSeed, activeSeed);
+
+    return {
+      active: {
+        source: activeSummary.source,
+        fileName: activeSummary.fileName,
+        slug: activeSummary.slug,
+      },
+      seeds,
+    };
+  }
+
+  activateSeed(payload: unknown): SqlActivateSeedResponse {
+    const parsed = activateSeedSchema.safeParse(payload);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? 'Invalid SQL seed request.');
+    }
+
+    const seed = this.resolveSeedFile(parsed.data.source, parsed.data.fileName);
+    const seedSql = readFileSync(seed.filePath, 'utf8');
+    this.validateSeedSql(seedSql, seed.fileName);
+
+    const seedHash = this.hashSql(seedSql);
+    this.writeActiveSeedState({
+      source: seed.source,
+      fileName: seed.fileName,
+    });
+    const loadedHash = this.rebuildDatabase(seedHash, seed);
+
+    return {
+      success: true,
+      message: `SQL 연습 DB를 ${seed.fileName} 기준으로 다시 만들었습니다.`,
+      seedHash: loadedHash,
+      activeSeed: this.buildSeedSummary(seed, seed, loadedHash),
+    };
   }
 
   getTables(): TableInfo[] {
@@ -125,10 +199,11 @@ export class SqlPracticeService {
   }
 
   reset(): SqlResetResponse {
-    const seedHash = this.rebuildDatabase();
+    const activeSeed = this.resolveActiveSeedFile();
+    const seedHash = this.rebuildDatabase(undefined, activeSeed);
     return {
       success: true,
-      message: 'SQL 연습 DB를 seed.sql 기준으로 다시 만들었습니다.',
+      message: `SQL 연습 DB를 ${activeSeed.fileName} 기준으로 다시 만들었습니다.`,
       seedHash,
     };
   }
@@ -196,12 +271,18 @@ export class SqlPracticeService {
   }
 
   private ensureDatabaseFresh(): Freshness {
-    const seedHash = this.getSeedHash();
+    const activeSeed = this.resolveActiveSeedFile();
+    const seedHash = this.getSeedHash(activeSeed);
     const dbFile = this.getDatabaseFile();
     const seedState = this.readSeedState();
 
-    if (!existsSync(dbFile) || seedState?.seedHash !== seedHash) {
-      const loadedHash = this.rebuildDatabase(seedHash);
+    if (
+      !existsSync(dbFile) ||
+      seedState?.seedHash !== seedHash ||
+      seedState?.source !== activeSeed.source ||
+      seedState?.fileName !== activeSeed.fileName
+    ) {
+      const loadedHash = this.rebuildDatabase(seedHash, activeSeed);
       const nextState = this.readSeedState();
       return {
         seedHash: loadedHash,
@@ -217,7 +298,7 @@ export class SqlPracticeService {
     };
   }
 
-  private rebuildDatabase(currentHash = this.getSeedHash()) {
+  private rebuildDatabase(currentHash?: string, activeSeed = this.resolveActiveSeedFile()) {
     const dbFile = this.getDatabaseFile();
     mkdirSync(dirname(dbFile), { recursive: true });
 
@@ -230,16 +311,19 @@ export class SqlPracticeService {
     const db = this.openDatabase();
 
     try {
-      const seedSql = readFileSync(this.getSeedFile(), 'utf8');
+      const seedSql = readFileSync(activeSeed.filePath, 'utf8');
+      const seedHash = currentHash ?? this.hashSql(seedSql);
       if (!seedSql.trim()) {
-        throw new InternalServerErrorException('seed.sql is empty.');
+        throw new InternalServerErrorException(`${activeSeed.fileName} is empty.`);
       }
       db.exec(seedSql);
       this.writeSeedState({
-        seedHash: currentHash,
+        seedHash,
         loadedAt: new Date().toISOString(),
+        source: activeSeed.source,
+        fileName: activeSeed.fileName,
       });
-      return currentHash;
+      return seedHash;
     } catch (error) {
       throw new InternalServerErrorException(
         error instanceof Error ? error.message : 'Failed to initialize SQL practice database.',
@@ -323,20 +407,231 @@ export class SqlPracticeService {
     }
   }
 
-  private getSeedFile() {
-    const configured = this.configService.get<string>('SQL_PRACTICE_SEED_FILE')?.trim();
-    if (configured) {
-      return isAbsolute(configured) ? configured : join(process.cwd(), configured);
+  private getActiveSeedSummary(seedHash?: string) {
+    const activeSeed = this.resolveActiveSeedFile();
+    return this.buildSeedSummary(activeSeed, activeSeed, seedHash);
+  }
+
+  private scanSeedDirectory(source: SqlPracticeSeedSource, activeSeed: ResolvedSeed) {
+    const seedDir = source === 'builtin' ? this.getBuiltinSeedDir() : this.getUploadedSeedDir();
+    if (!existsSync(seedDir)) return [];
+
+    const fileNames = readdirSync(seedDir)
+      .filter((fileName) => seedFileNameSchema.safeParse(fileName).success)
+      .filter((fileName) => statSync(join(seedDir, fileName)).isFile())
+      .sort((a, b) => a.localeCompare(b));
+
+    const hasNumberedBuiltinSeeds =
+      source === 'builtin' && fileNames.some((fileName) => /^\d{2}_/.test(fileName));
+
+    return fileNames
+      .filter((fileName) => !(hasNumberedBuiltinSeeds && fileName === LEGACY_SEED_FILE))
+      .map((fileName) =>
+        this.buildSeedSummary(
+          {
+            source,
+            fileName,
+            filePath: join(seedDir, fileName),
+          },
+          activeSeed,
+        ),
+      );
+  }
+
+  private buildSeedSummary(seed: ResolvedSeed, activeSeed: ResolvedSeed, hashOverride?: string) {
+    const sql = readFileSync(seed.filePath, 'utf8');
+    const stats = statSync(seed.filePath);
+    const meta = this.parseSeedMeta(sql, seed.fileName);
+
+    return {
+      ...meta,
+      source: seed.source,
+      fileName: seed.fileName,
+      hash: hashOverride ?? this.hashSql(sql),
+      sizeBytes: stats.size,
+      updatedAt: Number.isFinite(stats.mtimeMs) ? stats.mtime.toISOString() : null,
+      isActive: resolve(seed.filePath) === resolve(activeSeed.filePath),
+      isUpload: seed.source === 'uploaded',
+    };
+  }
+
+  private parseSeedMeta(sql: string, fileName: string): SqlPracticeSeedMeta {
+    const rawMeta: Record<string, string> = {};
+    const metaPattern = /^\s*--\s*@([a-zA-Z][a-zA-Z0-9]*)\s+(.+?)\s*$/gm;
+    let match: RegExpExecArray | null;
+
+    while ((match = metaPattern.exec(sql)) !== null) {
+      rawMeta[match[1]] = match[2];
     }
 
+    const fallbackTitle = this.toFallbackTitle(fileName);
+    const title = rawMeta.title?.trim() || fallbackTitle;
+    const tables = this.parseMetaList(rawMeta.tables) ?? this.extractTableNames(sql);
+
+    return {
+      title,
+      slug: rawMeta.slug?.trim() || this.toFallbackSlug(fileName),
+      level: this.parseSeedLevel(rawMeta.level),
+      description: rawMeta.description?.trim() || `${title} SQL 연습 파일입니다.`,
+      topics: this.parseMetaList(rawMeta.topics) ?? [],
+      tables,
+      recommendedQueries: this.parseRecommendedQueries(rawMeta.recommendedQueries),
+    };
+  }
+
+  private parseMetaList(value?: string) {
+    const items =
+      value
+        ?.split(/[,|]/)
+        .map((item) => item.trim())
+        .filter(Boolean) ?? [];
+    return items.length > 0 ? items : null;
+  }
+
+  private parseRecommendedQueries(value?: string) {
+    return (
+      value
+        ?.split('|')
+        .map((item) => item.trim())
+        .filter(Boolean) ?? []
+    );
+  }
+
+  private parseSeedLevel(value?: string): SqlPracticeSeedLevel {
+    const level = value?.trim() as SqlPracticeSeedLevel | undefined;
+    return level && SEED_LEVELS.includes(level) ? level : 'beginner';
+  }
+
+  private extractTableNames(sql: string) {
+    const tableNames = new Set<string>();
+    const tablePattern =
+      /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["'`]?([a-zA-Z_][a-zA-Z0-9_]*)["'`]?/gi;
+    let match: RegExpExecArray | null;
+
+    while ((match = tablePattern.exec(sql)) !== null) {
+      tableNames.add(match[1]);
+    }
+
+    return [...tableNames].sort((a, b) => a.localeCompare(b));
+  }
+
+  private toFallbackTitle(fileName: string) {
+    return fileName
+      .replace(/\.sql$/i, '')
+      .replace(/^\d+[_-]?/, '')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+
+  private toFallbackSlug(fileName: string) {
+    const slug = fileName
+      .replace(/\.sql$/i, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    return slug || fileName.replace(/\.sql$/i, '');
+  }
+
+  private validateSeedSql(sql: string, fileName: string) {
+    if (!sql.trim()) {
+      throw new BadRequestException(`${fileName} is empty.`);
+    }
+
+    const db = new Database(':memory:');
+    try {
+      db.pragma('foreign_keys = ON');
+      db.exec(sql);
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : `Failed to validate ${fileName}.`,
+      );
+    } finally {
+      db.close();
+    }
+  }
+
+  private resolveActiveSeedFile(): ResolvedSeed {
+    const activeState = this.readActiveSeedState();
+    if (activeState) {
+      try {
+        return this.resolveSeedFile(activeState.source, activeState.fileName);
+      } catch {
+        // Fall through to the compatibility/default seed if the active state points at a removed file.
+      }
+    }
+
+    const configuredSeedFile = this.getConfiguredSeedFile();
+    if (configuredSeedFile) {
+      return {
+        source: 'builtin',
+        fileName: basename(configuredSeedFile),
+        filePath: configuredSeedFile,
+      };
+    }
+
+    const builtinFileNames = this.getBuiltinSeedFileNames();
+    const fileName =
+      builtinFileNames.find((candidate) => candidate === DEFAULT_BUILTIN_SEED_FILE) ??
+      builtinFileNames.find((candidate) => candidate === LEGACY_SEED_FILE) ??
+      builtinFileNames[0] ??
+      DEFAULT_BUILTIN_SEED_FILE;
+
+    return this.resolveSeedFile('builtin', fileName);
+  }
+
+  private resolveSeedFile(source: SqlPracticeSeedSource, fileName: string): ResolvedSeed {
+    const parsed = seedFileNameSchema.safeParse(fileName);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? 'Invalid SQL seed file.');
+    }
+
+    const seedDir = source === 'builtin' ? this.getBuiltinSeedDir() : this.getUploadedSeedDir();
+    const seedFile = join(seedDir, parsed.data);
+
+    if (!existsSync(seedFile) || !statSync(seedFile).isFile()) {
+      throw new NotFoundException('SQL seed file not found.');
+    }
+
+    return {
+      source,
+      fileName: parsed.data,
+      filePath: seedFile,
+    };
+  }
+
+  private getBuiltinSeedFileNames() {
+    const seedDir = this.getBuiltinSeedDir();
+    if (!existsSync(seedDir)) return [];
+
+    return readdirSync(seedDir)
+      .filter((fileName) => seedFileNameSchema.safeParse(fileName).success)
+      .filter((fileName) => statSync(join(seedDir, fileName)).isFile())
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  private getBuiltinSeedDir() {
     const candidates = [
-      join(__dirname, 'seeds', 'seed.sql'),
-      join(process.cwd(), 'src/sql-practice/seeds/seed.sql'),
-      join(process.cwd(), 'dist/sql-practice/seeds/seed.sql'),
-      join(process.cwd(), 'dist/src/sql-practice/seeds/seed.sql'),
+      join(__dirname, 'seeds'),
+      join(process.cwd(), 'src/sql-practice/seeds'),
+      join(process.cwd(), 'dist/sql-practice/seeds'),
+      join(process.cwd(), 'dist/src/sql-practice/seeds'),
     ];
 
     return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+  }
+
+  private getUploadedSeedDir() {
+    const configured =
+      this.configService.get<string>('SQL_PRACTICE_UPLOAD_SEED_DIR') ??
+      './data/sql-practice/seeds';
+    return isAbsolute(configured) ? configured : join(process.cwd(), configured);
+  }
+
+  private getConfiguredSeedFile() {
+    const configured = this.configService.get<string>('SQL_PRACTICE_SEED_FILE')?.trim();
+    if (!configured) return null;
+    return isAbsolute(configured) ? configured : join(process.cwd(), configured);
   }
 
   private getDatabaseFile() {
@@ -346,12 +641,17 @@ export class SqlPracticeService {
     return isAbsolute(configured) ? configured : join(process.cwd(), configured);
   }
 
-  private getSeedHash() {
-    const seedFile = this.getSeedFile();
-    if (!existsSync(seedFile)) {
-      throw new InternalServerErrorException(`SQL practice seed file not found: ${seedFile}`);
+  private getSeedHash(activeSeed = this.resolveActiveSeedFile()) {
+    if (!existsSync(activeSeed.filePath)) {
+      throw new InternalServerErrorException(
+        `SQL practice seed file not found: ${activeSeed.filePath}`,
+      );
     }
-    return createHash('sha256').update(readFileSync(seedFile)).digest('hex');
+    return this.hashSql(readFileSync(activeSeed.filePath, 'utf8'));
+  }
+
+  private hashSql(sql: string) {
+    return createHash('sha256').update(sql).digest('hex');
   }
 
   private getSeedStateFile() {
@@ -371,6 +671,31 @@ export class SqlPracticeService {
 
   private writeSeedState(state: SeedState) {
     writeFileSync(this.getSeedStateFile(), JSON.stringify(state, null, 2));
+  }
+
+  private getActiveSeedStateFile() {
+    const configured =
+      this.configService.get<string>('SQL_PRACTICE_ACTIVE_SEED_FILE') ??
+      './data/sql-practice/active-seed.json';
+    return isAbsolute(configured) ? configured : join(process.cwd(), configured);
+  }
+
+  private readActiveSeedState(): ActiveSeedState | null {
+    const stateFile = this.getActiveSeedStateFile();
+    if (!existsSync(stateFile)) return null;
+
+    try {
+      const parsed = activateSeedSchema.safeParse(JSON.parse(readFileSync(stateFile, 'utf8')));
+      return parsed.success ? parsed.data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private writeActiveSeedState(state: ActiveSeedState) {
+    const stateFile = this.getActiveSeedStateFile();
+    mkdirSync(dirname(stateFile), { recursive: true });
+    writeFileSync(stateFile, JSON.stringify(state, null, 2));
   }
 
   private getMaxRows() {
