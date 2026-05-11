@@ -15,6 +15,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { ApiDocModule } from './api-doc/api-doc.module';
 import { IssuesModule } from './issues/issues.module';
 import { ChallengeModule } from './challenge/challenge.module';
+import { SqlPracticeModule } from './sql-practice/sql-practice.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ChallengeModule } from './challenge/challenge.module';
     ApiDocModule,
     IssuesModule,
     ChallengeModule,
+    SqlPracticeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

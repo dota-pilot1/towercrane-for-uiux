@@ -565,10 +565,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
+          name: 'SQL 연습장',
+          sectionId: 'sql',
+          icon: 'Database',
+          displayOrder: 5,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
           name: 'Challenge with GPT',
           sectionId: 'challenge',
           icon: 'Trophy',
-          displayOrder: 5,
+          displayOrder: 6,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -580,7 +592,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'README',
           sectionId: 'readme',
           icon: 'BookOpenText',
-          displayOrder: 6,
+          displayOrder: 7,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -592,7 +604,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'Admin',
           sectionId: 'admin_dropdown',
           icon: 'ShieldCheck',
-          displayOrder: 7,
+          displayOrder: 8,
           isVisible: true,
           requiredRole: 'admin',
           parentId: null,
@@ -702,6 +714,60 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         })
         .run();
     }
+
+    const apiDocMenuForSqlPlacement = this.sqlite
+      .prepare(
+        "SELECT id, display_order as displayOrder FROM menus WHERE section_id = 'api_doc' LIMIT 1",
+      )
+      .get() as { id: string; displayOrder: number } | undefined;
+
+    const existingSqlPracticeMenu = this.sqlite
+      .prepare("SELECT id FROM menus WHERE section_id = 'sql' LIMIT 1")
+      .get() as { id: string } | undefined;
+
+    if (!existingSqlPracticeMenu) {
+      const displayOrder = (apiDocMenuForSqlPlacement?.displayOrder ?? 4) + 1;
+
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET display_order = display_order + 1, updated_at = ?
+            WHERE parent_id IS NULL AND display_order >= ?
+          `,
+        )
+        .run(now, displayOrder);
+
+      this.db
+        .insert(menusTable)
+        .values({
+          id: randomUUID(),
+          name: 'SQL 연습장',
+          sectionId: 'sql',
+          icon: 'Database',
+          displayOrder,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          DELETE FROM menus
+          WHERE section_id = 'sql'
+            AND rowid NOT IN (
+              SELECT MIN(rowid)
+              FROM menus
+              WHERE section_id = 'sql'
+            )
+        `,
+      )
+      .run();
 
     this.sqlite
       .prepare(

@@ -23,14 +23,24 @@ echo "==> Checking AWS identity"
 AWS_REGION="$AWS_REGION" aws sts get-caller-identity >/dev/null
 
 echo "==> Installing frontend dependencies"
-if [[ -f package-lock.json ]]; then
+if [[ -f pnpm-lock.yaml ]] && command -v pnpm >/dev/null 2>&1; then
+  CI=true pnpm install --frozen-lockfile
+elif [[ -f pnpm-lock.yaml ]] && command -v corepack >/dev/null 2>&1; then
+  CI=true corepack pnpm install --frozen-lockfile
+elif [[ -f package-lock.json ]]; then
   npm ci
 else
   npm install
 fi
 
 echo "==> Building frontend"
-npm run build
+if [[ -f pnpm-lock.yaml ]] && command -v pnpm >/dev/null 2>&1; then
+  pnpm build
+elif [[ -f pnpm-lock.yaml ]] && command -v corepack >/dev/null 2>&1; then
+  corepack pnpm build
+else
+  npm run build
+fi
 
 echo "==> Uploading immutable assets to s3://$S3_BUCKET"
 AWS_REGION="$AWS_REGION" aws s3 sync dist/ "s3://$S3_BUCKET" \

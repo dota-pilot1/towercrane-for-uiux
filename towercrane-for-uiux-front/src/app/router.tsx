@@ -21,6 +21,7 @@ import { PrototypeIssuesPage } from '../pages/prototype-issues/ui/prototype-issu
 import { ProfilePage } from '../pages/profile/ui/profile-page'
 import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
 import { ChallengePage } from '../pages/challenge/ui/challenge-page'
+import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
 import { useSessionStore } from '../shared/store/session-store'
 import { useCurrentUser } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
@@ -222,6 +223,14 @@ const apiDocRoute = createRoute({
   component: ApiDocPage,
 })
 
+// ─── /sql ───────────────────────────────────────────────────────────────────
+
+const sqlPracticeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql',
+  component: SqlPracticePage,
+})
+
 // ─── /task ───────────────────────────────────────────────────────────────────
 
 const taskRoute = createRoute({
@@ -391,6 +400,7 @@ export const router = createRouter({
       docuRoute,
       aiMethodologyRoute,
       apiDocRoute,
+      sqlPracticeRoute,
       taskRoute,
       prototypeIssuesRoute,
       profileRoute,

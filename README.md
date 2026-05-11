@@ -53,6 +53,12 @@ pnpm start:dev
 PORT=3000
 DATABASE_FILE=./data/towercrane-catalog.sqlite
 
+# SQL 연습장 전용 DB
+SQL_PRACTICE_DB_FILE=./data/sql-practice/runtime/practice.sqlite
+SQL_PRACTICE_SEED_FILE=
+SQL_PRACTICE_MAX_ROWS=500
+SQL_PRACTICE_MAX_QUERY_LENGTH=10000
+
 # AWS S3 (Lexical 에디터 이미지 업로드용 - 필수)
 AWS_ACCESS_KEY_ID=your-access-key-id
 AWS_SECRET_ACCESS_KEY=your-secret-access-key
@@ -68,6 +74,10 @@ OPENAI_API_KEY=
 |---|---|---|
 | `PORT` | 선택 | NestJS 서버 포트. 기본 `3000` |
 | `DATABASE_FILE` | 선택 | SQLite 파일 경로. 기본 `./data/towercrane-catalog.sqlite` |
+| `SQL_PRACTICE_DB_FILE` | 선택 | SQL 연습장 전용 SQLite 파일 경로. 기본 `./data/sql-practice/runtime/practice.sqlite` |
+| `SQL_PRACTICE_SEED_FILE` | 선택 | SQL 연습장 seed 파일 경로. 비우면 내장 `src/sql-practice/seeds/seed.sql` 사용 |
+| `SQL_PRACTICE_MAX_ROWS` | 선택 | SELECT 결과 최대 표시 행 수. 기본 `500`, 상한 `5000` |
+| `SQL_PRACTICE_MAX_QUERY_LENGTH` | 선택 | SQL 입력 최대 길이. 기본 `10000`, 상한 `50000` |
 | `AWS_ACCESS_KEY_ID` | **필수** | S3 이미지 업로드용 IAM 액세스 키 (PutObject 권한 필요) |
 | `AWS_SECRET_ACCESS_KEY` | **필수** | 위 키의 시크릿 |
 | `AWS_S3_BUCKET_NAME` | **필수** | 이미지 업로드 대상 버킷명 |

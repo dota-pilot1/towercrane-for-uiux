@@ -5,3 +5,7 @@
 /data/*.sqlite
 /data/*.sqlite-shm
 /data/*.sqlite-wal
+/data/sql-practice/runtime/*.sqlite
+/data/sql-practice/runtime/*.sqlite-shm
+/data/sql-practice/runtime/*.sqlite-wal
+/data/sql-practice/runtime/*.seedhash

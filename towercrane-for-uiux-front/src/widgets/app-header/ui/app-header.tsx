@@ -18,6 +18,7 @@ function sectionIdToPath(sectionId: string): string {
     docu: '/docu',
     ai_methodology: '/ai-methodology',
     api_doc: '/api-doc',
+    sql: '/sql',
     task: '/task',
     profile: '/profile',
     users: '/admin/users',
@@ -34,6 +35,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/docu')) return 'docu'
   if (pathname.startsWith('/ai-methodology')) return 'ai_methodology'
   if (pathname.startsWith('/api-doc')) return 'api_doc'
+  if (pathname.startsWith('/sql')) return 'sql'
   if (pathname.startsWith('/task')) return 'task'
   if (pathname.startsWith('/profile')) return 'profile'
   if (pathname.startsWith('/admin/users')) return 'users'
