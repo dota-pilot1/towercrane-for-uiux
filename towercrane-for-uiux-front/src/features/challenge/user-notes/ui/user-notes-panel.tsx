@@ -37,8 +37,9 @@ export function UserNotesPanel({
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
-  const pinnedNotes = myNotes.filter((n) => n.pinned).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-  const unpinnedNotes = myNotes.filter((n) => !n.pinned).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  const byOldest = (a: Note, b: Note) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+  const pinnedNotes = myNotes.filter((n) => n.pinned).sort(byOldest)
+  const unpinnedNotes = myNotes.filter((n) => !n.pinned).sort(byOldest)
   const sortedNotes = [...pinnedNotes, ...unpinnedNotes]
 
   return (
