@@ -20,7 +20,7 @@ mermaid.initialize({
   },
   er: {
     diagramPadding: 24,
-    useMaxWidth: true,
+    useMaxWidth: false,
     layoutDirection: 'TB',
     minEntityWidth: 100,
     minEntityHeight: 75,
@@ -47,9 +47,10 @@ export function SqlErdView({ mmd }: SqlErdViewProps) {
 
         const svgEl = containerRef.current.querySelector('svg')
         if (!svgEl) return
-        svgEl.style.width = '100%'
+        svgEl.style.display = 'block'
+        svgEl.style.maxWidth = '100%'
         svgEl.style.height = 'auto'
-        svgEl.removeAttribute('width')
+        svgEl.style.margin = '0 auto'
         svgEl.removeAttribute('height')
 
         // PK/FK 강조
