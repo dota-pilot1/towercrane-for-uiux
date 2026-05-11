@@ -27,6 +27,7 @@ import {
 } from '../../../entities/meeting/model/use-meeting'
 import type { MeetingMember, MeetingMessage, MeetingRoom, MeetingRoomType } from '../../../entities/meeting/model/types'
 import { Button } from '../../../shared/ui/button'
+import { PageHeader } from '../../../shared/ui/page-header'
 import { Textarea } from '../../../shared/ui/textarea'
 import { useSessionStore } from '../../../shared/store/session-store'
 
@@ -589,7 +590,13 @@ export function MeetingPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-132px)] min-h-[680px] overflow-hidden rounded-md bg-surface-muted p-1">
+    <section className="space-y-4 ui-page-bg pb-4">
+      <PageHeader
+        icon={MessagesSquare}
+        title="회의실"
+        description="팀 채널에서 실시간으로 소통합니다."
+      />
+    <div className="h-[calc(100vh-212px)] min-h-[600px] overflow-hidden rounded-md bg-surface-muted p-1">
       <div className="grid h-full gap-4 lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)_16rem]">
         <ChannelSidebar
           rooms={rooms}
@@ -627,5 +634,6 @@ export function MeetingPage() {
         />
       </div>
     </div>
+    </section>
   )
 }
