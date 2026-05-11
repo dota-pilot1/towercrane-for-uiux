@@ -14,7 +14,7 @@ export function SqlErdDialog({ open, seedFileName, mmd, onClose }: SqlErdDialogP
     <Dialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[210] ui-overlay" />
-        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[211] flex max-h-[90vh] w-[min(1100px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-md border border-surface-border-soft shadow-2xl">
+        <Dialog.Content className="glass-panel fixed inset-0 z-[211] flex flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b border-surface-border px-5 py-4">
             <div className="flex items-center gap-3">
               <div className="ui-icon-button-brand size-9 shrink-0">
