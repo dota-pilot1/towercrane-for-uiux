@@ -26,6 +26,7 @@ import { TaskKanbanView } from '../../../features/task/ui/task-kanban-view'
 import { TaskTableView } from '../../../features/task/ui/task-table-view'
 import { TaskToolbar, type TaskViewMode } from '../../../features/task/ui/task-toolbar'
 import { useArchiveTasks, useRestoreTasks, useTasks } from '../../../features/task/model/use-task-queries'
+import { PageHeader } from '../../../shared/ui/page-header'
 
 const initialFilters: TaskFilters = {
   archived: false,
@@ -198,18 +199,12 @@ export function TaskPage() {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex min-w-0 items-center gap-3 rounded-md bg-text-primary px-5 py-4">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-background/20 bg-background/10 text-background">
-          <CheckSquare className="size-5" />
-        </div>
-        <div className="min-w-0">
-          <h2 className="text-xl font-black text-background">Task 관리</h2>
-          <p className="mt-1 text-xs text-background/60">
-            프로젝트 업무, 담당자, 체크리스트와 댓글을 관리합니다.
-          </p>
-        </div>
-      </div>
+    <section className="space-y-4 ui-page-bg pb-8">
+      <PageHeader
+        icon={CheckSquare}
+        title="Task 관리"
+        description="프로젝트 업무, 담당자, 체크리스트와 댓글을 관리합니다."
+      />
 
       <TaskToolbar
         filters={normalizedFilters}

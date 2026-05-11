@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Check, FileJson, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { PageHeader } from '../../../shared/ui/page-header'
 import type {
   ApiDocCategory,
   ApiDocEndpoint,
@@ -110,20 +111,12 @@ export function ApiDocPage() {
   }, [endpoints, selectedEndpointId])
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-md border border-surface-border-soft bg-surface-raised px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="ui-icon-button-brand size-10 shrink-0">
-            <FileJson className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-xl font-black text-text-primary">Postman Lite</h2>
-            <p className="mt-1 text-xs text-text-secondary">
-              API 스펙을 정리하고 브라우저에서 요청을 실행합니다.
-            </p>
-          </div>
-        </div>
-      </div>
+    <section className="space-y-4 ui-page-bg pb-8">
+      <PageHeader
+        icon={FileJson}
+        title="Postman Lite"
+        description="API 스펙을 정리하고 브라우저에서 요청을 실행합니다."
+      />
 
       <div className="grid h-[calc(100vh-10rem)] min-h-[640px] grid-cols-1 gap-3 lg:grid-cols-[240px_300px_minmax(0,1fr)]">
         <CategorySidebar
