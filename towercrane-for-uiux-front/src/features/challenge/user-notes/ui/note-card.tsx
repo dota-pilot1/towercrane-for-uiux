@@ -83,9 +83,9 @@ export function NoteCard({ note, isMine, onUpdate, onDelete, isDeleting, deleteE
 
   // ── 뷰 모드 ───────────────────────────────────────────────────────────────
   return (
-    <article className="ui-panel-soft rounded-md p-4 space-y-3">
+    <article className="ui-panel-soft rounded-md overflow-hidden">
       {/* 헤더 */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 bg-surface-muted border-b border-surface-border-soft px-4 py-2.5">
         <div className="flex items-center gap-2 min-w-0">
           <h4 className="font-bold ui-text-primary text-sm truncate">
             {note.title || '(제목 없음)'}
@@ -114,14 +114,16 @@ export function NoteCard({ note, isMine, onUpdate, onDelete, isDeleting, deleteE
       </div>
 
       {/* 본문 */}
-      <BlockViewer
-        content={note.content}
-        onChecklistToggle={isMine ? (newContent) => onUpdate({ content: newContent }) : undefined}
-      />
+      <div className="px-4 py-3">
+        <BlockViewer
+          content={note.content}
+          onChecklistToggle={isMine ? (newContent) => onUpdate({ content: newContent }) : undefined}
+        />
+      </div>
 
       {/* 삭제 확인 */}
       {state === 'delete' && (
-        <div className="flex flex-col gap-1.5 pt-2 border-t border-surface-border">
+        <div className="flex flex-col gap-1.5 px-4 pb-3 border-t border-surface-border pt-2">
           {deleteError && (
             <p className="text-xs text-destructive">{deleteError}</p>
           )}
