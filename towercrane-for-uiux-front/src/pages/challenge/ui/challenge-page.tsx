@@ -1,13 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '../../../shared/ui/card'
 import { ChallengeSidebar } from '../../../features/challenge/ui/challenge-sidebar'
 import { ChallengeTopicsList } from '../../../features/challenge/ui/challenge-topics-list'
-import { useMyNotes, useSharedNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../../../features/challenge/lib/hooks'
+import { useCategories, useMyNotes, useSharedNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../../../features/challenge/lib/hooks'
 import { UserNotesPanel } from '../../../features/challenge/user-notes/ui/user-notes-panel'
 
 export function ChallengePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedSection, setSelectedSection] = useState<string | null>(null)
+
+  const { data: categories = [] } = useCategories()
+
+  useEffect(() => {
+    if (selectedCategory === null && categories.length > 0) {
+      setSelectedCategory(categories[0].id)
+    }
+  }, [categories, selectedCategory])
 
   const { data: myNotes = [] } = useMyNotes(selectedSection || '')
   const { data: sharedNotes = [] } = useSharedNotes(selectedSection || '')
@@ -21,13 +29,11 @@ export function ChallengePage() {
       <ChallengeSidebar selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
 
       {/* 2차: 섹션 */}
-      {selectedCategory && (
-        <ChallengeTopicsList
-          sectionId={selectedCategory}
-          selectedTopic={selectedSection}
-          onSelectTopic={setSelectedSection}
-        />
-      )}
+      <ChallengeTopicsList
+        sectionId={selectedCategory ?? ''}
+        selectedTopic={selectedSection}
+        onSelectTopic={setSelectedSection}
+      />
 
       {/* 3차: 본문 - 노트 */}
       {selectedSection ? (
