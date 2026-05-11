@@ -5,20 +5,17 @@ mermaid.initialize({
   startOnLoad: false,
   theme: 'base',
   themeVariables: {
-    // 테이블 헤더 배경 (entity title)
     primaryColor: '#1e293b',
-    primaryTextColor: '#f1f5f9',
-    primaryBorderColor: '#334155',
+    primaryTextColor: '#e2e8f0',
+    primaryBorderColor: '#475569',
 
-    // 컬럼 행 배경 (홀수/짝수)
-    attributeBackgroundColorOdd: '#f8fafc',
-    attributeBackgroundColorEven: '#f1f5f9',
+    attributeBackgroundColorOdd: '#0f172a',
+    attributeBackgroundColorEven: '#1e293b',
 
-    // 관계선
     lineColor: '#64748b',
-    edgeLabelBackground: '#ffffff',
+    edgeLabelBackground: '#1e293b',
+    tertiaryTextColor: '#e2e8f0',
 
-    // 폰트
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
     fontSize: '13px',
   },
@@ -56,18 +53,18 @@ export function SqlErdView({ mmd }: SqlErdViewProps) {
         svgEl.removeAttribute('width')
         svgEl.removeAttribute('height')
 
-        // PK 셀 강조
+        // PK/FK 강조
         svgEl.querySelectorAll<SVGElement>('.er.attributeBoxEven, .er.attributeBoxOdd').forEach((row) => {
           const texts = row.querySelectorAll('text')
           texts.forEach((t) => {
             if (t.textContent?.trim() === 'PK') {
-              t.style.fill = '#10b981'
+              t.style.fill = '#34d399'
               t.style.fontWeight = '700'
               const rect = row.querySelector('rect')
-              if (rect) rect.style.fill = '#f0fdf4'
+              if (rect) rect.style.fill = '#064e3b'
             }
             if (t.textContent?.trim() === 'FK') {
-              t.style.fill = '#f59e0b'
+              t.style.fill = '#fbbf24'
               t.style.fontWeight = '700'
             }
           })
