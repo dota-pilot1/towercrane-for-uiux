@@ -42,9 +42,9 @@ export function UserNotesPanel({
   const sortedNotes = [...pinnedNotes, ...unpinnedNotes]
 
   return (
-    <div className="space-y-3">
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="border-b border-surface-border bg-surface-muted px-0">
+    <div className="h-full flex flex-col overflow-hidden">
+      <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="shrink-0 border-b border-surface-border bg-surface-muted px-0">
           <TabsTrigger value="mine" className="text-xs py-2">
             내 노트 ({myNotes.length})
           </TabsTrigger>
@@ -53,67 +53,69 @@ export function UserNotesPanel({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="mine" className="space-y-3">
-          {!showForm && (
-            <button
-              onClick={() => setShowForm(true)}
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-md border border-surface-border ui-text-secondary hover:bg-surface-muted transition-colors"
-            >
-              <Plus className="size-4" />
-              <span className="text-sm">노트 추가</span>
-            </button>
-          )}
+        <div className="flex-1 overflow-y-auto">
+          <TabsContent value="mine" className="p-4 space-y-3">
+            {!showForm && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-md border border-surface-border ui-text-secondary hover:bg-surface-muted transition-colors"
+              >
+                <Plus className="size-4" />
+                <span className="text-sm">노트 추가</span>
+              </button>
+            )}
 
-          {showForm && (
-            <NoteForm
-              onSubmit={(data) => {
-                onCreateNote(data)
-                setShowForm(false)
-              }}
-              onCancel={() => {
-                setShowForm(false)
-                setEditingId(null)
-              }}
-              loading={loading}
-            />
-          )}
+            {showForm && (
+              <NoteForm
+                onSubmit={(data) => {
+                  onCreateNote(data)
+                  setShowForm(false)
+                }}
+                onCancel={() => {
+                  setShowForm(false)
+                  setEditingId(null)
+                }}
+                loading={loading}
+              />
+            )}
 
-          {sortedNotes.length === 0 && !showForm && (
-            <div className="text-center py-8">
-              <p className="text-xs ui-text-muted">첫 노트를 남겨보세요.</p>
+            {sortedNotes.length === 0 && !showForm && (
+              <div className="text-center py-8">
+                <p className="text-xs ui-text-muted">첫 노트를 남겨보세요.</p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {sortedNotes.map((note) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  isMine={true}
+                  onUpdate={(updates) => onUpdateNote(note.id, updates)}
+                  onDelete={() => onDeleteNote(note.id)}
+                />
+              ))}
             </div>
-          )}
+          </TabsContent>
 
-          <div className="space-y-3">
-            {sortedNotes.map((note) => (
+          <TabsContent value="shared" className="p-4 space-y-3">
+            {sharedNotes.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-xs ui-text-muted">공유받은 노트가 없습니다.</p>
+              </div>
+            )}
+
+            {sharedNotes.map((note) => (
               <NoteCard
                 key={note.id}
                 note={note}
-                isMine={true}
-                onUpdate={(updates) => onUpdateNote(note.id, updates)}
-                onDelete={() => onDeleteNote(note.id)}
+                isMine={false}
+                onUpdate={() => {}}
+                onDelete={() => {}}
               />
             ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="shared" className="space-y-3">
-          {sharedNotes.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-xs ui-text-muted">공유받은 노트가 없습니다.</p>
-            </div>
-          )}
-
-          {sharedNotes.map((note) => (
-            <NoteCard
-              key={note.id}
-              note={note}
-              isMine={false}
-              onUpdate={() => {}}
-              onDelete={() => {}}
-            />
-          ))}
-        </TabsContent>
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   )

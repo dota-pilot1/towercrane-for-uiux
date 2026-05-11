@@ -101,27 +101,37 @@ export function ImageComponent({
     if (!editable && isSelected) clearSelection()
   }, [editable, isSelected, clearSelection])
 
+  type ResizeDir = 'se' | 'sw' | 'ne' | 'nw'
+
   const handleResizeStart = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.PointerEvent<HTMLDivElement>, dir: ResizeDir) => {
       if (!editable) return
       e.preventDefault()
       e.stopPropagation()
+      // pointer capture: 포인터가 핸들 밖으로 빠져나가도 이벤트 계속 수신
+      e.currentTarget.setPointerCapture(e.pointerId)
+      const target = e.currentTarget
+
       setIsResizing(true)
 
       const startX = e.clientX
       const startY = e.clientY
       const startWidth = currentWidth || imageRef.current?.naturalWidth || 300
       const startHeight = currentHeight || imageRef.current?.naturalHeight || 200
-      const aspectRatio = startWidth / startHeight
+      const aspectRatio = startWidth / (startHeight || 1)
+
+      const xSign = dir === 'se' || dir === 'ne' ? 1 : -1
+      const ySign = dir === 'se' || dir === 'sw' ? 1 : -1
 
       let latestWidth = startWidth
       let latestHeight = startHeight
 
-      const onMouseMove = (moveEvent: MouseEvent) => {
-        const deltaX = moveEvent.clientX - startX
+      const onPointerMove = (moveEvent: PointerEvent) => {
+        const deltaX = (moveEvent.clientX - startX) * xSign
+        const deltaY = (moveEvent.clientY - startY) * ySign
         const newWidth = Math.max(50, startWidth + deltaX)
         const newHeight = moveEvent.shiftKey
-          ? Math.max(50, startHeight + (moveEvent.clientY - startY))
+          ? Math.max(50, startHeight + deltaY)
           : newWidth / aspectRatio
 
         latestWidth = Math.round(newWidth)
@@ -130,10 +140,10 @@ export function ImageComponent({
         setCurrentHeight(latestHeight)
       }
 
-      const onMouseUp = () => {
+      const onPointerUp = () => {
         setIsResizing(false)
-        document.removeEventListener('mousemove', onMouseMove)
-        document.removeEventListener('mouseup', onMouseUp)
+        target.removeEventListener('pointermove', onPointerMove)
+        target.removeEventListener('pointerup', onPointerUp)
 
         editor.update(() => {
           const node = $getNodeByKey(nodeKey)
@@ -143,8 +153,9 @@ export function ImageComponent({
         })
       }
 
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
+      // capture된 요소에 리스너 등록 — document 전역 불필요
+      target.addEventListener('pointermove', onPointerMove)
+      target.addEventListener('pointerup', onPointerUp)
     },
     [editable, editor, nodeKey, currentWidth, currentHeight],
   )
@@ -192,18 +203,35 @@ export function ImageComponent({
           width={currentWidth || undefined}
           height={currentHeight || undefined}
           className={`max-w-full rounded-md ${
-            showSelectionChrome ? 'ring-2 ring-emerald-400' : ''
+            showSelectionChrome ? 'ring-2 ring-brand-border' : ''
           } ${isResizing ? 'select-none' : ''}`}
           style={{ display: 'block' }}
           draggable={false}
         />
 
         {showSelectionChrome ? (
-          <div
-            className="absolute bottom-0 right-0 size-3 bg-brand-primary cursor-se-resize rounded-tl"
-            onMouseDown={handleResizeStart}
-            title="드래그로 크기 조절 (Shift: 비율 무시)"
-          />
+          <>
+            <div
+              className="absolute top-0 left-0 w-5 h-5 bg-brand-primary cursor-nw-resize rounded-br"
+              onPointerDown={(e) => handleResizeStart(e, 'nw')}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div
+              className="absolute top-0 right-0 w-5 h-5 bg-brand-primary cursor-ne-resize rounded-bl"
+              onPointerDown={(e) => handleResizeStart(e, 'ne')}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-5 h-5 bg-brand-primary cursor-sw-resize rounded-tr"
+              onPointerDown={(e) => handleResizeStart(e, 'sw')}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div
+              className="absolute bottom-0 right-0 w-5 h-5 bg-brand-primary cursor-se-resize rounded-tl"
+              onPointerDown={(e) => handleResizeStart(e, 'se')}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </>
         ) : null}
 
         {showSelectionChrome ? (

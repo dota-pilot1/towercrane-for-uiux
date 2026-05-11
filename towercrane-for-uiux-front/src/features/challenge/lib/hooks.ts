@@ -53,6 +53,50 @@ export function useCreateSection() {
   })
 }
 
+export function useUpdateCategory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      apiRequest(`/challenge/categories/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.categories() })
+    },
+  })
+}
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiRequest(`/challenge/categories/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.categories() })
+    },
+  })
+}
+
+export function useUpdateSection() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, categoryId, title }: { id: string; categoryId: string; title: string }) =>
+      apiRequest(`/challenge/sections/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.sections(variables.categoryId) })
+    },
+  })
+}
+
+export function useDeleteSection() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, categoryId }: { id: string; categoryId: string }) =>
+      apiRequest(`/challenge/sections/${id}`, { method: 'DELETE' }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.sections(variables.categoryId) })
+    },
+  })
+}
+
 // Topics
 export function useTopicsBySection(sectionId: string) {
   return useQuery({

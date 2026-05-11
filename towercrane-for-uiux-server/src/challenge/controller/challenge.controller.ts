@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  HttpCode,
   Req,
   ForbiddenException,
 } from '@nestjs/common';
@@ -61,6 +62,7 @@ export class ChallengeController {
 
   @Delete('categories/:id')
   @UseGuards(AdminGuard)
+  @HttpCode(204)
   async deleteCategory(@Param('id') id: string, @Req() req: SessionRequest) {
     return this.challengeService.deleteCategory(id, req.user.id);
   }
@@ -93,6 +95,7 @@ export class ChallengeController {
 
   @Delete('sections/:id')
   @UseGuards(AdminGuard)
+  @HttpCode(204)
   async deleteSection(@Param('id') id: string, @Req() req: SessionRequest) {
     return this.challengeService.deleteSection(id, req.user.id);
   }
@@ -268,11 +271,12 @@ export class ChallengeController {
 
   @Patch('notes/:id')
   async updateNote(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
-    const input = updateNoteSchema.partial().parse(body);
+    const input = updateNoteSchema.parse(body);
     return this.challengeService.updateNote(id, input, req.user.id);
   }
 
   @Delete('notes/:id')
+  @HttpCode(204)
   async deleteNote(@Param('id') id: string, @Req() req: SessionRequest) {
     return this.challengeService.deleteNote(id, req.user.id);
   }

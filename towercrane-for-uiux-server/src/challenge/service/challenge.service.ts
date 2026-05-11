@@ -72,7 +72,7 @@ export class ChallengeService {
 
   async deleteCategory(id: string, userId: string) {
     const category = await this.getCategoryById(id);
-    if (!category) throw new NotFoundException('Category not found');
+    if (!category) return;
     if (category.createdBy !== userId) throw new ForbiddenException('Not authorized');
 
     this.db.db.delete(challengeCategoriesTable).where(eq(challengeCategoriesTable.id, id)).run();
@@ -129,7 +129,7 @@ export class ChallengeService {
 
   async deleteSection(id: string, userId: string) {
     const section = await this.getSectionById(id);
-    if (!section) throw new NotFoundException('Section not found');
+    if (!section) return;
 
     this.db.db.delete(challengeSectionsTable).where(eq(challengeSectionsTable.id, id)).run();
   }
