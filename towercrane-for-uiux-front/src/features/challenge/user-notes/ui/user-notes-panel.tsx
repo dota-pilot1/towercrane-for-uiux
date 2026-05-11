@@ -40,9 +40,9 @@ export function UserNotesPanel({
   const [tab, setTab] = useState('mine')
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  const byNewest = (a: Note, b: Note) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  const pinnedNotes = myNotes.filter((n) => n.pinned).sort(byNewest)
-  const unpinnedNotes = myNotes.filter((n) => !n.pinned).sort(byNewest)
+  const byOldest = (a: Note, b: Note) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+  const pinnedNotes = myNotes.filter((n) => n.pinned).sort(byOldest)
+  const unpinnedNotes = myNotes.filter((n) => !n.pinned).sort(byOldest)
   const sortedNotes = [...pinnedNotes, ...unpinnedNotes]
 
   return (
