@@ -17,11 +17,13 @@ interface NoteCardProps {
   isMine: boolean
   onUpdate: (updates: Partial<any>) => void
   onDelete: () => void
+  isDeleting?: boolean
+  deleteError?: string | null
 }
 
 type CardState = 'view' | 'edit' | 'delete'
 
-export function NoteCard({ note, isMine, onUpdate, onDelete }: NoteCardProps) {
+export function NoteCard({ note, isMine, onUpdate, onDelete, isDeleting, deleteError }: NoteCardProps) {
   const [state, setState] = useState<CardState>('view')
 
   // 편집 상태
@@ -119,14 +121,23 @@ export function NoteCard({ note, isMine, onUpdate, onDelete }: NoteCardProps) {
 
       {/* 삭제 확인 */}
       {state === 'delete' && (
-        <div className="flex items-center gap-2 pt-2 border-t border-surface-border">
-          <p className="text-xs ui-text-muted flex-1">정말 삭제할까요?</p>
-          <button onClick={onDelete} className="text-xs px-2 py-1 rounded bg-red-500/10 text-red-500 hover:bg-red-500/20">
-            삭제
-          </button>
-          <button onClick={() => setState('view')} className="text-xs px-2 py-1 rounded border border-surface-border ui-text-secondary hover:bg-surface-muted">
-            취소
-          </button>
+        <div className="flex flex-col gap-1.5 pt-2 border-t border-surface-border">
+          {deleteError && (
+            <p className="text-xs text-destructive">{deleteError}</p>
+          )}
+          <div className="flex items-center gap-2">
+            <p className="text-xs ui-text-muted flex-1">정말 삭제할까요?</p>
+            <button
+              onClick={onDelete}
+              disabled={isDeleting}
+              className="text-xs px-2 py-1 rounded bg-red-500/10 text-red-500 hover:bg-red-500/20 disabled:opacity-50"
+            >
+              {isDeleting ? '삭제 중...' : '삭제'}
+            </button>
+            <button onClick={() => setState('view')} disabled={isDeleting} className="text-xs px-2 py-1 rounded border border-surface-border ui-text-secondary hover:bg-surface-muted disabled:opacity-50">
+              취소
+            </button>
+          </div>
         </div>
       )}
     </article>

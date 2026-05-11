@@ -10,6 +10,7 @@ import { UserNotesPanel } from '../../../features/challenge/user-notes/ui/user-n
 export function ChallengePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedSection, setSelectedSection] = useState<string | null>(null)
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
 
   const { data: myNotes = [] } = useMyNotes(selectedSection || '')
   const { data: sharedNotes = [] } = useSharedNotes(selectedSection || '')
@@ -44,7 +45,14 @@ export function ChallengePage() {
             sharedNotes={sharedNotes}
             onCreateNote={(data) => createNote.mutateAsync({ sectionId: selectedSection, ...data })}
             onUpdateNote={(id, data) => updateNote.mutateAsync({ id, data })}
-            onDeleteNote={(id) => deleteNote.mutate(id)}
+            onDeleteNote={(id) => {
+              setDeletingNoteId(id)
+              deleteNote.mutate(id, {
+                onSettled: () => setDeletingNoteId(null),
+              })
+            }}
+            isDeletingNoteId={deletingNoteId}
+            deleteNoteError={deleteNote.isError ? (deleteNote.error as Error)?.message ?? '삭제 실패' : null}
             loading={createNote.isPending || updateNote.isPending || deleteNote.isPending}
           />
         </Card>

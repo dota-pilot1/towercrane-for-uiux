@@ -253,5 +253,8 @@ export function useDeleteNote() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.all })
     },
+    onError: (error: Error) => {
+      console.error('[useDeleteNote]', error.message)
+    },
   })
 }

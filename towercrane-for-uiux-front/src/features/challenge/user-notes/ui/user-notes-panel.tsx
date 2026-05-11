@@ -20,7 +20,9 @@ interface UserNotesPanelProps {
   sharedNotes: Note[]
   onCreateNote: (data: { title?: string; content: string; visibility: string; pinned: boolean }) => Promise<void>
   onUpdateNote: (id: string, data: Partial<Note>) => Promise<void>
-  onDeleteNote: (id: string) => Promise<void>
+  onDeleteNote: (id: string) => void
+  isDeletingNoteId?: string | null
+  deleteNoteError?: string | null
   loading?: boolean
 }
 
@@ -31,6 +33,8 @@ export function UserNotesPanel({
   onCreateNote,
   onUpdateNote,
   onDeleteNote,
+  isDeletingNoteId,
+  deleteNoteError,
   loading = false,
 }: UserNotesPanelProps) {
   const [tab, setTab] = useState('mine')
@@ -93,6 +97,8 @@ export function UserNotesPanel({
                   isMine={true}
                   onUpdate={(updates) => onUpdateNote(note.id, updates)}
                   onDelete={() => onDeleteNote(note.id)}
+                  isDeleting={isDeletingNoteId === note.id}
+                  deleteError={isDeletingNoteId === note.id ? deleteNoteError : null}
                 />
               ))}
             </div>
