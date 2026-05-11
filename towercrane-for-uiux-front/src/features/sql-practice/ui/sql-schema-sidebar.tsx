@@ -1,4 +1,4 @@
-import { Database, GitFork, Info, RefreshCw, RotateCcw, Settings, Table2, UploadCloud } from 'lucide-react'
+import { Database, Info, RefreshCw, RotateCcw, Settings, Table2, UploadCloud } from 'lucide-react'
 import { useState } from 'react'
 import type {
   SqlPracticeMeta,
@@ -95,22 +95,9 @@ export function SqlSchemaSidebar({
 
         <div className="border-b border-surface-border p-3">
           <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-text-primary">
-                <Database className="size-3.5 text-brand-primary" />
-                {meta?.dbFile ?? 'practice.sqlite'}
-              </div>
-              {erdQuery.data?.mmd && (
-                <button
-                  type="button"
-                  className="ui-icon-button size-6 shrink-0"
-                  title="ERD 보기"
-                  aria-label="ERD 보기"
-                  onClick={() => setErdDialogOpen(true)}
-                >
-                  <GitFork className="size-3" />
-                </button>
-              )}
+            <div className="flex items-center gap-2 text-xs font-bold text-text-primary">
+              <Database className="size-3.5 text-brand-primary" />
+              {meta?.dbFile ?? 'practice.sqlite'}
             </div>
             <div className="mt-2 space-y-1 text-[11px] text-text-secondary">
               <p>seed: {meta?.seedFile ?? '01_board_basic.sql'}</p>
@@ -119,7 +106,7 @@ export function SqlSchemaSidebar({
             </div>
           </div>
 
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-2 grid grid-cols-3 gap-2">
             <button
               type="button"
               className="ui-icon-button h-8 gap-1.5 text-xs"
@@ -140,6 +127,16 @@ export function SqlSchemaSidebar({
               <UploadCloud className={`size-3.5 ${isReloading ? 'animate-spin' : ''}`} />
               Seed
             </button>
+            {erdQuery.data?.mmd && (
+              <button
+                type="button"
+                className="ui-icon-button-brand h-8 text-xs font-bold"
+                onClick={() => setErdDialogOpen(true)}
+                title="ERD 보기"
+              >
+                ERD
+              </button>
+            )}
           </div>
         </div>
 
