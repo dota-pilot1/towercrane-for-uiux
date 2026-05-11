@@ -1,10 +1,11 @@
-import { 
-  Zap, Target, Rocket, Lightbulb, CheckCircle2, 
-  BrainCircuit, Layout, ShieldCheck, Microscope, 
+import {
+  Zap, Target, Rocket, Lightbulb, CheckCircle2,
+  BrainCircuit, Layout, ShieldCheck, Microscope,
   Cpu, Users, AlertTriangle, Layers, BookOpen,
   ArrowRight, Sparkles, MessageSquare, Code2, Terminal, Plus
 } from 'lucide-react'
 import { Card } from '../../../shared/ui/card'
+import { PageHeader } from '../../../shared/ui/page-header'
 import { useState } from 'react'
 
 export function AiMethodologyPage() {
@@ -24,7 +25,13 @@ export function AiMethodologyPage() {
   ]
 
   return (
-    <div className="flex flex-col lg:flex-row gap-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <section className="space-y-6 ui-page-bg pb-20">
+      <PageHeader
+        icon={BrainCircuit}
+        title="AI 개발 방법론"
+        description="AI와 함께하는 실무 개발의 변곡점을 넘는 전략"
+      />
+    <div className="flex flex-col lg:flex-row gap-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Sticky Navigation Sidebar */}
       <aside className="lg:w-64 shrink-0">
         <div className="sticky top-24 space-y-1">
@@ -557,5 +564,6 @@ export function AiMethodologyPage() {
         )}
       </main>
     </div>
+    </section>
   )
 }
