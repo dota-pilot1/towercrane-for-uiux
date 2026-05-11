@@ -62,7 +62,7 @@ function NoteView({ data }: { data: string }) {
 
   if (isLexical) {
     return (
-      <div className="[&_.bg-surface-raised]:bg-transparent">
+      <div className="[&_.bg-surface-raised]:bg-transparent [&_[contenteditable]]:!px-0 [&_[contenteditable]]:!py-1">
         <LexicalEditor
           initialState={data}
           onChange={() => {}}
