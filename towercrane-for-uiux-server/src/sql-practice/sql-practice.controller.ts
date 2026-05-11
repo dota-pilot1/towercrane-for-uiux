@@ -46,4 +46,9 @@ export class SqlPracticeController {
   reloadSeed() {
     return this.sqlPracticeService.reloadSeed();
   }
+
+  @Get('seeds/:fileName/erd')
+  seedErd(@Param('fileName') fileName: string) {
+    return this.sqlPracticeService.getSeedErd(fileName);
+  }
 }

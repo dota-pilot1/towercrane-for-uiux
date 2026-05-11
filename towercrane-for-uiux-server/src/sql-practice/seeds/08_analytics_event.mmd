@@ -1,0 +1,46 @@
+erDiagram
+    users ||--o{ sessions : "starts"
+    campaigns ||--o{ sessions : "drives"
+    devices ||--o{ sessions : "used in"
+    sessions ||--o{ events : "contains"
+    pages ||--o{ events : "receives"
+
+    users {
+        int id PK
+        string email
+        string signed_up_at
+        bool marketing_opt_in
+    }
+    campaigns {
+        int id PK
+        string name
+        string channel
+        string started_at
+    }
+    devices {
+        int id PK
+        string device_type
+        string os
+        string browser
+    }
+    pages {
+        int id PK
+        string path
+        string page_group
+    }
+    sessions {
+        int id PK
+        int user_id FK
+        int campaign_id FK
+        int device_id FK
+        string started_at
+        string ended_at
+    }
+    events {
+        int id PK
+        int session_id FK
+        int page_id FK
+        string event_name
+        int event_value
+        string occurred_at
+    }

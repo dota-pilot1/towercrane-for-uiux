@@ -1,4 +1,4 @@
-import { Database, Info, RefreshCw, RotateCcw, Settings, Table2, UploadCloud } from 'lucide-react'
+import { Database, Info, RefreshCw, RotateCcw, Settings, Table2, UploadCloud, GitFork } from 'lucide-react'
 import { useState } from 'react'
 import type {
   SqlPracticeMeta,
@@ -8,9 +8,13 @@ import type {
 import {
   useActivateSqlPracticeSeed,
   useSqlPracticeSeeds,
+  useSqlPracticeErd,
 } from '../model/use-sql-practice-queries'
 import { SqlSeedManagerDialog } from './sql-seed-manager-dialog'
 import { SqlTableSchemaDialog } from './sql-table-schema-dialog'
+import { SqlErdView } from './sql-erd-view'
+
+type SidebarTab = 'tables' | 'erd'
 
 type SqlSchemaSidebarProps = {
   meta?: SqlPracticeMeta
@@ -41,7 +45,9 @@ export function SqlSchemaSidebar({
 }: SqlSchemaSidebarProps) {
   const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null)
   const [seedDialogOpen, setSeedDialogOpen] = useState(false)
+  const [tab, setTab] = useState<SidebarTab>('tables')
   const seedsQuery = useSqlPracticeSeeds()
+  const erdQuery = useSqlPracticeErd(meta?.seedFile)
   const activateSeedMutation = useActivateSqlPracticeSeed({
     onSuccess: () => {
       onSeedActivated()
@@ -63,9 +69,31 @@ export function SqlSchemaSidebar({
     <>
       <aside className="ui-panel flex min-h-[360px] flex-col overflow-hidden rounded-md p-0">
         <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
-          <div>
-            <h2 className="text-sm font-bold text-text-primary">테이블 정보</h2>
-            <p className="text-[11px] text-text-muted">현재 연습 DB 기준</p>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setTab('tables')}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                tab === 'tables'
+                  ? 'bg-text-primary text-background'
+                  : 'text-text-secondary hover:bg-surface-muted'
+              }`}
+            >
+              <Table2 className="size-3.5" />
+              테이블
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('erd')}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                tab === 'erd'
+                  ? 'bg-text-primary text-background'
+                  : 'text-text-secondary hover:bg-surface-muted'
+              }`}
+            >
+              <GitFork className="size-3.5" />
+              ERD
+            </button>
           </div>
           <div className="flex items-center gap-1.5">
             <button
@@ -127,57 +155,81 @@ export function SqlSchemaSidebar({
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
-          {tables.length === 0 ? (
-            <div className="flex min-h-[240px] flex-col items-center justify-center px-5 text-center">
-              <Table2 className="mb-3 size-9 text-text-muted" />
-              <p className="text-sm font-semibold text-text-primary">테이블이 없습니다</p>
-              <p className="mt-1 text-xs leading-5 text-text-secondary">
-                CREATE TABLE을 실행하거나 Reset으로 현재 seed를 다시 적용하세요.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {tables.map((table) => {
-                const isSelected = selectedTable === table.tableName
-                return (
-                  <button
-                    key={table.tableName}
-                    type="button"
-                    onClick={() => onSelectTable(table.tableName)}
-                    className={`group flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${
-                      isSelected
-                        ? 'border-brand-border bg-brand-glass text-brand-primary'
-                        : 'border-transparent text-text-primary hover:border-surface-border-soft hover:bg-surface-muted'
-                    }`}
-                  >
-                    <Table2 className="size-3.5 shrink-0" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold">{table.tableName}</span>
-                      <span className="block text-[11px] text-text-muted">
-                        {table.rowCount}행 · {table.columns.length}열
-                      </span>
-                    </span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      className="rounded-sm p-1 text-text-muted opacity-0 transition-opacity hover:bg-surface-raised hover:text-text-primary group-hover:opacity-100"
-                      title="스키마 보기"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        setSchemaDialog(table)
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key !== 'Enter' && event.key !== ' ') return
-                        event.preventDefault()
-                        event.stopPropagation()
-                        setSchemaDialog(table)
-                      }}
-                    >
-                      <Info className="size-3.5" />
-                    </span>
-                  </button>
-                )
-              })}
+          {tab === 'tables' && (
+            <>
+              {tables.length === 0 ? (
+                <div className="flex min-h-[240px] flex-col items-center justify-center px-5 text-center">
+                  <Table2 className="mb-3 size-9 text-text-muted" />
+                  <p className="text-sm font-semibold text-text-primary">테이블이 없습니다</p>
+                  <p className="mt-1 text-xs leading-5 text-text-secondary">
+                    CREATE TABLE을 실행하거나 Reset으로 현재 seed를 다시 적용하세요.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {tables.map((table) => {
+                    const isSelected = selectedTable === table.tableName
+                    return (
+                      <button
+                        key={table.tableName}
+                        type="button"
+                        onClick={() => onSelectTable(table.tableName)}
+                        className={`group flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${
+                          isSelected
+                            ? 'border-brand-border bg-brand-glass text-brand-primary'
+                            : 'border-transparent text-text-primary hover:border-surface-border-soft hover:bg-surface-muted'
+                        }`}
+                      >
+                        <Table2 className="size-3.5 shrink-0" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold">{table.tableName}</span>
+                          <span className="block text-[11px] text-text-muted">
+                            {table.rowCount}행 · {table.columns.length}열
+                          </span>
+                        </span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          className="rounded-sm p-1 text-text-muted opacity-0 transition-opacity hover:bg-surface-raised hover:text-text-primary group-hover:opacity-100"
+                          title="스키마 보기"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSchemaDialog(table)
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return
+                            event.preventDefault()
+                            event.stopPropagation()
+                            setSchemaDialog(table)
+                          }}
+                        >
+                          <Info className="size-3.5" />
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {tab === 'erd' && (
+            <div className="p-1">
+              {erdQuery.isLoading ? (
+                <div className="flex min-h-[240px] items-center justify-center">
+                  <div className="size-5 animate-spin rounded-full border-2 border-surface-border border-t-brand-border" />
+                </div>
+              ) : erdQuery.data?.mmd ? (
+                <SqlErdView mmd={erdQuery.data.mmd} />
+              ) : (
+                <div className="flex min-h-[240px] flex-col items-center justify-center px-5 text-center">
+                  <GitFork className="mb-3 size-9 text-text-muted" />
+                  <p className="text-sm font-semibold text-text-primary">ERD가 없습니다</p>
+                  <p className="mt-1 text-xs leading-5 text-text-secondary">
+                    현재 시드 파일에 대응하는 ERD 파일이 없습니다.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

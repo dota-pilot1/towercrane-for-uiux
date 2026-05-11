@@ -1,0 +1,50 @@
+erDiagram
+    customers ||--o{ orders : "places"
+    orders ||--|{ order_items : "contains"
+    products ||--o{ order_items : "included in"
+    orders ||--|| payments : "paid by"
+    orders ||--|| shipments : "shipped via"
+
+    customers {
+        int id PK
+        string name
+        string email
+        string grade
+        string joined_at
+    }
+    products {
+        int id PK
+        string name
+        string category
+        int price
+        int stock_qty
+    }
+    orders {
+        int id PK
+        int customer_id FK
+        string status
+        string ordered_at
+    }
+    order_items {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        int unit_price
+    }
+    payments {
+        int id PK
+        int order_id FK
+        string method
+        int amount
+        string status
+        string paid_at
+    }
+    shipments {
+        int id PK
+        int order_id FK
+        string carrier
+        string status
+        string shipped_at
+        string delivered_at
+    }

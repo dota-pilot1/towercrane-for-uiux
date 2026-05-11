@@ -1,0 +1,63 @@
+erDiagram
+    suppliers ||--o{ products : "supplies"
+    suppliers ||--o{ purchase_orders : "fulfills"
+    warehouses ||--o{ stock_movements : "records"
+    warehouses ||--o{ purchase_orders : "receives"
+    warehouses ||--o{ stock_snapshots : "snapshots"
+    products ||--o{ stock_movements : "moved"
+    products ||--o{ purchase_order_items : "ordered"
+    products ||--o{ stock_snapshots : "tracked"
+    purchase_orders ||--|{ purchase_order_items : "contains"
+
+    warehouses {
+        int id PK
+        string name
+        string region
+        bool is_active
+    }
+    suppliers {
+        int id PK
+        string name
+        string country
+        int lead_time_days
+    }
+    products {
+        int id PK
+        int supplier_id FK
+        string sku
+        string name
+        int safety_stock
+    }
+    stock_movements {
+        int id PK
+        int warehouse_id FK
+        int product_id FK
+        string movement_type
+        int quantity
+        string moved_at
+        string reference_no
+    }
+    purchase_orders {
+        int id PK
+        int supplier_id FK
+        int warehouse_id FK
+        string status
+        string ordered_at
+        string received_at
+    }
+    purchase_order_items {
+        int id PK
+        int purchase_order_id FK
+        int product_id FK
+        int ordered_qty
+        int received_qty
+        int unit_cost
+    }
+    stock_snapshots {
+        int id PK
+        int warehouse_id FK
+        int product_id FK
+        string snapshot_date
+        int on_hand_qty
+        int reserved_qty
+    }

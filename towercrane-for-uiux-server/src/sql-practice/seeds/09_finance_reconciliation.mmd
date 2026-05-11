@@ -1,0 +1,61 @@
+erDiagram
+    merchants ||--o{ orders : "receives"
+    merchants ||--o{ settlements : "settled"
+    merchants ||--o{ receivables : "owed"
+    orders ||--o{ payments : "paid by"
+    orders ||--o{ refunds : "refunded"
+    orders ||--o{ receivables : "tracked"
+    payments ||--o{ refunds : "refunded via"
+    payments ||--o{ fees : "charged"
+
+    merchants {
+        int id PK
+        string name
+        float fee_rate
+        int settlement_day
+    }
+    orders {
+        int id PK
+        int merchant_id FK
+        string order_no
+        int order_amount
+        string ordered_at
+    }
+    payments {
+        int id PK
+        int order_id FK
+        int amount
+        string method
+        string status
+        string approved_at
+    }
+    refunds {
+        int id PK
+        int order_id FK
+        int payment_id FK
+        int amount
+        string reason
+        string refunded_at
+    }
+    settlements {
+        int id PK
+        int merchant_id FK
+        string settlement_month
+        int expected_amount
+        int settled_amount
+        string settled_at
+    }
+    fees {
+        int id PK
+        int payment_id FK
+        string fee_type
+        int amount
+    }
+    receivables {
+        int id PK
+        int merchant_id FK
+        int order_id FK
+        int amount
+        string status
+        string due_date
+    }

@@ -1,0 +1,64 @@
+erDiagram
+    accounts ||--o{ contacts : "has"
+    accounts ||--o{ leads : "generates"
+    accounts ||--o{ opportunities : "has"
+    accounts ||--o{ contracts : "signs"
+    sales_reps ||--o{ leads : "owns"
+    sales_reps ||--o{ opportunities : "works"
+    sales_reps ||--o{ activities : "logs"
+    leads ||--o{ opportunities : "converts to"
+    opportunities ||--o{ activities : "has"
+    opportunities ||--|| contracts : "results in"
+
+    accounts {
+        int id PK
+        string name
+        string industry
+        string region
+    }
+    contacts {
+        int id PK
+        int account_id FK
+        string name
+        string title
+        string email
+    }
+    sales_reps {
+        int id PK
+        string name
+        string team
+    }
+    leads {
+        int id PK
+        int account_id FK
+        int sales_rep_id FK
+        string source
+        string status
+        string created_at
+    }
+    opportunities {
+        int id PK
+        int account_id FK
+        int sales_rep_id FK
+        int lead_id FK
+        string name
+        string stage
+        int expected_amount
+        string expected_close_date
+    }
+    activities {
+        int id PK
+        int opportunity_id FK
+        int sales_rep_id FK
+        string activity_type
+        string memo
+        string occurred_at
+    }
+    contracts {
+        int id PK
+        int opportunity_id FK
+        int account_id FK
+        int contract_amount
+        string signed_at
+        string status
+    }

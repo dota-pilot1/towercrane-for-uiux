@@ -1,0 +1,48 @@
+erDiagram
+    customers ||--o{ tickets : "submits"
+    agents ||--o{ tickets : "handles"
+    tickets ||--o{ ticket_messages : "has"
+    tickets ||--o{ ticket_status_logs : "tracks"
+    tickets ||--o{ ticket_tags : "tagged"
+
+    customers {
+        int id PK
+        string name
+        string email
+        string plan
+    }
+    agents {
+        int id PK
+        string name
+        string team
+        bool is_active
+    }
+    tickets {
+        int id PK
+        int customer_id FK
+        int agent_id FK
+        string subject
+        string priority
+        string status
+        string created_at
+        string resolved_at
+    }
+    ticket_messages {
+        int id PK
+        int ticket_id FK
+        string sender_type
+        string body
+        string created_at
+    }
+    ticket_status_logs {
+        int id PK
+        int ticket_id FK
+        string from_status
+        string to_status
+        string changed_at
+    }
+    ticket_tags {
+        int id PK
+        int ticket_id FK
+        string tag
+    }

@@ -1,0 +1,48 @@
+erDiagram
+    customers ||--o{ reservations : "makes"
+    reservations ||--|{ reservation_items : "contains"
+    resources ||--o{ reservation_items : "reserved by"
+    resources ||--o{ blackout_periods : "blocked by"
+    resources ||--o{ resource_maintenance : "maintained by"
+
+    resources {
+        int id PK
+        string name
+        string resource_type
+        int capacity
+        bool is_active
+    }
+    customers {
+        int id PK
+        string name
+        string phone
+        string memo
+    }
+    reservations {
+        int id PK
+        int customer_id FK
+        string status
+        string requested_at
+    }
+    reservation_items {
+        int id PK
+        int reservation_id FK
+        int resource_id FK
+        string starts_at
+        string ends_at
+        int price
+    }
+    blackout_periods {
+        int id PK
+        int resource_id FK
+        string reason
+        string starts_at
+        string ends_at
+    }
+    resource_maintenance {
+        int id PK
+        int resource_id FK
+        string manager_name
+        string checked_at
+        string status
+    }

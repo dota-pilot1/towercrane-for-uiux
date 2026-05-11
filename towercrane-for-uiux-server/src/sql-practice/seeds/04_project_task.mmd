@@ -1,0 +1,59 @@
+erDiagram
+    clients ||--o{ projects : "owns"
+    projects ||--o{ project_members : "has"
+    members ||--o{ project_members : "joins"
+    projects ||--o{ tasks : "contains"
+    members ||--o{ tasks : "assigned"
+    tasks ||--o{ task_comments : "has"
+    members ||--o{ task_comments : "writes"
+    tasks ||--o{ task_logs : "tracks"
+
+    clients {
+        int id PK
+        string name
+        string industry
+        string contact_name
+    }
+    projects {
+        int id PK
+        int client_id FK
+        string name
+        string status
+        string started_at
+        string ended_at
+    }
+    members {
+        int id PK
+        string name
+        string role
+        string email
+    }
+    project_members {
+        int project_id FK
+        int member_id FK
+        string duty
+    }
+    tasks {
+        int id PK
+        int project_id FK
+        int assignee_id FK
+        string title
+        string status
+        string priority
+        string due_date
+        int estimate_hours
+    }
+    task_comments {
+        int id PK
+        int task_id FK
+        int member_id FK
+        string content
+        string created_at
+    }
+    task_logs {
+        int id PK
+        int task_id FK
+        string from_status
+        string to_status
+        string changed_at
+    }

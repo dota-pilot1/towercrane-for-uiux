@@ -1,0 +1,43 @@
+erDiagram
+    departments ||--o{ employees : "has"
+    employees ||--o{ attendance_logs : "logs"
+    employees ||--o{ leave_requests : "requests"
+    employees ||--o{ work_schedules : "has"
+
+    departments {
+        int id PK
+        string name
+        string manager_name
+        string location
+    }
+    employees {
+        int id PK
+        int department_id FK
+        string name
+        string position
+        string hired_at
+        int salary
+    }
+    attendance_logs {
+        int id PK
+        int employee_id FK
+        string work_date
+        string clock_in
+        string clock_out
+        string status
+    }
+    leave_requests {
+        int id PK
+        int employee_id FK
+        string leave_type
+        string start_date
+        string end_date
+        string status
+    }
+    work_schedules {
+        int id PK
+        int employee_id FK
+        string weekday
+        string start_time
+        string end_time
+    }

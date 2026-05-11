@@ -212,6 +212,17 @@ export class SqlPracticeService {
     return this.reset();
   }
 
+  getSeedErd(fileName: string): { mmd: string | null } {
+    const parsed = seedFileNameSchema.safeParse(fileName.replace(/\.mmd$/, '.sql'));
+    if (!parsed.success) return { mmd: null };
+
+    const baseName = parsed.data.replace(/\.sql$/, '');
+    const mmdFile = join(this.getBuiltinSeedDir(), `${baseName}.mmd`);
+
+    if (!existsSync(mmdFile)) return { mmd: null };
+    return { mmd: readFileSync(mmdFile, 'utf8') };
+  }
+
   private executeReader(
     db: Database.Database,
     query: string,

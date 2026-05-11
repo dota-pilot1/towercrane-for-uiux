@@ -33,4 +33,6 @@ export const sqlPracticeApi = {
     apiRequest<SqlResetResponse>('/sql/reload-seed', {
       method: 'POST',
     }),
+  getSeedErd: (fileName: string) =>
+    apiRequest<{ mmd: string | null }>(`/sql/seeds/${encodeURIComponent(fileName)}/erd`),
 }

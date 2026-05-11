@@ -8,6 +8,7 @@ export const sqlPracticeQueryKeys = {
   meta: ['sql-practice', 'meta'] as const,
   tables: ['sql-practice', 'tables'] as const,
   seeds: ['sql-practice', 'seeds'] as const,
+  erd: (fileName: string) => ['sql-practice', 'erd', fileName] as const,
 }
 
 function messageFromError(error: unknown, fallback: string) {
@@ -88,6 +89,15 @@ export function useResetSqlPracticeDb() {
       toast.success('SQL 연습 DB를 초기화했습니다.')
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 연습 DB 초기화에 실패했습니다.')),
+  })
+}
+
+export function useSqlPracticeErd(fileName: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.erd(fileName ?? ''),
+    queryFn: () => sqlPracticeApi.getSeedErd(fileName!),
+    enabled: Boolean(fileName),
+    staleTime: Infinity,
   })
 }
 

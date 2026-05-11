@@ -1,0 +1,54 @@
+erDiagram
+    users ||--|| profiles : "has"
+    users ||--o{ posts : "writes"
+    users ||--o{ comments : "writes"
+    users ||--o{ likes : "gives"
+    boards ||--o{ posts : "contains"
+    posts ||--o{ comments : "has"
+    posts ||--o{ likes : "receives"
+    comments ||--o{ comments : "replies"
+
+    users {
+        int id PK
+        string name
+        string email
+        string city
+        string role
+        string created_at
+    }
+    profiles {
+        int id PK
+        int user_id FK
+        string company
+        string bio
+    }
+    boards {
+        int id PK
+        string name
+        string category
+        bool is_active
+    }
+    posts {
+        int id PK
+        int board_id FK
+        int user_id FK
+        string title
+        string content
+        int views
+        bool is_pinned
+        string created_at
+    }
+    comments {
+        int id PK
+        int post_id FK
+        int user_id FK
+        int parent_id FK
+        string content
+        string created_at
+    }
+    likes {
+        int id PK
+        int post_id FK
+        int user_id FK
+        string created_at
+    }

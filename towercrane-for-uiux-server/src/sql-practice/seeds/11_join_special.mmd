@@ -1,0 +1,63 @@
+erDiagram
+    departments ||--o{ employees : "belongs to"
+    employees ||--o{ employees : "manages"
+    departments ||--o{ projects : "owns"
+    clients ||--o{ projects : "commissions"
+    projects ||--o{ project_members : "has"
+    employees ||--o{ project_members : "joins"
+    projects ||--o{ meetings : "holds"
+    meetings ||--o{ meeting_attendees : "attended by"
+    employees ||--o{ meeting_attendees : "attends"
+
+    departments {
+        int id PK
+        string name
+        string location
+        int budget
+    }
+    employees {
+        int id PK
+        string name
+        int dept_id FK
+        int manager_id FK
+        string role
+        int salary
+        string hire_date
+        bool is_active
+    }
+    clients {
+        int id PK
+        string name
+        string industry
+        string country
+        string contract_since
+    }
+    projects {
+        int id PK
+        string name
+        int dept_id FK
+        int client_id FK
+        string status
+        string start_date
+        string end_date
+        int budget
+    }
+    project_members {
+        int id PK
+        int project_id FK
+        int employee_id FK
+        string role
+        string joined_at
+    }
+    meetings {
+        int id PK
+        int project_id FK
+        string title
+        string held_at
+    }
+    meeting_attendees {
+        int id PK
+        int meeting_id FK
+        int employee_id FK
+        bool attended
+    }
