@@ -114,7 +114,7 @@ export function NoteCard({ note, isMine, onUpdate, onDelete, isDeleting, deleteE
       </div>
 
       {/* 본문 */}
-      <div className="px-4 py-2">
+      <div className="px-4 py-2.5">
         <BlockViewer
           content={note.content}
           onChecklistToggle={isMine ? (newContent) => onUpdate({ content: newContent }) : undefined}
