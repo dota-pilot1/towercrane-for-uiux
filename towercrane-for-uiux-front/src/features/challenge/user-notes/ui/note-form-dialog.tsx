@@ -14,7 +14,7 @@ export function NoteFormDialog({ open, onOpenChange, onSubmit, loading }: NoteFo
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
-        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-50 w-[min(600px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg p-5 shadow-2xl">
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-50 w-[min(860px,calc(100vw-2rem))] max-h-[85vh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 rounded-lg p-6 shadow-2xl">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="flex size-8 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
