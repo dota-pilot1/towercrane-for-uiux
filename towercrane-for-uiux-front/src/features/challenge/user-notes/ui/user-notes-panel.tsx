@@ -10,6 +10,7 @@ interface Note {
   content: string
   visibility: 'private' | 'shared' | 'public'
   pinned: boolean
+  createdAt: string
   updatedAt: string
   userName?: string
 }
@@ -37,7 +38,7 @@ export function UserNotesPanel({
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
-  const byOldest = (a: Note, b: Note) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+  const byOldest = (a: Note, b: Note) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   const pinnedNotes = myNotes.filter((n) => n.pinned).sort(byOldest)
   const unpinnedNotes = myNotes.filter((n) => !n.pinned).sort(byOldest)
   const sortedNotes = [...pinnedNotes, ...unpinnedNotes]
