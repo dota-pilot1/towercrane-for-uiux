@@ -72,6 +72,16 @@ export function SqlSchemaSidebar({
             <p className="text-[11px] text-text-muted">현재 연습 DB 기준</p>
           </div>
           <div className="flex items-center gap-1.5">
+            {erdQuery.data?.mmd && (
+              <button
+                type="button"
+                className="ui-icon-button-brand h-7 px-2 text-xs font-bold"
+                onClick={() => setErdDialogOpen(true)}
+                title="ERD 보기"
+              >
+                ERD
+              </button>
+            )}
             <button
               className="ui-icon-button size-8"
               type="button"
@@ -106,37 +116,27 @@ export function SqlSchemaSidebar({
             </div>
           </div>
 
-          <div className="mt-2 grid grid-cols-3 gap-2">
+          <div className="mt-2 grid grid-cols-2 gap-2">
             <button
               type="button"
               className="ui-icon-button h-8 gap-1.5 text-xs"
               onClick={onReset}
               disabled={isResetting || isReloading}
-              title="DB 초기화"
+              title="테이블 구조 + 데이터 전체 초기화"
             >
               <RotateCcw className={`size-3.5 ${isResetting ? 'animate-spin' : ''}`} />
-              Reset
+              테이블 리셋
             </button>
             <button
               type="button"
               className="ui-icon-button h-8 gap-1.5 text-xs"
               onClick={onReloadSeed}
               disabled={isResetting || isReloading}
-              title="현재 seed 다시 적용"
+              title="데이터만 seed 재적용"
             >
               <UploadCloud className={`size-3.5 ${isReloading ? 'animate-spin' : ''}`} />
-              Seed
+              데이터 리셋
             </button>
-            {erdQuery.data?.mmd && (
-              <button
-                type="button"
-                className="ui-icon-button-brand h-8 text-xs font-bold"
-                onClick={() => setErdDialogOpen(true)}
-                title="ERD 보기"
-              >
-                ERD
-              </button>
-            )}
           </div>
         </div>
 
