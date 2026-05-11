@@ -85,32 +85,32 @@ export function NoteCard({ note, isMine, onUpdate, onDelete, isDeleting, deleteE
   return (
     <article className="ui-panel-soft rounded-md p-4 space-y-3">
       {/* 헤더 */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0 space-y-1">
-          <div className="flex items-center gap-2">
-            <h4 className="font-bold ui-text-primary text-sm truncate">
-              {note.title || '(제목 없음)'}
-            </h4>
-            <BlockTypeBadge content={note.content} />
-          </div>
-          <p className="text-xs ui-text-muted">
-            {note.userName || '나'} · {new Date(note.updatedAt).toLocaleDateString()}
-          </p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <h4 className="font-bold ui-text-primary text-sm truncate">
+            {note.title || '(제목 없음)'}
+          </h4>
+          <BlockTypeBadge content={note.content} />
         </div>
-        {isMine && (
-          <div className="flex items-center gap-1 shrink-0">
-            <button className="ui-icon-button" onClick={handleEditOpen} title="수정">
-              <Edit2 className="size-3.5" />
-            </button>
-            <button
-              className="ui-icon-button hover:text-red-500 transition-colors"
-              onClick={() => setState('delete')}
-              title="삭제"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[11px] ui-text-muted">
+            {note.userName || '나'} · {new Date(note.updatedAt).toLocaleDateString()}
+          </span>
+          {isMine && (
+            <>
+              <button className="ui-icon-button size-6" onClick={handleEditOpen} title="수정">
+                <Edit2 className="size-3" />
+              </button>
+              <button
+                className="ui-icon-button size-6 hover:text-destructive transition-colors"
+                onClick={() => setState('delete')}
+                title="삭제"
+              >
+                <Trash2 className="size-3" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* 본문 */}

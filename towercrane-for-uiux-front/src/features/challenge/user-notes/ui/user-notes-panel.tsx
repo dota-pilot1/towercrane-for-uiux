@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../shared/ui/tabs'
 import { NoteCard } from './note-card'
-import { NoteForm } from './note-form'
+import { NoteFormDialog } from './note-form-dialog'
 
 interface Note {
   id: string
@@ -38,11 +38,11 @@ export function UserNotesPanel({
   loading = false,
 }: UserNotesPanelProps) {
   const [tab, setTab] = useState('mine')
-  const [showForm, setShowForm] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
-  const pinnedNotes = myNotes.filter((n) => n.pinned).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-  const unpinnedNotes = myNotes.filter((n) => !n.pinned).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  const byNewest = (a: Note, b: Note) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  const pinnedNotes = myNotes.filter((n) => n.pinned).sort(byNewest)
+  const unpinnedNotes = myNotes.filter((n) => !n.pinned).sort(byNewest)
   const sortedNotes = [...pinnedNotes, ...unpinnedNotes]
 
   return (
@@ -57,33 +57,24 @@ export function UserNotesPanel({
           </TabsTrigger>
         </TabsList>
 
+        <NoteFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onSubmit={onCreateNote}
+          loading={loading}
+        />
+
         <div className="flex-1 overflow-y-auto">
           <TabsContent value="mine" className="p-4 space-y-3">
-            {!showForm && (
-              <button
-                onClick={() => setShowForm(true)}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-md border border-surface-border ui-text-secondary hover:bg-surface-muted transition-colors"
-              >
-                <Plus className="size-4" />
-                <span className="text-sm">노트 추가</span>
-              </button>
-            )}
+            <button
+              onClick={() => setDialogOpen(true)}
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-md border border-dashed border-surface-border ui-text-secondary hover:bg-surface-muted hover:border-brand-border hover:text-brand-primary transition-colors"
+            >
+              <Plus className="size-4" />
+              <span className="text-sm font-medium">노트 추가</span>
+            </button>
 
-            {showForm && (
-              <NoteForm
-                onSubmit={(data) => {
-                  onCreateNote(data)
-                  setShowForm(false)
-                }}
-                onCancel={() => {
-                  setShowForm(false)
-                  setEditingId(null)
-                }}
-                loading={loading}
-              />
-            )}
-
-            {sortedNotes.length === 0 && !showForm && (
+            {sortedNotes.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-xs ui-text-muted">첫 노트를 남겨보세요.</p>
               </div>
