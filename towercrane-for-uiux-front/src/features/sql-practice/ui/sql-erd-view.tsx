@@ -5,16 +5,15 @@ mermaid.initialize({
   startOnLoad: false,
   theme: 'base',
   themeVariables: {
-    primaryColor: '#1e293b',
-    primaryTextColor: '#e2e8f0',
-    primaryBorderColor: '#475569',
+    primaryColor: '#e0f2fe',        // 테이블 헤더: 연한 하늘
+    primaryTextColor: '#0c4a6e',    // 헤더 텍스트: 진한 파랑
+    primaryBorderColor: '#38bdf8',  // 테이블 테두리: 스카이블루
 
-    attributeBackgroundColorOdd: '#0f172a',
-    attributeBackgroundColorEven: '#1e293b',
+    attributeBackgroundColorOdd: '#ffffff',
+    attributeBackgroundColorEven: '#f8fafc',
 
-    lineColor: '#64748b',
-    edgeLabelBackground: '#1e293b',
-    tertiaryTextColor: '#e2e8f0',
+    lineColor: '#94a3b8',
+    edgeLabelBackground: '#f1f5f9',
 
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
     fontSize: '13px',
@@ -58,16 +57,23 @@ export function SqlErdView({ mmd }: SqlErdViewProps) {
           const texts = row.querySelectorAll('text')
           texts.forEach((t) => {
             if (t.textContent?.trim() === 'PK') {
-              t.style.fill = '#34d399'
-              t.style.fontWeight = '700'
+              t.style.fill = '#db2777'
+              t.style.fontWeight = '800'
               const rect = row.querySelector('rect')
-              if (rect) rect.style.fill = '#064e3b'
+              if (rect) rect.style.fill = '#fdf2f8'
             }
             if (t.textContent?.trim() === 'FK') {
-              t.style.fill = '#fbbf24'
+              t.style.fill = '#0284c7'
               t.style.fontWeight = '700'
             }
           })
+        })
+
+        // 일반 컬럼 텍스트 다크
+        svgEl.querySelectorAll<SVGTextElement>('.er.attributeBoxEven text, .er.attributeBoxOdd text').forEach((t) => {
+          if (!['PK', 'FK'].includes(t.textContent?.trim() ?? '')) {
+            t.style.fill = '#1e293b'
+          }
         })
       })
       .catch(() => {
