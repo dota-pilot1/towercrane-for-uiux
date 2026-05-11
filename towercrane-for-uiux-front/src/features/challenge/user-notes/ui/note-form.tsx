@@ -36,7 +36,7 @@ export function NoteForm({
   const isEmpty = !blockData.trim() || blockData === '{"root":{"children":[{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
 
   return (
-    <div className="ui-panel-soft rounded-md p-4 space-y-3">
+    <div className="ui-panel-soft rounded-md p-4 space-y-3 h-full flex flex-col">
       <input
         type="text"
         placeholder="제목 (선택)"
@@ -45,12 +45,14 @@ export function NoteForm({
         className="ui-input text-sm"
       />
 
-      <BlockEditor
-        blockType={blockType}
-        data={blockData}
-        onBlockTypeChange={handleBlockTypeChange}
-        onDataChange={setBlockData}
-      />
+      <div className="flex-1 min-h-0">
+        <BlockEditor
+          blockType={blockType}
+          data={blockData}
+          onBlockTypeChange={handleBlockTypeChange}
+          onDataChange={setBlockData}
+        />
+      </div>
 
       <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
         <button
