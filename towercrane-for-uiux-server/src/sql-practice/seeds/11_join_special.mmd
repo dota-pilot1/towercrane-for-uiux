@@ -1,13 +1,13 @@
 erDiagram
-    departments ||--o{ employees : "belongs to"
-    employees ||--o{ employees : "manages"
-    departments ||--o{ projects : "owns"
-    clients ||--o{ projects : "commissions"
-    projects ||--o{ project_members : "has"
-    employees ||--o{ project_members : "joins"
-    projects ||--o{ meetings : "holds"
-    meetings ||--o{ meeting_attendees : "attended by"
-    employees ||--o{ meeting_attendees : "attends"
+    departments ||--o{ employees : ""
+    employees ||--o{ employees : ""
+    departments ||--o{ projects : ""
+    clients ||--o{ projects : ""
+    projects ||--o{ project_members : ""
+    employees ||--o{ project_members : ""
+    projects ||--o{ meetings : ""
+    meetings ||--o{ meeting_attendees : ""
+    employees ||--o{ meeting_attendees : ""
 
     departments {
         int id PK

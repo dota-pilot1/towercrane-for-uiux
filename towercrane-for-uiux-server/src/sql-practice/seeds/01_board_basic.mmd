@@ -1,12 +1,12 @@
 erDiagram
-    users ||--|| profiles : "has"
-    users ||--o{ posts : "writes"
-    users ||--o{ comments : "writes"
-    users ||--o{ likes : "gives"
-    boards ||--o{ posts : "contains"
-    posts ||--o{ comments : "has"
-    posts ||--o{ likes : "receives"
-    comments ||--o{ comments : "replies"
+    users ||--|| profiles : ""
+    users ||--o{ posts : ""
+    users ||--o{ comments : ""
+    users ||--o{ likes : ""
+    boards ||--o{ posts : ""
+    posts ||--o{ comments : ""
+    posts ||--o{ likes : ""
+    comments ||--o{ comments : ""
 
     users {
         int id PK

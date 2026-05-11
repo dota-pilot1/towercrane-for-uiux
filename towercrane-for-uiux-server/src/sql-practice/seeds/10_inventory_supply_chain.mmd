@@ -1,13 +1,13 @@
 erDiagram
-    suppliers ||--o{ products : "supplies"
-    suppliers ||--o{ purchase_orders : "fulfills"
-    warehouses ||--o{ stock_movements : "records"
-    warehouses ||--o{ purchase_orders : "receives"
-    warehouses ||--o{ stock_snapshots : "snapshots"
-    products ||--o{ stock_movements : "moved"
-    products ||--o{ purchase_order_items : "ordered"
-    products ||--o{ stock_snapshots : "tracked"
-    purchase_orders ||--|{ purchase_order_items : "contains"
+    suppliers ||--o{ products : ""
+    suppliers ||--o{ purchase_orders : ""
+    warehouses ||--o{ stock_movements : ""
+    warehouses ||--o{ purchase_orders : ""
+    warehouses ||--o{ stock_snapshots : ""
+    products ||--o{ stock_movements : ""
+    products ||--o{ purchase_order_items : ""
+    products ||--o{ stock_snapshots : ""
+    purchase_orders ||--|{ purchase_order_items : ""
 
     warehouses {
         int id PK

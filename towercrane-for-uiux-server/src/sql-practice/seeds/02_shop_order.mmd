@@ -1,9 +1,9 @@
 erDiagram
-    customers ||--o{ orders : "places"
-    orders ||--|{ order_items : "contains"
-    products ||--o{ order_items : "included in"
-    orders ||--|| payments : "paid by"
-    orders ||--|| shipments : "shipped via"
+    customers ||--o{ orders : ""
+    orders ||--|{ order_items : ""
+    products ||--o{ order_items : ""
+    orders ||--|| payments : ""
+    orders ||--|| shipments : ""
 
     customers {
         int id PK

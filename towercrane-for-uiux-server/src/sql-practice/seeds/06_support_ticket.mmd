@@ -1,9 +1,9 @@
 erDiagram
-    customers ||--o{ tickets : "submits"
-    agents ||--o{ tickets : "handles"
-    tickets ||--o{ ticket_messages : "has"
-    tickets ||--o{ ticket_status_logs : "tracks"
-    tickets ||--o{ ticket_tags : "tagged"
+    customers ||--o{ tickets : ""
+    agents ||--o{ tickets : ""
+    tickets ||--o{ ticket_messages : ""
+    tickets ||--o{ ticket_status_logs : ""
+    tickets ||--o{ ticket_tags : ""
 
     customers {
         int id PK

@@ -26,7 +26,6 @@ import { useSessionStore } from '../shared/store/session-store'
 import { useCurrentUser } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
 import { useUiStore } from '../shared/store/ui-store'
-import { useCatalogCategories } from '../shared/api/catalog'
 import { Card } from '../shared/ui/card'
 
 // ─── Root ───────────────────────────────────────────────────────────────────
@@ -118,37 +117,20 @@ function AppLayout() {
   )
 }
 
-// ─── / → redirect to /prototype ─────────────────────────────────────────────
+// ─── / → WorkbenchPage (useAdminShell handles redirect to first category) ────
 
 const indexRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/',
-  component: RedirectToPrototype,
+  component: WorkbenchPage,
 })
 
-function RedirectToPrototype() {
-  const navigate = useNavigate()
-  const { data: categories } = useCatalogCategories()
-
-  useEffect(() => {
-    if (categories?.[0]) {
-      navigate({
-        to: '/prototype/$categoryId',
-        params: { categoryId: categories[0].id },
-        replace: true,
-      })
-    }
-  }, [categories, navigate])
-
-  return null
-}
-
-// ─── /prototype → redirect to first category ────────────────────────────────
+// ─── /prototype → WorkbenchPage (useAdminShell handles redirect to first category) ──
 
 const prototypeIndexRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/prototype',
-  component: RedirectToPrototype,
+  component: WorkbenchPage,
 })
 
 // ─── /prototype/$categoryId ──────────────────────────────────────────────────

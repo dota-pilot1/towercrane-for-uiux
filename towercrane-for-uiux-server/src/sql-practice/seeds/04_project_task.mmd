@@ -1,12 +1,12 @@
 erDiagram
-    clients ||--o{ projects : "owns"
-    projects ||--o{ project_members : "has"
-    members ||--o{ project_members : "joins"
-    projects ||--o{ tasks : "contains"
-    members ||--o{ tasks : "assigned"
-    tasks ||--o{ task_comments : "has"
-    members ||--o{ task_comments : "writes"
-    tasks ||--o{ task_logs : "tracks"
+    clients ||--o{ projects : ""
+    projects ||--o{ project_members : ""
+    members ||--o{ project_members : ""
+    projects ||--o{ tasks : ""
+    members ||--o{ tasks : ""
+    tasks ||--o{ task_comments : ""
+    members ||--o{ task_comments : ""
+    tasks ||--o{ task_logs : ""
 
     clients {
         int id PK

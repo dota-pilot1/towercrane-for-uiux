@@ -1,14 +1,14 @@
 erDiagram
-    accounts ||--o{ contacts : "has"
-    accounts ||--o{ leads : "generates"
-    accounts ||--o{ opportunities : "has"
-    accounts ||--o{ contracts : "signs"
-    sales_reps ||--o{ leads : "owns"
-    sales_reps ||--o{ opportunities : "works"
-    sales_reps ||--o{ activities : "logs"
-    leads ||--o{ opportunities : "converts to"
-    opportunities ||--o{ activities : "has"
-    opportunities ||--|| contracts : "results in"
+    accounts ||--o{ contacts : ""
+    accounts ||--o{ leads : ""
+    accounts ||--o{ opportunities : ""
+    accounts ||--o{ contracts : ""
+    sales_reps ||--o{ leads : ""
+    sales_reps ||--o{ opportunities : ""
+    sales_reps ||--o{ activities : ""
+    leads ||--o{ opportunities : ""
+    opportunities ||--o{ activities : ""
+    opportunities ||--|| contracts : ""
 
     accounts {
         int id PK

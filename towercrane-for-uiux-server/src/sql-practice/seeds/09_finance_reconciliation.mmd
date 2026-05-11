@@ -1,12 +1,12 @@
 erDiagram
-    merchants ||--o{ orders : "receives"
-    merchants ||--o{ settlements : "settled"
-    merchants ||--o{ receivables : "owed"
-    orders ||--o{ payments : "paid by"
-    orders ||--o{ refunds : "refunded"
-    orders ||--o{ receivables : "tracked"
-    payments ||--o{ refunds : "refunded via"
-    payments ||--o{ fees : "charged"
+    merchants ||--o{ orders : ""
+    merchants ||--o{ settlements : ""
+    merchants ||--o{ receivables : ""
+    orders ||--o{ payments : ""
+    orders ||--o{ refunds : ""
+    orders ||--o{ receivables : ""
+    payments ||--o{ refunds : ""
+    payments ||--o{ fees : ""
 
     merchants {
         int id PK

@@ -1,9 +1,9 @@
 erDiagram
-    customers ||--o{ reservations : "makes"
-    reservations ||--|{ reservation_items : "contains"
-    resources ||--o{ reservation_items : "reserved by"
-    resources ||--o{ blackout_periods : "blocked by"
-    resources ||--o{ resource_maintenance : "maintained by"
+    customers ||--o{ reservations : ""
+    reservations ||--|{ reservation_items : ""
+    resources ||--o{ reservation_items : ""
+    resources ||--o{ blackout_periods : ""
+    resources ||--o{ resource_maintenance : ""
 
     resources {
         int id PK

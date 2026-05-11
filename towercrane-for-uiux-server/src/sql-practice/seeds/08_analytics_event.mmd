@@ -1,9 +1,9 @@
 erDiagram
-    users ||--o{ sessions : "starts"
-    campaigns ||--o{ sessions : "drives"
-    devices ||--o{ sessions : "used in"
-    sessions ||--o{ events : "contains"
-    pages ||--o{ events : "receives"
+    users ||--o{ sessions : ""
+    campaigns ||--o{ sessions : ""
+    devices ||--o{ sessions : ""
+    sessions ||--o{ events : ""
+    pages ||--o{ events : ""
 
     users {
         int id PK
