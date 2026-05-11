@@ -167,8 +167,8 @@ body {
   }
 
   .ui-overlay {
-    background-color: color-mix(in srgb, var(--background) 30%, transparent);
-    backdrop-filter: blur(2px);
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(0px);
   }
 
   .glass-panel {

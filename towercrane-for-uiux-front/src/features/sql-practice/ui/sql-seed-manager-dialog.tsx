@@ -70,7 +70,32 @@ export function SqlSeedManagerDialog({
             </Dialog.Close>
           </div>
 
-          <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+          <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+            <section className="min-w-0">
+              {isLoading ? (
+                <div className="flex min-h-[360px] flex-col items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-center">
+                  <Loader2 className="mb-3 size-6 animate-spin text-brand-primary" />
+                  <p className="text-sm font-semibold text-text-primary">seed 목록을 불러오는 중입니다</p>
+                </div>
+              ) : seeds.length === 0 ? (
+                <div className="flex min-h-[360px] flex-col items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-center">
+                  <FileText className="mb-3 size-7 text-text-muted" />
+                  <p className="text-sm font-semibold text-text-primary">표시할 seed 파일이 없습니다</p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {seeds.map((seed) => (
+                    <SeedCard
+                      key={`${seed.source}-${seed.fileName}`}
+                      seed={seed}
+                      isActivating={isActivating}
+                      onActivate={handleActivate}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
             <section className="ui-panel-soft h-fit p-4">
               <div className="flex items-center gap-2 text-sm font-bold text-text-primary">
                 <CheckCircle2 className="size-4 text-brand-primary" />
@@ -100,31 +125,6 @@ export function SqlSeedManagerDialog({
                 <div className="mt-4 flex items-center gap-2 text-xs text-text-secondary">
                   <RefreshCw className="size-3.5 animate-spin" />
                   불러오는 중
-                </div>
-              )}
-            </section>
-
-            <section className="min-w-0">
-              {isLoading ? (
-                <div className="flex min-h-[360px] flex-col items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-center">
-                  <Loader2 className="mb-3 size-6 animate-spin text-brand-primary" />
-                  <p className="text-sm font-semibold text-text-primary">seed 목록을 불러오는 중입니다</p>
-                </div>
-              ) : seeds.length === 0 ? (
-                <div className="flex min-h-[360px] flex-col items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-center">
-                  <FileText className="mb-3 size-7 text-text-muted" />
-                  <p className="text-sm font-semibold text-text-primary">표시할 seed 파일이 없습니다</p>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {seeds.map((seed) => (
-                    <SeedCard
-                      key={`${seed.source}-${seed.fileName}`}
-                      seed={seed}
-                      isActivating={isActivating}
-                      onActivate={handleActivate}
-                    />
-                  ))}
                 </div>
               )}
             </section>
@@ -182,7 +182,7 @@ function SeedCard({
           ) : (
             <Play className="size-3.5" />
           )}
-          {seed.isActive ? '사용 중' : '이 파일로 연습하기'}
+          {seed.isActive ? '사용 중' : '선택'}
         </Button>
       </div>
 

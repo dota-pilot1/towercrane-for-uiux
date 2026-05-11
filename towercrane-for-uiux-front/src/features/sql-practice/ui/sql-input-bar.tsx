@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { Loader2, Play } from 'lucide-react'
+import { Loader2, Send } from 'lucide-react'
 
 type SqlInputBarProps = {
   onExecute: (query: string) => void
@@ -40,7 +40,7 @@ export function SqlInputBar({ onExecute, isLoading }: SqlInputBarProps) {
 
   return (
     <div className="border-t border-surface-border bg-surface-raised p-4">
-      <div className="flex items-end gap-3">
+      <div className="flex items-start gap-3">
         <textarea
           ref={textareaRef}
           value={query}
@@ -58,7 +58,7 @@ export function SqlInputBar({ onExecute, isLoading }: SqlInputBarProps) {
           aria-label="SQL 실행"
           title="SQL 실행"
         >
-          {isLoading ? <Loader2 className="size-5 animate-spin" /> : <Play className="size-5" />}
+          {isLoading ? <Loader2 className="size-5 animate-spin" /> : <Send className="size-5" />}
         </button>
       </div>
       <p className="mt-2 text-xs text-text-muted">Ctrl+Enter로 실행 · Tab으로 들여쓰기</p>
