@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { Loader2, RotateCcw, Save, Send, Trash2 } from 'lucide-react'
+import { KeyRound, Loader2, RotateCcw, Save, Send, Trash2, X } from 'lucide-react'
 import type {
   ApiBlockContent,
   ApiDocBlock,
@@ -189,12 +189,14 @@ export function ApiTesterPanel({
   const activeEnvId = useApiEnvStore((state) => state.activeEnvId)
   const setActiveEnv = useApiEnvStore((state) => state.setActiveEnv)
   const getActiveVarsMap = useApiEnvStore((state) => state.getActiveVarsMap)
+  const updateEnvironments = useApiEnvStore((state) => state.updateEnvironments)
 
   const [content, setContent] = useState<ApiBlockContent>(() => parseApiBlockContent(blocks, endpoint))
   const [response, setResponse] = useState<ApiResponse | null>(null)
   const [isSending, setIsSending] = useState(false)
   const [activeTab, setActiveTab] = useState<'params' | 'headers' | 'body'>('params')
   const [responseTab, setResponseTab] = useState<'body' | 'headers'>('body')
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false)
 
   useEffect(() => {
     setContent(parseApiBlockContent(blocks, endpoint))
@@ -205,6 +207,22 @@ export function ApiTesterPanel({
   const envVars = getActiveVarsMap()
   const resolvedUrl = resolveEnvVars(content.url, envVars)
   const hasEnvVar = content.url.includes('{{')
+  const envToken = envVars.TOKEN?.trim() || token || ''
+
+  const setEnvToken = (newToken: string) => {
+    updateEnvironments(
+      environments.map((env) =>
+        env.id === activeEnvId
+          ? {
+              ...env,
+              variables: env.variables.some((v) => v.key === 'TOKEN')
+                ? env.variables.map((v) => (v.key === 'TOKEN' ? { ...v, value: newToken } : v))
+                : [...env.variables, { key: 'TOKEN', value: newToken, description: 'JWT 토큰' }],
+            }
+          : env,
+      ),
+    )
+  }
 
   const patch = (partial: Partial<ApiBlockContent>) => {
     setContent((prev) => ({ ...prev, ...partial }))
@@ -270,10 +288,9 @@ export function ApiTesterPanel({
       headers['Content-Type'] = 'application/json'
     }
 
-    const envToken = vars.TOKEN?.trim()
-    const authToken = envToken || token
-    if (content.authEnabled && authToken && !headers.Authorization && !headers.authorization) {
-      headers.Authorization = `Bearer ${authToken}`
+    const activeToken = vars.TOKEN?.trim() || token
+    if (activeToken && !headers.Authorization && !headers.authorization) {
+      headers.Authorization = `Bearer ${activeToken}`
     }
 
     const body =
@@ -337,6 +354,7 @@ export function ApiTesterPanel({
   }
 
   return (
+    <>
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
       <div className="flex shrink-0 flex-col gap-3 border-b border-surface-border-soft bg-surface-muted/50 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
@@ -406,16 +424,18 @@ export function ApiTesterPanel({
                 onChange={(event) => patch({ url: event.target.value })}
                 className="ui-input min-w-0 flex-1 font-mono text-xs"
               />
-              <label className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 text-xs font-semibold text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={content.authEnabled}
-                  disabled={!isAdmin}
-                  onChange={(event) => patch({ authEnabled: event.target.checked })}
-                  className="size-4 accent-[var(--primary)]"
-                />
+              <button
+                type="button"
+                onClick={() => setTokenDialogOpen(true)}
+                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold transition-colors ${
+                  envToken
+                    ? 'border-brand-border bg-brand-glass text-brand-primary'
+                    : 'border-surface-border-soft bg-surface-muted text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                <KeyRound className="size-3.5" />
                 Auth
-              </label>
+              </button>
               <Button type="button" onClick={handleSend} disabled={isSending || !content.url.trim()} className="h-9 px-4 py-0 lg:w-28">
                 {isSending ? <Loader2 className="mr-1.5 size-4 animate-spin" /> : <Send className="mr-1.5 size-4" />}
                 Send
@@ -586,6 +606,72 @@ export function ApiTesterPanel({
                 </div>
               ) : null}
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {tokenDialogOpen && (
+      <TokenDialog
+        token={envVars.TOKEN?.trim() ?? ''}
+        onSave={(t) => { setEnvToken(t); setTokenDialogOpen(false) }}
+        onClose={() => setTokenDialogOpen(false)}
+      />
+    )}
+    </>
+  )
+}
+
+function TokenDialog({
+  token,
+  onSave,
+  onClose,
+}: {
+  token: string
+  onSave: (token: string) => void
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState(token)
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <button type="button" className="ui-overlay absolute inset-0" onClick={onClose} aria-label="닫기" />
+      <div className="glass-panel relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-md">
+        <div className="flex items-center justify-between border-b border-surface-border px-5 py-4">
+          <div className="flex items-center gap-2">
+            <KeyRound className="size-4 text-brand-primary" />
+            <h2 className="text-sm font-bold text-text-primary">JWT 토큰</h2>
+          </div>
+          <button type="button" className="ui-icon-button size-8" onClick={onClose} aria-label="닫기">
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="p-5">
+          <p className="mb-3 text-xs text-text-muted">
+            토큰이 설정되면 모든 요청에{' '}
+            <code className="rounded bg-surface-muted px-1 py-0.5 font-mono">Authorization: Bearer ···</code>{' '}
+            헤더가 자동으로 포함됩니다.
+          </p>
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            rows={4}
+            className="ui-input w-full resize-none font-mono text-xs"
+            autoFocus
+          />
+        </div>
+        <div className="flex items-center justify-between border-t border-surface-border px-5 py-3">
+          <button
+            type="button"
+            className="text-xs text-text-muted hover:text-destructive"
+            onClick={() => onSave('')}
+          >
+            토큰 제거
+          </button>
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>취소</Button>
+            <Button type="button" size="sm" onClick={() => onSave(draft.trim())}>저장</Button>
           </div>
         </div>
       </div>
