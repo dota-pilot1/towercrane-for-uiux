@@ -224,10 +224,10 @@ function CategorySidebar({
 
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted/50 px-4">
-        <div>
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted/50 px-4">
+        <div className="flex items-center gap-2">
           <p className="text-sm font-black text-text-primary">컬렉션</p>
-          <p className="text-[11px] text-text-muted">{categories.length} items</p>
+          <span className="rounded-sm bg-surface-strong px-1.5 py-0.5 text-[10px] font-bold text-text-muted">{categories.length}</span>
         </div>
         {isAdmin ? (
           <Button
@@ -471,10 +471,10 @@ function EndpointSidebar({
 
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted/50 px-4">
-        <div>
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted/50 px-4">
+        <div className="flex items-center gap-2">
           <p className="text-sm font-black text-text-primary">API 항목</p>
-          <p className="text-[11px] text-text-muted">{endpoints.length} items</p>
+          <span className="rounded-sm bg-surface-strong px-1.5 py-0.5 text-[10px] font-bold text-text-muted">{endpoints.length}</span>
         </div>
         {isAdmin ? (
           <Button

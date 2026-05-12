@@ -647,10 +647,10 @@ function TokenDialog({
           </button>
         </div>
         <div className="p-5">
-          <p className="mb-3 text-xs text-text-muted">
+          <p className="mb-3 leading-relaxed text-xs text-text-muted">
             토큰이 설정되면 모든 요청에{' '}
-            <code className="rounded bg-surface-muted px-1 py-0.5 font-mono">Authorization: Bearer ···</code>{' '}
-            헤더가 자동으로 포함됩니다.
+            <code className="inline-block translate-y-px rounded bg-surface-muted px-1.5 py-px font-mono text-[11px] text-text-secondary">Authorization: Bearer ···</code>
+            {' '}헤더가 자동으로 포함됩니다.
           </p>
           <textarea
             value={draft}
