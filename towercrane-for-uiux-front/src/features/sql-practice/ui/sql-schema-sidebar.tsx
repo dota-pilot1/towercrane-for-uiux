@@ -20,6 +20,7 @@ import {
   useSqlPracticeSeeds,
 } from '../model/use-sql-practice-queries'
 import { SqlErdDialog } from './sql-erd-dialog'
+import { SqlExamplesDialog } from './sql-examples-dialog'
 import { SqlSeedManagerDialog } from './sql-seed-manager-dialog'
 import { SqlTableSchemaDialog } from './sql-table-schema-dialog'
 
@@ -53,6 +54,7 @@ export function SqlSchemaSidebar({
   const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null)
   const [seedDialogOpen, setSeedDialogOpen] = useState(false)
   const [erdDialogOpen, setErdDialogOpen] = useState(false)
+  const [examplesDialogOpen, setExamplesDialogOpen] = useState(false)
   const seedsQuery = useSqlPracticeSeeds()
   const erdQuery = useSqlPracticeErd(meta?.seedFile)
   const activateSeedMutation = useActivateSqlPracticeSeed({
@@ -230,6 +232,13 @@ export function SqlSchemaSidebar({
         isActivating={activateSeedMutation.isPending}
         onClose={() => setSeedDialogOpen(false)}
         onActivate={handleActivateSeed}
+      />
+
+      <SqlExamplesDialog
+        open={examplesDialogOpen}
+        seedFileName={meta?.seedFile ?? ''}
+        tableCount={meta?.tableCount ?? tables.length}
+        onClose={() => setExamplesDialogOpen(false)}
       />
 
       {erdQuery.data?.mmd && (
