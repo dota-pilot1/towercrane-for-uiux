@@ -193,8 +193,8 @@ export function SqlPracticeExamplesPage() {
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ExampleTab)}>
         <div className="ui-panel overflow-hidden rounded-md p-0">
-          <div className="border-b border-surface-border px-4">
-            <TabsList className="overflow-x-auto">
+          <div className="border-b border-surface-border px-4 py-3">
+            <TabsList>
               {exampleTabs.map((tab) => (
                 <TabsTrigger key={tab.value} value={tab.value}>
                   {tab.label}

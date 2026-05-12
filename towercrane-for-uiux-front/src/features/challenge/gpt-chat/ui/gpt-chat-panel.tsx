@@ -56,14 +56,16 @@ export function GptChatPanel({
         </button>
 
         <Tabs value={chatTab} onValueChange={setChatTab} className="flex-1 flex flex-col">
-          <TabsList className="border-b border-surface-border rounded-none bg-surface-muted px-0 justify-start">
-            <TabsTrigger value="mine" className="text-xs py-2">
-              내 대화 ({myThreads.length})
-            </TabsTrigger>
-            <TabsTrigger value="shared" className="text-xs py-2">
-              공유 ({sharedThreads.length})
-            </TabsTrigger>
-          </TabsList>
+          <div className="border-b border-surface-border px-3 py-2">
+            <TabsList>
+              <TabsTrigger value="mine" className="text-xs">
+                내 대화 ({myThreads.length})
+              </TabsTrigger>
+              <TabsTrigger value="shared" className="text-xs">
+                공유 ({sharedThreads.length})
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <div className="overflow-y-auto">
             <TabsContent value="mine" className="p-2 space-y-1 m-0">

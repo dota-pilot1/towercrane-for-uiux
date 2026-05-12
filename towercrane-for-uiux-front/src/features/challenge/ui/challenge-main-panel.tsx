@@ -43,24 +43,26 @@ export function ChallengeMainPanel({ topicId, sectionId }: ChallengeMainPanelPro
   return (
     <Card className="flex-1 flex flex-col rounded-md overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="border-b border-surface-border rounded-none bg-surface-muted px-4">
-            <TabsTrigger value="topic" className="flex items-center gap-2">
-              <BookOpen className="size-4" />
-              주제
-            </TabsTrigger>
-            <TabsTrigger value="submission" className="flex items-center gap-2">
-              <CheckCircle className="size-4" />
-              풀이
-            </TabsTrigger>
-            <TabsTrigger value="gpt" className="flex items-center gap-2">
-              <MessageCircle className="size-4" />
-              GPT
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="flex items-center gap-2">
-              <NotebookPen className="size-4" />
-              노트
-            </TabsTrigger>
-          </TabsList>
+          <div className="border-b border-surface-border px-4 py-3">
+            <TabsList>
+              <TabsTrigger value="topic">
+                <BookOpen className="size-3.5" />
+                주제
+              </TabsTrigger>
+              <TabsTrigger value="submission">
+                <CheckCircle className="size-3.5" />
+                풀이
+              </TabsTrigger>
+              <TabsTrigger value="gpt">
+                <MessageCircle className="size-3.5" />
+                GPT
+              </TabsTrigger>
+              <TabsTrigger value="notes">
+                <NotebookPen className="size-3.5" />
+                노트
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
         <div className="flex-1 overflow-y-auto">
           <TabsContent value="topic" className="p-4">
