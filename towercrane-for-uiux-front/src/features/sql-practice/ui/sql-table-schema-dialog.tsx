@@ -8,26 +8,9 @@ type SqlTableSchemaDialogProps = {
   onClose: () => void
 }
 
-const BOOL_COL_RE = /^(is_|has_|can_|show_|allow_|enable_|active$|visible$|deleted$|archived$|published$|verified$|confirmed$)/i
-
-function isBoolCol(name: string) {
-  return BOOL_COL_RE.test(name)
-}
-
-function CellValue({ col, value }: { col: string; value: unknown }) {
+function CellValue({ value }: { value: unknown }) {
   if (value === null || value === undefined) {
     return <span className="italic text-text-muted">NULL</span>
-  }
-  if (isBoolCol(col) && (value === 0 || value === 1)) {
-    return value === 1 ? (
-      <span className="rounded-sm border border-brand-border bg-brand-glass px-1.5 py-0.5 text-[10px] font-bold text-brand-primary">
-        true
-      </span>
-    ) : (
-      <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold text-text-muted">
-        false
-      </span>
-    )
   }
   return <span>{String(value)}</span>
 }
@@ -167,7 +150,7 @@ export function SqlTableSchemaDialog({ table, onClose }: SqlTableSchemaDialogPro
                         </td>
                         {dataColumns.map((col) => (
                           <td key={col} className="whitespace-nowrap py-2 pr-4 font-mono text-text-primary">
-                            <CellValue col={col} value={row[col]} />
+                            <CellValue value={row[col]} />
                           </td>
                         ))}
                       </tr>
