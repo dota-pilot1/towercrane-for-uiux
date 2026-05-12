@@ -87,7 +87,7 @@ export function SqlSchemaSidebar({
               href="/sql/examples"
               target="_blank"
               rel="noreferrer"
-              className="ui-icon-button-brand h-9 gap-1.5 px-3 text-xs font-bold"
+              className="ui-icon-button-brand h-8 gap-1.5 px-3 text-xs font-bold"
               title="SQL 실습 예제 보기"
             >
               <BookOpenCheck className="size-3.5" />
