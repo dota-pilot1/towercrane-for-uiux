@@ -57,13 +57,12 @@ export function SqlTableSchemaDialog({ table, onClose }: SqlTableSchemaDialogPro
 
         <div className="flex min-h-0 flex-1 divide-x divide-surface-border overflow-hidden">
           {/* 왼쪽: 스키마 */}
-          <div className="w-[40%] shrink-0 overflow-y-auto">
-            <div className="sticky top-0 border-b border-surface-border-soft bg-surface-muted px-4 py-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-text-muted">스키마</span>
-            </div>
+          <div className="w-[40%] shrink-0 overflow-y-auto p-4">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">스키마</p>
+            <div className="overflow-hidden rounded-md border border-surface-border">
             <table className="w-full border-collapse text-left text-xs">
               <thead>
-                <tr className="border-b border-surface-border-soft">
+                <tr className="border-b border-surface-border-soft bg-surface-muted">
                   <th className="w-10 px-4 py-3 text-text-muted" />
                   <th className="py-3 pr-3 font-semibold text-text-secondary">컬럼명</th>
                   <th className="py-3 pr-3 font-semibold text-text-secondary">타입</th>
@@ -112,22 +111,21 @@ export function SqlTableSchemaDialog({ table, onClose }: SqlTableSchemaDialogPro
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* 오른쪽: 데이터 */}
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <div className="sticky top-0 border-b border-surface-border-soft bg-surface-muted px-4 py-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
-                데이터{rows !== null ? ` (${rows.length}행)` : ''}
-              </span>
-            </div>
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-4">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+              데이터{rows !== null ? ` (${rows.length}행)` : ''}
+            </p>
 
             {isLoading ? (
               <div className="flex flex-1 items-center justify-center">
                 <Loader2 className="size-5 animate-spin text-text-muted" />
               </div>
             ) : rows && rows.length > 0 ? (
-              <div className="overflow-auto">
+              <div className="overflow-auto rounded-md border border-surface-border">
                 <table className="w-full border-collapse text-left text-xs">
                   <thead>
                     <tr className="border-b border-surface-border-soft bg-surface-muted">
