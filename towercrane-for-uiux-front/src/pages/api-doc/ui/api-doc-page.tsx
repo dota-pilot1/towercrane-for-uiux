@@ -687,7 +687,7 @@ function EnvironmentDialog({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between border-b border-surface-border-soft bg-surface-muted px-5 py-4">
           <div>
             <p className="text-base font-black text-text-primary">환경 변수</p>
-            <p className="mt-1 text-xs text-text-muted">`{{API_BASE}}`처럼 요청 URL, header, body에서 사용할 수 있습니다.</p>
+            <p className="mt-1 text-xs text-text-muted">{'`{{API_BASE}}`'}처럼 요청 URL, header, body에서 사용할 수 있습니다.</p>
           </div>
           <Button type="button" size="sm-icon" variant="ghost" onClick={onClose} aria-label="닫기">
             <X className="size-4" />
