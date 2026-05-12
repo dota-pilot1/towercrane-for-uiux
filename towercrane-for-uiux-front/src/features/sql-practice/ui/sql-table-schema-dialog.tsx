@@ -48,9 +48,9 @@ export function SqlTableSchemaDialog({ table, tables, onClose }: SqlTableSchemaD
         onClick={onClose}
         aria-label="닫기"
       />
-      <section className="glass-panel relative z-10 flex max-h-[82vh] w-full max-w-5xl flex-col overflow-hidden rounded-md">
+      <section className="glass-panel relative z-10 flex max-h-[86vh] w-full max-w-[92vw] flex-col overflow-hidden rounded-md xl:max-w-6xl">
         {/* 헤더 */}
-        <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
+        <div className="flex items-center justify-between border-b border-surface-border px-3 py-2.5">
           <div className="flex items-center gap-1.5">
             <button
               type="button"
@@ -88,13 +88,13 @@ export function SqlTableSchemaDialog({ table, tables, onClose }: SqlTableSchemaD
 
         <div className="flex min-h-0 flex-1 divide-x divide-surface-border overflow-hidden">
           {/* 왼쪽: 스키마 */}
-          <div className="w-[40%] shrink-0 overflow-y-auto p-4">
+          <div className="w-[38%] shrink-0 overflow-y-auto p-3">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">스키마</p>
             <div className="overflow-hidden rounded-md border border-surface-border">
               <table className="w-full border-collapse text-left text-xs">
                 <thead>
                   <tr className="border-b border-surface-border-soft bg-surface-muted">
-                    <th className="w-10 px-4 py-3 text-text-muted" />
+                    <th className="w-10 px-3 py-2.5 text-text-muted" />
                     <th className="py-3 pr-3 font-semibold text-text-secondary">컬럼명</th>
                     <th className="py-3 pr-3 font-semibold text-text-secondary">타입</th>
                     <th className="py-3 pr-4 font-semibold text-text-secondary">옵션</th>
@@ -106,7 +106,7 @@ export function SqlTableSchemaDialog({ table, tables, onClose }: SqlTableSchemaD
                       key={column.name}
                       className={`border-b border-surface-border-soft hover:bg-surface-muted ${i % 2 === 0 ? '' : 'bg-surface-muted/40'}`}
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         {column.primaryKey ? (
                           <KeyRound className="size-3.5 text-brand-primary" />
                         ) : (
@@ -146,7 +146,7 @@ export function SqlTableSchemaDialog({ table, tables, onClose }: SqlTableSchemaD
           </div>
 
           {/* 오른쪽: 데이터 */}
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-4">
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-3">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               데이터{rows !== null ? ` (${rows.length}행)` : ''}
             </p>
@@ -161,7 +161,7 @@ export function SqlTableSchemaDialog({ table, tables, onClose }: SqlTableSchemaD
                   <thead>
                     <tr className="border-b border-surface-border-soft bg-surface-muted">
                       {dataColumns.map((col) => (
-                        <th key={col} className="whitespace-nowrap px-4 py-3 font-semibold text-text-secondary">
+                        <th key={col} className="whitespace-nowrap px-3 py-2.5 font-semibold text-text-secondary">
                           {col}
                         </th>
                       ))}
@@ -174,7 +174,7 @@ export function SqlTableSchemaDialog({ table, tables, onClose }: SqlTableSchemaD
                         className={`border-b border-surface-border-soft hover:bg-brand-glass/30 ${i % 2 === 0 ? '' : 'bg-surface-muted/40'}`}
                       >
                         {dataColumns.map((col) => (
-                          <td key={col} className="whitespace-nowrap px-4 py-3 font-mono text-text-primary">
+                          <td key={col} className="whitespace-nowrap px-3 py-2.5 font-mono text-text-primary">
                             <CellValue value={row[col]} />
                           </td>
                         ))}
