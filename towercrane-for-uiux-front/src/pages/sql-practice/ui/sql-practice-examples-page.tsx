@@ -446,12 +446,13 @@ function ExampleDetail({
           <pre className="max-w-full overflow-x-auto rounded-md border border-surface-border-soft bg-surface-muted p-4 font-mono text-xs leading-5 text-text-primary">
             {example.answerSql}
           </pre>
-          <div className="rounded-md border border-brand-border bg-brand-glass p-4">
-            <div className="flex items-center gap-2 text-xs font-bold text-brand-primary">
-              <CheckCircle2 className="size-4" />
+          <div className="relative overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised px-5 py-4">
+            <div className="absolute bottom-0 left-0 top-0 w-[3px] bg-brand-primary" />
+            <div className="mb-2.5 inline-flex items-center gap-1.5 rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[11px] font-black text-brand-primary">
+              <CheckCircle2 className="size-3.5" />
               해설
             </div>
-            <p className="mt-2 text-sm leading-6 text-text-primary">{example.explanation}</p>
+            <p className="text-sm leading-6 text-text-primary">{example.explanation}</p>
           </div>
         </div>
       )}
