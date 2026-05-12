@@ -305,7 +305,7 @@ function ExampleLevelPanel({
   if (examples.length === 0) {
     return (
       <div className="flex min-h-[420px] items-center justify-center p-6">
-        <div className="max-w-md rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-6 py-8 text-center">
+        <div className="max-w-md rounded-xl border border-dashed border-surface-border-soft bg-surface-muted px-6 py-8 text-center">
           <BookOpenCheck className="mx-auto mb-3 size-8 text-text-muted" />
           <p className="text-sm font-bold text-text-primary">
             {sqlExampleLevelLabels[level]} 예제 준비 중
@@ -319,46 +319,54 @@ function ExampleLevelPanel({
   }
 
   return (
-    <div className="grid min-h-[520px] lg:grid-cols-[300px_minmax(0,1fr)]">
+    <div className="grid min-h-[520px] lg:grid-cols-[280px_minmax(0,1fr)]">
+      {/* 문제 목록 사이드바 */}
       <div className="border-b border-surface-border lg:border-b-0 lg:border-r">
-        <div className="flex items-center justify-between border-b border-surface-border bg-surface-muted px-4 py-2.5">
+        <div className="flex items-center justify-between border-b border-surface-border bg-surface-muted px-4 py-3">
           <p className="text-xs font-bold text-text-primary">
             {sqlExampleLevelLabels[level]} 문제
           </p>
-          <span className="rounded-full border border-surface-border-soft bg-background px-2.5 py-0.5 text-[11px] font-black text-text-secondary">
+          <span className="rounded-full border border-brand-border bg-brand-glass px-2.5 py-0.5 text-[11px] font-black text-brand-primary">
             {examples.length}
           </span>
         </div>
-        <div className="space-y-0.5 p-2">
+        <div className="space-y-1 p-2.5">
           {examples.map((example) => {
             const isSelected = selectedExample?.id === example.id
+            const isSolved = visibleAnswerIds.has(example.id)
             return (
               <button
                 key={example.id}
                 type="button"
-                className={`flex w-full items-start gap-3 rounded-md border px-3 py-2.5 text-left transition-colors ${
+                className={`flex w-full items-start gap-3 rounded-lg border px-3 py-3 text-left transition-all ${
                   isSelected
-                    ? 'border-brand-border bg-brand-glass'
+                    ? 'border-brand-border bg-brand-glass shadow-sm'
                     : 'border-transparent hover:border-surface-border-soft hover:bg-surface-muted'
                 }`}
                 onClick={() => onSelectExample(example.id)}
               >
                 <span
-                  className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-sm text-[10px] font-black tabular-nums ${
+                  className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black tabular-nums ${
                     isSelected
                       ? 'bg-brand-primary text-[var(--color-background)]'
-                      : 'border border-surface-border-soft bg-surface-muted text-text-muted'
+                      : isSolved
+                        ? 'border border-brand-border bg-brand-glass text-brand-primary'
+                        : 'border border-surface-border-soft bg-surface-muted text-text-muted'
                   }`}
                 >
-                  {String(example.order).padStart(2, '0')}
+                  {isSolved && !isSelected ? (
+                    <CheckCircle2 className="size-3.5" />
+                  ) : (
+                    String(example.order).padStart(2, '0')
+                  )}
                 </span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <span
-                    className={`block truncate text-sm font-bold ${isSelected ? 'text-brand-primary' : 'text-text-primary'}`}
+                    className={`block truncate text-sm font-semibold leading-tight ${isSelected ? 'text-brand-primary' : 'text-text-primary'}`}
                   >
                     {example.title}
                   </span>
-                  <span className="mt-0.5 line-clamp-1 text-[11px] leading-4 text-text-muted">
+                  <span className="mt-1 line-clamp-1 text-[11px] leading-4 text-text-muted">
                     {example.description}
                   </span>
                 </div>
@@ -368,7 +376,8 @@ function ExampleLevelPanel({
         </div>
       </div>
 
-      <div className="min-w-0 p-5">
+      {/* 문제 상세 */}
+      <div className="min-w-0 p-6">
         {selectedExample && (
           <ExampleDetail
             example={selectedExample}
@@ -394,65 +403,94 @@ function ExampleDetail({
   onCopyAnswer: () => void
 }) {
   return (
-    <article className="space-y-4">
-      <div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[11px] font-black text-brand-primary">
+    <article className="max-w-3xl space-y-5">
+      {/* 문제 카드 */}
+      <div className="rounded-xl border border-surface-border bg-surface-raised p-6 shadow-sm">
+        {/* 레벨 + 번호 */}
+        <div className="mb-4 flex items-center gap-2.5">
+          <span className="inline-flex items-center rounded-full border border-brand-border bg-brand-glass px-3 py-0.5 text-[11px] font-black tracking-wide text-brand-primary">
             {sqlExampleLevelLabels[example.level]}
           </span>
-          <span className="text-xs font-bold text-text-muted">
-            {String(example.order).padStart(2, '0')}
+          <span className="text-xs font-bold tabular-nums text-text-muted">
+            Q.{String(example.order).padStart(2, '0')}
           </span>
         </div>
-        <h2 className="mt-2.5 text-xl font-black text-text-primary">{example.title}</h2>
-        <p className="mt-2 text-sm leading-6 text-text-secondary">{example.description}</p>
-      </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {example.relatedTables.map((tableName) => (
-          <span
-            key={tableName}
-            className="inline-flex items-center gap-1 rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-[11px] font-bold text-text-secondary"
-          >
-            <Table2 className="size-3" />
-            {tableName}
-          </span>
-        ))}
-      </div>
+        {/* 제목 */}
+        <h2 className="mb-3 text-[22px] font-black leading-snug text-text-primary">
+          {example.title}
+        </h2>
 
-      <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary">
-          <Lightbulb className="size-3.5 text-brand-primary" />
-          힌트
+        {/* 문제 설명 */}
+        <p className="mb-4 text-sm leading-7 text-text-secondary">{example.description}</p>
+
+        {/* 관련 테이블 */}
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {example.relatedTables.map((tableName) => (
+            <span
+              key={tableName}
+              className="inline-flex items-center gap-1 rounded-md border border-surface-border-soft bg-surface-muted px-2.5 py-1 text-[11px] font-bold text-text-secondary"
+            >
+              <Table2 className="size-3 text-brand-primary" />
+              {tableName}
+            </span>
+          ))}
         </div>
-        <p className="mt-2 text-sm leading-6 text-text-secondary">{example.hint}</p>
+
+        {/* 힌트 — 문제 아래 작게 */}
+        <div className="flex items-start gap-2 rounded-lg bg-surface-muted px-3.5 py-2.5">
+          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-brand-primary" />
+          <p className="text-[11px] leading-5 text-text-muted">{example.hint}</p>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" className="gap-1.5" onClick={onToggleAnswer}>
-          {isAnswerVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          {isAnswerVisible ? '정답 숨기기' : '정답 보기'}
-        </Button>
-        {isAnswerVisible && (
-          <Button variant="ghost" size="sm" className="gap-1.5" onClick={onCopyAnswer}>
-            <Clipboard className="size-4" />
-            SQL 복사
-          </Button>
-        )}
-      </div>
+      {/* 정답 보기 버튼 */}
+      <button
+        type="button"
+        onClick={onToggleAnswer}
+        className={`inline-flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-bold transition-all ${
+          isAnswerVisible
+            ? 'border-brand-border bg-brand-glass text-brand-primary'
+            : 'border-surface-border bg-surface-muted text-text-secondary hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary'
+        }`}
+      >
+        {isAnswerVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        {isAnswerVisible ? '정답 숨기기' : '정답 보기'}
+      </button>
 
       {isAnswerVisible && (
         <div className="space-y-4">
-          <pre className="max-w-full overflow-x-auto rounded-md border border-surface-border-soft bg-surface-muted p-4 font-mono text-xs leading-5 text-text-primary">
-            {example.answerSql}
-          </pre>
-          <div className="relative overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised px-5 py-4">
-            <div className="absolute bottom-0 left-0 top-0 w-[3px] bg-brand-primary" />
-            <div className="mb-2.5 inline-flex items-center gap-1.5 rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[11px] font-black text-brand-primary">
+          {/* SQL 코드 카드 */}
+          <div className="overflow-hidden rounded-xl border border-surface-border shadow-sm">
+            <div className="flex items-center justify-between border-b border-surface-border bg-surface-muted px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-brand-primary" />
+                <span className="text-xs font-black tracking-widest text-text-secondary">
+                  SQL
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onCopyAnswer}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-surface-border-soft bg-surface-raised px-2.5 py-1 text-[11px] font-bold text-text-muted transition-colors hover:border-brand-border hover:text-brand-primary"
+              >
+                <Clipboard className="size-3.5" />
+                복사
+              </button>
+            </div>
+            <pre className="overflow-x-auto bg-surface-raised p-5 font-mono text-xs leading-6 text-text-primary">
+              {example.answerSql}
+            </pre>
+          </div>
+
+          {/* 해설 카드 */}
+          <div className="relative overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised px-6 py-5 shadow-sm">
+            <div className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl bg-brand-primary" />
+            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-brand-border bg-brand-glass px-3 py-0.5 text-[11px] font-black text-brand-primary">
               <CheckCircle2 className="size-3.5" />
               해설
             </div>
-            <p className="text-sm leading-6 text-text-primary">{example.explanation}</p>
+            <p className="text-sm leading-7 text-text-secondary">{example.explanation}</p>
           </div>
         </div>
       )}
