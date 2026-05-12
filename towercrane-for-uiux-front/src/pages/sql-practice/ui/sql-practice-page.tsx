@@ -202,7 +202,7 @@ function EmptyState({
           <span className="min-w-0 truncate text-xs font-semibold text-text-secondary">
             {seedFile ?? '01_board_basic.sql'}
           </span>
-          <span className="ml-auto shrink-0 rounded-full border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[11px] font-bold text-text-muted">
+          <span className="ml-auto shrink-0 rounded-md border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[11px] font-bold text-text-muted">
             테이블 {tableCount}개
           </span>
         </div>
