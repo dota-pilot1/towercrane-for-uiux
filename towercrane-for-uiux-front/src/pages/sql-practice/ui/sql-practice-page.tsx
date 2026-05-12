@@ -184,7 +184,7 @@ function EmptyState({
 
   return (
     <div className="flex min-h-[420px] items-center justify-center p-8">
-      <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-surface-border bg-surface-raised shadow-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-surface-border bg-surface-raised shadow-sm">
         {/* 카드 헤더 */}
         <div className="flex items-center gap-3 border-b border-surface-border bg-surface-muted px-5 py-4">
           <div className="flex size-9 items-center justify-center rounded-xl border border-brand-border bg-brand-glass text-brand-primary">
