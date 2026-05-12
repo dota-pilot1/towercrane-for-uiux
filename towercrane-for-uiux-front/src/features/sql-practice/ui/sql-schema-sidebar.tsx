@@ -7,36 +7,36 @@ import {
   Settings,
   Table2,
   UploadCloud,
-} from 'lucide-react'
-import { useState } from 'react'
+} from "lucide-react";
+import { useState } from "react";
 import type {
   SqlPracticeMeta,
   SqlPracticeSeedSummary,
   TableInfo,
-} from '../../../entities/sql-practice/model/types'
+} from "../../../entities/sql-practice/model/types";
 import {
   useActivateSqlPracticeSeed,
   useSqlPracticeErd,
   useSqlPracticeSeeds,
-} from '../model/use-sql-practice-queries'
-import { SqlErdDialog } from './sql-erd-dialog'
-import { SqlExamplesDialog } from './sql-examples-dialog'
-import { SqlSeedManagerDialog } from './sql-seed-manager-dialog'
-import { SqlTableSchemaDialog } from './sql-table-schema-dialog'
+} from "../model/use-sql-practice-queries";
+import { SqlErdDialog } from "./sql-erd-dialog";
+import { SqlExamplesDialog } from "./sql-examples-dialog";
+import { SqlSeedManagerDialog } from "./sql-seed-manager-dialog";
+import { SqlTableSchemaDialog } from "./sql-table-schema-dialog";
 
 type SqlSchemaSidebarProps = {
-  meta?: SqlPracticeMeta
-  tables: TableInfo[]
-  selectedTable: string | null
-  isLoading: boolean
-  isResetting: boolean
-  isReloading: boolean
-  onSelectTable: (tableName: string) => void
-  onRefresh: () => void
-  onReset: () => void
-  onReloadSeed: () => void
-  onSeedActivated: () => void
-}
+  meta?: SqlPracticeMeta;
+  tables: TableInfo[];
+  selectedTable: string | null;
+  isLoading: boolean;
+  isResetting: boolean;
+  isReloading: boolean;
+  onSelectTable: (tableName: string) => void;
+  onRefresh: () => void;
+  onReset: () => void;
+  onReloadSeed: () => void;
+  onSeedActivated: () => void;
+};
 
 export function SqlSchemaSidebar({
   meta,
@@ -51,28 +51,28 @@ export function SqlSchemaSidebar({
   onReloadSeed,
   onSeedActivated,
 }: SqlSchemaSidebarProps) {
-  const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null)
-  const [seedDialogOpen, setSeedDialogOpen] = useState(false)
-  const [erdDialogOpen, setErdDialogOpen] = useState(false)
-  const [examplesDialogOpen, setExamplesDialogOpen] = useState(false)
-  const seedsQuery = useSqlPracticeSeeds()
-  const erdQuery = useSqlPracticeErd(meta?.seedFile)
+  const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null);
+  const [seedDialogOpen, setSeedDialogOpen] = useState(false);
+  const [erdDialogOpen, setErdDialogOpen] = useState(false);
+  const [examplesDialogOpen, setExamplesDialogOpen] = useState(false);
+  const seedsQuery = useSqlPracticeSeeds();
+  const erdQuery = useSqlPracticeErd(meta?.seedFile);
   const activateSeedMutation = useActivateSqlPracticeSeed({
     onSuccess: () => {
-      onSeedActivated()
-      setSeedDialogOpen(false)
+      onSeedActivated();
+      setSeedDialogOpen(false);
     },
-  })
+  });
 
   const activeSeed =
-    seedsQuery.data?.seeds.find((seed) => seed.isActive) ?? meta?.activeSeed
+    seedsQuery.data?.seeds.find((seed) => seed.isActive) ?? meta?.activeSeed;
 
   const handleActivateSeed = (seed: SqlPracticeSeedSummary) => {
     return activateSeedMutation.mutateAsync({
       source: seed.source,
       fileName: seed.fileName,
-    })
-  }
+    });
+  };
 
   return (
     <>
@@ -87,7 +87,7 @@ export function SqlSchemaSidebar({
               href="/sql/examples"
               target="_blank"
               rel="noreferrer"
-              className="ui-icon-button-brand h-7 gap-1.5 px-2 text-xs font-bold"
+              className="ui-icon-button-brand h-9 gap-1.5 px-3 text-xs font-bold"
               title="SQL 실습 예제 보기"
             >
               <BookOpenCheck className="size-3.5" />
@@ -109,7 +109,9 @@ export function SqlSchemaSidebar({
               onClick={onRefresh}
               disabled={isLoading}
             >
-              <RefreshCw className={`size-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`size-3.5 ${isLoading ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
         </div>
@@ -119,7 +121,9 @@ export function SqlSchemaSidebar({
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2 text-xs font-bold text-text-primary">
                 <Database className="size-3.5 shrink-0 text-brand-primary" />
-                <span className="truncate">{meta?.dbFile ?? 'practice.sqlite'}</span>
+                <span className="truncate">
+                  {meta?.dbFile ?? "practice.sqlite"}
+                </span>
               </div>
               {erdQuery.data?.mmd && (
                 <button
@@ -133,9 +137,11 @@ export function SqlSchemaSidebar({
               )}
             </div>
             <div className="mt-2 space-y-1 text-[11px] text-text-secondary">
-              <p>seed: {meta?.seedFile ?? '01_board_basic.sql'}</p>
+              <p>seed: {meta?.seedFile ?? "01_board_basic.sql"}</p>
               <p>tables: {meta?.tableCount ?? tables.length}</p>
-              <p>hash: {meta?.seedHash ? meta.seedHash.slice(0, 10) : 'loading'}</p>
+              <p>
+                hash: {meta?.seedHash ? meta.seedHash.slice(0, 10) : "loading"}
+              </p>
             </div>
           </div>
 
@@ -147,7 +153,9 @@ export function SqlSchemaSidebar({
               disabled={isResetting || isReloading}
               title="테이블 구조 + 데이터 전체 초기화"
             >
-              <RotateCcw className={`size-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+              <RotateCcw
+                className={`size-3.5 ${isResetting ? "animate-spin" : ""}`}
+              />
               테이블 리셋
             </button>
             <button
@@ -157,7 +165,9 @@ export function SqlSchemaSidebar({
               disabled={isResetting || isReloading}
               title="데이터만 seed 재적용"
             >
-              <UploadCloud className={`size-3.5 ${isReloading ? 'animate-spin' : ''}`} />
+              <UploadCloud
+                className={`size-3.5 ${isReloading ? "animate-spin" : ""}`}
+              />
               데이터 리셋
             </button>
           </div>
@@ -167,7 +177,9 @@ export function SqlSchemaSidebar({
           {tables.length === 0 ? (
             <div className="flex min-h-[240px] flex-col items-center justify-center px-5 text-center">
               <Table2 className="mb-3 size-9 text-text-muted" />
-              <p className="text-sm font-semibold text-text-primary">테이블이 없습니다</p>
+              <p className="text-sm font-semibold text-text-primary">
+                테이블이 없습니다
+              </p>
               <p className="mt-1 text-xs leading-5 text-text-secondary">
                 CREATE TABLE을 실행하거나 Reset으로 현재 seed를 다시 적용하세요.
               </p>
@@ -175,7 +187,7 @@ export function SqlSchemaSidebar({
           ) : (
             <div className="space-y-1">
               {tables.map((table) => {
-                const isSelected = selectedTable === table.tableName
+                const isSelected = selectedTable === table.tableName;
                 return (
                   <button
                     key={table.tableName}
@@ -183,13 +195,15 @@ export function SqlSchemaSidebar({
                     onClick={() => onSelectTable(table.tableName)}
                     className={`group flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${
                       isSelected
-                        ? 'border-brand-border bg-brand-glass text-brand-primary'
-                        : 'border-transparent text-text-primary hover:border-surface-border-soft hover:bg-surface-muted'
+                        ? "border-brand-border bg-brand-glass text-brand-primary"
+                        : "border-transparent text-text-primary hover:border-surface-border-soft hover:bg-surface-muted"
                     }`}
                   >
                     <Table2 className="size-3.5 shrink-0" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold">{table.tableName}</span>
+                      <span className="block truncate text-sm font-bold">
+                        {table.tableName}
+                      </span>
                       <span className="block text-[11px] text-text-muted">
                         {table.rowCount}행 · {table.columns.length}열
                       </span>
@@ -200,20 +214,20 @@ export function SqlSchemaSidebar({
                       className="rounded-sm p-1 text-text-muted opacity-0 transition-opacity hover:bg-surface-raised hover:text-text-primary group-hover:opacity-100"
                       title="스키마 보기"
                       onClick={(event) => {
-                        event.stopPropagation()
-                        setSchemaDialog(table)
+                        event.stopPropagation();
+                        setSchemaDialog(table);
                       }}
                       onKeyDown={(event) => {
-                        if (event.key !== 'Enter' && event.key !== ' ') return
-                        event.preventDefault()
-                        event.stopPropagation()
-                        setSchemaDialog(table)
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setSchemaDialog(table);
                       }}
                     >
                       <Info className="size-3.5" />
                     </span>
                   </button>
-                )
+                );
               })}
             </div>
           )}
@@ -221,7 +235,10 @@ export function SqlSchemaSidebar({
       </aside>
 
       {schemaDialog && (
-        <SqlTableSchemaDialog table={schemaDialog} onClose={() => setSchemaDialog(null)} />
+        <SqlTableSchemaDialog
+          table={schemaDialog}
+          onClose={() => setSchemaDialog(null)}
+        />
       )}
 
       <SqlSeedManagerDialog
@@ -236,7 +253,7 @@ export function SqlSchemaSidebar({
 
       <SqlExamplesDialog
         open={examplesDialogOpen}
-        seedFileName={meta?.seedFile ?? ''}
+        seedFileName={meta?.seedFile ?? ""}
         tableCount={meta?.tableCount ?? tables.length}
         onClose={() => setExamplesDialogOpen(false)}
       />
@@ -244,11 +261,11 @@ export function SqlSchemaSidebar({
       {erdQuery.data?.mmd && (
         <SqlErdDialog
           open={erdDialogOpen}
-          seedFileName={meta?.seedFile ?? ''}
+          seedFileName={meta?.seedFile ?? ""}
           mmd={erdQuery.data.mmd}
           onClose={() => setErdDialogOpen(false)}
         />
       )}
     </>
-  )
+  );
 }
