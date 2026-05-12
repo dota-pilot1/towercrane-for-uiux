@@ -193,7 +193,7 @@ export function SqlSchemaSidebar({
                     key={table.tableName}
                     type="button"
                     onClick={() => onSelectTable(table.tableName)}
-                    className={`group flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${
+                    className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${
                       isSelected
                         ? "border-brand-border bg-brand-glass text-brand-primary"
                         : "border-transparent text-text-primary hover:border-surface-border-soft hover:bg-surface-muted"
@@ -211,7 +211,7 @@ export function SqlSchemaSidebar({
                     <span
                       role="button"
                       tabIndex={0}
-                      className="rounded-sm p-1 text-text-muted opacity-0 transition-opacity hover:bg-surface-raised hover:text-text-primary group-hover:opacity-100"
+                      className="rounded-sm border border-surface-border-soft p-1.5 text-text-secondary transition-colors hover:border-brand-border hover:text-brand-primary"
                       title="스키마 보기"
                       onClick={(event) => {
                         event.stopPropagation();
