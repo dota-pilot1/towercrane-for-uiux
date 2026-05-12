@@ -237,6 +237,7 @@ export function SqlSchemaSidebar({
       {schemaDialog && (
         <SqlTableSchemaDialog
           table={schemaDialog}
+          tables={tables}
           onClose={() => setSchemaDialog(null)}
         />
       )}
