@@ -132,14 +132,14 @@ function ChannelSidebar({
               onClick={() => onSelect(room.id)}
               className={`flex w-full items-center gap-3 rounded-md border px-3 py-3 text-left transition-all ${
                 isActive
-                  ? 'border-brand-border bg-surface-strong text-text-primary shadow-sm'
+                  ? 'border-brand-border bg-brand-glass text-brand-primary shadow-sm'
                   : 'border-transparent ui-text-secondary hover:border-surface-border-soft hover:bg-surface-muted'
               }`}
             >
-              <RoomIcon type={room.roomType} className="size-4 shrink-0" />
+              <RoomIcon type={room.roomType} className={`size-4 shrink-0 ${isActive ? 'text-brand-primary' : ''}`} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold">{room.name}</span>
-                <span className="block truncate text-xs ui-text-muted">{room.description ?? '프로젝트 채널'}</span>
+                <span className={`block truncate text-sm font-bold ${isActive ? 'text-brand-primary' : ''}`}>{room.name}</span>
+                <span className={`block truncate text-xs ${isActive ? 'text-brand-primary/70' : 'ui-text-muted'}`}>{room.description ?? '프로젝트 채널'}</span>
               </span>
               {room.messageCount > 0 ? (
                 <span className="rounded-full bg-brand-primary px-1.5 py-0.5 text-[10px] font-bold text-text-on-brand">
@@ -162,14 +162,14 @@ function ChannelSidebar({
                     onClick={() => onSelect(room.id)}
                     className={`flex w-full items-center gap-3 rounded-md border px-3 py-3 text-left transition-all ${
                       isActive
-                        ? 'border-brand-border bg-surface-strong text-text-primary shadow-sm'
+                        ? 'border-brand-border bg-brand-glass text-brand-primary shadow-sm'
                         : 'border-transparent ui-text-secondary hover:border-surface-border-soft hover:bg-surface-muted'
                     }`}
                   >
-                    <RoomIcon type={room.roomType} className="size-4 shrink-0" />
+                    <RoomIcon type={room.roomType} className={`size-4 shrink-0 ${isActive ? 'text-brand-primary' : ''}`} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold">{room.name}</span>
-                      <span className="block truncate text-xs ui-text-muted">{room.description ?? '1:1 DM'}</span>
+                      <span className={`block truncate text-sm font-bold ${isActive ? 'text-brand-primary' : ''}`}>{room.name}</span>
+                      <span className={`block truncate text-xs ${isActive ? 'text-brand-primary/70' : 'ui-text-muted'}`}>{room.description ?? '1:1 DM'}</span>
                     </span>
                     {room.messageCount > 0 ? (
                       <span className="rounded-full bg-brand-primary px-1.5 py-0.5 text-[10px] font-bold text-text-on-brand">
