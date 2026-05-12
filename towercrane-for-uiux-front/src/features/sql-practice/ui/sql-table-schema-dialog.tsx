@@ -64,10 +64,10 @@ export function SqlTableSchemaDialog({ table, onClose }: SqlTableSchemaDialogPro
             <table className="w-full border-collapse text-left text-xs">
               <thead>
                 <tr className="border-b border-surface-border-soft">
-                  <th className="w-7 px-4 py-2.5 text-text-muted" />
-                  <th className="py-2.5 pr-3 font-semibold text-text-secondary">컬럼명</th>
-                  <th className="py-2.5 pr-3 font-semibold text-text-secondary">타입</th>
-                  <th className="py-2.5 pr-4 font-semibold text-text-secondary">옵션</th>
+                  <th className="w-10 px-4 py-3 text-text-muted" />
+                  <th className="py-3 pr-3 font-semibold text-text-secondary">컬럼명</th>
+                  <th className="py-3 pr-3 font-semibold text-text-secondary">타입</th>
+                  <th className="py-3 pr-4 font-semibold text-text-secondary">옵션</th>
                 </tr>
               </thead>
               <tbody>
@@ -76,20 +76,20 @@ export function SqlTableSchemaDialog({ table, onClose }: SqlTableSchemaDialogPro
                     key={column.name}
                     className={`border-b border-surface-border-soft hover:bg-surface-muted ${i % 2 === 0 ? '' : 'bg-surface-muted/40'}`}
                   >
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-3">
                       {column.primaryKey ? (
                         <KeyRound className="size-3.5 text-brand-primary" />
                       ) : (
                         <span className="block size-2.5 rounded-full border border-surface-border" />
                       )}
                     </td>
-                    <td className="py-2.5 pr-3 font-mono font-semibold text-text-primary">
+                    <td className="py-3 pr-3 font-mono font-semibold text-text-primary">
                       {column.name}
                     </td>
-                    <td className="py-2.5 pr-3 font-mono text-[11px] text-text-secondary">
+                    <td className="py-3 pr-3 font-mono text-[11px] text-text-secondary">
                       {column.type || 'ANY'}
                     </td>
-                    <td className="py-2.5 pr-4">
+                    <td className="py-3 pr-4">
                       <div className="flex flex-wrap gap-1">
                         {column.primaryKey && (
                           <span className="rounded-sm border border-brand-border bg-brand-glass px-1.5 py-0.5 text-[10px] font-bold text-brand-primary">
@@ -131,9 +131,8 @@ export function SqlTableSchemaDialog({ table, onClose }: SqlTableSchemaDialogPro
                 <table className="w-full border-collapse text-left text-xs">
                   <thead>
                     <tr className="border-b border-surface-border-soft bg-surface-muted">
-                      <th className="w-8 py-2.5 pl-4 pr-3 text-right font-semibold text-text-muted">#</th>
                       {dataColumns.map((col) => (
-                        <th key={col} className="whitespace-nowrap py-2.5 pr-4 font-semibold text-text-secondary">
+                        <th key={col} className="whitespace-nowrap px-4 py-3 font-semibold text-text-secondary">
                           {col}
                         </th>
                       ))}
@@ -145,11 +144,8 @@ export function SqlTableSchemaDialog({ table, onClose }: SqlTableSchemaDialogPro
                         key={i}
                         className={`border-b border-surface-border-soft hover:bg-brand-glass/30 ${i % 2 === 0 ? '' : 'bg-surface-muted/40'}`}
                       >
-                        <td className="py-2 pl-4 pr-3 text-right font-mono text-[11px] text-text-muted">
-                          {i + 1}
-                        </td>
                         {dataColumns.map((col) => (
-                          <td key={col} className="whitespace-nowrap py-2 pr-4 font-mono text-text-primary">
+                          <td key={col} className="whitespace-nowrap px-4 py-3 font-mono text-text-primary">
                             <CellValue value={row[col]} />
                           </td>
                         ))}
