@@ -65,7 +65,8 @@ INSERT INTO resources (id, name, resource_type, capacity, is_active) VALUES
 (2, 'B 세미나실', 'ROOM', 24, 1),
 (3, '촬영 스튜디오', 'STUDIO', 6, 1),
 (4, '프로젝터 1호', 'EQUIPMENT', 1, 1),
-(5, '구형 노트북', 'EQUIPMENT', 1, 0);
+(5, '구형 노트북', 'EQUIPMENT', 1, 0),
+(6, '이동식 모니터', 'EQUIPMENT', 1, 1);
 
 INSERT INTO customers (id, name, phone, memo) VALUES
 (1, '김나래', '010-1111-2222', '정기 이용 고객'),

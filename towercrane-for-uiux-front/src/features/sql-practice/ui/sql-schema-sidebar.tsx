@@ -1,4 +1,13 @@
-import { Database, Info, RefreshCw, RotateCcw, Settings, Table2, UploadCloud } from 'lucide-react'
+import {
+  BookOpenCheck,
+  Database,
+  Info,
+  RefreshCw,
+  RotateCcw,
+  Settings,
+  Table2,
+  UploadCloud,
+} from 'lucide-react'
 import { useState } from 'react'
 import type {
   SqlPracticeMeta,
@@ -72,16 +81,16 @@ export function SqlSchemaSidebar({
             <p className="text-[11px] text-text-muted">현재 연습 DB 기준</p>
           </div>
           <div className="flex items-center gap-1.5">
-            {erdQuery.data?.mmd && (
-              <button
-                type="button"
-                className="ui-icon-button-brand h-7 px-2 text-xs font-bold"
-                onClick={() => setErdDialogOpen(true)}
-                title="ERD 보기"
-              >
-                ERD
-              </button>
-            )}
+            <a
+              href="/sql/examples"
+              target="_blank"
+              rel="noreferrer"
+              className="ui-icon-button-brand h-7 gap-1.5 px-2 text-xs font-bold"
+              title="SQL 실습 예제 보기"
+            >
+              <BookOpenCheck className="size-3.5" />
+              예제
+            </a>
             <button
               className="ui-icon-button size-8"
               type="button"
@@ -105,9 +114,21 @@ export function SqlSchemaSidebar({
 
         <div className="border-b border-surface-border p-3">
           <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-text-primary">
-              <Database className="size-3.5 text-brand-primary" />
-              {meta?.dbFile ?? 'practice.sqlite'}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2 text-xs font-bold text-text-primary">
+                <Database className="size-3.5 shrink-0 text-brand-primary" />
+                <span className="truncate">{meta?.dbFile ?? 'practice.sqlite'}</span>
+              </div>
+              {erdQuery.data?.mmd && (
+                <button
+                  type="button"
+                  className="ui-icon-button-brand h-7 shrink-0 px-2 text-xs font-bold"
+                  onClick={() => setErdDialogOpen(true)}
+                  title="ERD 보기"
+                >
+                  ERD
+                </button>
+              )}
             </div>
             <div className="mt-2 space-y-1 text-[11px] text-text-secondary">
               <p>seed: {meta?.seedFile ?? '01_board_basic.sql'}</p>

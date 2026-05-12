@@ -577,10 +577,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
+          name: 'SQL 예제',
+          sectionId: 'sql_examples',
+          icon: 'BookOpenCheck',
+          displayOrder: 6,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
           name: 'Challenge with GPT',
           sectionId: 'challenge',
           icon: 'Trophy',
-          displayOrder: 6,
+          displayOrder: 7,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -592,7 +604,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'README',
           sectionId: 'readme',
           icon: 'BookOpenText',
-          displayOrder: 7,
+          displayOrder: 8,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -604,7 +616,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'Admin',
           sectionId: 'admin_dropdown',
           icon: 'ShieldCheck',
-          displayOrder: 8,
+          displayOrder: 9,
           isVisible: true,
           requiredRole: 'admin',
           parentId: null,
@@ -764,6 +776,60 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
               SELECT MIN(rowid)
               FROM menus
               WHERE section_id = 'sql'
+            )
+        `,
+      )
+      .run();
+
+    const sqlPracticeMenuForExamplesPlacement = this.sqlite
+      .prepare(
+        "SELECT id, display_order as displayOrder FROM menus WHERE section_id = 'sql' LIMIT 1",
+      )
+      .get() as { id: string; displayOrder: number } | undefined;
+
+    const existingSqlExamplesMenu = this.sqlite
+      .prepare("SELECT id FROM menus WHERE section_id = 'sql_examples' LIMIT 1")
+      .get() as { id: string } | undefined;
+
+    if (!existingSqlExamplesMenu) {
+      const displayOrder = (sqlPracticeMenuForExamplesPlacement?.displayOrder ?? 5) + 1;
+
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET display_order = display_order + 1, updated_at = ?
+            WHERE parent_id IS NULL AND display_order >= ?
+          `,
+        )
+        .run(now, displayOrder);
+
+      this.db
+        .insert(menusTable)
+        .values({
+          id: randomUUID(),
+          name: 'SQL 예제',
+          sectionId: 'sql_examples',
+          icon: 'BookOpenCheck',
+          displayOrder,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          DELETE FROM menus
+          WHERE section_id = 'sql_examples'
+            AND rowid NOT IN (
+              SELECT MIN(rowid)
+              FROM menus
+              WHERE section_id = 'sql_examples'
             )
         `,
       )

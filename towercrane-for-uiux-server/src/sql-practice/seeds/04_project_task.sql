@@ -87,7 +87,8 @@ INSERT INTO members (id, name, role, email) VALUES
 (1, '조현수', 'PM', 'pm@example.com'),
 (2, '문서연', 'BACKEND', 'backend@example.com'),
 (3, '안지호', 'FRONTEND', 'frontend@example.com'),
-(4, '백유리', 'QA', 'qa@example.com');
+(4, '백유리', 'QA', 'qa@example.com'),
+(5, '김라온', 'DEVOPS', 'devops@example.com');
 
 INSERT INTO project_members (project_id, member_id, duty) VALUES
 (1, 1, '관리'),
@@ -103,7 +104,8 @@ INSERT INTO tasks (id, project_id, assignee_id, title, status, priority, due_dat
 (3, 1, 4, '출고 회귀 테스트', 'TODO', 'LOW', '2026-04-20', 8),
 (4, 2, 2, '예약 알림 배치', 'IN_REVIEW', 'HIGH', '2026-04-12', 12),
 (5, 2, 4, '권한 테스트 케이스 작성', 'DONE', 'MEDIUM', '2026-04-05', 6),
-(6, 3, 3, '메인 페이지 반응형 수정', 'DONE', 'LOW', '2026-01-20', 10);
+(6, 3, 3, '메인 페이지 반응형 수정', 'DONE', 'LOW', '2026-01-20', 10),
+(7, 2, NULL, '운영 대시보드 요구사항 정리', 'TODO', 'MEDIUM', '2026-04-16', 6);
 
 INSERT INTO task_comments (id, task_id, member_id, content, created_at) VALUES
 (1, 1, 1, '고객사 검수 일정 앞당겨졌습니다.', '2026-04-01'),

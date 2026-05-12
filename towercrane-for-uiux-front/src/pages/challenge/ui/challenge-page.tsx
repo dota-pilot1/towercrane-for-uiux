@@ -4,7 +4,7 @@ import { Card } from '../../../shared/ui/card'
 import { PageHeader } from '../../../shared/ui/page-header'
 import { ChallengeSidebar } from '../../../features/challenge/ui/challenge-sidebar'
 import { ChallengeTopicsList } from '../../../features/challenge/ui/challenge-topics-list'
-import { useMyNotes, useSharedNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../../../features/challenge/lib/hooks'
+import { useMyNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../../../features/challenge/lib/hooks'
 import { UserNotesPanel } from '../../../features/challenge/user-notes/ui/user-notes-panel'
 
 export function ChallengePage() {
@@ -13,7 +13,6 @@ export function ChallengePage() {
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
 
   const { data: myNotes = [] } = useMyNotes(selectedSection || '')
-  const { data: sharedNotes = [] } = useSharedNotes(selectedSection || '')
   const createNote = useCreateNote()
   const updateNote = useUpdateNote()
   const deleteNote = useDeleteNote()
@@ -42,7 +41,6 @@ export function ChallengePage() {
           <UserNotesPanel
             sectionId={selectedSection}
             myNotes={myNotes}
-            sharedNotes={sharedNotes}
             onCreateNote={(data) => createNote.mutateAsync({ sectionId: selectedSection, ...data })}
             onUpdateNote={(id, data) => updateNote.mutateAsync({ id, data })}
             onDeleteNote={(id) => {

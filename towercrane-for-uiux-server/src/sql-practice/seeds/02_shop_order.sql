@@ -96,7 +96,7 @@ INSERT INTO payments (id, order_id, method, amount, status, paid_at) VALUES
 (2, 2, 'TRANSFER', 56000, 'APPROVED', '2026-02-03 14:25:00'),
 (3, 3, 'CARD', 240000, 'CANCELLED', NULL),
 (4, 4, 'CARD', 138000, 'APPROVED', '2026-02-07 16:37:00'),
-(5, 5, 'POINT_CARD', 70000, 'APPROVED', '2026-02-08 11:17:00');
+(5, 5, 'POINT_CARD', 69000, 'APPROVED', '2026-02-08 11:17:00');
 
 INSERT INTO shipments (id, order_id, carrier, status, shipped_at, delivered_at) VALUES
 (1, 1, 'CJ대한통운', 'DELIVERED', '2026-02-01 18:00:00', '2026-02-03 12:00:00'),

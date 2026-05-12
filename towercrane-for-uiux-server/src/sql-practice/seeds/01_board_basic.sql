@@ -85,7 +85,8 @@ INSERT INTO boards (id, name, category, is_active) VALUES
 (1, '자유게시판', 'GENERAL', 1),
 (2, '질문게시판', 'QNA', 1),
 (3, '공지사항', 'NOTICE', 1),
-(4, '프로젝트', 'PROJECT', 1);
+(4, '프로젝트', 'PROJECT', 1),
+(5, '채용게시판', 'JOB', 1);
 
 INSERT INTO posts (id, board_id, user_id, title, content, views, is_pinned, created_at) VALUES
 (1, 1, 1, '안녕하세요 처음 가입했습니다', '반갑습니다.', 120, 0, '2026-02-01'),

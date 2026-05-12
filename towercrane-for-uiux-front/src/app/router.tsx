@@ -22,6 +22,7 @@ import { ProfilePage } from '../pages/profile/ui/profile-page'
 import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
 import { ChallengePage } from '../pages/challenge/ui/challenge-page'
 import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
+import { SqlPracticeExamplesPage } from '../pages/sql-practice/ui/sql-practice-examples-page'
 import { useSessionStore } from '../shared/store/session-store'
 import { useCurrentUser } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
@@ -213,6 +214,12 @@ const sqlPracticeRoute = createRoute({
   component: SqlPracticePage,
 })
 
+const sqlPracticeExamplesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql/examples',
+  component: SqlPracticeExamplesPage,
+})
+
 // ─── /task ───────────────────────────────────────────────────────────────────
 
 const taskRoute = createRoute({
@@ -383,6 +390,7 @@ export const router = createRouter({
       aiMethodologyRoute,
       apiDocRoute,
       sqlPracticeRoute,
+      sqlPracticeExamplesRoute,
       taskRoute,
       prototypeIssuesRoute,
       profileRoute,

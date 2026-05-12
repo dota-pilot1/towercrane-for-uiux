@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import * as LucideIcons from 'lucide-react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { HeaderAuthButtons } from '../../../features/auth/ui/inline-auth-bar'
@@ -6,6 +6,7 @@ import { useLogout } from '../../../shared/api/auth'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { HeaderPill } from '../../../shared/ui/header-pill'
 import { ThemeSwitcher } from '../../../shared/ui/theme-switcher'
+import { AppHeaderMobileNav } from './app-header-mobile-nav'
 import { useMenus } from '../../../entities/menu/api/menu-api'
 import { buildTree } from '../../../entities/menu/lib/build-tree'
 import type { MenuItem } from '../../../entities/menu/model/types'
@@ -19,6 +20,7 @@ function sectionIdToPath(sectionId: string): string {
     ai_methodology: '/ai-methodology',
     api_doc: '/api-doc',
     sql: '/sql',
+    sql_examples: '/sql/examples',
     task: '/task',
     profile: '/profile',
     users: '/admin/users',
@@ -35,6 +37,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/docu')) return 'docu'
   if (pathname.startsWith('/ai-methodology')) return 'ai_methodology'
   if (pathname.startsWith('/api-doc')) return 'api_doc'
+  if (pathname.startsWith('/sql/examples')) return 'sql_examples'
   if (pathname.startsWith('/sql')) return 'sql'
   if (pathname.startsWith('/task')) return 'task'
   if (pathname.startsWith('/profile')) return 'profile'
@@ -167,7 +170,7 @@ export function AppHeader() {
           </div>
         </button>
 
-        <nav className="flex items-center justify-center gap-1.5 flex-1 min-w-0">
+        <nav className="hidden min-h-0 min-w-0 flex-1 items-center justify-start gap-1.5 overflow-x-auto overflow-y-hidden lg:flex lg:justify-center">
           {menuTree.map((item) => {
             if (item.children && item.children.length > 0) {
               return (
@@ -195,7 +198,13 @@ export function AppHeader() {
           })}
         </nav>
 
-        <div className="flex items-center justify-end gap-3 shrink-0">
+        <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
+          <AppHeaderMobileNav
+            menuTree={menuTree}
+            activeSection={activeSection}
+            pathname={pathname}
+            onNavigate={handleNavigation}
+          />
           <ThemeSwitcher />
           {isAuthenticated ? (
             <>
