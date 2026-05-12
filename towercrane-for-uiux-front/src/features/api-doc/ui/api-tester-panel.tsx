@@ -365,14 +365,14 @@ export function ApiTesterPanel({
               </option>
             ))}
           </CompactSelect>
-          <Button type="button" variant="secondary" size="sm" onClick={onOpenEnv}>
+          <Button type="button" variant="secondary" size="sm" className="h-9 px-3" onClick={onOpenEnv}>
             환경
           </Button>
-          <Button type="button" variant="ghost" size="sm-icon" onClick={handleReset} title="초기화" aria-label="초기화">
+          <Button type="button" variant="ghost" size="sm-icon" className="size-9" onClick={handleReset} title="초기화" aria-label="초기화">
             <RotateCcw className="size-4" />
           </Button>
           {isAdmin ? (
-            <Button type="button" size="sm" onClick={() => onSave(content)} disabled={isSaving || isBlocksLoading}>
+            <Button type="button" size="sm" className="h-9 px-3" onClick={() => onSave(content)} disabled={isSaving || isBlocksLoading}>
               {isSaving ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Save className="mr-1.5 size-3.5" />}
               저장
             </Button>
