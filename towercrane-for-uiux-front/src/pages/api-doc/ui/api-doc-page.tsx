@@ -589,12 +589,12 @@ function EndpointSidebar({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-start gap-2">
+                          <div className="flex items-center gap-2">
                             {isAdmin ? (
                               <button
                                 type="button"
                                 {...dragHandleProps}
-                                className="mt-1 cursor-grab text-text-muted opacity-50 transition-opacity group-hover:opacity-100"
+                                className="cursor-grab text-text-muted opacity-50 transition-opacity group-hover:opacity-100"
                                 aria-label="드래그"
                               >
                                 <GripVertical className="size-3.5" />

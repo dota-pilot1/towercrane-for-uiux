@@ -422,12 +422,12 @@ export function ApiTesterPanel({
                 disabled={!isAdmin}
                 placeholder="{{API_BASE}}/endpoint"
                 onChange={(event) => patch({ url: event.target.value })}
-                className="ui-input min-w-0 flex-1 font-mono text-xs"
+                className="ui-input min-w-0 flex-1 font-mono text-sm"
               />
               <button
                 type="button"
                 onClick={() => setTokenDialogOpen(true)}
-                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold transition-colors ${
+                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-semibold transition-colors ${
                   envToken
                     ? 'border-brand-border bg-brand-glass text-brand-primary'
                     : 'border-surface-border-soft bg-surface-muted text-text-secondary hover:text-text-primary'
