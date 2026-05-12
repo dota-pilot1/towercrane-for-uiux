@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { Code2, Database, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Code2, Database } from 'lucide-react'
 
 import { Card } from '../../../shared/ui/card'
-import type { SqlHistoryItem } from '../../../entities/sql-practice/model/types'
+import type { SqlHistoryItem, TableInfo } from '../../../entities/sql-practice/model/types'
 import {
   useExecuteSqlPracticeQuery,
   useReloadSqlPracticeSeed,
@@ -12,11 +12,14 @@ import {
 } from '../../../features/sql-practice/model/use-sql-practice-queries'
 import { SqlHistoryItem as SqlHistoryItemView } from '../../../features/sql-practice/ui/sql-history-item'
 import { SqlInputBar } from '../../../features/sql-practice/ui/sql-input-bar'
+import { SqlPracticePageHeader } from '../../../features/sql-practice/ui/sql-practice-page-header'
 import { SqlSchemaSidebar } from '../../../features/sql-practice/ui/sql-schema-sidebar'
+
+const EMPTY_TABLES: TableInfo[] = []
 
 export function SqlPracticePage() {
   const [history, setHistory] = useState<SqlHistoryItem[]>([])
-  const [selectedTable, setSelectedTable] = useState<string | null>(null)
+  const [selectedTableOverride, setSelectedTableOverride] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const metaQuery = useSqlPracticeMeta()
@@ -25,18 +28,17 @@ export function SqlPracticePage() {
   const resetMutation = useResetSqlPracticeDb()
   const reloadSeedMutation = useReloadSqlPracticeSeed()
 
-  const tables = tablesQuery.data ?? []
-
-  useEffect(() => {
-    if (tables.length === 0) {
-      setSelectedTable(null)
-      return
+  const tables = tablesQuery.data ?? EMPTY_TABLES
+  const selectedTable = useMemo(() => {
+    if (tables.length === 0) return null
+    if (
+      selectedTableOverride &&
+      tables.some((table) => table.tableName === selectedTableOverride)
+    ) {
+      return selectedTableOverride
     }
-
-    if (!selectedTable || !tables.some((table) => table.tableName === selectedTable)) {
-      setSelectedTable(tables[0].tableName)
-    }
-  }, [selectedTable, tables])
+    return tables[0].tableName
+  }, [selectedTableOverride, tables])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
@@ -71,7 +73,7 @@ export function SqlPracticePage() {
     }
     await resetMutation.mutateAsync()
     setHistory([])
-    setSelectedTable(null)
+    setSelectedTableOverride(null)
   }
 
   const handleReloadSeed = async () => {
@@ -81,45 +83,22 @@ export function SqlPracticePage() {
     }
     await reloadSeedMutation.mutateAsync()
     setHistory([])
-    setSelectedTable(null)
+    setSelectedTableOverride(null)
   }
 
   const handleSeedActivated = () => {
     setHistory([])
-    setSelectedTable(null)
+    setSelectedTableOverride(null)
   }
 
   return (
     <section className="space-y-4">
-      <div className="flex min-w-0 items-center justify-between gap-3 rounded-md bg-text-primary px-5 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-background/20 bg-background/10 text-background">
-            <Database className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl font-black text-background">SQL 연습장</h1>
-            <p className="mt-1 text-xs text-background/60">
-              별도 SQLite 연습 DB에 SQL을 실행합니다.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-sm border border-background/20 bg-background/10 px-2.5 py-1 text-[11px] font-semibold text-background/80">
-            SQLite
-          </span>
-          {history.length > 0 && (
-            <button
-              type="button"
-              className="flex size-8 items-center justify-center rounded-md border border-background/20 bg-background/10 text-background/80 transition-colors hover:bg-background/20"
-              onClick={() => setHistory([])}
-              aria-label="히스토리 비우기"
-              title="히스토리 비우기"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
+      <SqlPracticePageHeader
+        key={metaQuery.data?.seedFile ?? 'loading'}
+        seedFile={metaQuery.data?.seedFile}
+        hasHistory={history.length > 0}
+        onClearHistory={() => setHistory([])}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
       <Card className="flex min-h-[calc(100vh-220px)] flex-col overflow-hidden rounded-md p-0">
@@ -151,7 +130,7 @@ export function SqlPracticePage() {
         isLoading={metaQuery.isFetching || tablesQuery.isFetching}
         isResetting={resetMutation.isPending}
         isReloading={reloadSeedMutation.isPending}
-        onSelectTable={setSelectedTable}
+        onSelectTable={setSelectedTableOverride}
         onRefresh={handleRefresh}
         onReset={handleReset}
         onReloadSeed={handleReloadSeed}
