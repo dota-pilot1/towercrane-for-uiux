@@ -183,24 +183,43 @@ function EmptyState({
   }
 
   return (
-    <div className="flex min-h-[420px] flex-col items-center justify-center px-6 text-center">
-      <div className="mb-5 flex size-14 items-center justify-center rounded-2xl border border-brand-border bg-brand-glass text-brand-primary">
-        <Code2 className="size-7" />
+    <div className="flex min-h-[420px] items-center justify-center p-8">
+      <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-surface-border bg-surface-raised shadow-sm">
+        {/* 카드 헤더 */}
+        <div className="flex items-center gap-3 border-b border-surface-border bg-surface-muted px-5 py-4">
+          <div className="flex size-9 items-center justify-center rounded-xl border border-brand-border bg-brand-glass text-brand-primary">
+            <Code2 className="size-4" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-text-primary">SQL을 실행해보세요</p>
+            <p className="text-[11px] text-text-muted">쿼리를 작성하면 결과가 여기에 표시됩니다</p>
+          </div>
+        </div>
+
+        {/* 현재 DB 정보 */}
+        <div className="flex items-center gap-2 border-b border-surface-border px-5 py-3">
+          <Database className="size-3.5 shrink-0 text-brand-primary" />
+          <span className="min-w-0 truncate text-xs font-semibold text-text-secondary">
+            {seedFile ?? '01_board_basic.sql'}
+          </span>
+          <span className="ml-auto shrink-0 rounded-full border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[11px] font-bold text-text-muted">
+            테이블 {tableCount}개
+          </span>
+        </div>
+
+        {/* 예시 쿼리 */}
+        <div className="px-5 py-4">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+            예시 쿼리
+          </p>
+          <pre className="overflow-x-auto rounded-lg border border-surface-border-soft bg-surface-muted px-4 py-3 font-mono text-xs leading-5 text-text-secondary">
+            {recommendedQuery ?? 'SELECT * FROM users LIMIT 10;'}
+          </pre>
+          <p className="mt-3 text-center text-[11px] text-text-muted">
+            Ctrl+Enter 로 실행
+          </p>
+        </div>
       </div>
-      <h2 className="text-base font-bold text-text-primary">SQL을 실행해보세요</h2>
-      <div className="mt-3 flex items-center gap-2">
-        <span className="inline-flex items-center gap-1 rounded-full border border-surface-border-soft bg-surface-muted px-2.5 py-0.5 text-[11px] font-semibold text-text-muted">
-          <Database className="size-3" />
-          {seedFile ?? '01_board_basic.sql'}
-        </span>
-        <span className="inline-flex items-center rounded-full border border-surface-border-soft bg-surface-muted px-2.5 py-0.5 text-[11px] font-semibold text-text-muted">
-          테이블 {tableCount}개
-        </span>
-      </div>
-      <pre className="mt-5 rounded-xl border border-surface-border-soft bg-surface-muted px-5 py-3 text-left font-mono text-xs leading-5 text-text-secondary">
-        {recommendedQuery ?? 'SELECT * FROM users LIMIT 10;'}
-      </pre>
-      <p className="mt-3 text-[11px] text-text-muted">Ctrl+Enter 로 실행</p>
     </div>
   )
 }
