@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { KeyRound, Loader2, RotateCcw, Save, Send, Trash2, X } from 'lucide-react'
+import { Loader2, RotateCcw, Save, Send, Trash2 } from 'lucide-react'
 import type {
   ApiBlockContent,
   ApiDocBlock,
@@ -189,14 +189,12 @@ export function ApiTesterPanel({
   const activeEnvId = useApiEnvStore((state) => state.activeEnvId)
   const setActiveEnv = useApiEnvStore((state) => state.setActiveEnv)
   const getActiveVarsMap = useApiEnvStore((state) => state.getActiveVarsMap)
-  const updateEnvironments = useApiEnvStore((state) => state.updateEnvironments)
 
   const [content, setContent] = useState<ApiBlockContent>(() => parseApiBlockContent(blocks, endpoint))
   const [response, setResponse] = useState<ApiResponse | null>(null)
   const [isSending, setIsSending] = useState(false)
   const [activeTab, setActiveTab] = useState<'params' | 'headers' | 'body'>('params')
   const [responseTab, setResponseTab] = useState<'body' | 'headers'>('body')
-  const [tokenDialogOpen, setTokenDialogOpen] = useState(false)
 
   useEffect(() => {
     setContent(parseApiBlockContent(blocks, endpoint))
@@ -207,22 +205,6 @@ export function ApiTesterPanel({
   const envVars = getActiveVarsMap()
   const resolvedUrl = resolveEnvVars(content.url, envVars)
   const hasEnvVar = content.url.includes('{{')
-  const envToken = envVars.TOKEN?.trim() || token || ''
-
-  const setEnvToken = (newToken: string) => {
-    updateEnvironments(
-      environments.map((env) =>
-        env.id === activeEnvId
-          ? {
-              ...env,
-              variables: env.variables.some((v) => v.key === 'TOKEN')
-                ? env.variables.map((v) => (v.key === 'TOKEN' ? { ...v, value: newToken } : v))
-                : [...env.variables, { key: 'TOKEN', value: newToken, description: 'JWT 토큰' }],
-            }
-          : env,
-      ),
-    )
-  }
 
   const patch = (partial: Partial<ApiBlockContent>) => {
     setContent((prev) => ({ ...prev, ...partial }))
@@ -288,9 +270,10 @@ export function ApiTesterPanel({
       headers['Content-Type'] = 'application/json'
     }
 
-    const activeToken = vars.TOKEN?.trim() || token
-    if (activeToken && !headers.Authorization && !headers.authorization) {
-      headers.Authorization = `Bearer ${activeToken}`
+    const envToken = vars.TOKEN?.trim()
+    const authToken = envToken || token
+    if (content.authEnabled && authToken && !headers.Authorization && !headers.authorization) {
+      headers.Authorization = `Bearer ${authToken}`
     }
 
     const body =
@@ -354,7 +337,6 @@ export function ApiTesterPanel({
   }
 
   return (
-    <>
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
       <div className="flex shrink-0 flex-col gap-3 border-b border-surface-border-soft bg-surface-muted/50 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
@@ -383,14 +365,14 @@ export function ApiTesterPanel({
               </option>
             ))}
           </CompactSelect>
-          <Button type="button" variant="secondary" size="sm" className="h-9 px-3" onClick={onOpenEnv}>
+          <Button type="button" variant="secondary" size="sm" onClick={onOpenEnv}>
             환경
           </Button>
-          <Button type="button" variant="ghost" size="sm-icon" className="h-9 w-9" onClick={handleReset} title="초기화" aria-label="초기화">
+          <Button type="button" variant="ghost" size="sm-icon" onClick={handleReset} title="초기화" aria-label="초기화">
             <RotateCcw className="size-4" />
           </Button>
           {isAdmin ? (
-            <Button type="button" size="sm" className="h-9 px-3" onClick={() => onSave(content)} disabled={isSaving || isBlocksLoading}>
+            <Button type="button" size="sm" onClick={() => onSave(content)} disabled={isSaving || isBlocksLoading}>
               {isSaving ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Save className="mr-1.5 size-3.5" />}
               저장
             </Button>
@@ -398,8 +380,8 @@ export function ApiTesterPanel({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-background">
-        <div className="flex min-h-full flex-col gap-3 p-4">
+      <div className="min-h-0 flex-1 flex flex-col overflow-hidden bg-background">
+        <div className="shrink-0 flex flex-col gap-3 p-4 pb-0">
           <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3 shadow-sm">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
               <CompactSelect
@@ -422,20 +404,18 @@ export function ApiTesterPanel({
                 disabled={!isAdmin}
                 placeholder="{{API_BASE}}/endpoint"
                 onChange={(event) => patch({ url: event.target.value })}
-                className="ui-input min-w-0 flex-1 font-mono text-sm"
+                className="ui-input min-w-0 flex-1 font-mono text-xs"
               />
-              <button
-                type="button"
-                onClick={() => setTokenDialogOpen(true)}
-                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-semibold transition-colors ${
-                  envToken
-                    ? 'border-brand-border bg-brand-glass text-brand-primary'
-                    : 'border-surface-border-soft bg-surface-muted text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                <KeyRound className="size-3.5" />
+              <label className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 text-xs font-semibold text-text-secondary">
+                <input
+                  type="checkbox"
+                  checked={content.authEnabled}
+                  disabled={!isAdmin}
+                  onChange={(event) => patch({ authEnabled: event.target.checked })}
+                  className="size-4 accent-[var(--primary)]"
+                />
                 Auth
-              </button>
+              </label>
               <Button type="button" onClick={handleSend} disabled={isSending || !content.url.trim()} className="h-9 px-4 py-0 lg:w-28">
                 {isSending ? <Loader2 className="mr-1.5 size-4 animate-spin" /> : <Send className="mr-1.5 size-4" />}
                 Send
@@ -533,8 +513,9 @@ export function ApiTesterPanel({
               ) : null}
             </div>
           </div>
-
-          <div className="min-h-[240px] flex-1 rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
+        </div>
+        <div className="min-h-0 flex-1 px-4 pb-4 pt-3">
+          <div className="min-h-0 h-full flex flex-col rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
             <div className="flex flex-wrap items-center gap-2 border-b border-surface-border-soft bg-surface-muted/50 px-4 py-2.5">
               <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">Response</span>
               {response ? (
@@ -570,7 +551,7 @@ export function ApiTesterPanel({
                 <span className="ml-auto text-xs text-text-muted">Send 버튼을 눌러 요청하세요.</span>
               )}
             </div>
-            <div className="min-h-[190px] p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
               {isSending ? (
                 <div className="flex h-44 flex-col items-center justify-center gap-3 text-text-muted">
                   <Loader2 className="size-6 animate-spin" />
@@ -606,72 +587,6 @@ export function ApiTesterPanel({
                 </div>
               ) : null}
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {tokenDialogOpen && (
-      <TokenDialog
-        token={envVars.TOKEN?.trim() ?? ''}
-        onSave={(t) => { setEnvToken(t); setTokenDialogOpen(false) }}
-        onClose={() => setTokenDialogOpen(false)}
-      />
-    )}
-    </>
-  )
-}
-
-function TokenDialog({
-  token,
-  onSave,
-  onClose,
-}: {
-  token: string
-  onSave: (token: string) => void
-  onClose: () => void
-}) {
-  const [draft, setDraft] = useState(token)
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <button type="button" className="ui-overlay absolute inset-0" onClick={onClose} aria-label="닫기" />
-      <div className="glass-panel relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-md">
-        <div className="flex items-center justify-between border-b border-surface-border px-5 py-4">
-          <div className="flex items-center gap-2">
-            <KeyRound className="size-4 text-brand-primary" />
-            <h2 className="text-sm font-bold text-text-primary">JWT 토큰</h2>
-          </div>
-          <button type="button" className="ui-icon-button size-8" onClick={onClose} aria-label="닫기">
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className="p-5">
-          <p className="mb-3 leading-relaxed text-xs text-text-muted">
-            토큰이 설정되면 모든 요청에{' '}
-            <code className="inline-block translate-y-px rounded bg-surface-muted px-1.5 py-px font-mono text-[11px] text-text-secondary">Authorization: Bearer ···</code>
-            {' '}헤더가 자동으로 포함됩니다.
-          </p>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-            rows={2}
-            className="ui-input w-full resize-none font-mono text-xs leading-relaxed"
-            autoFocus
-          />
-        </div>
-        <div className="flex items-center justify-between border-t border-surface-border px-5 py-3">
-          <button
-            type="button"
-            className="text-xs text-text-muted hover:text-destructive"
-            onClick={() => onSave('')}
-          >
-            토큰 제거
-          </button>
-          <div className="flex gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={onClose}>취소</Button>
-            <Button type="button" size="sm" onClick={() => onSave(draft.trim())}>저장</Button>
           </div>
         </div>
       </div>

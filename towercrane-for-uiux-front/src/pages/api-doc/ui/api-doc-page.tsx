@@ -115,7 +115,6 @@ export function ApiDocPage() {
       <PageHeader
         icon={FileJson}
         title="Postman Lite"
-        description="API 스펙을 정리하고 브라우저에서 요청을 실행합니다."
       />
 
       <div className="grid h-[calc(100vh-10rem)] min-h-[640px] grid-cols-1 gap-3 lg:grid-cols-[240px_300px_minmax(0,1fr)]">
@@ -224,10 +223,10 @@ function CategorySidebar({
 
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted/50 px-4">
-        <div className="flex items-center gap-2">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted/50 px-4">
+        <div>
           <p className="text-sm font-black text-text-primary">컬렉션</p>
-          <span className="rounded-sm bg-surface-strong px-1.5 py-0.5 text-[10px] font-bold text-text-muted">{categories.length}</span>
+          <p className="text-[11px] text-text-muted">{categories.length} items</p>
         </div>
         {isAdmin ? (
           <Button
@@ -471,10 +470,10 @@ function EndpointSidebar({
 
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted/50 px-4">
-        <div className="flex items-center gap-2">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted/50 px-4">
+        <div>
           <p className="text-sm font-black text-text-primary">API 항목</p>
-          <span className="rounded-sm bg-surface-strong px-1.5 py-0.5 text-[10px] font-bold text-text-muted">{endpoints.length}</span>
+          <p className="text-[11px] text-text-muted">{endpoints.length} items</p>
         </div>
         {isAdmin ? (
           <Button
@@ -589,12 +588,12 @@ function EndpointSidebar({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-start gap-2">
                             {isAdmin ? (
                               <button
                                 type="button"
                                 {...dragHandleProps}
-                                className="cursor-grab text-text-muted opacity-50 transition-opacity group-hover:opacity-100"
+                                className="mt-1 cursor-grab text-text-muted opacity-50 transition-opacity group-hover:opacity-100"
                                 aria-label="드래그"
                               >
                                 <GripVertical className="size-3.5" />
@@ -687,7 +686,7 @@ function EnvironmentDialog({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between border-b border-surface-border-soft bg-surface-muted px-5 py-4">
           <div>
             <p className="text-base font-black text-text-primary">환경 변수</p>
-            <p className="mt-1 text-xs text-text-muted">{'`{{API_BASE}}`'}처럼 요청 URL, header, body에서 사용할 수 있습니다.</p>
+            <p className="mt-1 text-xs text-text-muted">`{{API_BASE}}`처럼 요청 URL, header, body에서 사용할 수 있습니다.</p>
           </div>
           <Button type="button" size="sm-icon" variant="ghost" onClick={onClose} aria-label="닫기">
             <X className="size-4" />
