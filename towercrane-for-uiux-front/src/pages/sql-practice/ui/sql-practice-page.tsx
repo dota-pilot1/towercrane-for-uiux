@@ -184,17 +184,23 @@ function EmptyState({
 
   return (
     <div className="flex min-h-[420px] flex-col items-center justify-center px-6 text-center">
-      <div className="mb-4 flex size-14 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-muted">
+      <div className="mb-5 flex size-14 items-center justify-center rounded-2xl border border-brand-border bg-brand-glass text-brand-primary">
         <Code2 className="size-7" />
       </div>
       <h2 className="text-base font-bold text-text-primary">SQL을 실행해보세요</h2>
-      <p className="mt-2 max-w-md text-sm leading-6 text-text-secondary">
-        {seedFile ?? '01_board_basic.sql'} 기준으로 {tableCount}개 테이블이 준비되어 있습니다.
-        아래 입력창에서 SQL을 작성하면 결과가 여기에 쌓입니다.
-      </p>
-      <pre className="mt-5 rounded-md border border-surface-border-soft bg-surface-muted px-4 py-3 text-left font-mono text-xs text-text-secondary">
+      <div className="mt-3 flex items-center gap-2">
+        <span className="inline-flex items-center gap-1 rounded-full border border-surface-border-soft bg-surface-muted px-2.5 py-0.5 text-[11px] font-semibold text-text-muted">
+          <Database className="size-3" />
+          {seedFile ?? '01_board_basic.sql'}
+        </span>
+        <span className="inline-flex items-center rounded-full border border-surface-border-soft bg-surface-muted px-2.5 py-0.5 text-[11px] font-semibold text-text-muted">
+          테이블 {tableCount}개
+        </span>
+      </div>
+      <pre className="mt-5 rounded-xl border border-surface-border-soft bg-surface-muted px-5 py-3 text-left font-mono text-xs leading-5 text-text-secondary">
         {recommendedQuery ?? 'SELECT * FROM users LIMIT 10;'}
       </pre>
+      <p className="mt-3 text-[11px] text-text-muted">Ctrl+Enter 로 실행</p>
     </div>
   )
 }

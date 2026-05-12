@@ -136,7 +136,7 @@ export function SqlSchemaSidebar({
                 </button>
               )}
             </div>
-            <div className="mt-2 space-y-1 text-[11px] text-text-secondary">
+            <div className="mt-2 space-y-1 text-xs text-text-secondary">
               <p>seed: {meta?.seedFile ?? "01_board_basic.sql"}</p>
               <p>tables: {meta?.tableCount ?? tables.length}</p>
               <p>
