@@ -656,8 +656,8 @@ function TokenDialog({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-            rows={4}
-            className="ui-input w-full resize-none font-mono text-xs"
+            rows={2}
+            className="ui-input w-full resize-none font-mono text-xs leading-relaxed"
             autoFocus
           />
         </div>
