@@ -138,7 +138,7 @@ function buildDefaultHint(sql: string): string {
   }
 
   if (orderText) {
-    hints.push(`ORDER BY 기준은 ${orderText}입니다.`)
+    hints.push(`ORDER BY에서는 ${orderText} 정렬하세요.`)
   }
 
   if (limitText) {
@@ -188,7 +188,7 @@ function buildDefaultExplanation(sql: string): string {
   }
 
   if (orderText) {
-    parts.push(`ORDER BY는 ${orderText} 기준을 사용합니다.`)
+    parts.push(`ORDER BY는 ${orderText} 정렬합니다.`)
   }
 
   const limitText = formatLimit(limit)
@@ -426,6 +426,452 @@ const identifierLabels: Record<string, string> = {
   warehouse: '창고',
   weekday: '요일',
   work: '근무',
+}
+
+const fullIdentifierLabels: Record<string, string> = {
+  actual_fee: '실제 수수료',
+  actual_lead_days: '실제 리드타임',
+  approved_at: '승인일시',
+  avg_clock_in_minutes: '평균 출근 시각',
+  checked_at: '점검일',
+  clock_in: '출근 시각',
+  clock_out: '퇴근 시각',
+  created_at: '생성일',
+  delivered_at: '배송 완료일시',
+  due_date: '마감일',
+  end_date: '종료일',
+  end_time: '종료 시간',
+  ended_at: '종료일',
+  ends_at: '종료일시',
+  expected_close_date: '예상 계약일',
+  expected_lead_days: '예상 리드타임',
+  held_at: '회의일시',
+  hire_date: '입사일',
+  hired_at: '입사일',
+  is_active: '활성 여부',
+  is_pinned: '고정 여부',
+  lead_time_days: '리드타임',
+  marketing_opt_in: '마케팅 수신 동의',
+  moved_at: '이동일시',
+  occurred_at: '발생일시',
+  ordered_at: '주문일시',
+  paid_at: '결제일시',
+  received_at: '입고일시',
+  requested_at: '요청일시',
+  resolved_at: '해결일시',
+  settlement_day: '정산일',
+  settlement_month: '정산월',
+  shipped_at: '발송일시',
+  signed_at: '계약일',
+  signed_up_at: '가입일',
+  start_date: '시작일',
+  start_time: '시작 시간',
+  started_at: '시작일',
+  starts_at: '시작일시',
+  unit_cost: '단가',
+  unit_price: '단가',
+  work_date: '근무일',
+}
+
+function formatSourceText(tables: string[], usesJoin: boolean): string {
+  if (usesJoin && tables.length > 1) {
+    return `${tables.map((table) => `${table} 테이블`).join(', ')}을(를) 연결해`
+  }
+
+  const primaryTable = tables[0] ?? '대상'
+  return `${primaryTable} 테이블에서`
+}
+
+function getRowNoun(tables: string[]): string {
+  if (tables.length !== 1) {
+    return '결과'
+  }
+
+  return tableNounByName[tables[0]] ?? '행'
+}
+
+function extractSelectClause(sql: string): string | null {
+  const normalizedSql = normalizeSql(sql)
+  const selectIndex = findTopLevelKeyword(normalizedSql, 'SELECT', 0)
+
+  if (selectIndex < 0) {
+    return null
+  }
+
+  const fromIndex = findTopLevelKeyword(
+    normalizedSql,
+    'FROM',
+    selectIndex + 'SELECT'.length,
+  )
+
+  if (fromIndex < 0) {
+    return null
+  }
+
+  return normalizedSql.slice(selectIndex + 'SELECT'.length, fromIndex).trim()
+}
+
+function formatSelectList(selectClause: string | null): string | null {
+  if (!selectClause) {
+    return null
+  }
+
+  const items = splitTopLevel(selectClause, ',').map(formatSelectItem)
+  return joinLimited(items, 8)
+}
+
+function formatSelectItem(item: string): string {
+  const cleanItem = item.trim().replace(/^DISTINCT\s+/i, '')
+  const aliasMatch = cleanItem.match(/\s+AS\s+([a-zA-Z_][a-zA-Z0-9_]*)$/i)
+
+  if (aliasMatch) {
+    return formatIdentifier(aliasMatch[1])
+  }
+
+  if (cleanItem === '*') {
+    return '전체 컬럼(*)'
+  }
+
+  if (/^[a-zA-Z_][a-zA-Z0-9_]*\.\*$/.test(cleanItem)) {
+    return `전체 컬럼(${cleanItem})`
+  }
+
+  return formatExpression(cleanItem)
+}
+
+function formatExpressionList(clause: string | null): string | null {
+  if (!clause) {
+    return null
+  }
+
+  return joinLimited(splitTopLevel(clause, ',').map(formatExpression), 8)
+}
+
+function formatCondition(clause: string | null): string | null {
+  if (!clause) {
+    return null
+  }
+
+  const andParts = splitTopLevelByKeyword(clause, 'AND')
+  if (andParts.length > 1) {
+    return andParts.map((part) => formatCondition(part)).filter(Boolean).join(', ')
+  }
+
+  const orParts = splitTopLevelByKeyword(clause, 'OR')
+  if (orParts.length > 1) {
+    return orParts.map(formatSingleCondition).join(' 또는 ')
+  }
+
+  return formatSingleCondition(clause)
+}
+
+function formatSingleCondition(condition: string): string {
+  const cleanCondition = stripOuterParens(condition.trim())
+
+  const isNotNullMatch = cleanCondition.match(/^(.+?)\s+IS\s+NOT\s+NULL$/i)
+  if (isNotNullMatch) {
+    return `${formatExpression(isNotNullMatch[1])}이 비어 있지 않음`
+  }
+
+  const isNullMatch = cleanCondition.match(/^(.+?)\s+IS\s+NULL$/i)
+  if (isNullMatch) {
+    return `${formatExpression(isNullMatch[1])}이 비어 있음`
+  }
+
+  const notInMatch = cleanCondition.match(/^(.+?)\s+NOT\s+IN\s*\((.+)\)$/i)
+  if (notInMatch) {
+    return `${formatExpression(notInMatch[1])}이 ${formatValueList(notInMatch[2])}에 포함되지 않음`
+  }
+
+  const inMatch = cleanCondition.match(/^(.+?)\s+IN\s*\((.+)\)$/i)
+  if (inMatch) {
+    return `${formatExpression(inMatch[1])}이 ${formatValueList(inMatch[2])} 중 하나`
+  }
+
+  const likeMatch = cleanCondition.match(/^(.+?)\s+LIKE\s+(.+)$/i)
+  if (likeMatch) {
+    return `${formatExpression(likeMatch[1])}이 ${formatValueOrExpression(likeMatch[2])} 패턴과 일치`
+  }
+
+  const comparisonMatch = cleanCondition.match(/^(.+?)\s*(>=|<=|!=|<>|=|>|<)\s*(.+)$/)
+  if (comparisonMatch) {
+    const left = formatExpression(comparisonMatch[1])
+    const operator = comparisonMatch[2]
+    const right = formatValueOrExpression(comparisonMatch[3])
+
+    if (operator === '=' && isIdentifierExpression(comparisonMatch[3])) {
+      return `${left}와 ${right}가 같음`
+    }
+
+    if ((operator === '!=' || operator === '<>') && isIdentifierExpression(comparisonMatch[3])) {
+      return `${left}와 ${right}가 다름`
+    }
+
+    if (operator === '=') return `${left}가 ${right}`
+    if (operator === '!=' || operator === '<>') return `${left}가 ${right}가 아님`
+    if (operator === '>=') return `${left}가 ${right} 이상`
+    if (operator === '<=') return `${left}가 ${right} 이하`
+    if (operator === '>') return `${left}가 ${right}보다 큼`
+    if (operator === '<') return `${left}가 ${right}보다 작음`
+  }
+
+  return stripTableAliases(cleanCondition)
+}
+
+function formatOrderAndLimit(
+  orderBy: string | null,
+  limit: string | null,
+  rowNoun: string,
+): string | null {
+  const orderText = formatOrderBy(orderBy)
+  const limitText = formatLimit(limit)
+
+  if (orderText && limitText) {
+    return `${orderText} 정렬하고, 정렬 결과에서 ${limitText}만 보여주세요.`
+  }
+
+  if (orderText) {
+    return `${orderText} 정렬하세요.`
+  }
+
+  if (limitText) {
+    return `${rowNoun} ${limitText}만 보여주세요.`
+  }
+
+  return null
+}
+
+function formatOrderBy(orderBy: string | null): string | null {
+  if (!orderBy) {
+    return null
+  }
+
+  return joinLimited(splitTopLevel(orderBy, ',').map(formatOrderItem), 6)
+}
+
+function formatOrderItem(item: string): string {
+  const cleanItem = item.trim()
+  const direction = /\bDESC\b/i.test(cleanItem) ? 'desc' : 'asc'
+  const expression = cleanItem
+    .replace(/\bASC\b/gi, '')
+    .replace(/\bDESC\b/gi, '')
+    .trim()
+
+  return `${formatExpression(expression)}을(를) ${formatDirection(expression, direction)}`
+}
+
+function formatDirection(expression: string, direction: 'asc' | 'desc'): string {
+  if (isDateExpression(expression)) {
+    return direction === 'desc' ? '최근 값부터' : '빠른 값부터'
+  }
+
+  if (isNumericExpression(expression)) {
+    return direction === 'desc' ? '큰 값부터' : '작은 값부터'
+  }
+
+  return direction === 'desc' ? '내림차순으로' : '오름차순으로'
+}
+
+function formatLimit(limit: string | null): string | null {
+  if (!limit) {
+    return null
+  }
+
+  const count = limit.trim().split(/\s+/)[0]
+  return count ? `${count}건` : null
+}
+
+function formatExpression(expression: string): string {
+  const cleanExpression = stripOuterParens(expression.trim())
+
+  if (isLiteral(cleanExpression)) {
+    return cleanExpression
+  }
+
+  if (isIdentifierExpression(cleanExpression)) {
+    return formatIdentifier(cleanExpression)
+  }
+
+  return stripTableAliases(cleanExpression)
+}
+
+function formatValueList(values: string): string {
+  return splitTopLevel(values, ',').map(formatValueOrExpression).join(', ')
+}
+
+function formatValueOrExpression(value: string): string {
+  const cleanValue = value.trim()
+
+  if (isLiteral(cleanValue)) {
+    return cleanValue
+  }
+
+  if (isIdentifierExpression(cleanValue)) {
+    return formatIdentifier(cleanValue)
+  }
+
+  return stripTableAliases(cleanValue)
+}
+
+function formatIdentifier(identifier: string): string {
+  const baseIdentifier = identifier.split('.').pop()?.replace(/["'`]/g, '') ?? identifier
+  const label = labelForIdentifier(baseIdentifier)
+
+  return label === baseIdentifier ? baseIdentifier : `${label}(${baseIdentifier})`
+}
+
+function labelForIdentifier(identifier: string): string {
+  if (fullIdentifierLabels[identifier]) {
+    return fullIdentifierLabels[identifier]
+  }
+
+  if (identifierLabels[identifier]) {
+    return identifierLabels[identifier]
+  }
+
+  const parts = identifier.split('_')
+  const translatedParts = parts.map((part) => identifierLabels[part] ?? part)
+
+  return translatedParts.join(' ')
+}
+
+function isIdentifierExpression(expression: string): boolean {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?$/.test(
+    expression.trim(),
+  )
+}
+
+function isLiteral(value: string): boolean {
+  return (
+    /^'.*'$/.test(value) ||
+    /^".*"$/.test(value) ||
+    /^-?\d+(\.\d+)?$/.test(value) ||
+    /^NULL$/i.test(value)
+  )
+}
+
+function isDateExpression(expression: string): boolean {
+  return /\b(date|_at|time|month|day|started|ended|signed|paid|ordered|created|resolved|delivered|shipped|received|requested|checked|held)\b/i.test(
+    expression,
+  )
+}
+
+function isNumericExpression(expression: string): boolean {
+  return /\b(count|amount|price|qty|quantity|total|avg|rate|rank|days|hours|budget|salary|views|score|value|cost|fee|stock|capacity|diff|gap|lead|revenue|sales)\b/i.test(
+    expression,
+  )
+}
+
+function splitTopLevel(value: string, delimiter: ','): string[] {
+  const parts: string[] = []
+  let depth = 0
+  let quote: "'" | '"' | null = null
+  let startIndex = 0
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index]
+    const previousChar = value[index - 1]
+
+    if (quote) {
+      if (char === quote && previousChar !== '\\') {
+        quote = null
+      }
+      continue
+    }
+
+    if (char === "'" || char === '"') {
+      quote = char
+      continue
+    }
+
+    if (char === '(') {
+      depth += 1
+      continue
+    }
+
+    if (char === ')') {
+      depth = Math.max(depth - 1, 0)
+      continue
+    }
+
+    if (depth === 0 && char === delimiter) {
+      parts.push(value.slice(startIndex, index).trim())
+      startIndex = index + 1
+    }
+  }
+
+  parts.push(value.slice(startIndex).trim())
+  return parts.filter(Boolean)
+}
+
+function splitTopLevelByKeyword(value: string, keyword: 'AND' | 'OR'): string[] {
+  const parts: string[] = []
+  let depth = 0
+  let quote: "'" | '"' | null = null
+  let startIndex = 0
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index]
+    const previousChar = value[index - 1]
+
+    if (quote) {
+      if (char === quote && previousChar !== '\\') {
+        quote = null
+      }
+      continue
+    }
+
+    if (char === "'" || char === '"') {
+      quote = char
+      continue
+    }
+
+    if (char === '(') {
+      depth += 1
+      continue
+    }
+
+    if (char === ')') {
+      depth = Math.max(depth - 1, 0)
+      continue
+    }
+
+    if (
+      depth === 0 &&
+      value.slice(index, index + keyword.length).toUpperCase() === keyword &&
+      isKeywordBoundary(value[index - 1]) &&
+      isKeywordBoundary(value[index + keyword.length])
+    ) {
+      parts.push(value.slice(startIndex, index).trim())
+      startIndex = index + keyword.length
+    }
+  }
+
+  parts.push(value.slice(startIndex).trim())
+  return parts.filter(Boolean)
+}
+
+function joinLimited(items: string[], maxItems: number): string {
+  const filteredItems = items.filter(Boolean)
+  if (filteredItems.length <= maxItems) {
+    return filteredItems.join(', ')
+  }
+
+  return `${filteredItems.slice(0, maxItems).join(', ')} 등`
+}
+
+function stripOuterParens(value: string): string {
+  let nextValue = value.trim()
+
+  while (nextValue.startsWith('(') && nextValue.endsWith(')')) {
+    nextValue = nextValue.slice(1, -1).trim()
+  }
+
+  return nextValue
+}
+
+function stripTableAliases(value: string): string {
+  return value.replace(/\b[a-zA-Z_][a-zA-Z0-9_]*\./g, '')
 }
 
 function hasWith(sql: string): boolean {
