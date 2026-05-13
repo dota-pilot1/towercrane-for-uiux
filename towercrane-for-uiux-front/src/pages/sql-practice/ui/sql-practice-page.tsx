@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Code2, Database } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Code2, Database, Eye, EyeOff, Lightbulb, Table2, X } from 'lucide-react'
 
 import { Card } from '../../../shared/ui/card'
 import type { SqlHistoryItem, TableInfo } from '../../../entities/sql-practice/model/types'
+import type {
+  SqlExampleLevel,
+  SqlPracticeExample,
+} from '../../../entities/sql-practice/model/example-types'
 import {
   useExecuteSqlPracticeQuery,
   useReloadSqlPracticeSeed,
@@ -10,16 +14,27 @@ import {
   useSqlPracticeMeta,
   useSqlPracticeTables,
 } from '../../../features/sql-practice/model/use-sql-practice-queries'
+import { getSqlPracticeExampleSet, sqlExampleLevelLabels } from '../../../features/sql-practice/model/sql-practice-examples'
 import { SqlHistoryItem as SqlHistoryItemView } from '../../../features/sql-practice/ui/sql-history-item'
 import { SqlInputBar } from '../../../features/sql-practice/ui/sql-input-bar'
 import { SqlPracticePageHeader } from '../../../features/sql-practice/ui/sql-practice-page-header'
+import { SqlQuizSidebar } from '../../../features/sql-practice/ui/sql-quiz-sidebar'
 import { SqlSchemaSidebar } from '../../../features/sql-practice/ui/sql-schema-sidebar'
 
 const EMPTY_TABLES: TableInfo[] = []
 
+const LEVEL_BADGE_CLASS: Record<SqlExampleLevel, string> = {
+  beginner: 'border-brand-border bg-brand-glass text-brand-primary',
+  intermediate: 'border-surface-border bg-surface-muted text-text-secondary',
+  advanced: 'border-surface-border bg-surface-strong text-text-primary',
+}
+
 export function SqlPracticePage() {
   const [history, setHistory] = useState<SqlHistoryItem[]>([])
   const [selectedTableOverride, setSelectedTableOverride] = useState<string | null>(null)
+  const [quizSidebarOpen, setQuizSidebarOpen] = useState(false)
+  const [selectedExample, setSelectedExample] = useState<SqlPracticeExample | null>(null)
+  const [answerOpen, setAnswerOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const metaQuery = useSqlPracticeMeta()
@@ -40,9 +55,27 @@ export function SqlPracticePage() {
     return tables[0].tableName
   }, [selectedTableOverride, tables])
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [history])
+  const exampleSet = useMemo(
+    () => getSqlPracticeExampleSet(metaQuery.data?.seedFile ?? '01_board_basic.sql'),
+    [metaQuery.data?.seedFile],
+  )
+
+  const handleSelectExample = (example: SqlPracticeExample) => {
+    setSelectedExample(example)
+    setAnswerOpen(false)
+  }
+
+  const handleCloseExample = () => {
+    setSelectedExample(null)
+    setAnswerOpen(false)
+  }
+
+  const handleSeedChange = () => {
+    setHistory([])
+    setSelectedTableOverride(null)
+    setSelectedExample(null)
+    setAnswerOpen(false)
+  }
 
   const handleExecute = async (query: string) => {
     const response = await executeMutation.mutateAsync(query)
@@ -55,6 +88,7 @@ export function SqlPracticePage() {
         timestamp: new Date(),
       },
     ])
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }
 
   const handleRefresh = () => {
@@ -72,8 +106,7 @@ export function SqlPracticePage() {
       return
     }
     await resetMutation.mutateAsync()
-    setHistory([])
-    setSelectedTableOverride(null)
+    handleSeedChange()
   }
 
   const handleReloadSeed = async () => {
@@ -82,13 +115,7 @@ export function SqlPracticePage() {
       return
     }
     await reloadSeedMutation.mutateAsync()
-    setHistory([])
-    setSelectedTableOverride(null)
-  }
-
-  const handleSeedActivated = () => {
-    setHistory([])
-    setSelectedTableOverride(null)
+    handleSeedChange()
   }
 
   return (
@@ -100,44 +127,170 @@ export function SqlPracticePage() {
         onClearHistory={() => setHistory([])}
       />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <Card className="flex min-h-[calc(100vh-220px)] flex-col overflow-hidden rounded-md p-0">
-        <div className="flex-1 overflow-y-auto p-4">
-          {history.length === 0 ? (
-            <EmptyState
-              isLoading={metaQuery.isLoading || tablesQuery.isLoading}
-              tableCount={tables.length}
-              seedFile={metaQuery.data?.seedFile}
-              recommendedQuery={metaQuery.data?.activeSeed.recommendedQueries[0]}
-            />
-          ) : (
-            <div className="space-y-6">
-              {history.map((item) => (
-                <SqlHistoryItemView key={item.id} item={item} />
-              ))}
-              <div ref={bottomRef} />
-            </div>
-          )}
+      <div className="flex gap-4">
+        {/* 왼쪽 문제 목록 사이드바 */}
+        <SqlQuizSidebar
+          exampleSet={exampleSet}
+          selectedExample={selectedExample}
+          onSelectExample={handleSelectExample}
+          isOpen={quizSidebarOpen}
+          onToggle={() => setQuizSidebarOpen((v) => !v)}
+        />
+
+        {/* 메인 SQL 영역 */}
+        <Card className="flex min-h-[calc(100vh-220px)] min-w-0 flex-1 flex-col overflow-hidden rounded-md p-0">
+          <div className="flex-1 overflow-y-auto p-4">
+            {/* 선택된 문제 패널 */}
+            {selectedExample && (
+              <ProblemPanel
+                example={selectedExample}
+                answerOpen={answerOpen}
+                onToggleAnswer={() => setAnswerOpen((v) => !v)}
+                onClose={handleCloseExample}
+                className="mb-4"
+              />
+            )}
+
+            {/* 히스토리 또는 빈 상태 */}
+            {history.length === 0 && !selectedExample ? (
+              <EmptyState
+                isLoading={metaQuery.isLoading || tablesQuery.isLoading}
+                tableCount={tables.length}
+                seedFile={metaQuery.data?.seedFile}
+                recommendedQuery={metaQuery.data?.activeSeed.recommendedQueries[0]}
+              />
+            ) : history.length > 0 ? (
+              <div className="space-y-6">
+                {history.map((item) => (
+                  <SqlHistoryItemView key={item.id} item={item} />
+                ))}
+                <div ref={bottomRef} />
+              </div>
+            ) : null}
+          </div>
+
+          <SqlInputBar
+            onExecute={handleExecute}
+            onClear={() => setHistory([])}
+            isLoading={executeMutation.isPending}
+          />
+        </Card>
+
+        {/* 오른쪽 테이블 정보 사이드바 */}
+        <SqlSchemaSidebar
+          meta={metaQuery.data}
+          tables={tables}
+          selectedTable={selectedTable}
+          isLoading={metaQuery.isFetching || tablesQuery.isFetching}
+          isResetting={resetMutation.isPending}
+          isReloading={reloadSeedMutation.isPending}
+          onSelectTable={setSelectedTableOverride}
+          onRefresh={handleRefresh}
+          onReset={handleReset}
+          onReloadSeed={handleReloadSeed}
+          onSeedActivated={handleSeedChange}
+        />
+      </div>
+    </section>
+  )
+}
+
+function ProblemPanel({
+  example,
+  answerOpen,
+  onToggleAnswer,
+  onClose,
+  className,
+}: {
+  example: SqlPracticeExample
+  answerOpen: boolean
+  onToggleAnswer: () => void
+  onClose: () => void
+  className?: string
+}) {
+  return (
+    <div
+      className={`overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-sm ${className ?? ''}`}
+    >
+      {/* 문제 헤더 */}
+      <div className="flex items-start justify-between gap-3 border-b border-surface-border bg-surface-muted px-5 py-4">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <span className="rounded-sm border border-surface-border bg-surface-raised px-2 py-0.5 text-[11px] font-black text-text-primary">
+            문제
+          </span>
+          <span
+            className={`rounded-sm border px-2 py-0.5 text-[11px] font-black ${LEVEL_BADGE_CLASS[example.level]}`}
+          >
+            {sqlExampleLevelLabels[example.level]}
+          </span>
+          <span className="text-xs font-bold tabular-nums text-text-muted">
+            Q.{String(example.order).padStart(2, '0')}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="ui-icon-button size-7 shrink-0"
+          onClick={onClose}
+          title="문제 닫기"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
+
+      {/* 문제 본문 */}
+      <div className="px-5 py-4">
+        <h2 className="text-base font-black leading-snug text-text-primary">{example.title}</h2>
+        <p className="mt-2 text-sm leading-6 text-text-secondary">{example.description}</p>
+
+        {/* 관련 테이블 */}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {example.relatedTables.map((tableName) => (
+            <span
+              key={tableName}
+              className="inline-flex items-center gap-1 rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-[11px] font-bold text-text-secondary"
+            >
+              <Table2 className="size-3" />
+              {tableName}
+            </span>
+          ))}
         </div>
 
-        <SqlInputBar onExecute={handleExecute} onClear={() => setHistory([])} isLoading={executeMutation.isPending} />
-      </Card>
+        {/* 힌트 */}
+        <div className="mt-3 flex items-start gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
+          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-brand-primary" />
+          <p className="text-[11px] leading-5 text-text-muted">{example.hint}</p>
+        </div>
 
-      <SqlSchemaSidebar
-        meta={metaQuery.data}
-        tables={tables}
-        selectedTable={selectedTable}
-        isLoading={metaQuery.isFetching || tablesQuery.isFetching}
-        isResetting={resetMutation.isPending}
-        isReloading={reloadSeedMutation.isPending}
-        onSelectTable={setSelectedTableOverride}
-        onRefresh={handleRefresh}
-        onReset={handleReset}
-        onReloadSeed={handleReloadSeed}
-        onSeedActivated={handleSeedActivated}
-      />
+        {/* 정답 보기 버튼 */}
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={onToggleAnswer}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-bold transition-colors ${
+              answerOpen
+                ? 'border-brand-border bg-brand-glass text-brand-primary'
+                : 'border-surface-border bg-surface-muted text-text-secondary hover:border-brand-border hover:text-brand-primary'
+            }`}
+          >
+            {answerOpen ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+            {answerOpen ? '정답 숨기기' : '정답 보기'}
+          </button>
+        </div>
+
+        {/* 정답 영역 */}
+        {answerOpen && (
+          <div className="mt-3 space-y-2">
+            <pre className="max-h-56 overflow-auto rounded-md border border-surface-border bg-surface-muted px-4 py-3 font-mono text-xs leading-5 text-text-secondary">
+              {example.answerSql}
+            </pre>
+            <div className="rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
+              <p className="text-[11px] font-black text-text-muted">해설</p>
+              <p className="mt-1 text-[11px] leading-5 text-text-secondary">{example.explanation}</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-    </section>
   )
 }
 
@@ -164,7 +317,6 @@ function EmptyState({
   return (
     <div className="flex min-h-[420px] items-center justify-center p-8">
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-surface-border bg-surface-raised shadow-sm">
-        {/* 카드 헤더 */}
         <div className="flex items-center gap-3 border-b border-surface-border bg-surface-muted px-5 py-4">
           <div className="flex size-9 items-center justify-center rounded-xl border border-brand-border bg-brand-glass text-brand-primary">
             <Code2 className="size-4" />
@@ -175,7 +327,6 @@ function EmptyState({
           </div>
         </div>
 
-        {/* 현재 DB 정보 */}
         <div className="flex items-center gap-2 border-b border-surface-border px-5 py-3">
           <Database className="size-3.5 shrink-0 text-brand-primary" />
           <span className="min-w-0 truncate text-xs font-semibold text-text-secondary">
@@ -186,7 +337,6 @@ function EmptyState({
           </span>
         </div>
 
-        {/* 예시 쿼리 */}
         <div className="px-5 py-4">
           <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
             예시 쿼리
@@ -194,9 +344,7 @@ function EmptyState({
           <pre className="overflow-x-auto rounded-lg border border-surface-border-soft bg-surface-muted px-4 py-3 font-mono text-xs leading-5 text-text-secondary">
             {recommendedQuery ?? 'SELECT * FROM users LIMIT 10;'}
           </pre>
-          <p className="mt-3 text-center text-[11px] text-text-muted">
-            Ctrl+Enter 로 실행
-          </p>
+          <p className="mt-3 text-center text-[11px] text-text-muted">Ctrl+Enter 로 실행</p>
         </div>
       </div>
     </div>
