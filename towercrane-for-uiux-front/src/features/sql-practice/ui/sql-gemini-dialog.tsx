@@ -13,16 +13,26 @@ type SqlValidity = 'valid' | 'invalid' | null
 
 function detectSqlValidity(answer: string): SqlValidity {
   const text = answer.toLowerCase()
+
+  // 부정문("오류는 없", "no syntax errors")은 유효 신호로 먼저 확인
+  const negatedErrorPatterns = [
+    '오류는 없', '구문 오류는 없', '문법 오류는 없', 'no syntax error', 'there are no',
+    '오류가 없', '없습니다',
+  ]
+  const hasNegatedError = negatedErrorPatterns.some((s) => text.includes(s))
+
   const invalidSignals = [
-    '유효하지 않', '오류가 있', '잘못된', '문법 오류', '실행되지 않',
-    '수정이 필요', '올바르지 않', 'syntax error', 'invalid',
+    '유효하지 않', '오류가 있습니다', '잘못된 sql', '잘못된 쿼리',
+    '실행되지 않', '수정이 필요', '올바르지 않',
   ]
   const validSignals = [
-    '유효합니다', '유효한', '올바릅니다', '문법 오류는 없', '정상적으로 실행',
-    '올바른 sql', '유효한 sql', 'valid',
+    '유효합니다', '올바릅니다', '정상적으로 실행', '유효한 sql',
+    '올바른 sql', '유효한 sql 구문', '구문 오류 없',
   ]
-  if (invalidSignals.some((s) => text.includes(s))) return 'invalid'
-  if (validSignals.some((s) => text.includes(s))) return 'valid'
+
+  // 부정문이 없는 상태에서 오류 신호가 있으면 invalid
+  if (!hasNegatedError && invalidSignals.some((s) => text.includes(s))) return 'invalid'
+  if (validSignals.some((s) => text.includes(s)) || hasNegatedError) return 'valid'
   return null
 }
 
