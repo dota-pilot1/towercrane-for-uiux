@@ -1,7 +1,20 @@
-import { useMemo, useRef, useState } from 'react'
-import { Code2, Database, Eye, EyeOff, Lightbulb, Table2, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  CheckCircle,
+  Code2,
+  Database,
+  Eye,
+  EyeOff,
+  Lightbulb,
+  Loader2,
+  Send,
+  Table2,
+  X,
+  XCircle,
+} from 'lucide-react'
 
 import { Card } from '../../../shared/ui/card'
+import { sqlPracticeApi } from '../../../entities/sql-practice/api/sql-practice-api'
 import type { SqlHistoryItem, TableInfo } from '../../../entities/sql-practice/model/types'
 import type {
   SqlExampleLevel,
@@ -29,6 +42,41 @@ const LEVEL_BADGE_CLASS: Record<SqlExampleLevel, string> = {
   beginner: 'border-brand-border bg-brand-glass text-brand-primary',
   intermediate: 'border-surface-border bg-surface-muted text-text-secondary',
   advanced: 'border-surface-border bg-surface-strong text-text-primary',
+}
+
+type SqlGradeStatus = 'correct' | 'incorrect' | null
+
+function parseSqlGradeResponse(raw: string): { status: SqlGradeStatus; body: string } {
+  const firstLine = raw.split('\n')[0]?.trim()
+
+  if (firstLine === '[SQL_CORRECT]') {
+    return { status: 'correct', body: raw.slice(firstLine.length).replace(/^\n/, '') }
+  }
+
+  if (firstLine === '[SQL_INCORRECT]') {
+    return { status: 'incorrect', body: raw.slice(firstLine.length).replace(/^\n/, '') }
+  }
+
+  return { status: null, body: raw }
+}
+
+function buildSqlGradePrompt(example: SqlPracticeExample, submittedSql: string) {
+  return `SQL 연습 문제의 사용자 제출 답안을 채점해주세요.
+
+[문제]
+제목: ${example.title}
+설명: ${example.description}
+힌트: ${example.hint}
+관련 테이블: ${example.relatedTables.join(', ')}
+
+[실제 정답 SQL]
+${example.answerSql}
+
+[사용자 제출 SQL]
+${submittedSql}
+
+[채점 요청]
+사용자 제출 SQL이 문제 요구사항과 실제 정답 SQL의 결과를 같은 의미로 만족하는지 판별해주세요.`
 }
 
 export function SqlPracticePage() {
@@ -222,6 +270,44 @@ function ProblemPanel({
   onClose: () => void
   className?: string
 }) {
+  const [submittedSql, setSubmittedSql] = useState('')
+  const [gradeStatus, setGradeStatus] = useState<SqlGradeStatus>(null)
+  const [gradeBody, setGradeBody] = useState('')
+  const [gradeError, setGradeError] = useState('')
+  const [isGrading, setIsGrading] = useState(false)
+
+  useEffect(() => {
+    setSubmittedSql('')
+    setGradeStatus(null)
+    setGradeBody('')
+    setGradeError('')
+    setIsGrading(false)
+  }, [example.id])
+
+  const handleSubmitAnswer = async () => {
+    const trimmed = submittedSql.trim()
+    if (!trimmed || isGrading) return
+
+    setIsGrading(true)
+    setGradeStatus(null)
+    setGradeBody('')
+    setGradeError('')
+
+    try {
+      const response = await sqlPracticeApi.geminiAsk(
+        buildSqlGradePrompt(example, trimmed),
+        'grading',
+      )
+      const parsed = parseSqlGradeResponse(response.answer ?? '')
+      setGradeStatus(parsed.status)
+      setGradeBody(parsed.body)
+    } catch (error) {
+      setGradeError(error instanceof Error ? error.message : '채점 중 오류가 발생했습니다.')
+    } finally {
+      setIsGrading(false)
+    }
+  }
+
   return (
     <div
       className={`overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-sm ${className ?? ''}`}
@@ -275,8 +361,77 @@ function ProblemPanel({
           <p className="text-[11px] leading-5 text-text-muted">{example.hint}</p>
         </div>
 
+        {/* 정답 제출 */}
+        <div className="mt-4 rounded-md border border-surface-border-soft bg-surface-muted p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black text-text-primary">정답 입력</p>
+              <p className="mt-0.5 text-[11px] text-text-muted">
+                작성한 SQL을 제출하면 Gemini가 실제 정답과 비교합니다.
+              </p>
+            </div>
+            {gradeStatus === 'correct' && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2 py-1 text-[11px] font-bold text-brand-primary">
+                <CheckCircle className="size-3.5" />
+                정답
+              </span>
+            )}
+            {gradeStatus === 'incorrect' && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-destructive/40 bg-danger-glass px-2 py-1 text-[11px] font-bold text-destructive">
+                <XCircle className="size-3.5" />
+                오답
+              </span>
+            )}
+          </div>
+
+          <textarea
+            value={submittedSql}
+            onChange={(event) => setSubmittedSql(event.target.value)}
+            className="ui-input min-h-28 w-full resize-y font-mono text-xs leading-5"
+            placeholder={
+              '예: SELECT id, name, email, city, role, created_at\nFROM users\nORDER BY created_at ASC;'
+            }
+            spellCheck={false}
+          />
+
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={handleSubmitAnswer}
+              disabled={!submittedSql.trim() || isGrading}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-bold text-brand-primary transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isGrading ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Send className="size-3.5" />
+              )}
+              제출
+            </button>
+          </div>
+
+          {(isGrading || gradeError || gradeBody) && (
+            <div className="mt-3 rounded-md border border-surface-border bg-surface-raised px-3 py-2">
+              {isGrading && (
+                <div className="flex items-center gap-2 text-xs font-semibold text-text-muted">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Gemini가 정답과 비교하는 중입니다.
+                </div>
+              )}
+              {!isGrading && gradeError && (
+                <p className="text-xs font-semibold text-destructive">{gradeError}</p>
+              )}
+              {!isGrading && !gradeError && gradeBody && (
+                <pre className="whitespace-pre-wrap font-sans text-xs leading-5 text-text-secondary">
+                  {gradeBody}
+                </pre>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* 정답 보기 버튼 */}
-        <div className="mt-4">
+        <div className="mt-4 flex justify-end">
           <button
             type="button"
             onClick={onToggleAnswer}

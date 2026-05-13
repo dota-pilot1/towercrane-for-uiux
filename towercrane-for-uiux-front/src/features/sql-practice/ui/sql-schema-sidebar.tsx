@@ -1,5 +1,6 @@
 import {
   Database,
+  Info,
   RefreshCw,
   RotateCcw,
   Settings,
@@ -19,6 +20,7 @@ import {
 } from "../model/use-sql-practice-queries";
 import { SqlErdDialog } from "./sql-erd-dialog";
 import { SqlSeedManagerDialog } from "./sql-seed-manager-dialog";
+import { SqlTableSchemaDialog } from "./sql-table-schema-dialog";
 
 type SqlSchemaSidebarProps = {
   meta?: SqlPracticeMeta;
@@ -47,6 +49,7 @@ export function SqlSchemaSidebar({
   onReloadSeed,
   onSeedActivated,
 }: SqlSchemaSidebarProps) {
+  const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null);
   const [seedDialogOpen, setSeedDialogOpen] = useState(false);
   const [erdDialogOpen, setErdDialogOpen] = useState(false);
   const seedsQuery = useSqlPracticeSeeds();
@@ -188,6 +191,24 @@ export function SqlSchemaSidebar({
                         {table.tableName}
                       </span>
                     </span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="rounded-sm border border-surface-border-soft p-1.5 text-text-secondary transition-colors hover:border-brand-border hover:text-brand-primary"
+                      title="스키마 보기"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSchemaDialog(table);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setSchemaDialog(table);
+                      }}
+                    >
+                      <Info className="size-3.5" />
+                    </span>
                   </button>
                 );
               })}
@@ -195,6 +216,14 @@ export function SqlSchemaSidebar({
           )}
         </div>
       </aside>
+
+      {schemaDialog && (
+        <SqlTableSchemaDialog
+          table={schemaDialog}
+          tables={tables}
+          onClose={() => setSchemaDialog(null)}
+        />
+      )}
 
       <SqlSeedManagerDialog
         open={seedDialogOpen}

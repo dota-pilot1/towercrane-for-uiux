@@ -824,13 +824,22 @@ export class SqlPracticeService {
       throw new InternalServerErrorException('Gemini API key is not configured.');
     }
 
-    const systemPrompt =
-      mode === 'sql'
-        ? `You are an SQL expert. When given an SQL query:
+    let systemPrompt =
+      "You are a helpful assistant. Answer the user's question clearly and concisely. Respond in Korean.";
+
+    if (mode === 'sql') {
+      systemPrompt = `You are an SQL expert. When given an SQL query:
 1. The VERY FIRST line of your response must be exactly one of: [SQL_VALID] or [SQL_INVALID] — nothing else on that line.
 2. Then on the next line, provide: validation result, explanation of what the query does, any errors or improvements, and a corrected version if needed.
-Respond in Korean.`
-        : "You are a helpful assistant. Answer the user's question clearly and concisely. Respond in Korean.";
+Respond in Korean.`;
+    }
+
+    if (mode === 'grading') {
+      systemPrompt = `You are an SQL grading assistant. Compare the reference answer SQL with the submitted SQL for the given practice problem.
+1. The VERY FIRST line of your response must be exactly one of: [SQL_CORRECT] or [SQL_INCORRECT] — nothing else on that line.
+2. Mark [SQL_CORRECT] only when the submitted SQL would produce the same required result as the reference answer for the problem, allowing harmless differences such as aliases, whitespace, or equivalent syntax.
+3. Then explain in Korean why it is correct or incorrect. If incorrect, point out the smallest concrete fix.`;
+    }
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const res = await fetch(url, {

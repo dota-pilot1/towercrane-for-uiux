@@ -16,7 +16,7 @@ export const activateSeedSchema = z.object({
 
 export const geminiAskSchema = z.object({
   content: z.string().trim().min(1, 'Content is required'),
-  mode: z.enum(['sql', 'general']),
+  mode: z.enum(['sql', 'general', 'grading']),
 });
 
 const optionalTrimmedString = z

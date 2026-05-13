@@ -50,7 +50,7 @@ export const sqlPracticeApi = {
     }),
   getSeedErd: (fileName: string) =>
     apiRequest<{ mmd: string | null }>(`/sql/seeds/${encodeURIComponent(fileName)}/erd`),
-  geminiAsk: (content: string, mode: 'sql' | 'general') =>
+  geminiAsk: (content: string, mode: 'sql' | 'general' | 'grading') =>
     apiRequest<{ answer: string }>('/sql/gemini', {
       method: 'POST',
       body: JSON.stringify({ content, mode }),
