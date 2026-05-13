@@ -16,6 +16,7 @@ import { ApiDocModule } from './api-doc/api-doc.module';
 import { IssuesModule } from './issues/issues.module';
 import { ChallengeModule } from './challenge/challenge.module';
 import { SqlPracticeModule } from './sql-practice/sql-practice.module';
+import { DevChallengeModule } from './dev-challenge/dev-challenge.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { SqlPracticeModule } from './sql-practice/sql-practice.module';
     ApiDocModule,
     IssuesModule,
     ChallengeModule,
+    DevChallengeModule,
     SqlPracticeModule,
   ],
   controllers: [AppController],

@@ -14,6 +14,10 @@ import {
   categoriesTable,
   challengeCategoriesTable,
   challengeSectionsTable,
+  devChallengeCategoriesTable,
+  devChallengeSectionsTable,
+  devChallengeAssignmentsTable,
+  devChallengeAssignmentBlocksTable,
   menusTable,
   prototypesTable,
   schema,
@@ -479,6 +483,88 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_challenge_user_notes_user_topic
         ON challenge_user_notes(user_id, topic_id, visibility);
+
+      CREATE TABLE IF NOT EXISTS dev_challenge_categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        summary TEXT,
+        icon TEXT NOT NULL DEFAULT 'Trophy',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS dev_challenge_sections (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES dev_challenge_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_sections_category
+        ON dev_challenge_sections(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS dev_challenge_assignments (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT,
+        difficulty TEXT NOT NULL DEFAULT 'BASIC',
+        status TEXT NOT NULL DEFAULT 'DRAFT',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES dev_challenge_sections(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_assignments_section
+        ON dev_challenge_assignments(section_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS dev_challenge_assignment_blocks (
+        id TEXT PRIMARY KEY,
+        assignment_id TEXT NOT NULL,
+        block_type TEXT NOT NULL,
+        title TEXT,
+        content TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(assignment_id) REFERENCES dev_challenge_assignments(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_assignment_blocks_assignment
+        ON dev_challenge_assignment_blocks(assignment_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS dev_challenge_submissions (
+        id TEXT PRIMARY KEY,
+        assignment_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        comment TEXT NOT NULL DEFAULT '',
+        github_url TEXT,
+        status TEXT NOT NULL DEFAULT 'SUBMITTED',
+        score INTEGER NOT NULL DEFAULT 0,
+        max_score INTEGER NOT NULL DEFAULT 0,
+        checked_items TEXT NOT NULL DEFAULT '[]',
+        admin_rating INTEGER,
+        admin_feedback TEXT,
+        reviewed_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(assignment_id) REFERENCES dev_challenge_assignments(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_submissions_assignment_user
+        ON dev_challenge_submissions(assignment_id, user_id);
     `);
 
     this.migrateLegacySchema();
@@ -590,10 +676,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
-          name: 'Challenge with GPT',
-          sectionId: 'challenge',
-          icon: 'Trophy',
+          name: 'Study Diary',
+          sectionId: 'study_diary',
+          icon: 'BookOpen',
           displayOrder: 7,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          name: 'Dev Challenge',
+          sectionId: 'dev_challenge',
+          icon: 'Trophy',
+          displayOrder: 8,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -605,7 +703,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'README',
           sectionId: 'readme',
           icon: 'BookOpenText',
-          displayOrder: 8,
+          displayOrder: 9,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -617,7 +715,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'Admin',
           sectionId: 'admin_dropdown',
           icon: 'ShieldCheck',
-          displayOrder: 9,
+          displayOrder: 10,
           isVisible: true,
           requiredRole: 'admin',
           parentId: null,
@@ -663,6 +761,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       ];
       this.db.insert(menusTable).values(initialMenus).run();
     }
+
+    this.reconcileStudyDiaryAndDevChallengeMenus(now);
 
     const existingTaskMenu = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'task' LIMIT 1")
@@ -956,6 +1056,150 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .run();
     }
 
+    const existingDevChallengeCategory = this.db
+      .select()
+      .from(devChallengeCategoriesTable)
+      .get();
+
+    if (!existingDevChallengeCategory) {
+      const categoryId = randomUUID();
+      const sectionId = randomUUID();
+      this.db
+        .insert(devChallengeCategoriesTable)
+        .values({
+          id: categoryId,
+          name: 'Frontend',
+          summary: '프론트엔드 개발 챌린지',
+          icon: 'Trophy',
+          createdBy: demoUser.id,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      this.db
+        .insert(devChallengeSectionsTable)
+        .values({
+          id: sectionId,
+          categoryId,
+          title: '1회차',
+          summary: '첫 개발 챌린지',
+          orderIdx: 0,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      const assignmentId = randomUUID();
+      this.db
+        .insert(devChallengeAssignmentsTable)
+        .values({
+          id: assignmentId,
+          sectionId,
+          title: '컴포넌트 상태 관리 챌린지',
+          summary: '간단한 요구사항을 읽고 상태 기반 UI를 구현합니다.',
+          difficulty: 'BASIC',
+          status: 'PUBLISHED',
+          orderIdx: 0,
+          createdBy: demoUser.id,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      this.db
+        .insert(devChallengeAssignmentBlocksTable)
+        .values([
+          {
+            id: randomUUID(),
+            assignmentId,
+            blockType: 'NOTE',
+            title: '챌린지 설명',
+            content: '선택한 UI 상태에 따라 화면 문구와 버튼 상태가 자연스럽게 바뀌는 컴포넌트를 구현하세요.',
+            orderIdx: 0,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: randomUUID(),
+            assignmentId,
+            blockType: 'CHECKLIST',
+            title: '완료 조건',
+            content: JSON.stringify([
+              { id: 'state-ui', label: '상태별 UI가 명확하게 구분된다' },
+              { id: 'empty-loading-error', label: '빈 상태, 로딩, 오류 상태를 처리한다' },
+              { id: 'responsive', label: '모바일/데스크톱 레이아웃이 깨지지 않는다' },
+            ]),
+            orderIdx: 1,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ])
+        .run();
+    }
+
+    const existingDevChallengeAssignment = this.db
+      .select()
+      .from(devChallengeAssignmentsTable)
+      .get();
+
+    if (!existingDevChallengeAssignment) {
+      const firstSection = this.db
+        .select()
+        .from(devChallengeSectionsTable)
+        .orderBy(devChallengeSectionsTable.orderIdx)
+        .get();
+
+      if (firstSection) {
+        const assignmentId = randomUUID();
+        this.db
+          .insert(devChallengeAssignmentsTable)
+          .values({
+            id: assignmentId,
+            sectionId: firstSection.id,
+            title: '컴포넌트 상태 관리 챌린지',
+            summary: '간단한 요구사항을 읽고 상태 기반 UI를 구현합니다.',
+            difficulty: 'BASIC',
+            status: 'PUBLISHED',
+            orderIdx: 0,
+            createdBy: demoUser.id,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+
+        this.db
+          .insert(devChallengeAssignmentBlocksTable)
+          .values([
+            {
+              id: randomUUID(),
+              assignmentId,
+              blockType: 'NOTE',
+              title: '챌린지 설명',
+              content: '선택한 UI 상태에 따라 화면 문구와 버튼 상태가 자연스럽게 바뀌는 컴포넌트를 구현하세요.',
+              orderIdx: 0,
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: randomUUID(),
+              assignmentId,
+              blockType: 'CHECKLIST',
+              title: '완료 조건',
+              content: JSON.stringify([
+                { id: 'state-ui', label: '상태별 UI가 명확하게 구분된다' },
+                { id: 'empty-loading-error', label: '빈 상태, 로딩, 오류 상태를 처리한다' },
+                { id: 'responsive', label: '모바일/데스크톱 레이아웃이 깨지지 않는다' },
+              ]),
+              orderIdx: 1,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ])
+          .run();
+      }
+    }
+
     if (existing.count > 0) {
       return;
     }
@@ -1124,6 +1368,198 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `,
       )
       .run();
+  }
+
+  private reconcileStudyDiaryAndDevChallengeMenus(now: string) {
+    const legacyChallengeMenu = this.sqlite
+      .prepare(
+        `
+          SELECT id, display_order as displayOrder
+          FROM menus
+          WHERE section_id = 'challenge'
+          ORDER BY display_order ASC
+          LIMIT 1
+        `,
+      )
+      .get() as { id: string; displayOrder: number } | undefined;
+
+    const existingStudyDiaryMenu = this.sqlite
+      .prepare(
+        `
+          SELECT id, display_order as displayOrder
+          FROM menus
+          WHERE section_id = 'study_diary'
+          ORDER BY display_order ASC
+          LIMIT 1
+        `,
+      )
+      .get() as { id: string; displayOrder: number } | undefined;
+
+    if (legacyChallengeMenu && !existingStudyDiaryMenu) {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET name = 'Study Diary',
+                section_id = 'study_diary',
+                icon = 'BookOpen',
+                is_visible = 1,
+                updated_at = ?
+            WHERE id = ?
+          `,
+        )
+        .run(now, legacyChallengeMenu.id);
+    } else if (legacyChallengeMenu && existingStudyDiaryMenu) {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET is_visible = 0,
+                updated_at = ?
+            WHERE section_id = 'challenge'
+          `,
+        )
+        .run(now);
+    }
+
+    let studyDiaryMenu = this.sqlite
+      .prepare(
+        `
+          SELECT id, display_order as displayOrder
+          FROM menus
+          WHERE section_id = 'study_diary'
+          ORDER BY display_order ASC
+          LIMIT 1
+        `,
+      )
+      .get() as { id: string; displayOrder: number } | undefined;
+
+    if (!studyDiaryMenu) {
+      const sqlExamplesMenu = this.sqlite
+        .prepare(
+          `
+            SELECT display_order as displayOrder
+            FROM menus
+            WHERE section_id = 'sql_examples'
+            ORDER BY display_order ASC
+            LIMIT 1
+          `,
+        )
+        .get() as { displayOrder: number } | undefined;
+      const displayOrder = (sqlExamplesMenu?.displayOrder ?? 6) + 1;
+
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET display_order = display_order + 1, updated_at = ?
+            WHERE parent_id IS NULL AND display_order >= ?
+          `,
+        )
+        .run(now, displayOrder);
+
+      this.db
+        .insert(menusTable)
+        .values({
+          id: randomUUID(),
+          name: 'Study Diary',
+          sectionId: 'study_diary',
+          icon: 'BookOpen',
+          displayOrder,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      studyDiaryMenu = this.sqlite
+        .prepare(
+          `
+            SELECT id, display_order as displayOrder
+            FROM menus
+            WHERE section_id = 'study_diary'
+            ORDER BY display_order ASC
+            LIMIT 1
+          `,
+        )
+        .get() as { id: string; displayOrder: number } | undefined;
+    } else {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET name = 'Study Diary',
+                icon = 'BookOpen',
+                is_visible = 1,
+                updated_at = ?
+            WHERE id = ?
+          `,
+        )
+        .run(now, studyDiaryMenu.id);
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          DELETE FROM menus
+          WHERE section_id = 'study_diary'
+            AND rowid NOT IN (
+              SELECT MIN(rowid)
+              FROM menus
+              WHERE section_id = 'study_diary'
+            )
+        `,
+      )
+      .run();
+
+    const existingDevChallengeMenu = this.sqlite
+      .prepare("SELECT id FROM menus WHERE section_id = 'dev_challenge' LIMIT 1")
+      .get() as { id: string } | undefined;
+
+    if (!existingDevChallengeMenu) {
+      const displayOrder = (studyDiaryMenu?.displayOrder ?? 7) + 1;
+
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET display_order = display_order + 1, updated_at = ?
+            WHERE parent_id IS NULL AND display_order >= ?
+          `,
+        )
+        .run(now, displayOrder);
+
+      this.db
+        .insert(menusTable)
+        .values({
+          id: randomUUID(),
+          name: 'Dev Challenge',
+          sectionId: 'dev_challenge',
+          icon: 'Trophy',
+          displayOrder,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    } else {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET name = 'Dev Challenge',
+                icon = 'Trophy',
+                is_visible = 1,
+                updated_at = ?
+            WHERE section_id = 'dev_challenge'
+          `,
+        )
+        .run(now);
+    }
   }
 
   private ensureColumn(

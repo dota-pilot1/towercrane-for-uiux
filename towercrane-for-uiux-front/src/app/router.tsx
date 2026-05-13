@@ -20,7 +20,8 @@ import { TaskPage } from '../pages/task/ui/task-page'
 import { PrototypeIssuesPage } from '../pages/prototype-issues/ui/prototype-issues-page'
 import { ProfilePage } from '../pages/profile/ui/profile-page'
 import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
-import { ChallengePage } from '../pages/challenge/ui/challenge-page'
+import { StudyDiaryPage } from '../pages/study-diary/ui/study-diary-page'
+import { DevChallengePage } from '../pages/dev-challenge/ui/dev-challenge-page'
 import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
 import { SqlPracticeExamplesPage } from '../pages/sql-practice/ui/sql-practice-examples-page'
 import { useSessionStore } from '../shared/store/session-store'
@@ -145,27 +146,41 @@ export const prototypeCategoryRoute = createRoute({
   component: WorkbenchPage,
 })
 
-// ─── /challenge ──────────────────────────────────────────────────────────────
+// ─── /study-diary ────────────────────────────────────────────────────────────
 
-const challengeRoute = createRoute({
+const studyDiaryRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
-  path: '/challenge',
-  component: ChallengePage,
+  path: '/study-diary',
+  component: StudyDiaryPage,
 })
 
-// ─── /chatbot → /challenge redirect ──────────────────────────────────────────
+// ─── /dev-challenge ──────────────────────────────────────────────────────────
+
+const devChallengeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-challenge',
+  component: DevChallengePage,
+})
+
+// ─── Legacy redirects → /study-diary ─────────────────────────────────────────
+
+const legacyChallengeRedirectRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/challenge',
+  component: StudyDiaryRedirect,
+})
 
 const chatbotRedirectRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot',
-  component: ChatbotRedirect,
+  component: StudyDiaryRedirect,
 })
 
-function ChatbotRedirect() {
+function StudyDiaryRedirect() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    navigate({ to: '/challenge', replace: true })
+    navigate({ to: '/study-diary', replace: true })
   }, [navigate])
 
   return null
@@ -383,7 +398,9 @@ export const router = createRouter({
       indexRoute,
       prototypeIndexRoute,
       prototypeCategoryRoute,
-      challengeRoute,
+      studyDiaryRoute,
+      devChallengeRoute,
+      legacyChallengeRedirectRoute,
       chatbotRedirectRoute,
       meetingRoute,
       docuRoute,

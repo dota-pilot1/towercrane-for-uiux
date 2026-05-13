@@ -514,6 +514,88 @@ export const challengeUserNotesTable = sqliteTable('challenge_user_notes', {
   updatedAt: text('updated_at').notNull(),
 });
 
+// ─── Dev Challenge Module Tables ──────────────────────────────────────────
+
+export type DevChallengeAssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type DevChallengeBlockType = 'NOTE' | 'MMD' | 'CHECKLIST' | 'GITHUB' | 'FIGMA' | 'FILE' | 'DBTABLE';
+export type DevChallengeSubmissionStatus = 'SUBMITTED' | 'NEEDS_CHANGES' | 'APPROVED' | 'REJECTED';
+
+export const devChallengeCategoriesTable = sqliteTable('dev_challenge_categories', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  summary: text('summary'),
+  icon: text('icon').notNull().default('Trophy'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const devChallengeSectionsTable = sqliteTable('dev_challenge_sections', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id')
+    .notNull()
+    .references(() => devChallengeCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const devChallengeAssignmentsTable = sqliteTable('dev_challenge_assignments', {
+  id: text('id').primaryKey(),
+  sectionId: text('section_id')
+    .notNull()
+    .references(() => devChallengeSectionsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary'),
+  difficulty: text('difficulty').notNull().default('BASIC'),
+  status: text('status').$type<DevChallengeAssignmentStatus>().notNull().default('DRAFT'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const devChallengeAssignmentBlocksTable = sqliteTable('dev_challenge_assignment_blocks', {
+  id: text('id').primaryKey(),
+  assignmentId: text('assignment_id')
+    .notNull()
+    .references(() => devChallengeAssignmentsTable.id, { onDelete: 'cascade' }),
+  blockType: text('block_type').$type<DevChallengeBlockType>().notNull(),
+  title: text('title'),
+  content: text('content').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const devChallengeSubmissionsTable = sqliteTable('dev_challenge_submissions', {
+  id: text('id').primaryKey(),
+  assignmentId: text('assignment_id')
+    .notNull()
+    .references(() => devChallengeAssignmentsTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  comment: text('comment').notNull().default(''),
+  githubUrl: text('github_url'),
+  status: text('status').$type<DevChallengeSubmissionStatus>().notNull().default('SUBMITTED'),
+  score: integer('score').notNull().default(0),
+  maxScore: integer('max_score').notNull().default(0),
+  checkedItems: text('checked_items', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  adminRating: integer('admin_rating'),
+  adminFeedback: text('admin_feedback'),
+  reviewedBy: text('reviewed_by').references(() => usersTable.id, { onDelete: 'set null' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const schema = {
   usersTable,
   sessionsTable,
@@ -546,6 +628,11 @@ export const schema = {
   challengeGptThreadsTable,
   challengeGptMessagesTable,
   challengeUserNotesTable,
+  devChallengeCategoriesTable,
+  devChallengeSectionsTable,
+  devChallengeAssignmentsTable,
+  devChallengeAssignmentBlocksTable,
+  devChallengeSubmissionsTable,
 };
 
 export type UserRow = typeof usersTable.$inferSelect;
@@ -611,3 +698,13 @@ export type ChallengeGptMessageRow = typeof challengeGptMessagesTable.$inferSele
 export type ChallengeGptMessageInsert = typeof challengeGptMessagesTable.$inferInsert;
 export type ChallengeUserNoteRow = typeof challengeUserNotesTable.$inferSelect;
 export type ChallengeUserNoteInsert = typeof challengeUserNotesTable.$inferInsert;
+export type DevChallengeCategoryRow = typeof devChallengeCategoriesTable.$inferSelect;
+export type DevChallengeCategoryInsert = typeof devChallengeCategoriesTable.$inferInsert;
+export type DevChallengeSectionRow = typeof devChallengeSectionsTable.$inferSelect;
+export type DevChallengeSectionInsert = typeof devChallengeSectionsTable.$inferInsert;
+export type DevChallengeAssignmentRow = typeof devChallengeAssignmentsTable.$inferSelect;
+export type DevChallengeAssignmentInsert = typeof devChallengeAssignmentsTable.$inferInsert;
+export type DevChallengeAssignmentBlockRow = typeof devChallengeAssignmentBlocksTable.$inferSelect;
+export type DevChallengeAssignmentBlockInsert = typeof devChallengeAssignmentBlocksTable.$inferInsert;
+export type DevChallengeSubmissionRow = typeof devChallengeSubmissionsTable.$inferSelect;
+export type DevChallengeSubmissionInsert = typeof devChallengeSubmissionsTable.$inferInsert;
