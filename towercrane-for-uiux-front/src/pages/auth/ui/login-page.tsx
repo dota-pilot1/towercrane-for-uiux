@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowRight, CheckCircle2, KeyRound, Mail, UserPlus } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { ArrowRight, CheckCircle2, KeyRound, Mail, UserPlus, Zap } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import {
@@ -23,6 +23,19 @@ import type { AuthMode } from '../../../shared/store/session-store'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { Button } from '../../../shared/ui/button'
 import { WarningDialog } from '../../../shared/ui/warning-dialog'
+
+const TEST_ACCOUNTS = [
+  { email: 'test01@hibot.dev', name: '김민준' },
+  { email: 'test02@hibot.dev', name: '이서연' },
+  { email: 'test03@hibot.dev', name: '박지호' },
+  { email: 'test04@hibot.dev', name: '최유나' },
+  { email: 'test05@hibot.dev', name: '정현우' },
+  { email: 'test06@hibot.dev', name: '강소희' },
+  { email: 'test07@hibot.dev', name: '윤태양' },
+  { email: 'test08@hibot.dev', name: '임하늘' },
+  { email: 'test09@hibot.dev', name: '오지훈' },
+  { email: 'test10@hibot.dev', name: '한수빈' },
+]
 
 const CODE_TTL = 300
 const RESEND_COOLDOWN = 5
@@ -107,6 +120,11 @@ export function LoginPage() {
     defaultValues: { email: '', name: '', password: '', confirmPassword: '' },
   })
 
+  const shuffledTestAccounts = useMemo(
+    () => [...TEST_ACCOUNTS].sort(() => Math.random() - 0.5),
+    [],
+  )
+
   const loginEmail = watchLogin('email')
   const signupEmail = watchSignup('email')
 
@@ -189,6 +207,16 @@ export function LoginPage() {
     }
   }
 
+  const onTestLogin = async (account: { email: string; name: string }) => {
+    try {
+      const response = await loginMutation.mutateAsync({ email: account.email, password: 'test1234' })
+      setSession(response)
+      navigate({ to: '/prototype' })
+    } catch {
+      setLoginWarning(`테스트 계정(${account.name}) 로그인에 실패했습니다. 서버에 계정이 시딩되어 있는지 확인하세요.`)
+    }
+  }
+
   const sendSignupCode = async () => {
     if (resendCountdown > 0) {
       return
@@ -261,7 +289,28 @@ export function LoginPage() {
   })
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-[1040px] items-center px-4 py-8">
+    <main className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-[1040px] flex-col items-center justify-center gap-4 px-4 py-8">
+      <div className="w-full rounded-lg border border-brand-border bg-brand-glass px-5 py-3">
+        <div className="mb-2.5 flex items-center gap-1.5">
+          <Zap className="size-3.5 text-brand-primary" />
+          <span className="text-xs font-semibold text-brand-primary">테스트 계정 간편 로그인</span>
+          <span className="ml-auto text-[10px] text-text-muted">비밀번호: test1234</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {shuffledTestAccounts.map((account) => (
+            <button
+              key={account.email}
+              type="button"
+              disabled={loginMutation.isPending}
+              onClick={() => onTestLogin(account)}
+              className="rounded-md border border-surface-border bg-surface-raised px-3 py-1 text-xs font-medium text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary disabled:opacity-50"
+            >
+              {account.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <section
         className={`relative min-h-[560px] w-full overflow-hidden rounded-lg border border-surface-border-soft bg-surface-raised shadow-2xl transition-colors lg:min-h-[580px] ${
           isSignup ? 'lg:[&_.signin-panel]:translate-x-full lg:[&_.signup-panel]:translate-x-full lg:[&_.signup-panel]:opacity-100 lg:[&_.signup-panel]:z-20 lg:[&_.switch-overlay]:-translate-x-full lg:[&_.switch-track]:translate-x-1/2' : ''
