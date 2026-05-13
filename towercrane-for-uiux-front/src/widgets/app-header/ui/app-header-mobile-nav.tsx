@@ -11,6 +11,11 @@ function getIcon(iconName: string | null): React.ElementType {
   return Icon || LucideIcons.FileText
 }
 
+function normalizeSectionId(sectionId: string | null | undefined): string {
+  if (sectionId === 'challenge' || sectionId === 'study_diary') return 'study_diary'
+  return sectionId ?? ''
+}
+
 function MobileMenuBranch({
   item,
   depth,
@@ -54,7 +59,7 @@ function MobileMenuBranch({
     )
   }
 
-  const isActive = item.sectionId != null && item.sectionId === activeSection
+  const isActive = item.sectionId != null && normalizeSectionId(item.sectionId) === activeSection
   return (
     <li className="border-b border-surface-border-soft last:border-b-0">
       <button
@@ -102,7 +107,7 @@ export function AppHeaderMobileNav({
       <Dialog.Trigger asChild>
         <button
           type="button"
-          className="ui-icon-button size-9 shrink-0 lg:hidden"
+          className="ui-icon-button size-9 shrink-0 lg:!hidden"
           aria-label="메뉴 열기"
         >
           <LucideIcons.Menu className="size-4" aria-hidden />
