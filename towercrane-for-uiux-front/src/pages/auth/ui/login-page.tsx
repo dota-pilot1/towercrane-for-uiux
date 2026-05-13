@@ -35,6 +35,16 @@ const TEST_ACCOUNTS = [
   { email: 'test08@hibot.dev', name: '임하늘' },
   { email: 'test09@hibot.dev', name: '오지훈' },
   { email: 'test10@hibot.dev', name: '한수빈' },
+  { email: 'test11@hibot.dev', name: '신도윤' },
+  { email: 'test12@hibot.dev', name: '류지아' },
+  { email: 'test13@hibot.dev', name: '문준혁' },
+  { email: 'test14@hibot.dev', name: '배나은' },
+  { email: 'test15@hibot.dev', name: '전승호' },
+  { email: 'test16@hibot.dev', name: '조하린' },
+  { email: 'test17@hibot.dev', name: '엄태경' },
+  { email: 'test18@hibot.dev', name: '남유진' },
+  { email: 'test19@hibot.dev', name: '황재원' },
+  { email: 'test20@hibot.dev', name: '서다인' },
 ]
 
 const CODE_TTL = 300
