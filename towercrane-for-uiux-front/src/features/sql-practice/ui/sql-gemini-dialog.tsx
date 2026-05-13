@@ -11,29 +11,15 @@ type SqlGeminiDialogProps = {
 
 type SqlValidity = 'valid' | 'invalid' | null
 
-function detectSqlValidity(answer: string): SqlValidity {
-  const text = answer.toLowerCase()
-
-  // 부정문("오류는 없", "no syntax errors")은 유효 신호로 먼저 확인
-  const negatedErrorPatterns = [
-    '오류는 없', '구문 오류는 없', '문법 오류는 없', 'no syntax error', 'there are no',
-    '오류가 없', '없습니다',
-  ]
-  const hasNegatedError = negatedErrorPatterns.some((s) => text.includes(s))
-
-  const invalidSignals = [
-    '유효하지 않', '오류가 있습니다', '잘못된 sql', '잘못된 쿼리',
-    '실행되지 않', '수정이 필요', '올바르지 않',
-  ]
-  const validSignals = [
-    '유효합니다', '올바릅니다', '정상적으로 실행', '유효한 sql',
-    '올바른 sql', '유효한 sql 구문', '구문 오류 없',
-  ]
-
-  // 부정문이 없는 상태에서 오류 신호가 있으면 invalid
-  if (!hasNegatedError && invalidSignals.some((s) => text.includes(s))) return 'invalid'
-  if (validSignals.some((s) => text.includes(s)) || hasNegatedError) return 'valid'
-  return null
+function parseSqlResponse(raw: string): { validity: SqlValidity; body: string } {
+  const firstLine = raw.split('\n')[0].trim()
+  if (firstLine === '[SQL_VALID]') {
+    return { validity: 'valid', body: raw.slice(firstLine.length).replace(/^\n/, '') }
+  }
+  if (firstLine === '[SQL_INVALID]') {
+    return { validity: 'invalid', body: raw.slice(firstLine.length).replace(/^\n/, '') }
+  }
+  return { validity: null, body: raw }
 }
 
 export function SqlGeminiDialog({ open, initialContent, onOpenChange }: SqlGeminiDialogProps) {
@@ -63,9 +49,14 @@ export function SqlGeminiDialog({ open, initialContent, onOpenChange }: SqlGemin
     setLastMode(mode)
     try {
       const res = await sqlPracticeApi.geminiAsk(content, mode)
-      const text = res?.answer ?? ''
-      setAnswer(text)
-      if (mode === 'sql') setValidity(detectSqlValidity(text))
+      const raw = res?.answer ?? ''
+      if (mode === 'sql') {
+        const { validity, body } = parseSqlResponse(raw)
+        setValidity(validity)
+        setAnswer(body)
+      } else {
+        setAnswer(raw)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
     } finally {
