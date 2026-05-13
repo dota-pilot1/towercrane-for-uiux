@@ -77,6 +77,7 @@ function SectionItem({
           value={action.value}
           onChange={(e) => onActionChange({ type: 'edit', value: e.target.value })}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) return
             if (e.key === 'Enter') onSave()
             if (e.key === 'Escape') onActionChange({ type: 'idle' })
           }}
@@ -234,6 +235,7 @@ export function ChallengeTopicsList({ sectionId, selectedTopic, onSelectTopic }:
               value={addValue}
               onChange={(e) => setAddValue(e.target.value)}
               onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing) return
                 if (e.key === 'Enter') handleAdd()
                 if (e.key === 'Escape') { setIsAdding(false); setAddValue('') }
               }}
