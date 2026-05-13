@@ -1,7 +1,5 @@
 import {
-  BookOpenCheck,
   Database,
-  Info,
   RefreshCw,
   RotateCcw,
   Settings,
@@ -20,9 +18,7 @@ import {
   useSqlPracticeSeeds,
 } from "../model/use-sql-practice-queries";
 import { SqlErdDialog } from "./sql-erd-dialog";
-import { SqlExamplesDialog } from "./sql-examples-dialog";
 import { SqlSeedManagerDialog } from "./sql-seed-manager-dialog";
-import { SqlTableSchemaDialog } from "./sql-table-schema-dialog";
 
 type SqlSchemaSidebarProps = {
   meta?: SqlPracticeMeta;
@@ -51,10 +47,8 @@ export function SqlSchemaSidebar({
   onReloadSeed,
   onSeedActivated,
 }: SqlSchemaSidebarProps) {
-  const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null);
   const [seedDialogOpen, setSeedDialogOpen] = useState(false);
   const [erdDialogOpen, setErdDialogOpen] = useState(false);
-  const [examplesDialogOpen, setExamplesDialogOpen] = useState(false);
   const seedsQuery = useSqlPracticeSeeds();
   const erdQuery = useSqlPracticeErd(meta?.seedFile);
   const activateSeedMutation = useActivateSqlPracticeSeed({
@@ -76,23 +70,12 @@ export function SqlSchemaSidebar({
 
   return (
     <>
-      <aside className="ui-panel flex min-h-[360px] flex-col overflow-hidden rounded-md p-0">
+      <aside className="ui-panel flex min-h-[360px] w-[300px] shrink-0 flex-col overflow-hidden rounded-md p-0">
         <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
           <div>
-            <h2 className="text-sm font-bold text-text-primary">테이블 정보</h2>
-            <p className="text-[11px] text-text-muted">현재 연습 DB 기준</p>
+            <h2 className="text-sm font-bold text-text-primary">테이블</h2>
           </div>
           <div className="flex items-center gap-1.5">
-            <a
-              href="/sql/examples"
-              target="_blank"
-              rel="noreferrer"
-              className="ui-icon-button-brand h-8 gap-1.5 px-3 text-xs font-bold"
-              title="SQL 실습 예제 보기"
-            >
-              <BookOpenCheck className="size-3.5" />
-              예제
-            </a>
             {erdQuery.data?.mmd && (
               <button
                 type="button"
@@ -204,27 +187,6 @@ export function SqlSchemaSidebar({
                       <span className="block truncate text-sm font-bold">
                         {table.tableName}
                       </span>
-                      <span className="block text-[11px] text-text-muted">
-                        {table.rowCount}행 · {table.columns.length}열
-                      </span>
-                    </span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      className="rounded-sm border border-surface-border-soft p-1.5 text-text-secondary transition-colors hover:border-brand-border hover:text-brand-primary"
-                      title="스키마 보기"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSchemaDialog(table);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setSchemaDialog(table);
-                      }}
-                    >
-                      <Info className="size-3.5" />
                     </span>
                   </button>
                 );
@@ -234,14 +196,6 @@ export function SqlSchemaSidebar({
         </div>
       </aside>
 
-      {schemaDialog && (
-        <SqlTableSchemaDialog
-          table={schemaDialog}
-          tables={tables}
-          onClose={() => setSchemaDialog(null)}
-        />
-      )}
-
       <SqlSeedManagerDialog
         open={seedDialogOpen}
         activeSeed={activeSeed}
@@ -250,13 +204,6 @@ export function SqlSchemaSidebar({
         isActivating={activateSeedMutation.isPending}
         onClose={() => setSeedDialogOpen(false)}
         onActivate={handleActivateSeed}
-      />
-
-      <SqlExamplesDialog
-        open={examplesDialogOpen}
-        seedFileName={meta?.seedFile ?? ""}
-        tableCount={meta?.tableCount ?? tables.length}
-        onClose={() => setExamplesDialogOpen(false)}
       />
 
       {erdQuery.data?.mmd && (
