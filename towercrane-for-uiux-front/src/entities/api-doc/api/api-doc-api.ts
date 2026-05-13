@@ -8,9 +8,18 @@ import type {
   UpdateApiDocCategoryRequest,
   UpdateApiDocEndpointRequest,
 } from '../model/types'
+import type { ApiDocImportExportFile, ApiDocImportResult } from '../model/import-export-types'
 
 export const apiDocApi = {
   listCategories: () => apiRequest<ApiDocCategory[]>('/api-doc/categories'),
+
+  exportAll: () => apiRequest<ApiDocImportExportFile>('/api-doc/export'),
+
+  importAll: (body: ApiDocImportExportFile) =>
+    apiRequest<ApiDocImportResult>('/api-doc/import', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 
   createCategory: (body: CreateApiDocCategoryRequest) =>
     apiRequest<ApiDocCategory>('/api-doc/categories', {
@@ -70,4 +79,3 @@ export const apiDocApi = {
       body: JSON.stringify({ blocks }),
     }),
 }
-

@@ -8,6 +8,7 @@ import type {
   UpdateApiDocCategoryRequest,
   UpdateApiDocEndpointRequest,
 } from '../../../entities/api-doc/model/types'
+import type { ApiDocImportExportFile } from '../../../entities/api-doc/model/import-export-types'
 
 export const apiDocQueryKeys = {
   all: ['api-doc'] as const,
@@ -40,6 +41,27 @@ export function useApiDocBlocks(endpointId: string | null) {
     queryKey: apiDocQueryKeys.blocks(endpointId),
     queryFn: () => apiDocApi.listBlocks(endpointId as string),
     enabled: Boolean(endpointId),
+  })
+}
+
+export function useExportApiDoc() {
+  return useMutation({
+    mutationFn: apiDocApi.exportAll,
+    onError: (error) => toast.error(messageFromError(error, '내보내기에 실패했습니다.')),
+  })
+}
+
+export function useImportApiDoc() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: ApiDocImportExportFile) => apiDocApi.importAll(body),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: apiDocQueryKeys.all })
+      toast.success(
+        `${result.importedCollections}개 컬렉션, ${result.importedEndpoints}개 API를 가져왔습니다.`,
+      )
+    },
+    onError: (error) => toast.error(messageFromError(error, '가져오기에 실패했습니다.')),
   })
 }
 
@@ -159,4 +181,3 @@ export function useReplaceApiDocBlocks(endpointId: string | null) {
     onError: (error) => toast.error(messageFromError(error, '요청 설정 저장에 실패했습니다.')),
   })
 }
-

@@ -45,6 +45,14 @@ import { ApiTesterPanel } from '../../../features/api-doc/ui/api-tester-panel'
 
 const EMPTY_CATEGORIES: ApiDocCategory[] = []
 const EMPTY_ENDPOINTS: ApiDocEndpoint[] = []
+const SIDEBAR_ITEM_CLASS =
+  'group flex h-12 items-center gap-2 rounded-md border px-2 py-1.5 transition-colors'
+const SIDEBAR_DRAG_HANDLE_CLASS =
+  'flex size-5 shrink-0 cursor-grab items-center justify-center text-text-muted opacity-50 transition-opacity group-hover:opacity-100'
+const SIDEBAR_TEXT_BUTTON_CLASS =
+  'flex min-h-7 min-w-0 flex-1 translate-y-px items-center truncate text-left text-sm font-bold leading-none text-text-primary'
+const SIDEBAR_ACTIONS_CLASS =
+  'flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'
 
 function SortableItem({
   id,
@@ -115,7 +123,7 @@ export function ApiDocPage() {
         actions={<ApiDocImportExportActions isAdmin={isAdmin} />}
       />
 
-      <div className="grid h-[calc(100vh-15rem)] min-h-[640px] grid-cols-1 gap-3 lg:grid-cols-[240px_300px_minmax(0,1fr)]">
+      <div className="grid h-[calc(100vh-15rem)] min-h-[640px] grid-cols-1 gap-3 lg:grid-cols-[300px_300px_minmax(0,1fr)]">
         <CategorySidebar
           categories={categories}
           activeId={selectedCategoryId}
@@ -283,7 +291,7 @@ function CategorySidebar({
                   <SortableItem key={category.id} id={category.id} disabled={!isAdmin}>
                     {(dragHandleProps) => (
                       <div
-                        className={`group flex items-center gap-2 rounded-md border px-2 py-2 transition-colors ${
+                        className={`${SIDEBAR_ITEM_CLASS} ${
                           activeId === category.id
                             ? 'border-brand-border bg-brand-glass'
                             : 'border-transparent hover:border-surface-border-soft hover:bg-surface-muted'
@@ -293,7 +301,7 @@ function CategorySidebar({
                           <button
                             type="button"
                             {...dragHandleProps}
-                            className="cursor-grab text-text-muted opacity-50 transition-opacity group-hover:opacity-100"
+                            className={SIDEBAR_DRAG_HANDLE_CLASS}
                             aria-label="드래그"
                           >
                             <GripVertical className="size-3.5" />
@@ -316,14 +324,14 @@ function CategorySidebar({
                           <button
                             type="button"
                             onClick={() => onSelect(category.id)}
-                            className="min-w-0 flex-1 truncate text-left text-sm font-bold text-text-primary"
+                            className={SIDEBAR_TEXT_BUTTON_CLASS}
                             title={category.name}
                           >
                             {category.name}
                           </button>
                         )}
                         {isAdmin ? (
-                          <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          <div className={SIDEBAR_ACTIONS_CLASS}>
                             {editingId === category.id ? (
                               <Button
                                 type="button"
@@ -544,7 +552,7 @@ function EndpointSidebar({
                   <SortableItem key={endpoint.id} id={endpoint.id} disabled={!isAdmin}>
                     {(dragHandleProps) => (
                       <div
-                        className={`group rounded-md border px-2 py-2 transition-colors ${
+                        className={`${SIDEBAR_ITEM_CLASS} ${
                           activeId === endpoint.id
                             ? 'border-brand-border bg-brand-glass'
                             : 'border-transparent hover:border-surface-border-soft hover:bg-surface-muted'
@@ -586,12 +594,12 @@ function EndpointSidebar({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-start gap-2">
+                          <>
                             {isAdmin ? (
                               <button
                                 type="button"
                                 {...dragHandleProps}
-                                className="mt-1 cursor-grab text-text-muted opacity-50 transition-opacity group-hover:opacity-100"
+                                className={SIDEBAR_DRAG_HANDLE_CLASS}
                                 aria-label="드래그"
                               >
                                 <GripVertical className="size-3.5" />
@@ -600,13 +608,13 @@ function EndpointSidebar({
                             <button
                               type="button"
                               onClick={() => onSelect(endpoint.id)}
-                              className="min-w-0 flex-1 truncate text-left text-sm font-bold text-text-primary"
+                              className={SIDEBAR_TEXT_BUTTON_CLASS}
                               title={endpoint.title}
                             >
                               {endpoint.title}
                             </button>
                             {isAdmin ? (
-                              <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                              <div className={SIDEBAR_ACTIONS_CLASS}>
                                 <Button
                                   type="button"
                                   size="sm-icon"
@@ -628,7 +636,7 @@ function EndpointSidebar({
                                 </Button>
                               </div>
                             ) : null}
-                          </div>
+                          </>
                         )}
                       </div>
                     )}

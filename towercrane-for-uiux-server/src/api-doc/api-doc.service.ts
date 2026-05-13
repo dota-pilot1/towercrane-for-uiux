@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -22,6 +23,12 @@ import {
   updateCategorySchema,
   updateEndpointSchema,
 } from './api-doc.schemas';
+import {
+  apiBlockContentImportSchema,
+  apiDocImportExportFileSchema,
+  type ApiBlockContentImport,
+  type ApiDocImportExportFile,
+} from './api-doc.import-export.schemas';
 
 export type ApiDocUser = {
   id: string;
@@ -240,6 +247,148 @@ export class ApiDocService {
     return this.listBlocks(endpointId);
   }
 
+  exportAll(): ApiDocImportExportFile {
+    const categories = this.db
+      .select()
+      .from(apiDocCategoriesTable)
+      .orderBy(asc(apiDocCategoriesTable.orderIdx), asc(apiDocCategoriesTable.createdAt))
+      .all();
+    const endpoints = this.db
+      .select()
+      .from(apiDocEndpointsTable)
+      .orderBy(asc(apiDocEndpointsTable.orderIdx), asc(apiDocEndpointsTable.createdAt))
+      .all();
+    const blocks = this.db
+      .select()
+      .from(apiDocBlocksTable)
+      .orderBy(asc(apiDocBlocksTable.orderIdx), asc(apiDocBlocksTable.createdAt))
+      .all();
+
+    return {
+      version: 1,
+      source: 'towercrane-postman-lite',
+      exportedAt: new Date().toISOString(),
+      collections: categories.map((category) => ({
+        name: category.name,
+        icon: category.icon,
+        emoji: category.emoji,
+        endpoints: endpoints
+          .filter((endpoint) => endpoint.categoryId === category.id)
+          .map((endpoint) => {
+            const block = blocks.find(
+              (item) => item.endpointId === endpoint.id && item.blockType === 'API',
+            );
+            return {
+              title: endpoint.title,
+              method: endpoint.method,
+              path: endpoint.path,
+              request: this.normalizeRequestContent(
+                endpoint.method,
+                endpoint.path,
+                block?.content,
+              ),
+            };
+          }),
+      })),
+    };
+  }
+
+  importAll(user: ApiDocUser, payload: unknown) {
+    this.ensureAdmin(user);
+    const parsed = apiDocImportExportFileSchema.safeParse(payload);
+    if (!parsed.success) {
+      throw new BadRequestException(
+        parsed.error.issues[0]?.message ?? 'Invalid API import file.',
+      );
+    }
+
+    const input = parsed.data;
+    this.validateJsonBodies(input);
+
+    const now = new Date().toISOString();
+    const existingNames = new Set(
+      this.db.select({ name: apiDocCategoriesTable.name }).from(apiDocCategoriesTable).all().map(
+        (row) => row.name,
+      ),
+    );
+    const maxCategoryOrder = this.db
+      .select({ orderIdx: apiDocCategoriesTable.orderIdx })
+      .from(apiDocCategoriesTable)
+      .all()
+      .reduce((max, row) => Math.max(max, row.orderIdx), -1);
+
+    let importedCollections = 0;
+    let importedEndpoints = 0;
+    let importedBlocks = 0;
+    const importedCategoryIds: string[] = [];
+
+    this.db.transaction((tx) => {
+      input.collections.forEach((collection, collectionIndex) => {
+        const categoryId = `api-cat-${randomUUID().slice(0, 12)}`;
+        const categoryName = this.getUniqueCategoryName(collection.name, existingNames);
+        existingNames.add(categoryName);
+        importedCategoryIds.push(categoryId);
+
+        tx.insert(apiDocCategoriesTable)
+          .values({
+            id: categoryId,
+            name: categoryName,
+            icon: collection.icon ?? 'Folder',
+            emoji: collection.emoji ?? null,
+            orderIdx: maxCategoryOrder + collectionIndex + 1,
+            createdBy: user.id,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+        importedCollections += 1;
+
+        collection.endpoints.forEach((endpoint, endpointIndex) => {
+          const endpointId = `api-end-${randomUUID().slice(0, 12)}`;
+          tx.insert(apiDocEndpointsTable)
+            .values({
+              id: endpointId,
+              categoryId,
+              title: endpoint.title,
+              method: endpoint.method,
+              path: endpoint.path,
+              orderIdx: endpointIndex,
+              createdBy: user.id,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .run();
+          importedEndpoints += 1;
+
+          tx.insert(apiDocBlocksTable)
+            .values({
+              id: `api-block-${randomUUID().slice(0, 12)}`,
+              endpointId,
+              blockType: 'API',
+              content: JSON.stringify({
+                ...endpoint.request,
+                method: endpoint.method,
+                lastResponse: null,
+              }),
+              orderIdx: 0,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .run();
+          importedBlocks += 1;
+        });
+      });
+    });
+
+    return {
+      success: true,
+      importedCollections,
+      importedEndpoints,
+      importedBlocks,
+      importedCategoryIds,
+    };
+  }
+
   private ensureCategory(categoryId: string) {
     const category = this.db
       .select()
@@ -273,5 +422,75 @@ export class ApiDocService {
       throw new ForbiddenException('Admin role is required');
     }
   }
-}
 
+  private normalizeRequestContent(
+    method: ApiBlockContentImport['method'],
+    path: string,
+    content?: string,
+  ): ApiBlockContentImport {
+    const fallback = this.createDefaultRequestContent(method, path);
+    if (!content) return fallback;
+
+    try {
+      const parsed = apiBlockContentImportSchema.parse(JSON.parse(content));
+      return {
+        ...fallback,
+        ...parsed,
+        body: {
+          ...fallback.body,
+          ...parsed.body,
+        },
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  private createDefaultRequestContent(
+    method: ApiBlockContentImport['method'],
+    path: string,
+  ): ApiBlockContentImport {
+    const trimmedPath = path.trim();
+    return {
+      method,
+      url: trimmedPath
+        ? trimmedPath.startsWith('http') || trimmedPath.startsWith('{{')
+          ? trimmedPath
+          : `{{API_BASE}}${trimmedPath.startsWith('/') ? trimmedPath : `/${trimmedPath}`}`
+        : '{{API_BASE}}/endpoint',
+      authEnabled: true,
+      headers: [{ key: 'Content-Type', value: 'application/json', enabled: true }],
+      params: [],
+      body: { type: 'none', content: '' },
+      description: '',
+    };
+  }
+
+  private validateJsonBodies(input: ApiDocImportExportFile) {
+    for (const collection of input.collections) {
+      for (const endpoint of collection.endpoints) {
+        const body = endpoint.request.body;
+        if (body.type !== 'json' || !body.content.trim()) continue;
+        try {
+          JSON.parse(body.content);
+        } catch {
+          throw new BadRequestException(
+            `${collection.name} > ${endpoint.title} body.content must be valid JSON.`,
+          );
+        }
+      }
+    }
+  }
+
+  private getUniqueCategoryName(name: string, existingNames: Set<string>) {
+    if (!existingNames.has(name)) return name;
+    const suffix = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    let candidate = `${name} (import ${suffix})`;
+    let index = 2;
+    while (existingNames.has(candidate)) {
+      candidate = `${name} (import ${suffix} ${index})`;
+      index += 1;
+    }
+    return candidate;
+  }
+}

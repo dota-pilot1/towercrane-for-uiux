@@ -23,6 +23,16 @@ export class ApiDocController {
     return this.apiDocService.listCategories();
   }
 
+  @Get('export')
+  exportAll() {
+    return this.apiDocService.exportAll();
+  }
+
+  @Post('import')
+  importAll(@CurrentUser() user: ApiDocUser, @Body() body: unknown) {
+    return this.apiDocService.importAll(user, body);
+  }
+
   @Post('categories')
   createCategory(@CurrentUser() user: ApiDocUser, @Body() body: unknown) {
     return this.apiDocService.createCategory(user, body);
@@ -96,4 +106,3 @@ export class ApiDocController {
     return this.apiDocService.replaceBlocks(user, endpointId, body);
   }
 }
-
