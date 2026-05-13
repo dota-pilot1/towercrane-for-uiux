@@ -17,7 +17,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import { activateSeedSchema, executeSqlSchema, seedFileNameSchema } from './sql-practice.schemas';
+import { activateSeedSchema, executeSqlSchema, geminiAskSchema, seedFileNameSchema } from './sql-practice.schemas';
 import { sanitizeSql } from './sql-safety';
 import type {
   ColumnInfo,
@@ -717,6 +717,40 @@ export class SqlPracticeService {
   private getMaxQueryLength() {
     const value = Number(this.configService.get<string>('SQL_PRACTICE_MAX_QUERY_LENGTH') ?? 10000);
     return Number.isFinite(value) && value > 0 ? Math.min(value, 50000) : 10000;
+  }
+
+  async geminiAsk(body: unknown): Promise<{ answer: string }> {
+    const { content, mode } = geminiAskSchema.parse(body);
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
+      throw new InternalServerErrorException('Gemini API key is not configured.');
+    }
+
+    const systemPrompt =
+      mode === 'sql'
+        ? 'You are an SQL expert. Validate the given SQL query, explain what it does, point out any errors or improvements, and provide a corrected version if needed. Respond in Korean.'
+        : 'You are a helpful assistant. Answer the user\'s question clearly and concisely. Respond in Korean.';
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: content }] }],
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new InternalServerErrorException(`Gemini API error: ${err}`);
+    }
+
+    const data = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    const answer = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    return { answer };
   }
 
   private isReaderType(type: SqlQueryType) {
