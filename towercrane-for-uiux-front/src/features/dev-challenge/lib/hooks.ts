@@ -193,6 +193,40 @@ export function useUpdateDevChallengeAssignment() {
   })
 }
 
+export function useUpdateDevChallengeAssignmentBlock() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      blockId,
+      assignmentId: _assignmentId,
+      data,
+    }: {
+      blockId: string
+      assignmentId: string
+      data: Partial<{ title: string; content: string }>
+    }) => devChallengeApi.updateAssignmentBlock(blockId, data),
+    onSuccess: (_block, variables) => {
+      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.assignment(variables.assignmentId) })
+    },
+  })
+}
+
+export function useCreateDevChallengeAssignmentBlock() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      assignmentId,
+      data,
+    }: {
+      assignmentId: string
+      data: { blockType: string; title?: string; content: string }
+    }) => devChallengeApi.createAssignmentBlock(assignmentId, data),
+    onSuccess: (_block, variables) => {
+      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.assignment(variables.assignmentId) })
+    },
+  })
+}
+
 export function useDeleteDevChallengeAssignment() {
   const queryClient = useQueryClient()
   return useMutation({

@@ -1,6 +1,7 @@
 import { apiRequest } from '../../../shared/api/http'
 import type {
   DevChallengeAssignment,
+  DevChallengeAssignmentBlock,
   DevChallengeAssignmentDetail,
   DevChallengeAssignmentStatus,
   DevChallengeCategory,
@@ -87,6 +88,24 @@ export const devChallengeApi = {
     }>,
   ) =>
     apiRequest<DevChallengeAssignmentDetail>(`/dev-challenge/assignments/${assignmentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  createAssignmentBlock: (
+    assignmentId: string,
+    data: { blockType: string; title?: string; content: string },
+  ) =>
+    apiRequest<DevChallengeAssignmentBlock>(`/dev-challenge/assignments/${assignmentId}/blocks`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateAssignmentBlock: (
+    blockId: string,
+    data: Partial<{ title: string; content: string }>,
+  ) =>
+    apiRequest<DevChallengeAssignmentBlock>(`/dev-challenge/blocks/${blockId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import {
   DndContext,
@@ -16,24 +16,28 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { BookOpen, CheckSquare, ClipboardCheck, GripVertical, Loader2, Plus, Trash2, X } from 'lucide-react'
+import { BookOpen, CheckSquare, ClipboardCheck, GripVertical, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Card } from '../../../shared/ui/card'
+import { Select } from '../../../shared/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../shared/ui/tabs'
 import type {
   DevChallengeAssignment,
   DevChallengeAssignmentBlock,
-  DevChallengeAssignmentStatus,
+  DevChallengeAssignmentDetail,
   DevChallengeChecklistItem,
 } from '../../../entities/dev-challenge/model/types'
 import {
   buildChecklistItems,
   useCreateDevChallengeAssignment,
+  useCreateDevChallengeAssignmentBlock,
   useCreateDevChallengeSubmission,
   useDeleteDevChallengeAssignment,
   useDevChallengeAssignment,
   useDevChallengeAssignments,
   useMyDevChallengeSubmission,
   useReorderDevChallengeAssignments,
+  useUpdateDevChallengeAssignment,
+  useUpdateDevChallengeAssignmentBlock,
   useUpdateDevChallengeSubmission,
 } from '../lib/hooks'
 
@@ -45,10 +49,11 @@ type AssignmentItemProps = {
   assignment: DevChallengeAssignment
   selected: boolean
   onSelect: () => void
+  onEdit: () => void
   onDelete: () => void
 }
 
-function AssignmentItem({ assignment, selected, onSelect, onDelete }: AssignmentItemProps) {
+function AssignmentItem({ assignment, selected, onSelect, onEdit, onDelete }: AssignmentItemProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id: assignment.id })
   const style = { transform: CSS.Transform.toString(transform), opacity: isDragging ? 0.5 : 1 }
 
@@ -69,9 +74,6 @@ function AssignmentItem({ assignment, selected, onSelect, onDelete }: Assignment
         <button onClick={onSelect} className="min-w-0 flex-1 text-left">
           <div className="flex min-w-0 items-center gap-2">
             <p className="truncate text-sm font-bold ui-text-primary">{assignment.title}</p>
-            <span className="shrink-0 rounded-sm border border-brand-border bg-brand-glass px-1.5 py-0.5 text-[10px] font-bold text-brand-primary">
-              {assignment.status}
-            </span>
           </div>
           {assignment.summary ? (
             <p className="mt-1 line-clamp-2 text-xs ui-text-secondary">{assignment.summary}</p>
@@ -81,6 +83,9 @@ function AssignmentItem({ assignment, selected, onSelect, onDelete }: Assignment
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider ui-text-muted">
             {assignment.difficulty}
           </p>
+        </button>
+        <button onClick={onEdit} className="shrink-0 rounded p-1 hover:bg-surface-muted" title="수정">
+          <Pencil className="size-3.5 ui-text-secondary" />
         </button>
         <button onClick={onDelete} className="shrink-0 rounded p-1 hover:bg-danger-glass" title="삭제">
           <Trash2 className="size-3.5 text-destructive" />
@@ -119,9 +124,6 @@ function SubmissionAssignmentItem({
       ) : (
         <p className="mt-1 text-xs ui-text-muted">요약 없음</p>
       )}
-      <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-brand-primary">
-        {assignment.status}
-      </p>
     </button>
   )
 }
@@ -213,9 +215,6 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string | null }) {
             ) : null}
           </div>
           <div className="flex shrink-0 gap-1.5">
-            <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-1 text-[10px] font-bold text-brand-primary">
-              {assignment.status}
-            </span>
             <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-[10px] font-bold ui-text-secondary">
               {assignment.difficulty}
             </span>
@@ -234,6 +233,32 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string | null }) {
   )
 }
 
+function FormRow({
+  label,
+  description,
+  htmlFor,
+  children,
+}: {
+  label: string
+  description?: string
+  htmlFor?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="grid gap-2 border-b border-surface-border-soft py-5 last:border-b-0 sm:grid-cols-[180px_1fr] sm:gap-6">
+      <div className="pt-1">
+        <label htmlFor={htmlFor} className="text-sm font-bold ui-text-primary">
+          {label}
+        </label>
+        {description ? (
+          <p className="mt-1 text-xs leading-relaxed ui-text-muted">{description}</p>
+        ) : null}
+      </div>
+      <div className="min-w-0">{children}</div>
+    </div>
+  )
+}
+
 function CreateAssignmentDialog({
   sectionId,
   open,
@@ -248,7 +273,6 @@ function CreateAssignmentDialog({
   const [title, setTitle] = useState('')
   const [summary, setSummary] = useState('')
   const [difficulty, setDifficulty] = useState('BASIC')
-  const [status, setStatus] = useState<DevChallengeAssignmentStatus>('DRAFT')
   const [noteContent, setNoteContent] = useState('')
   const [checklistText, setChecklistText] = useState('')
   const createAssignment = useCreateDevChallengeAssignment()
@@ -257,7 +281,6 @@ function CreateAssignmentDialog({
     setTitle('')
     setSummary('')
     setDifficulty('BASIC')
-    setStatus('DRAFT')
     setNoteContent('')
     setChecklistText('')
   }
@@ -269,7 +292,7 @@ function CreateAssignmentDialog({
       title: title.trim(),
       summary: summary.trim() || undefined,
       difficulty,
-      status,
+      status: 'PUBLISHED',
       noteContent,
       checklistItems: buildChecklistItems(checklistText),
     })
@@ -282,74 +305,283 @@ function CreateAssignmentDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
-        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-50 flex h-[88vh] w-[min(980px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg p-5 shadow-2xl">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-50 flex h-[88vh] w-[min(880px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg shadow-2xl">
+          <header className="flex items-start justify-between gap-4 border-b border-surface-border px-6 py-5">
+            <div className="flex items-start gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
                 <ClipboardCheck className="size-4" />
               </div>
-              <Dialog.Title className="text-base font-bold text-text-primary">새 챌린지 출제</Dialog.Title>
+              <div>
+                <Dialog.Title className="text-base font-bold ui-text-primary">새 챌린지 출제</Dialog.Title>
+                <p className="mt-0.5 text-xs ui-text-muted">학습자에게 바로 공개되는 챌린지를 만듭니다.</p>
+              </div>
             </div>
             <Dialog.Close asChild>
               <button className="flex size-7 items-center justify-center rounded-md ui-text-secondary hover:bg-surface-muted hover:ui-text-primary">
                 <X className="size-4" />
               </button>
             </Dialog.Close>
-          </div>
+          </header>
 
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="제목"
-              className="ui-input"
-            />
-            <textarea
-              value={summary}
-              onChange={(event) => setSummary(event.target.value)}
-              placeholder="요약"
-              className="ui-input min-h-20 py-2"
-            />
-            <div className="grid gap-2 sm:grid-cols-2">
-              <select value={difficulty} onChange={(event) => setDifficulty(event.target.value)} className="ui-input">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6">
+            <FormRow label="제목" description="목록 카드와 상세 헤더에 노출됩니다." htmlFor="create-title">
+              <input
+                id="create-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="예: 컴포넌트 상태 관리 챌린지"
+                className="ui-input"
+              />
+            </FormRow>
+            <FormRow label="요약" description="카드에 표시될 한두 줄 설명." htmlFor="create-summary">
+              <textarea
+                id="create-summary"
+                value={summary}
+                onChange={(event) => setSummary(event.target.value)}
+                placeholder="간단한 요구사항을 읽고 상태 기반 UI를 구현합니다."
+                className="ui-input min-h-20 py-2"
+              />
+            </FormRow>
+            <FormRow label="난이도" description="학습자가 챌린지를 고를 때 보입니다." htmlFor="create-difficulty">
+              <Select
+                id="create-difficulty"
+                value={difficulty}
+                onChange={(event) => setDifficulty(event.target.value)}
+              >
                 <option value="BASIC">BASIC</option>
                 <option value="INTERMEDIATE">INTERMEDIATE</option>
                 <option value="ADVANCED">ADVANCED</option>
-              </select>
-              <select value={status} onChange={(event) => setStatus(event.target.value as DevChallengeAssignmentStatus)} className="ui-input">
-                <option value="DRAFT">DRAFT</option>
-                <option value="PUBLISHED">PUBLISHED</option>
-                <option value="ARCHIVED">ARCHIVED</option>
-              </select>
-            </div>
-            <textarea
-              value={noteContent}
-              onChange={(event) => setNoteContent(event.target.value)}
-              placeholder="챌린지 설명"
-              className="ui-input min-h-36 py-2"
-            />
-            <textarea
-              value={checklistText}
-              onChange={(event) => setChecklistText(event.target.value)}
-              placeholder={'완료 조건을 줄 단위로 입력\n예: 상태별 UI가 명확하게 구분된다'}
-              className="ui-input min-h-32 py-2"
-            />
+              </Select>
+            </FormRow>
+            <FormRow
+              label="챌린지 설명"
+              description="문제 배경과 요구사항을 자세히 적어주세요."
+              htmlFor="create-note"
+            >
+              <textarea
+                id="create-note"
+                value={noteContent}
+                onChange={(event) => setNoteContent(event.target.value)}
+                placeholder="선택한 UI 상태에 따라 화면 문구와 버튼 상태가 자연스럽게 바뀌는 컴포넌트를 구현하세요."
+                className="ui-input min-h-36 py-2"
+              />
+            </FormRow>
+            <FormRow
+              label="완료 조건"
+              description="줄 단위로 입력하면 체크리스트가 됩니다."
+              htmlFor="create-checklist"
+            >
+              <textarea
+                id="create-checklist"
+                value={checklistText}
+                onChange={(event) => setChecklistText(event.target.value)}
+                placeholder={'상태별 UI가 명확하게 구분된다\n빈 상태, 로딩, 오류 상태를 처리한다\n모바일/데스크톱 레이아웃이 깨지지 않는다'}
+                className="ui-input min-h-32 py-2"
+              />
+            </FormRow>
           </div>
 
-          <div className="mt-4 flex justify-end gap-2 border-t border-surface-border pt-3">
+          <footer className="flex justify-end gap-2 border-t border-surface-border bg-surface-muted/40 px-6 py-3">
             <Dialog.Close asChild>
-              <button className="rounded-md border border-surface-border px-3 py-1.5 text-xs ui-text-secondary hover:bg-surface-muted">
+              <button className="rounded-md border border-surface-border bg-surface-raised px-3.5 py-1.5 text-xs font-bold ui-text-secondary hover:bg-surface-muted">
                 취소
               </button>
             </Dialog.Close>
             <button
               onClick={handleSubmit}
               disabled={!title.trim() || createAssignment.isPending}
-              className="rounded-md bg-brand-primary px-3 py-1.5 text-xs font-bold text-text-on-brand hover:brightness-110 disabled:opacity-50"
+              className="rounded-md bg-brand-primary px-3.5 py-1.5 text-xs font-bold text-text-on-brand hover:brightness-110 disabled:opacity-50"
             >
               {createAssignment.isPending ? '저장 중...' : '저장'}
             </button>
+          </footer>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
+function checklistItemsToText(items: DevChallengeChecklistItem[]): string {
+  return items.map((item) => item.label).join('\n')
+}
+
+function EditAssignmentDialog({
+  assignment,
+  open,
+  onOpenChange,
+}: {
+  assignment: DevChallengeAssignmentDetail | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const [title, setTitle] = useState('')
+  const [summary, setSummary] = useState('')
+  const [difficulty, setDifficulty] = useState('BASIC')
+  const [noteContent, setNoteContent] = useState('')
+  const [checklistText, setChecklistText] = useState('')
+  const updateAssignment = useUpdateDevChallengeAssignment()
+  const updateBlock = useUpdateDevChallengeAssignmentBlock()
+  const createBlock = useCreateDevChallengeAssignmentBlock()
+
+  useEffect(() => {
+    if (!assignment) return
+    setTitle(assignment.title)
+    setSummary(assignment.summary ?? '')
+    setDifficulty(assignment.difficulty)
+    const noteBlock = assignment.blocks.find((block) => block.blockType === 'NOTE')
+    const checklistBlock = assignment.blocks.find((block) => block.blockType === 'CHECKLIST')
+    setNoteContent(noteBlock?.content ?? '')
+    setChecklistText(checklistBlock ? checklistItemsToText(parseChecklist(checklistBlock.content)) : '')
+  }, [assignment?.id, open])
+
+  if (!assignment) return null
+
+  const handleSubmit = async () => {
+    if (!title.trim()) return
+    await updateAssignment.mutateAsync({
+      id: assignment.id,
+      sectionId: assignment.sectionId,
+      data: {
+        title: title.trim(),
+        summary: summary.trim(),
+        difficulty,
+      },
+    })
+
+    const noteBlock = assignment.blocks.find((block) => block.blockType === 'NOTE')
+    const trimmedNote = noteContent.trim()
+    if (noteBlock) {
+      if (noteBlock.content !== trimmedNote) {
+        await updateBlock.mutateAsync({
+          blockId: noteBlock.id,
+          assignmentId: assignment.id,
+          data: { content: trimmedNote },
+        })
+      }
+    } else if (trimmedNote) {
+      await createBlock.mutateAsync({
+        assignmentId: assignment.id,
+        data: { blockType: 'NOTE', title: '챌린지 설명', content: trimmedNote },
+      })
+    }
+
+    const checklistBlock = assignment.blocks.find((block) => block.blockType === 'CHECKLIST')
+    const nextItems = buildChecklistItems(checklistText)
+    const nextItemsJson = JSON.stringify(nextItems)
+    if (checklistBlock) {
+      if (checklistBlock.content !== nextItemsJson) {
+        await updateBlock.mutateAsync({
+          blockId: checklistBlock.id,
+          assignmentId: assignment.id,
+          data: { content: nextItemsJson },
+        })
+      }
+    } else if (nextItems.length > 0) {
+      await createBlock.mutateAsync({
+        assignmentId: assignment.id,
+        data: { blockType: 'CHECKLIST', title: '완료 조건', content: nextItemsJson },
+      })
+    }
+
+    onOpenChange(false)
+  }
+
+  const isPending = updateAssignment.isPending || updateBlock.isPending || createBlock.isPending
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-50 flex h-[88vh] w-[min(880px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg shadow-2xl">
+          <header className="flex items-start justify-between gap-4 border-b border-surface-border px-6 py-5">
+            <div className="flex items-start gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
+                <Pencil className="size-4" />
+              </div>
+              <div>
+                <Dialog.Title className="text-base font-bold ui-text-primary">챌린지 수정</Dialog.Title>
+                <p className="mt-0.5 text-xs ui-text-muted">제목, 본문, 완료 조건을 함께 수정합니다.</p>
+              </div>
+            </div>
+            <Dialog.Close asChild>
+              <button className="flex size-7 items-center justify-center rounded-md ui-text-secondary hover:bg-surface-muted hover:ui-text-primary">
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-6">
+            <FormRow label="제목" description="목록 카드와 상세 헤더에 노출됩니다." htmlFor="edit-title">
+              <input
+                id="edit-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="예: 컴포넌트 상태 관리 챌린지"
+                className="ui-input"
+              />
+            </FormRow>
+            <FormRow label="요약" description="카드에 표시될 한두 줄 설명." htmlFor="edit-summary">
+              <textarea
+                id="edit-summary"
+                value={summary}
+                onChange={(event) => setSummary(event.target.value)}
+                placeholder="간단한 요구사항을 읽고 상태 기반 UI를 구현합니다."
+                className="ui-input min-h-20 py-2"
+              />
+            </FormRow>
+            <FormRow label="난이도" description="학습자가 챌린지를 고를 때 보입니다." htmlFor="edit-difficulty">
+              <Select
+                id="edit-difficulty"
+                value={difficulty}
+                onChange={(event) => setDifficulty(event.target.value)}
+              >
+                <option value="BASIC">BASIC</option>
+                <option value="INTERMEDIATE">INTERMEDIATE</option>
+                <option value="ADVANCED">ADVANCED</option>
+              </Select>
+            </FormRow>
+            <FormRow
+              label="챌린지 설명"
+              description="문제 배경과 요구사항을 자세히 적어주세요."
+              htmlFor="edit-note"
+            >
+              <textarea
+                id="edit-note"
+                value={noteContent}
+                onChange={(event) => setNoteContent(event.target.value)}
+                placeholder="선택한 UI 상태에 따라 화면 문구와 버튼 상태가 자연스럽게 바뀌는 컴포넌트를 구현하세요."
+                className="ui-input min-h-36 py-2"
+              />
+            </FormRow>
+            <FormRow
+              label="완료 조건"
+              description="줄 단위로 입력하면 체크리스트가 됩니다."
+              htmlFor="edit-checklist"
+            >
+              <textarea
+                id="edit-checklist"
+                value={checklistText}
+                onChange={(event) => setChecklistText(event.target.value)}
+                placeholder={'상태별 UI가 명확하게 구분된다\n빈 상태, 로딩, 오류 상태를 처리한다\n모바일/데스크톱 레이아웃이 깨지지 않는다'}
+                className="ui-input min-h-32 py-2"
+              />
+            </FormRow>
           </div>
+
+          <footer className="flex justify-end gap-2 border-t border-surface-border bg-surface-muted/40 px-6 py-3">
+            <Dialog.Close asChild>
+              <button className="rounded-md border border-surface-border bg-surface-raised px-3.5 py-1.5 text-xs font-bold ui-text-secondary hover:bg-surface-muted">
+                취소
+              </button>
+            </Dialog.Close>
+            <button
+              onClick={handleSubmit}
+              disabled={!title.trim() || isPending}
+              className="rounded-md bg-brand-primary px-3.5 py-1.5 text-xs font-bold text-text-on-brand hover:brightness-110 disabled:opacity-50"
+            >
+              {isPending ? '저장 중...' : '저장'}
+            </button>
+          </footer>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -519,7 +751,9 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
 export function DevChallengeMainPanel({ sectionId }: DevChallengeMainPanelProps) {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editAssignmentId, setEditAssignmentId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('assignment')
+  const { data: editingAssignment } = useDevChallengeAssignment(editAssignmentId ?? '')
   const { data: assignments = [], isLoading } = useDevChallengeAssignments(sectionId ?? '')
   const deleteAssignment = useDeleteDevChallengeAssignment()
   const reorderAssignments = useReorderDevChallengeAssignments()
@@ -567,6 +801,13 @@ export function DevChallengeMainPanel({ sectionId }: DevChallengeMainPanelProps)
         onOpenChange={setDialogOpen}
         onCreated={setSelectedAssignmentId}
       />
+      <EditAssignmentDialog
+        assignment={editingAssignment ?? null}
+        open={!!editAssignmentId}
+        onOpenChange={(open) => {
+          if (!open) setEditAssignmentId(null)
+        }}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center justify-between gap-3 border-b border-surface-border px-4 py-3">
@@ -610,6 +851,7 @@ export function DevChallengeMainPanel({ sectionId }: DevChallengeMainPanelProps)
                           assignment={assignment}
                           selected={selectedAssignmentId === assignment.id}
                           onSelect={() => setSelectedAssignmentId(assignment.id)}
+                          onEdit={() => setEditAssignmentId(assignment.id)}
                           onDelete={() => {
                             deleteAssignment.mutate({ id: assignment.id, sectionId })
                             if (selectedAssignmentId === assignment.id) setSelectedAssignmentId(null)

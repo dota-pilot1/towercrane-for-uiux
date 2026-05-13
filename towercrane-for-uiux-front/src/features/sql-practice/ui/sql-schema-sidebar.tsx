@@ -93,15 +93,16 @@ export function SqlSchemaSidebar({
               <BookOpenCheck className="size-3.5" />
               예제
             </a>
-            <button
-              className="ui-icon-button size-8"
-              type="button"
-              aria-label="SQL 연습 파일 관리"
-              title="SQL 연습 파일 관리"
-              onClick={() => setSeedDialogOpen(true)}
-            >
-              <Settings className="size-3.5" />
-            </button>
+            {erdQuery.data?.mmd && (
+              <button
+                type="button"
+                className="ui-icon-button-brand h-8 gap-1.5 px-3 text-xs font-bold"
+                onClick={() => setErdDialogOpen(true)}
+                title="ERD 보기"
+              >
+                ERD
+              </button>
+            )}
             <button
               className="ui-icon-button size-8"
               type="button"
@@ -125,16 +126,15 @@ export function SqlSchemaSidebar({
                   {meta?.dbFile ?? "practice.sqlite"}
                 </span>
               </div>
-              {erdQuery.data?.mmd && (
-                <button
-                  type="button"
-                  className="ui-icon-button-brand h-7 shrink-0 px-2 text-xs font-bold"
-                  onClick={() => setErdDialogOpen(true)}
-                  title="ERD 보기"
-                >
-                  ERD
-                </button>
-              )}
+              <button
+                className="ui-icon-button size-7 shrink-0"
+                type="button"
+                aria-label="SQL 연습 파일 관리"
+                title="SQL 연습 파일 관리"
+                onClick={() => setSeedDialogOpen(true)}
+              >
+                <Settings className="size-3.5" />
+              </button>
             </div>
             <div className="mt-2 space-y-1 text-xs text-text-secondary">
               <p>seed: {meta?.seedFile ?? "01_board_basic.sql"}</p>
