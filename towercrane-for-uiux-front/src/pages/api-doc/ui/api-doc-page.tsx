@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   closestCenter,
@@ -20,6 +20,7 @@ import { PageHeader } from '../../../shared/ui/page-header'
 import type {
   ApiDocCategory,
   ApiDocEndpoint,
+  ApiEnvironment,
   ApiEnvironmentVariable,
 } from '../../../entities/api-doc/model/types'
 import { Button } from '../../../shared/ui/button'
@@ -39,7 +40,11 @@ import {
   useUpdateApiDocEndpoint,
 } from '../../../features/api-doc/model/use-api-doc-queries'
 import { useApiEnvStore } from '../../../features/api-doc/model/api-env-store'
+import { ApiDocImportExportActions } from '../../../features/api-doc/ui/api-doc-import-export-actions'
 import { ApiTesterPanel } from '../../../features/api-doc/ui/api-tester-panel'
+
+const EMPTY_CATEGORIES: ApiDocCategory[] = []
+const EMPTY_ENDPOINTS: ApiDocEndpoint[] = []
 
 function SortableItem({
   id,
@@ -74,11 +79,25 @@ export function ApiDocPage() {
   const isAdmin = userRole === 'admin'
 
   const categoriesQuery = useApiDocCategories()
-  const categories = categoriesQuery.data ?? []
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const categories = categoriesQuery.data ?? EMPTY_CATEGORIES
+  const [requestedCategoryId, setRequestedCategoryId] = useState<string | null>(null)
+  const selectedCategoryId = useMemo(() => {
+    if (categories.length === 0) return null
+    if (requestedCategoryId && categories.some((category) => category.id === requestedCategoryId)) {
+      return requestedCategoryId
+    }
+    return categories[0].id
+  }, [categories, requestedCategoryId])
   const endpointsQuery = useApiDocEndpoints(selectedCategoryId)
-  const endpoints = endpointsQuery.data ?? []
-  const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(null)
+  const endpoints = endpointsQuery.data ?? EMPTY_ENDPOINTS
+  const [requestedEndpointId, setRequestedEndpointId] = useState<string | null>(null)
+  const selectedEndpointId = useMemo(() => {
+    if (endpoints.length === 0) return null
+    if (requestedEndpointId && endpoints.some((endpoint) => endpoint.id === requestedEndpointId)) {
+      return requestedEndpointId
+    }
+    return endpoints[0].id
+  }, [endpoints, requestedEndpointId])
   const blocksQuery = useApiDocBlocks(selectedEndpointId)
   const replaceBlocksMutation = useReplaceApiDocBlocks(selectedEndpointId)
   const [envModalOpen, setEnvModalOpen] = useState(false)
@@ -88,44 +107,23 @@ export function ApiDocPage() {
     [endpoints, selectedEndpointId],
   )
 
-  useEffect(() => {
-    if (categories.length === 0) {
-      setSelectedCategoryId(null)
-      setSelectedEndpointId(null)
-      return
-    }
-    if (!categories.some((category) => category.id === selectedCategoryId)) {
-      setSelectedCategoryId(categories[0].id)
-      setSelectedEndpointId(null)
-    }
-  }, [categories, selectedCategoryId])
-
-  useEffect(() => {
-    if (endpoints.length === 0) {
-      setSelectedEndpointId(null)
-      return
-    }
-    if (!endpoints.some((endpoint) => endpoint.id === selectedEndpointId)) {
-      setSelectedEndpointId(endpoints[0].id)
-    }
-  }, [endpoints, selectedEndpointId])
-
   return (
     <section className="space-y-4 ui-page-bg pb-8">
       <PageHeader
         icon={FileJson}
         title="Postman Lite"
+        actions={<ApiDocImportExportActions isAdmin={isAdmin} />}
       />
 
-      <div className="grid h-[calc(100vh-10rem)] min-h-[640px] grid-cols-1 gap-3 lg:grid-cols-[240px_300px_minmax(0,1fr)]">
+      <div className="grid h-[calc(100vh-15rem)] min-h-[640px] grid-cols-1 gap-3 lg:grid-cols-[240px_300px_minmax(0,1fr)]">
         <CategorySidebar
           categories={categories}
           activeId={selectedCategoryId}
           isAdmin={isAdmin}
           isLoading={categoriesQuery.isLoading}
           onSelect={(id) => {
-            setSelectedCategoryId(id)
-            setSelectedEndpointId(null)
+            setRequestedCategoryId(id)
+            setRequestedEndpointId(null)
           }}
         />
         <EndpointSidebar
@@ -134,7 +132,7 @@ export function ApiDocPage() {
           activeId={selectedEndpointId}
           isAdmin={isAdmin}
           isLoading={endpointsQuery.isLoading}
-          onSelect={setSelectedEndpointId}
+          onSelect={setRequestedEndpointId}
         />
         <ApiTesterPanel
           endpoint={selectedEndpoint}
@@ -147,7 +145,7 @@ export function ApiDocPage() {
         />
       </div>
 
-      {envModalOpen ? <EnvironmentDialog onClose={() => setEnvModalOpen(false)} /> : null}
+      {envModalOpen ? <EnvironmentDialog key="api-env-dialog" onClose={() => setEnvModalOpen(false)} /> : null}
     </section>
   )
 }
@@ -655,11 +653,10 @@ function EnvironmentDialog({ onClose }: { onClose: () => void }) {
     activeEnv ? activeEnv.variables.map((item) => ({ ...item })) : [],
   )
 
-  useEffect(() => {
-    if (activeEnv) {
-      setDraft(activeEnv.variables.map((item) => ({ ...item })))
-    }
-  }, [activeEnv])
+  const selectEnvironment = (env: ApiEnvironment) => {
+    setActiveEnv(env.id)
+    setDraft(env.variables.map((item) => ({ ...item })))
+  }
 
   const updateRow = (index: number, field: keyof ApiEnvironmentVariable, value: string) => {
     setDraft((prev) => prev.map((row, rowIndex) => (rowIndex === index ? { ...row, [field]: value } : row)))
@@ -699,7 +696,7 @@ function EnvironmentDialog({ onClose }: { onClose: () => void }) {
               <button
                 key={env.id}
                 type="button"
-                onClick={() => setActiveEnv(env.id)}
+                onClick={() => selectEnvironment(env)}
                 className={`rounded-md border px-3 py-2 text-xs font-bold transition-colors ${
                   activeEnvId === env.id
                     ? 'border-brand-border bg-brand-glass text-brand-primary'
