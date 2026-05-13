@@ -120,7 +120,7 @@ export function SqlPracticePage() {
           )}
         </div>
 
-        <SqlInputBar onExecute={handleExecute} isLoading={executeMutation.isPending} />
+        <SqlInputBar onExecute={handleExecute} onClear={() => setHistory([])} isLoading={executeMutation.isPending} />
       </Card>
 
       <SqlSchemaSidebar
