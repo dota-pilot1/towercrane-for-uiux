@@ -14,7 +14,9 @@ import type { MenuItem } from '../../../entities/menu/model/types'
 function sectionIdToPath(sectionId: string): string {
   const map: Record<string, string> = {
     prototype: '/prototype',
-    challenge: '/challenge',
+    challenge: '/study-diary',
+    study_diary: '/study-diary',
+    dev_challenge: '/dev-challenge',
     meeting: '/meeting',
     docu: '/docu',
     ai_methodology: '/ai-methodology',
@@ -32,7 +34,9 @@ function sectionIdToPath(sectionId: string): string {
 
 function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/prototype')) return 'prototype'
-  if (pathname.startsWith('/challenge')) return 'challenge'
+  if (pathname.startsWith('/dev-challenge')) return 'dev_challenge'
+  if (pathname.startsWith('/study-diary')) return 'study_diary'
+  if (pathname.startsWith('/challenge')) return 'study_diary'
   if (pathname.startsWith('/meeting')) return 'meeting'
   if (pathname.startsWith('/docu')) return 'docu'
   if (pathname.startsWith('/ai-methodology')) return 'ai_methodology'
@@ -45,6 +49,11 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/admin/menu')) return 'menu_admin'
   if (pathname.startsWith('/admin/readme')) return 'readme_admin'
   return 'prototype'
+}
+
+function normalizeSectionId(sectionId: string | null | undefined): string {
+  if (sectionId === 'challenge' || sectionId === 'study_diary') return 'study_diary'
+  return sectionId ?? ''
 }
 
 function getIcon(iconName: string | null): React.ElementType {
@@ -67,8 +76,8 @@ function NavDropdown({
   const Icon = getIcon(item.icon)
 
   const isActive =
-    item.children.some((child) => child.sectionId === activeSection) ||
-    item.sectionId === activeSection
+    item.children.some((child) => normalizeSectionId(child.sectionId) === activeSection) ||
+    normalizeSectionId(item.sectionId) === activeSection
 
   return (
     <div className="relative">
@@ -170,7 +179,7 @@ export function AppHeader() {
           </div>
         </button>
 
-        <nav className="hidden min-h-0 min-w-0 flex-1 items-center justify-start gap-1.5 overflow-x-auto overflow-y-hidden lg:flex lg:justify-center">
+        <nav className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1.5 lg:flex">
           {menuTree.map((item) => {
             if (item.children && item.children.length > 0) {
               return (
@@ -188,7 +197,7 @@ export function AppHeader() {
               <HeaderPill
                 key={item.id}
                 icon={Icon}
-                variant={activeSection === item.sectionId ? 'active' : 'default'}
+                variant={activeSection === normalizeSectionId(item.sectionId) ? 'active' : 'default'}
                 onClick={() => item.sectionId && handleNavigation(item.sectionId)}
                 labelClassName="hidden sm:inline"
               >
