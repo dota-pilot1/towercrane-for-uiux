@@ -1,4 +1,4 @@
-import { BookOpenCheck, ChevronLeft, ChevronRight } from 'lucide-react'
+import { BookOpenCheck, ChevronLeft, ChevronRight, NotebookPen } from 'lucide-react'
 import { useState } from 'react'
 
 import type {
@@ -21,6 +21,7 @@ type SqlQuizSidebarProps = {
   exampleSet: SqlPracticeExampleSet
   selectedExample: SqlPracticeExample | null
   onSelectExample: (example: SqlPracticeExample) => void
+  onOpenNotes: () => void
   isOpen: boolean
   onToggle: () => void
 }
@@ -29,6 +30,7 @@ export function SqlQuizSidebar({
   exampleSet,
   selectedExample,
   onSelectExample,
+  onOpenNotes,
   isOpen,
   onToggle,
 }: SqlQuizSidebarProps) {
@@ -76,14 +78,24 @@ export function SqlQuizSidebar({
               </span>
             )}
           </div>
-          <button
-            type="button"
-            className="ui-icon-button size-7"
-            onClick={onToggle}
-            title="문제 목록 닫기"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="ui-icon-button size-7"
+              onClick={onOpenNotes}
+              title="SQL 노트 열기"
+            >
+              <NotebookPen className="size-4" />
+            </button>
+            <button
+              type="button"
+              className="ui-icon-button size-7"
+              onClick={onToggle}
+              title="문제 목록 닫기"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+          </div>
         </div>
 
         {totalCount > 0 && (

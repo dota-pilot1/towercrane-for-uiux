@@ -1,13 +1,28 @@
 import { apiRequest } from '../../../shared/api/http'
 import type {
+  CreateSqlPracticeNotePayload,
   SqlActivateSeedResponse,
   SqlExecuteResponse,
+  SqlPracticeNote,
+  SqlPracticeNoteFilter,
   SqlPracticeMeta,
   SqlPracticeSeedListResponse,
   SqlPracticeSeedSource,
   SqlResetResponse,
   TableInfo,
+  UpdateSqlPracticeNotePayload,
 } from '../model/types'
+
+function toSearchParams(filter?: SqlPracticeNoteFilter) {
+  const params = new URLSearchParams()
+
+  if (filter?.seedFile) params.set('seedFile', filter.seedFile)
+  if (filter?.exampleId) params.set('exampleId', filter.exampleId)
+  if (filter?.tableName) params.set('tableName', filter.tableName)
+
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
 
 export const sqlPracticeApi = {
   getMeta: () => apiRequest<SqlPracticeMeta>('/sql/meta'),
@@ -39,5 +54,21 @@ export const sqlPracticeApi = {
     apiRequest<{ answer: string }>('/sql/gemini', {
       method: 'POST',
       body: JSON.stringify({ content, mode }),
+    }),
+  getNotes: (filter?: SqlPracticeNoteFilter) =>
+    apiRequest<SqlPracticeNote[]>(`/sql/notes/mine${toSearchParams(filter)}`),
+  createNote: (payload: CreateSqlPracticeNotePayload) =>
+    apiRequest<SqlPracticeNote>('/sql/notes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateNote: (id: string, payload: UpdateSqlPracticeNotePayload) =>
+    apiRequest<SqlPracticeNote>(`/sql/notes/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteNote: (id: string) =>
+    apiRequest<void>(`/sql/notes/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
     }),
 }

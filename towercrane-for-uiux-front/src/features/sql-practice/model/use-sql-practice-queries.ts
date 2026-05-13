@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { sqlPracticeApi } from '../../../entities/sql-practice/api/sql-practice-api'
-import type { SqlPracticeSeedSource } from '../../../entities/sql-practice/model/types'
+import type {
+  CreateSqlPracticeNotePayload,
+  SqlPracticeNoteFilter,
+  SqlPracticeSeedSource,
+  UpdateSqlPracticeNotePayload,
+} from '../../../entities/sql-practice/model/types'
 
 export const sqlPracticeQueryKeys = {
   all: ['sql-practice'] as const,
@@ -9,6 +14,7 @@ export const sqlPracticeQueryKeys = {
   tables: ['sql-practice', 'tables'] as const,
   seeds: ['sql-practice', 'seeds'] as const,
   erd: (fileName: string) => ['sql-practice', 'erd', fileName] as const,
+  notes: (filter?: SqlPracticeNoteFilter) => ['sql-practice', 'notes', filter ?? {}] as const,
 }
 
 function messageFromError(error: unknown, fallback: string) {
@@ -114,5 +120,58 @@ export function useReloadSqlPracticeSeed() {
     },
     onError: (error) =>
       toast.error(messageFromError(error, 'SQL 연습 파일 적용에 실패했습니다.')),
+  })
+}
+
+export function useSqlPracticeNotes(filter?: SqlPracticeNoteFilter, enabled = true) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.notes(filter),
+    queryFn: () => sqlPracticeApi.getNotes(filter),
+    enabled,
+  })
+}
+
+export function useCreateSqlPracticeNote() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: CreateSqlPracticeNotePayload) => sqlPracticeApi.createNote(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...sqlPracticeQueryKeys.all, 'notes'] })
+      toast.success('SQL 노트를 저장했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, 'SQL 노트 저장에 실패했습니다.')),
+  })
+}
+
+export function useUpdateSqlPracticeNote() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string
+      payload: UpdateSqlPracticeNotePayload
+    }) => sqlPracticeApi.updateNote(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...sqlPracticeQueryKeys.all, 'notes'] })
+      toast.success('SQL 노트를 수정했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, 'SQL 노트 수정에 실패했습니다.')),
+  })
+}
+
+export function useDeleteSqlPracticeNote() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => sqlPracticeApi.deleteNote(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...sqlPracticeQueryKeys.all, 'notes'] })
+      toast.success('SQL 노트를 삭제했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, 'SQL 노트 삭제에 실패했습니다.')),
   })
 }

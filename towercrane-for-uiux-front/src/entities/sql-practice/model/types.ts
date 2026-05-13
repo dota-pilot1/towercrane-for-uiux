@@ -81,3 +81,36 @@ export type SqlResetResponse = {
 export type SqlActivateSeedResponse = SqlResetResponse & {
   activeSeed: SqlPracticeSeedSummary
 }
+
+export type SqlPracticeNote = {
+  id: string
+  userId: string
+  seedFile: string | null
+  exampleId: string | null
+  exampleTitle: string | null
+  tableName: string | null
+  title: string | null
+  content: string
+  pinned: boolean
+  orderIdx: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type SqlPracticeNoteFilter = {
+  seedFile?: string
+  exampleId?: string
+  tableName?: string
+}
+
+export type CreateSqlPracticeNotePayload = {
+  seedFile?: string
+  exampleId?: string
+  exampleTitle?: string
+  tableName?: string
+  title?: string
+  content: string
+  pinned?: boolean
+}
+
+export type UpdateSqlPracticeNotePayload = Partial<CreateSqlPracticeNotePayload>

@@ -17,9 +17,11 @@ import {
 import { getSqlPracticeExampleSet, sqlExampleLevelLabels } from '../../../features/sql-practice/model/sql-practice-examples'
 import { SqlHistoryItem as SqlHistoryItemView } from '../../../features/sql-practice/ui/sql-history-item'
 import { SqlInputBar } from '../../../features/sql-practice/ui/sql-input-bar'
+import { SqlNotesDialog } from '../../../features/sql-practice/ui/sql-notes-dialog'
 import { SqlPracticePageHeader } from '../../../features/sql-practice/ui/sql-practice-page-header'
 import { SqlQuizSidebar } from '../../../features/sql-practice/ui/sql-quiz-sidebar'
 import { SqlSchemaSidebar } from '../../../features/sql-practice/ui/sql-schema-sidebar'
+import { useSessionStore } from '../../../shared/store/session-store'
 
 const EMPTY_TABLES: TableInfo[] = []
 
@@ -32,10 +34,12 @@ const LEVEL_BADGE_CLASS: Record<SqlExampleLevel, string> = {
 export function SqlPracticePage() {
   const [history, setHistory] = useState<SqlHistoryItem[]>([])
   const [selectedTableOverride, setSelectedTableOverride] = useState<string | null>(null)
-  const [quizSidebarOpen, setQuizSidebarOpen] = useState(false)
+  const [quizSidebarOpen, setQuizSidebarOpen] = useState(true)
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false)
   const [selectedExample, setSelectedExample] = useState<SqlPracticeExample | null>(null)
   const [answerOpen, setAnswerOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const userName = useSessionStore((state) => state.userName)
 
   const metaQuery = useSqlPracticeMeta()
   const tablesQuery = useSqlPracticeTables()
@@ -133,6 +137,7 @@ export function SqlPracticePage() {
           exampleSet={exampleSet}
           selectedExample={selectedExample}
           onSelectExample={handleSelectExample}
+          onOpenNotes={() => setNotesDialogOpen(true)}
           isOpen={quizSidebarOpen}
           onToggle={() => setQuizSidebarOpen((v) => !v)}
         />
@@ -191,6 +196,15 @@ export function SqlPracticePage() {
           onSeedActivated={handleSeedChange}
         />
       </div>
+
+      <SqlNotesDialog
+        open={notesDialogOpen}
+        onOpenChange={setNotesDialogOpen}
+        userName={userName}
+        seedFile={metaQuery.data?.seedFile}
+        selectedExample={selectedExample}
+        selectedTable={selectedTable}
+      />
     </section>
   )
 }

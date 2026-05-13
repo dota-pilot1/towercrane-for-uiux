@@ -484,6 +484,34 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_challenge_user_notes_user_topic
         ON challenge_user_notes(user_id, topic_id, visibility);
 
+      CREATE TABLE IF NOT EXISTS sql_practice_notes (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        seed_file TEXT,
+        example_id TEXT,
+        example_title TEXT,
+        table_name TEXT,
+        title TEXT,
+        content TEXT NOT NULL,
+        pinned INTEGER NOT NULL DEFAULT 0,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_practice_notes_user_updated
+        ON sql_practice_notes(user_id, pinned, updated_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_practice_notes_user_seed
+        ON sql_practice_notes(user_id, seed_file);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_practice_notes_user_example
+        ON sql_practice_notes(user_id, example_id);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_practice_notes_user_table
+        ON sql_practice_notes(user_id, table_name);
+
       CREATE TABLE IF NOT EXISTS dev_challenge_categories (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,

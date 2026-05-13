@@ -19,6 +19,45 @@ export const geminiAskSchema = z.object({
   mode: z.enum(['sql', 'general']),
 });
 
+const optionalTrimmedString = z
+  .string()
+  .trim()
+  .transform((value) => (value.length > 0 ? value : undefined))
+  .optional();
+
+export const listSqlPracticeNotesQuerySchema = z.object({
+  seedFile: optionalTrimmedString,
+  exampleId: optionalTrimmedString,
+  tableName: optionalTrimmedString,
+});
+
+export const createSqlPracticeNoteSchema = z.object({
+  seedFile: optionalTrimmedString,
+  exampleId: optionalTrimmedString,
+  exampleTitle: optionalTrimmedString,
+  tableName: optionalTrimmedString,
+  title: optionalTrimmedString,
+  content: z.string().trim().min(1, 'Note content is required'),
+  pinned: z.boolean().default(false),
+});
+
+export const updateSqlPracticeNoteSchema = z
+  .object({
+    seedFile: optionalTrimmedString,
+    exampleId: optionalTrimmedString,
+    exampleTitle: optionalTrimmedString,
+    tableName: optionalTrimmedString,
+    title: optionalTrimmedString,
+    content: z.string().trim().min(1, 'Note content is required').optional(),
+    pinned: z.boolean().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided',
+  });
+
 export type ExecuteSqlInput = z.infer<typeof executeSqlSchema>;
 export type ActivateSeedInput = z.infer<typeof activateSeedSchema>;
 export type GeminiAskInput = z.infer<typeof geminiAskSchema>;
+export type ListSqlPracticeNotesQuery = z.infer<typeof listSqlPracticeNotesQuerySchema>;
+export type CreateSqlPracticeNoteInput = z.infer<typeof createSqlPracticeNoteSchema>;
+export type UpdateSqlPracticeNoteInput = z.infer<typeof updateSqlPracticeNoteSchema>;

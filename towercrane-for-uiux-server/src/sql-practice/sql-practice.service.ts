@@ -1,12 +1,14 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { and, desc, eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -17,7 +19,17 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import { activateSeedSchema, executeSqlSchema, geminiAskSchema, seedFileNameSchema } from './sql-practice.schemas';
+import { DatabaseService } from '../database/database.service';
+import { sqlPracticeNotesTable } from '../database/schema';
+import {
+  activateSeedSchema,
+  executeSqlSchema,
+  geminiAskSchema,
+  seedFileNameSchema,
+  type CreateSqlPracticeNoteInput,
+  type ListSqlPracticeNotesQuery,
+  type UpdateSqlPracticeNoteInput,
+} from './sql-practice.schemas';
 import { sanitizeSql } from './sql-safety';
 import type {
   ColumnInfo,
@@ -28,7 +40,6 @@ import type {
   SqlPracticeSeedListResponse,
   SqlPracticeSeedMeta,
   SqlPracticeSeedSource,
-  SqlPracticeSeedSummary,
   SqlQueryType,
   SqlResetResponse,
   TableInfo,
@@ -62,7 +73,10 @@ type Freshness = {
 
 @Injectable()
 export class SqlPracticeService {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly databaseService: DatabaseService,
+  ) {}
 
   getMeta(): SqlPracticeMeta {
     const freshness = this.ensureDatabaseFresh();
@@ -221,6 +235,90 @@ export class SqlPracticeService {
 
     if (!existsSync(mmdFile)) return { mmd: null };
     return { mmd: readFileSync(mmdFile, 'utf8') };
+  }
+
+  getMyNotes(userId: string, filter: ListSqlPracticeNotesQuery) {
+    const conditions = [eq(sqlPracticeNotesTable.userId, userId)];
+
+    if (filter.seedFile) {
+      conditions.push(eq(sqlPracticeNotesTable.seedFile, filter.seedFile));
+    }
+
+    if (filter.exampleId) {
+      conditions.push(eq(sqlPracticeNotesTable.exampleId, filter.exampleId));
+    }
+
+    if (filter.tableName) {
+      conditions.push(eq(sqlPracticeNotesTable.tableName, filter.tableName));
+    }
+
+    return this.databaseService.db
+      .select()
+      .from(sqlPracticeNotesTable)
+      .where(and(...conditions))
+      .orderBy(desc(sqlPracticeNotesTable.pinned), desc(sqlPracticeNotesTable.updatedAt))
+      .all();
+  }
+
+  getNoteById(id: string) {
+    return this.databaseService.db
+      .select()
+      .from(sqlPracticeNotesTable)
+      .where(eq(sqlPracticeNotesTable.id, id))
+      .get();
+  }
+
+  createNote(input: CreateSqlPracticeNoteInput, userId: string) {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    this.databaseService.db
+      .insert(sqlPracticeNotesTable)
+      .values({
+        id,
+        userId,
+        seedFile: input.seedFile,
+        exampleId: input.exampleId,
+        exampleTitle: input.exampleTitle,
+        tableName: input.tableName,
+        title: input.title,
+        content: input.content,
+        pinned: input.pinned,
+        orderIdx: 0,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.getNoteById(id);
+  }
+
+  updateNote(id: string, input: UpdateSqlPracticeNoteInput, userId: string) {
+    const note = this.getNoteById(id);
+    if (!note) throw new NotFoundException('SQL note not found.');
+    if (note.userId !== userId) throw new ForbiddenException('Not authorized.');
+
+    this.databaseService.db
+      .update(sqlPracticeNotesTable)
+      .set({
+        ...input,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(sqlPracticeNotesTable.id, id))
+      .run();
+
+    return this.getNoteById(id);
+  }
+
+  deleteNote(id: string, userId: string) {
+    const note = this.getNoteById(id);
+    if (!note) throw new NotFoundException('SQL note not found.');
+    if (note.userId !== userId) throw new ForbiddenException('Not authorized.');
+
+    this.databaseService.db
+      .delete(sqlPracticeNotesTable)
+      .where(eq(sqlPracticeNotesTable.id, id))
+      .run();
   }
 
   private executeReader(

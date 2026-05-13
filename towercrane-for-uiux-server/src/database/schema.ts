@@ -514,6 +514,23 @@ export const challengeUserNotesTable = sqliteTable('challenge_user_notes', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export const sqlPracticeNotesTable = sqliteTable('sql_practice_notes', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  seedFile: text('seed_file'),
+  exampleId: text('example_id'),
+  exampleTitle: text('example_title'),
+  tableName: text('table_name'),
+  title: text('title'),
+  content: text('content').notNull(),
+  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 // ─── Dev Challenge Module Tables ──────────────────────────────────────────
 
 export type DevChallengeAssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -628,6 +645,7 @@ export const schema = {
   challengeGptThreadsTable,
   challengeGptMessagesTable,
   challengeUserNotesTable,
+  sqlPracticeNotesTable,
   devChallengeCategoriesTable,
   devChallengeSectionsTable,
   devChallengeAssignmentsTable,
@@ -698,6 +716,8 @@ export type ChallengeGptMessageRow = typeof challengeGptMessagesTable.$inferSele
 export type ChallengeGptMessageInsert = typeof challengeGptMessagesTable.$inferInsert;
 export type ChallengeUserNoteRow = typeof challengeUserNotesTable.$inferSelect;
 export type ChallengeUserNoteInsert = typeof challengeUserNotesTable.$inferInsert;
+export type SqlPracticeNoteRow = typeof sqlPracticeNotesTable.$inferSelect;
+export type SqlPracticeNoteInsert = typeof sqlPracticeNotesTable.$inferInsert;
 export type DevChallengeCategoryRow = typeof devChallengeCategoriesTable.$inferSelect;
 export type DevChallengeCategoryInsert = typeof devChallengeCategoriesTable.$inferInsert;
 export type DevChallengeSectionRow = typeof devChallengeSectionsTable.$inferSelect;
