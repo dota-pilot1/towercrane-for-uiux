@@ -4,10 +4,11 @@ import { SqlGeminiDialog } from './sql-gemini-dialog'
 
 type SqlInputBarProps = {
   onExecute: (query: string) => void
+  onClear: () => void
   isLoading: boolean
 }
 
-export function SqlInputBar({ onExecute, isLoading }: SqlInputBarProps) {
+export function SqlInputBar({ onExecute, onClear, isLoading }: SqlInputBarProps) {
   const [query, setQuery] = useState('')
   const [geminiOpen, setGeminiOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -15,6 +16,11 @@ export function SqlInputBar({ onExecute, isLoading }: SqlInputBarProps) {
   const handleExecute = () => {
     const trimmed = query.trim()
     if (!trimmed || isLoading) return
+    if (trimmed === '/clear') {
+      onClear()
+      setQuery('')
+      return
+    }
     onExecute(trimmed)
     setQuery('')
   }
@@ -75,7 +81,7 @@ export function SqlInputBar({ onExecute, isLoading }: SqlInputBarProps) {
             </button>
           </div>
         </div>
-        <p className="mt-2 text-xs text-text-muted">Ctrl+Enter로 실행 · Tab으로 들여쓰기</p>
+        <p className="mt-2 text-xs text-text-muted">Ctrl+Enter로 실행 · Tab으로 들여쓰기 · <code className="rounded bg-surface-muted px-1 py-0.5 font-mono text-[11px] text-text-secondary">/clear</code> 입력 후 실행하면 결과 화면을 지울 수 있습니다</p>
       </div>
 
       <SqlGeminiDialog
