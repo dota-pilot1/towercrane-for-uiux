@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { Bot, CheckCircle, Loader2, MessageSquare, X, XCircle } from 'lucide-react'
+import { Bot, CheckCircle, CornerDownLeft, Loader2, MessageSquare, X, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { sqlPracticeApi } from '../../../entities/sql-practice/api/sql-practice-api'
 
@@ -7,6 +7,7 @@ type SqlGeminiDialogProps = {
   open: boolean
   initialContent: string
   onOpenChange: (open: boolean) => void
+  onApply?: (sql: string) => void
 }
 
 type SqlValidity = 'valid' | 'invalid' | null
@@ -22,7 +23,7 @@ function parseSqlResponse(raw: string): { validity: SqlValidity; body: string } 
   return { validity: null, body: raw }
 }
 
-export function SqlGeminiDialog({ open, initialContent, onOpenChange }: SqlGeminiDialogProps) {
+export function SqlGeminiDialog({ open, initialContent, onOpenChange, onApply }: SqlGeminiDialogProps) {
   const [content, setContent] = useState(initialContent)
   const [answer, setAnswer] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -149,10 +150,23 @@ export function SqlGeminiDialog({ open, initialContent, onOpenChange }: SqlGemin
                   Gemini 응답
                 </p>
                 {lastMode === 'sql' && validity === 'valid' && (
-                  <span className="flex items-center gap-1 rounded-md border border-brand-border px-2 py-0.5 text-[11px] font-semibold text-brand-primary">
-                    <CheckCircle className="size-3.5" />
-                    SQL 유효
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1 rounded-md border border-brand-border px-2 py-0.5 text-[11px] font-semibold text-brand-primary">
+                      <CheckCircle className="size-3.5" />
+                      SQL 유효
+                    </span>
+                    {onApply && (
+                      <button
+                        type="button"
+                        onClick={() => { onApply(content); onOpenChange(false) }}
+                        className="flex items-center gap-1 rounded-md border border-surface-border bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-text-secondary transition-colors hover:bg-surface-raised hover:text-text-primary"
+                        title="이 SQL을 입력창에 적용"
+                      >
+                        <CornerDownLeft className="size-3" />
+                        입력
+                      </button>
+                    )}
+                  </div>
                 )}
                 {lastMode === 'sql' && validity === 'invalid' && (
                   <span className="flex items-center gap-1 rounded-md border border-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive">
