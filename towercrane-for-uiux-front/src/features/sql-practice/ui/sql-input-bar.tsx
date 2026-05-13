@@ -82,6 +82,7 @@ export function SqlInputBar({ onExecute, isLoading }: SqlInputBarProps) {
         open={geminiOpen}
         initialContent={query}
         onOpenChange={setGeminiOpen}
+        onApply={setQuery}
       />
     </>
   )
