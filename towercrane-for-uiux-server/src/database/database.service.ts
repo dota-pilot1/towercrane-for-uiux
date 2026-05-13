@@ -10,6 +10,7 @@ import { randomUUID, scryptSync } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { catalogSeed } from '../catalog/catalog.seed';
+import { eq } from 'drizzle-orm';
 import {
   categoriesTable,
   challengeCategoriesTable,
@@ -626,6 +627,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     this.migrateLegacySchema();
     this.seedDefaults();
+    this.ensureTestUsers();
   }
 
   onModuleDestroy() {
@@ -1659,6 +1661,45 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.db.insert(usersTable).values(demoUser).run();
 
     return demoUser;
+  }
+
+  private ensureTestUsers() {
+    const now = new Date().toISOString();
+    const testUsers = [
+      { email: 'test01@hibot.dev', name: '김민준' },
+      { email: 'test02@hibot.dev', name: '이서연' },
+      { email: 'test03@hibot.dev', name: '박지호' },
+      { email: 'test04@hibot.dev', name: '최유나' },
+      { email: 'test05@hibot.dev', name: '정현우' },
+      { email: 'test06@hibot.dev', name: '강소희' },
+      { email: 'test07@hibot.dev', name: '윤태양' },
+      { email: 'test08@hibot.dev', name: '임하늘' },
+      { email: 'test09@hibot.dev', name: '오지훈' },
+      { email: 'test10@hibot.dev', name: '한수빈' },
+    ];
+
+    for (const u of testUsers) {
+      const existing = this.db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.email, u.email))
+        .get();
+
+      if (!existing) {
+        this.db
+          .insert(usersTable)
+          .values({
+            id: randomUUID(),
+            email: u.email,
+            passwordHash: this.hashSeedPassword('test1234'),
+            name: u.name,
+            role: 'user',
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+      }
+    }
   }
 
   private hashSeedPassword(password: string) {
