@@ -728,8 +728,11 @@ export class SqlPracticeService {
 
     const systemPrompt =
       mode === 'sql'
-        ? 'You are an SQL expert. Validate the given SQL query, explain what it does, point out any errors or improvements, and provide a corrected version if needed. Respond in Korean.'
-        : 'You are a helpful assistant. Answer the user\'s question clearly and concisely. Respond in Korean.';
+        ? `You are an SQL expert. When given an SQL query:
+1. The VERY FIRST line of your response must be exactly one of: [SQL_VALID] or [SQL_INVALID] — nothing else on that line.
+2. Then on the next line, provide: validation result, explanation of what the query does, any errors or improvements, and a corrected version if needed.
+Respond in Korean.`
+        : "You are a helpful assistant. Answer the user's question clearly and concisely. Respond in Korean.";
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const res = await fetch(url, {
