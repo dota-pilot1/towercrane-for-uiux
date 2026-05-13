@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { Bot, CheckCircle, Loader2, MessageSquare, X } from 'lucide-react'
+import { Bot, CheckCircle, Loader2, MessageSquare, X, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { sqlPracticeApi } from '../../../entities/sql-practice/api/sql-practice-api'
 
@@ -9,17 +9,38 @@ type SqlGeminiDialogProps = {
   onOpenChange: (open: boolean) => void
 }
 
+type SqlValidity = 'valid' | 'invalid' | null
+
+function detectSqlValidity(answer: string): SqlValidity {
+  const text = answer.toLowerCase()
+  const invalidSignals = [
+    '유효하지 않', '오류가 있', '잘못된', '문법 오류', '실행되지 않',
+    '수정이 필요', '올바르지 않', 'syntax error', 'invalid',
+  ]
+  const validSignals = [
+    '유효합니다', '유효한', '올바릅니다', '문법 오류는 없', '정상적으로 실행',
+    '올바른 sql', '유효한 sql', 'valid',
+  ]
+  if (invalidSignals.some((s) => text.includes(s))) return 'invalid'
+  if (validSignals.some((s) => text.includes(s))) return 'valid'
+  return null
+}
+
 export function SqlGeminiDialog({ open, initialContent, onOpenChange }: SqlGeminiDialogProps) {
   const [content, setContent] = useState(initialContent)
   const [answer, setAnswer] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [lastMode, setLastMode] = useState<'sql' | 'general' | null>(null)
+  const [validity, setValidity] = useState<SqlValidity>(null)
 
   useEffect(() => {
     if (open) {
       setContent(initialContent)
       setAnswer('')
       setError('')
+      setValidity(null)
+      setLastMode(null)
     }
   }, [open, initialContent])
 
@@ -28,9 +49,13 @@ export function SqlGeminiDialog({ open, initialContent, onOpenChange }: SqlGemin
     setIsLoading(true)
     setAnswer('')
     setError('')
+    setValidity(null)
+    setLastMode(mode)
     try {
       const res = await sqlPracticeApi.geminiAsk(content, mode)
-      setAnswer(res?.answer ?? '')
+      const text = res?.answer ?? ''
+      setAnswer(text)
+      if (mode === 'sql') setValidity(detectSqlValidity(text))
     } catch (err) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
     } finally {
@@ -118,9 +143,23 @@ export function SqlGeminiDialog({ open, initialContent, onOpenChange }: SqlGemin
 
             {/* 오른쪽: 응답 */}
             <div className="flex flex-col w-1/2 p-4 gap-3">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted shrink-0">
-                Gemini 응답
-              </p>
+              <div className="flex items-center gap-2 shrink-0">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted flex-1">
+                  Gemini 응답
+                </p>
+                {lastMode === 'sql' && validity === 'valid' && (
+                  <span className="flex items-center gap-1 rounded-md border border-brand-border px-2 py-0.5 text-[11px] font-semibold text-brand-primary">
+                    <CheckCircle className="size-3.5" />
+                    SQL 유효
+                  </span>
+                )}
+                {lastMode === 'sql' && validity === 'invalid' && (
+                  <span className="flex items-center gap-1 rounded-md border border-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                    <XCircle className="size-3.5" />
+                    SQL 오류
+                  </span>
+                )}
+              </div>
               <div className="flex-1 overflow-y-auto rounded-lg border border-surface-border-soft bg-surface-muted p-4 min-h-[200px]">
                 {isLoading && (
                   <div className="flex h-full items-center justify-center gap-2 text-text-muted">
