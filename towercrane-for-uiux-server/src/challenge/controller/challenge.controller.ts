@@ -67,6 +67,12 @@ export class ChallengeController {
     return this.challengeService.deleteCategory(id, req.user.id);
   }
 
+  @Post('categories/reorder')
+  @UseGuards(AdminGuard)
+  async reorderCategories(@Body() body: { categoryIds: string[] }, @Req() req: SessionRequest) {
+    return this.challengeService.reorderCategories(body.categoryIds, req.user.id);
+  }
+
   // ─── Sections ───────────────────────────────────────────────────────────
 
   @Get('categories/:categoryId/sections')
@@ -98,6 +104,12 @@ export class ChallengeController {
   @HttpCode(204)
   async deleteSection(@Param('id') id: string, @Req() req: SessionRequest) {
     return this.challengeService.deleteSection(id, req.user.id);
+  }
+
+  @Post('sections/reorder')
+  @UseGuards(AdminGuard)
+  async reorderSections(@Body() body: { categoryId: string; sectionIds: string[] }, @Req() req: SessionRequest) {
+    return this.challengeService.reorderSections(body.categoryId, body.sectionIds, req.user.id);
   }
 
   // ─── Topics (Blocks) ────────────────────────────────────────────────────

@@ -75,6 +75,28 @@ export function useDeleteCategory() {
   })
 }
 
+export function useReorderCategories() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (categoryIds: string[]) =>
+      apiRequest('/challenge/categories/reorder', { method: 'POST', body: JSON.stringify({ categoryIds }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.categories() })
+    },
+  })
+}
+
+export function useReorderSections() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ categoryId, sectionIds }: { categoryId: string; sectionIds: string[] }) =>
+      apiRequest('/challenge/sections/reorder', { method: 'POST', body: JSON.stringify({ categoryId, sectionIds }) }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.sections(variables.categoryId) })
+    },
+  })
+}
+
 export function useUpdateSection() {
   const queryClient = useQueryClient()
   return useMutation({

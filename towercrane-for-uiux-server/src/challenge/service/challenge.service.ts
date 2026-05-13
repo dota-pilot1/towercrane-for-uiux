@@ -30,7 +30,7 @@ export class ChallengeService {
   // ─── Categories ─────────────────────────────────────────────────────────
 
   async getCategories() {
-    return this.db.db.select().from(challengeCategoriesTable).all();
+    return this.db.db.select().from(challengeCategoriesTable).orderBy(challengeCategoriesTable.orderIdx).all();
   }
 
   async getCategoryById(id: string) {
@@ -76,6 +76,28 @@ export class ChallengeService {
     if (category.createdBy !== userId) throw new ForbiddenException('Not authorized');
 
     this.db.db.delete(challengeCategoriesTable).where(eq(challengeCategoriesTable.id, id)).run();
+  }
+
+  async reorderCategories(categoryIds: string[], userId: string) {
+    const now = new Date().toISOString();
+    for (let i = 0; i < categoryIds.length; i++) {
+      this.db.db
+        .update(challengeCategoriesTable)
+        .set({ orderIdx: i, updatedAt: now })
+        .where(eq(challengeCategoriesTable.id, categoryIds[i]))
+        .run();
+    }
+  }
+
+  async reorderSections(categoryId: string, sectionIds: string[], userId: string) {
+    const now = new Date().toISOString();
+    for (let i = 0; i < sectionIds.length; i++) {
+      this.db.db
+        .update(challengeSectionsTable)
+        .set({ orderIdx: i, updatedAt: now })
+        .where(eq(challengeSectionsTable.id, sectionIds[i]))
+        .run();
+    }
   }
 
   // ─── Sections ───────────────────────────────────────────────────────────

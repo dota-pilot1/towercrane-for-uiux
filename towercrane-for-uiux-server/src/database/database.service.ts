@@ -370,6 +370,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         name TEXT NOT NULL,
         summary TEXT,
         icon TEXT NOT NULL DEFAULT 'Trophy',
+        order_idx INTEGER NOT NULL DEFAULT 0,
         created_by TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -1083,6 +1084,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'categories',
       'order_idx',
       'ALTER TABLE categories ADD COLUMN order_idx INTEGER DEFAULT 0 NOT NULL',
+    );
+    this.ensureColumn(
+      'challenge_categories',
+      'order_idx',
+      'ALTER TABLE challenge_categories ADD COLUMN order_idx INTEGER DEFAULT 0 NOT NULL',
     );
     this.ensureColumn(
       'meeting_rooms',

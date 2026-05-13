@@ -416,6 +416,7 @@ export const challengeCategoriesTable = sqliteTable('challenge_categories', {
   name: text('name').notNull(),
   summary: text('summary'),
   icon: text('icon').notNull().default('Trophy'),
+  orderIdx: integer('order_idx').notNull().default(0),
   createdBy: text('created_by')
     .notNull()
     .references(() => usersTable.id, { onDelete: 'cascade' }),
