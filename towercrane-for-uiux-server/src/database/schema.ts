@@ -531,6 +531,29 @@ export const sqlPracticeNotesTable = sqliteTable('sql_practice_notes', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export type SqlPracticeSubmissionLevel = 'beginner' | 'intermediate' | 'advanced';
+
+export const sqlPracticeSubmissionsTable = sqliteTable('sql_practice_submissions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  seedFile: text('seed_file').notNull(),
+  seedHash: text('seed_hash'),
+  exampleId: text('example_id').notNull(),
+  exampleTitle: text('example_title').notNull(),
+  exampleLevel: text('example_level').$type<SqlPracticeSubmissionLevel>().notNull(),
+  exampleOrder: integer('example_order').notNull(),
+  submittedSql: text('submitted_sql').notNull(),
+  answerSql: text('answer_sql').notNull(),
+  isCorrect: integer('is_correct', { mode: 'boolean' }).notNull(),
+  score: integer('score').notNull().default(0),
+  maxScore: integer('max_score').notNull().default(1),
+  feedback: text('feedback').notNull(),
+  geminiRaw: text('gemini_raw'),
+  createdAt: text('created_at').notNull(),
+});
+
 // ─── Dev Challenge Module Tables ──────────────────────────────────────────
 
 export type DevChallengeAssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -646,6 +669,7 @@ export const schema = {
   challengeGptMessagesTable,
   challengeUserNotesTable,
   sqlPracticeNotesTable,
+  sqlPracticeSubmissionsTable,
   devChallengeCategoriesTable,
   devChallengeSectionsTable,
   devChallengeAssignmentsTable,
@@ -718,6 +742,8 @@ export type ChallengeUserNoteRow = typeof challengeUserNotesTable.$inferSelect;
 export type ChallengeUserNoteInsert = typeof challengeUserNotesTable.$inferInsert;
 export type SqlPracticeNoteRow = typeof sqlPracticeNotesTable.$inferSelect;
 export type SqlPracticeNoteInsert = typeof sqlPracticeNotesTable.$inferInsert;
+export type SqlPracticeSubmissionRow = typeof sqlPracticeSubmissionsTable.$inferSelect;
+export type SqlPracticeSubmissionInsert = typeof sqlPracticeSubmissionsTable.$inferInsert;
 export type DevChallengeCategoryRow = typeof devChallengeCategoriesTable.$inferSelect;
 export type DevChallengeCategoryInsert = typeof devChallengeCategoriesTable.$inferInsert;
 export type DevChallengeSectionRow = typeof devChallengeSectionsTable.$inferSelect;

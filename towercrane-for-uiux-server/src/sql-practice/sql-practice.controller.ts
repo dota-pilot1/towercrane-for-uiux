@@ -63,6 +63,21 @@ export class SqlPracticeController {
     return this.sqlPracticeService.geminiAsk(body);
   }
 
+  @Post('submissions/grade')
+  gradeSubmission(@Body() body: unknown, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.gradeAndSaveSubmission(body, req.user.id);
+  }
+
+  @Get('submissions/mine')
+  mySubmissions(@Query() query: unknown, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.getMySubmissions(query, req.user.id);
+  }
+
+  @Get('submissions/ranking')
+  ranking(@Query() query: unknown) {
+    return this.sqlPracticeService.getRanking(query);
+  }
+
   @Get('notes/mine')
   notes(@Query() query: unknown, @Req() req: SessionRequest) {
     const filter = listSqlPracticeNotesQuerySchema.parse(query);

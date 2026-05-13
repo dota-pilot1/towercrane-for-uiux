@@ -19,6 +19,24 @@ export const geminiAskSchema = z.object({
   mode: z.enum(['sql', 'general', 'grading']),
 });
 
+export const gradeSqlPracticeSubmissionSchema = z.object({
+  seedFile: seedFileNameSchema,
+  seedHash: z.string().trim().optional(),
+  exampleId: z.string().trim().min(1, 'Example id is required'),
+  exampleTitle: z.string().trim().min(1, 'Example title is required'),
+  exampleLevel: z.enum(['beginner', 'intermediate', 'advanced']),
+  exampleOrder: z.number().int().positive(),
+  description: z.string().trim().min(1, 'Description is required'),
+  hint: z.string().trim().min(1, 'Hint is required'),
+  relatedTables: z.array(z.string().trim().min(1)).default([]),
+  submittedSql: z.string().trim().min(1, 'Submitted SQL is required'),
+  answerSql: z.string().trim().min(1, 'Answer SQL is required'),
+});
+
+export const sqlPracticeSubmissionSeedQuerySchema = z.object({
+  seedFile: seedFileNameSchema,
+});
+
 const optionalTrimmedString = z
   .string()
   .trim()
@@ -58,6 +76,10 @@ export const updateSqlPracticeNoteSchema = z
 export type ExecuteSqlInput = z.infer<typeof executeSqlSchema>;
 export type ActivateSeedInput = z.infer<typeof activateSeedSchema>;
 export type GeminiAskInput = z.infer<typeof geminiAskSchema>;
+export type GradeSqlPracticeSubmissionInput = z.infer<typeof gradeSqlPracticeSubmissionSchema>;
+export type SqlPracticeSubmissionSeedQuery = z.infer<
+  typeof sqlPracticeSubmissionSeedQuerySchema
+>;
 export type ListSqlPracticeNotesQuery = z.infer<typeof listSqlPracticeNotesQuerySchema>;
 export type CreateSqlPracticeNoteInput = z.infer<typeof createSqlPracticeNoteSchema>;
 export type UpdateSqlPracticeNoteInput = z.infer<typeof updateSqlPracticeNoteSchema>;

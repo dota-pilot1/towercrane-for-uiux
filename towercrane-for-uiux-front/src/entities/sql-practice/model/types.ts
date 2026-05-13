@@ -114,3 +114,80 @@ export type CreateSqlPracticeNotePayload = {
 }
 
 export type UpdateSqlPracticeNotePayload = Partial<CreateSqlPracticeNotePayload>
+
+export type SqlPracticeSubmissionLevel = 'beginner' | 'intermediate' | 'advanced'
+
+export type SqlPracticeSubmission = {
+  id: string
+  userId: string
+  seedFile: string
+  seedHash: string | null
+  exampleId: string
+  exampleTitle: string
+  exampleLevel: SqlPracticeSubmissionLevel
+  exampleOrder: number
+  submittedSql: string
+  answerSql: string
+  isCorrect: boolean
+  score: number
+  maxScore: number
+  feedback: string
+  geminiRaw: string | null
+  createdAt: string
+}
+
+export type SqlPracticeSubmissionSummary = {
+  seedFile: string
+  totalScore: number
+  maxScore: number
+  correctCount: number
+  submittedCount: number
+}
+
+export type SqlPracticeSubmissionStatus = {
+  exampleId: string
+  bestScore: number
+  isCorrect: boolean
+  lastSubmittedAt: string
+  lastSubmissionId: string
+}
+
+export type SqlPracticeMySubmissionsResponse = {
+  seedFile: string
+  summary: SqlPracticeSubmissionSummary
+  byExample: Record<string, SqlPracticeSubmissionStatus>
+}
+
+export type SqlPracticeGradePayload = {
+  seedFile: string
+  seedHash?: string
+  exampleId: string
+  exampleTitle: string
+  exampleLevel: SqlPracticeSubmissionLevel
+  exampleOrder: number
+  description: string
+  hint: string
+  relatedTables: string[]
+  submittedSql: string
+  answerSql: string
+}
+
+export type SqlPracticeGradeResponse = {
+  submission: SqlPracticeSubmission
+  summary: SqlPracticeSubmissionSummary
+}
+
+export type SqlPracticeRankingItem = {
+  rank: number
+  userId: string
+  userName: string
+  totalScore: number
+  correctCount: number
+  submittedCount: number
+  lastSubmittedAt: string
+}
+
+export type SqlPracticeRankingResponse = {
+  seedFile: string
+  rankings: SqlPracticeRankingItem[]
+}

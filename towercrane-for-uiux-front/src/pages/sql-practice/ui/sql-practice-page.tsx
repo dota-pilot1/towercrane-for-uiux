@@ -14,17 +14,20 @@ import {
 } from 'lucide-react'
 
 import { Card } from '../../../shared/ui/card'
-import { sqlPracticeApi } from '../../../entities/sql-practice/api/sql-practice-api'
 import type { SqlHistoryItem, TableInfo } from '../../../entities/sql-practice/model/types'
 import type {
   SqlExampleLevel,
   SqlPracticeExample,
+  SqlPracticeExampleSet,
 } from '../../../entities/sql-practice/model/example-types'
 import {
   useExecuteSqlPracticeQuery,
+  useGradeSqlPracticeSubmission,
   useReloadSqlPracticeSeed,
   useResetSqlPracticeDb,
+  useSqlPracticeMySubmissions,
   useSqlPracticeMeta,
+  useSqlPracticeRanking,
   useSqlPracticeTables,
 } from '../../../features/sql-practice/model/use-sql-practice-queries'
 import { getSqlPracticeExampleSet, sqlExampleLevelLabels } from '../../../features/sql-practice/model/sql-practice-examples'
@@ -33,6 +36,7 @@ import { SqlInputBar } from '../../../features/sql-practice/ui/sql-input-bar'
 import { SqlNotesDialog } from '../../../features/sql-practice/ui/sql-notes-dialog'
 import { SqlPracticePageHeader } from '../../../features/sql-practice/ui/sql-practice-page-header'
 import { SqlQuizSidebar } from '../../../features/sql-practice/ui/sql-quiz-sidebar'
+import { SqlRankingDialog } from '../../../features/sql-practice/ui/sql-ranking-dialog'
 import { SqlSchemaSidebar } from '../../../features/sql-practice/ui/sql-schema-sidebar'
 import { useSessionStore } from '../../../shared/store/session-store'
 
@@ -46,54 +50,25 @@ const LEVEL_BADGE_CLASS: Record<SqlExampleLevel, string> = {
 
 type SqlGradeStatus = 'correct' | 'incorrect' | null
 
-function parseSqlGradeResponse(raw: string): { status: SqlGradeStatus; body: string } {
-  const firstLine = raw.split('\n')[0]?.trim()
-
-  if (firstLine === '[SQL_CORRECT]') {
-    return { status: 'correct', body: raw.slice(firstLine.length).replace(/^\n/, '') }
-  }
-
-  if (firstLine === '[SQL_INCORRECT]') {
-    return { status: 'incorrect', body: raw.slice(firstLine.length).replace(/^\n/, '') }
-  }
-
-  return { status: null, body: raw }
-}
-
-function buildSqlGradePrompt(example: SqlPracticeExample, submittedSql: string) {
-  return `SQL 연습 문제의 사용자 제출 답안을 채점해주세요.
-
-[문제]
-제목: ${example.title}
-설명: ${example.description}
-힌트: ${example.hint}
-관련 테이블: ${example.relatedTables.join(', ')}
-
-[실제 정답 SQL]
-${example.answerSql}
-
-[사용자 제출 SQL]
-${submittedSql}
-
-[채점 요청]
-사용자 제출 SQL이 문제 요구사항과 실제 정답 SQL의 결과를 같은 의미로 만족하는지 판별해주세요.`
-}
-
 export function SqlPracticePage() {
   const [history, setHistory] = useState<SqlHistoryItem[]>([])
   const [selectedTableOverride, setSelectedTableOverride] = useState<string | null>(null)
   const [quizSidebarOpen, setQuizSidebarOpen] = useState(true)
   const [notesDialogOpen, setNotesDialogOpen] = useState(false)
+  const [rankingDialogOpen, setRankingDialogOpen] = useState(false)
   const [selectedExample, setSelectedExample] = useState<SqlPracticeExample | null>(null)
   const [answerOpen, setAnswerOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const userName = useSessionStore((state) => state.userName)
+  const userId = useSessionStore((state) => state.userId)
 
   const metaQuery = useSqlPracticeMeta()
   const tablesQuery = useSqlPracticeTables()
   const executeMutation = useExecuteSqlPracticeQuery()
   const resetMutation = useResetSqlPracticeDb()
   const reloadSeedMutation = useReloadSqlPracticeSeed()
+  const submissionsQuery = useSqlPracticeMySubmissions(metaQuery.data?.seedFile)
+  const rankingQuery = useSqlPracticeRanking(metaQuery.data?.seedFile, rankingDialogOpen)
 
   const tables = tablesQuery.data ?? EMPTY_TABLES
   const selectedTable = useMemo(() => {
@@ -111,6 +86,7 @@ export function SqlPracticePage() {
     () => getSqlPracticeExampleSet(metaQuery.data?.seedFile ?? '01_board_basic.sql'),
     [metaQuery.data?.seedFile],
   )
+  const totalProblemCount = useMemo(() => getExampleSetTotalCount(exampleSet), [exampleSet])
 
   const handleSelectExample = (example: SqlPracticeExample) => {
     setSelectedExample(example)
@@ -188,6 +164,10 @@ export function SqlPracticePage() {
           onOpenNotes={() => setNotesDialogOpen(true)}
           isOpen={quizSidebarOpen}
           onToggle={() => setQuizSidebarOpen((v) => !v)}
+          submissionStatusByExample={submissionsQuery.data?.byExample ?? {}}
+          totalScore={submissionsQuery.data?.summary.totalScore ?? 0}
+          maxScore={totalProblemCount}
+          onOpenRanking={() => setRankingDialogOpen(true)}
         />
 
         {/* 메인 SQL 영역 */}
@@ -200,6 +180,8 @@ export function SqlPracticePage() {
                 answerOpen={answerOpen}
                 onToggleAnswer={() => setAnswerOpen((v) => !v)}
                 onClose={handleCloseExample}
+                seedFile={metaQuery.data?.seedFile ?? selectedExample.seedFile}
+                seedHash={metaQuery.data?.seedHash}
                 className="mb-4"
               />
             )}
@@ -253,8 +235,21 @@ export function SqlPracticePage() {
         selectedExample={selectedExample}
         selectedTable={selectedTable}
       />
+
+      <SqlRankingDialog
+        open={rankingDialogOpen}
+        onOpenChange={setRankingDialogOpen}
+        seedFile={metaQuery.data?.seedFile}
+        rankings={rankingQuery.data?.rankings ?? []}
+        isLoading={rankingQuery.isFetching}
+        currentUserId={userId}
+      />
     </section>
   )
+}
+
+function getExampleSetTotalCount(exampleSet: SqlPracticeExampleSet) {
+  return exampleSet.beginner.length + exampleSet.intermediate.length + exampleSet.advanced.length
 }
 
 function ProblemPanel({
@@ -262,49 +257,58 @@ function ProblemPanel({
   answerOpen,
   onToggleAnswer,
   onClose,
+  seedFile,
+  seedHash,
   className,
 }: {
   example: SqlPracticeExample
   answerOpen: boolean
   onToggleAnswer: () => void
   onClose: () => void
+  seedFile: string
+  seedHash?: string
   className?: string
 }) {
   const [submittedSql, setSubmittedSql] = useState('')
   const [gradeStatus, setGradeStatus] = useState<SqlGradeStatus>(null)
   const [gradeBody, setGradeBody] = useState('')
   const [gradeError, setGradeError] = useState('')
-  const [isGrading, setIsGrading] = useState(false)
+  const gradeMutation = useGradeSqlPracticeSubmission()
+  const isGrading = gradeMutation.isPending
 
   useEffect(() => {
     setSubmittedSql('')
     setGradeStatus(null)
     setGradeBody('')
     setGradeError('')
-    setIsGrading(false)
   }, [example.id])
 
   const handleSubmitAnswer = async () => {
     const trimmed = submittedSql.trim()
     if (!trimmed || isGrading) return
 
-    setIsGrading(true)
     setGradeStatus(null)
     setGradeBody('')
     setGradeError('')
 
     try {
-      const response = await sqlPracticeApi.geminiAsk(
-        buildSqlGradePrompt(example, trimmed),
-        'grading',
-      )
-      const parsed = parseSqlGradeResponse(response.answer ?? '')
-      setGradeStatus(parsed.status)
-      setGradeBody(parsed.body)
+      const response = await gradeMutation.mutateAsync({
+        seedFile,
+        seedHash,
+        exampleId: example.id,
+        exampleTitle: example.title,
+        exampleLevel: example.level,
+        exampleOrder: example.order,
+        description: example.description,
+        hint: example.hint,
+        relatedTables: example.relatedTables,
+        submittedSql: trimmed,
+        answerSql: example.answerSql,
+      })
+      setGradeStatus(response.submission.isCorrect ? 'correct' : 'incorrect')
+      setGradeBody(response.submission.feedback)
     } catch (error) {
       setGradeError(error instanceof Error ? error.message : '채점 중 오류가 발생했습니다.')
-    } finally {
-      setIsGrading(false)
     }
   }
 

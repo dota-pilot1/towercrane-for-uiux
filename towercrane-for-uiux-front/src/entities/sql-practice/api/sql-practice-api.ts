@@ -3,9 +3,13 @@ import type {
   CreateSqlPracticeNotePayload,
   SqlActivateSeedResponse,
   SqlExecuteResponse,
+  SqlPracticeGradePayload,
+  SqlPracticeGradeResponse,
+  SqlPracticeMySubmissionsResponse,
   SqlPracticeNote,
   SqlPracticeNoteFilter,
   SqlPracticeMeta,
+  SqlPracticeRankingResponse,
   SqlPracticeSeedListResponse,
   SqlPracticeSeedSource,
   SqlResetResponse,
@@ -55,6 +59,19 @@ export const sqlPracticeApi = {
       method: 'POST',
       body: JSON.stringify({ content, mode }),
     }),
+  gradeSubmission: (payload: SqlPracticeGradePayload) =>
+    apiRequest<SqlPracticeGradeResponse>('/sql/submissions/grade', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getMySubmissions: (seedFile: string) =>
+    apiRequest<SqlPracticeMySubmissionsResponse>(
+      `/sql/submissions/mine?seedFile=${encodeURIComponent(seedFile)}`,
+    ),
+  getRanking: (seedFile: string) =>
+    apiRequest<SqlPracticeRankingResponse>(
+      `/sql/submissions/ranking?seedFile=${encodeURIComponent(seedFile)}`,
+    ),
   getNotes: (filter?: SqlPracticeNoteFilter) =>
     apiRequest<SqlPracticeNote[]>(`/sql/notes/mine${toSearchParams(filter)}`),
   createNote: (payload: CreateSqlPracticeNotePayload) =>

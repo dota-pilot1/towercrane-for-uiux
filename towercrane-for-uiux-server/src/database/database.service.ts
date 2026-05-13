@@ -512,6 +512,35 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_sql_practice_notes_user_table
         ON sql_practice_notes(user_id, table_name);
 
+      CREATE TABLE IF NOT EXISTS sql_practice_submissions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        seed_file TEXT NOT NULL,
+        seed_hash TEXT,
+        example_id TEXT NOT NULL,
+        example_title TEXT NOT NULL,
+        example_level TEXT NOT NULL,
+        example_order INTEGER NOT NULL,
+        submitted_sql TEXT NOT NULL,
+        answer_sql TEXT NOT NULL,
+        is_correct INTEGER NOT NULL,
+        score INTEGER NOT NULL DEFAULT 0,
+        max_score INTEGER NOT NULL DEFAULT 1,
+        feedback TEXT NOT NULL,
+        gemini_raw TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_practice_submissions_user_seed_created
+        ON sql_practice_submissions(user_id, seed_file, created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_practice_submissions_user_seed_example
+        ON sql_practice_submissions(user_id, seed_file, example_id);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_practice_submissions_seed_score
+        ON sql_practice_submissions(seed_file, score, created_at);
+
       CREATE TABLE IF NOT EXISTS dev_challenge_categories (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,

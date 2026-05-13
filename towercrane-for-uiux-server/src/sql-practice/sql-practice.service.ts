@@ -20,13 +20,20 @@ import {
 } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { DatabaseService } from '../database/database.service';
-import { sqlPracticeNotesTable } from '../database/schema';
+import {
+  sqlPracticeNotesTable,
+  sqlPracticeSubmissionsTable,
+  usersTable,
+} from '../database/schema';
 import {
   activateSeedSchema,
   executeSqlSchema,
   geminiAskSchema,
+  gradeSqlPracticeSubmissionSchema,
   seedFileNameSchema,
+  sqlPracticeSubmissionSeedQuerySchema,
   type CreateSqlPracticeNoteInput,
+  type GradeSqlPracticeSubmissionInput,
   type ListSqlPracticeNotesQuery,
   type UpdateSqlPracticeNoteInput,
 } from './sql-practice.schemas';
@@ -35,11 +42,16 @@ import type {
   ColumnInfo,
   SqlActivateSeedResponse,
   SqlExecuteResponse,
+  SqlPracticeGradeSubmissionResponse,
+  SqlPracticeMySubmissionsResponse,
   SqlPracticeMeta,
+  SqlPracticeRankingResponse,
   SqlPracticeSeedLevel,
   SqlPracticeSeedListResponse,
   SqlPracticeSeedMeta,
   SqlPracticeSeedSource,
+  SqlPracticeSubmission,
+  SqlPracticeSubmissionStatus,
   SqlQueryType,
   SqlResetResponse,
   TableInfo,
@@ -70,6 +82,8 @@ type Freshness = {
   seedReloaded: boolean;
   loadedAt: string | null;
 };
+
+type SqlGradeValidity = 'correct' | 'incorrect';
 
 @Injectable()
 export class SqlPracticeService {
@@ -319,6 +333,186 @@ export class SqlPracticeService {
       .delete(sqlPracticeNotesTable)
       .where(eq(sqlPracticeNotesTable.id, id))
       .run();
+  }
+
+  async gradeAndSaveSubmission(
+    body: unknown,
+    userId: string,
+  ): Promise<SqlPracticeGradeSubmissionResponse> {
+    const input = gradeSqlPracticeSubmissionSchema.parse(body);
+    const raw = await this.callGemini(
+      this.buildSqlGradePrompt(input),
+      'grading',
+    );
+    const parsed = this.parseSqlGradeResponse(raw);
+
+    if (!parsed.validity) {
+      throw new InternalServerErrorException('Gemini 채점 결과를 판별하지 못했습니다.');
+    }
+
+    const now = new Date().toISOString();
+    const isCorrect = parsed.validity === 'correct';
+    const submission: SqlPracticeSubmission = {
+      id: randomUUID(),
+      userId,
+      seedFile: input.seedFile,
+      seedHash: input.seedHash ?? null,
+      exampleId: input.exampleId,
+      exampleTitle: input.exampleTitle,
+      exampleLevel: input.exampleLevel,
+      exampleOrder: input.exampleOrder,
+      submittedSql: input.submittedSql,
+      answerSql: input.answerSql,
+      isCorrect,
+      score: isCorrect ? 1 : 0,
+      maxScore: 1,
+      feedback: parsed.body,
+      geminiRaw: raw,
+      createdAt: now,
+    };
+
+    this.databaseService.db.insert(sqlPracticeSubmissionsTable).values(submission).run();
+
+    return {
+      submission,
+      summary: this.getMySubmissionSummary(userId, input.seedFile).summary,
+    };
+  }
+
+  getMySubmissionSummary(
+    userId: string,
+    seedFile: string,
+  ): SqlPracticeMySubmissionsResponse {
+    const parsed = sqlPracticeSubmissionSeedQuerySchema.parse({ seedFile });
+    const rows = this.databaseService.db
+      .select()
+      .from(sqlPracticeSubmissionsTable)
+      .where(
+        and(
+          eq(sqlPracticeSubmissionsTable.userId, userId),
+          eq(sqlPracticeSubmissionsTable.seedFile, parsed.seedFile),
+        ),
+      )
+      .orderBy(desc(sqlPracticeSubmissionsTable.createdAt))
+      .all();
+
+    const byExample: Record<string, SqlPracticeSubmissionStatus> = {};
+
+    for (const row of rows) {
+      const previous = byExample[row.exampleId];
+      const bestScore = Math.max(previous?.bestScore ?? 0, row.score);
+
+      byExample[row.exampleId] = {
+        exampleId: row.exampleId,
+        bestScore,
+        isCorrect: bestScore > 0,
+        lastSubmittedAt: previous?.lastSubmittedAt ?? row.createdAt,
+        lastSubmissionId: previous?.lastSubmissionId ?? row.id,
+      };
+    }
+
+    const statuses = Object.values(byExample);
+    const totalScore = statuses.reduce((sum, item) => sum + item.bestScore, 0);
+
+    return {
+      seedFile: parsed.seedFile,
+      summary: {
+        seedFile: parsed.seedFile,
+        totalScore,
+        maxScore: statuses.length,
+        correctCount: statuses.filter((item) => item.isCorrect).length,
+        submittedCount: statuses.length,
+      },
+      byExample,
+    };
+  }
+
+  getMySubmissions(query: unknown, userId: string): SqlPracticeMySubmissionsResponse {
+    const parsed = sqlPracticeSubmissionSeedQuerySchema.parse(query);
+    return this.getMySubmissionSummary(userId, parsed.seedFile);
+  }
+
+  getRanking(query: unknown): SqlPracticeRankingResponse {
+    const { seedFile } = sqlPracticeSubmissionSeedQuerySchema.parse(query);
+    const rows = this.databaseService.db
+      .select({
+        userId: sqlPracticeSubmissionsTable.userId,
+        userName: usersTable.name,
+        exampleId: sqlPracticeSubmissionsTable.exampleId,
+        score: sqlPracticeSubmissionsTable.score,
+        createdAt: sqlPracticeSubmissionsTable.createdAt,
+      })
+      .from(sqlPracticeSubmissionsTable)
+      .leftJoin(usersTable, eq(sqlPracticeSubmissionsTable.userId, usersTable.id))
+      .where(eq(sqlPracticeSubmissionsTable.seedFile, seedFile))
+      .all();
+
+    const users = new Map<
+      string,
+      {
+        userName: string;
+        examples: Map<string, number>;
+        submittedExamples: Set<string>;
+        lastSubmittedAt: string;
+      }
+    >();
+
+    for (const row of rows) {
+      const current =
+        users.get(row.userId) ??
+        {
+          userName: row.userName ?? 'Unknown User',
+          examples: new Map<string, number>(),
+          submittedExamples: new Set<string>(),
+          lastSubmittedAt: row.createdAt,
+        };
+
+      current.userName = row.userName ?? current.userName;
+      current.submittedExamples.add(row.exampleId);
+      current.examples.set(
+        row.exampleId,
+        Math.max(current.examples.get(row.exampleId) ?? 0, row.score),
+      );
+      if (row.createdAt > current.lastSubmittedAt) {
+        current.lastSubmittedAt = row.createdAt;
+      }
+      users.set(row.userId, current);
+    }
+
+    const ranked = [...users.entries()]
+      .map(([userId, item]) => {
+        const scores = [...item.examples.values()];
+        const totalScore = scores.reduce((sum, score) => sum + score, 0);
+
+        return {
+          rank: 0,
+          userId,
+          userName: item.userName,
+          totalScore,
+          correctCount: scores.filter((score) => score > 0).length,
+          submittedCount: item.submittedExamples.size,
+          lastSubmittedAt: item.lastSubmittedAt,
+        };
+      })
+      .sort((a, b) => {
+        if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+        if (a.lastSubmittedAt !== b.lastSubmittedAt) {
+          return a.lastSubmittedAt.localeCompare(b.lastSubmittedAt);
+        }
+        return a.userName.localeCompare(b.userName);
+      });
+
+    let previousScore: number | null = null;
+    let previousRank = 0;
+
+    const rankings = ranked.map((item, index) => {
+      const rank = previousScore === item.totalScore ? previousRank : index + 1;
+      previousScore = item.totalScore;
+      previousRank = rank;
+      return { ...item, rank };
+    });
+
+    return { seedFile, rankings };
   }
 
   private executeReader(
@@ -819,6 +1013,55 @@ export class SqlPracticeService {
 
   async geminiAsk(body: unknown): Promise<{ answer: string }> {
     const { content, mode } = geminiAskSchema.parse(body);
+    return { answer: await this.callGemini(content, mode) };
+  }
+
+  private buildSqlGradePrompt(input: GradeSqlPracticeSubmissionInput) {
+    return `SQL 연습 문제의 사용자 제출 답안을 채점해주세요.
+
+[문제]
+제목: ${input.exampleTitle}
+설명: ${input.description}
+힌트: ${input.hint}
+관련 테이블: ${input.relatedTables.join(', ')}
+
+[실제 정답 SQL]
+${input.answerSql}
+
+[사용자 제출 SQL]
+${input.submittedSql}
+
+[채점 요청]
+사용자 제출 SQL이 문제 요구사항과 실제 정답 SQL의 결과를 같은 의미로 만족하는지 판별해주세요.`;
+  }
+
+  private parseSqlGradeResponse(raw: string): {
+    validity: SqlGradeValidity | null;
+    body: string;
+  } {
+    const firstLine = raw.split('\n')[0]?.trim();
+
+    if (firstLine === '[SQL_CORRECT]') {
+      return {
+        validity: 'correct',
+        body: raw.slice(firstLine.length).replace(/^\n/, ''),
+      };
+    }
+
+    if (firstLine === '[SQL_INCORRECT]') {
+      return {
+        validity: 'incorrect',
+        body: raw.slice(firstLine.length).replace(/^\n/, ''),
+      };
+    }
+
+    return { validity: null, body: raw };
+  }
+
+  private async callGemini(
+    content: string,
+    mode: 'sql' | 'general' | 'grading',
+  ): Promise<string> {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     if (!apiKey) {
       throw new InternalServerErrorException('Gemini API key is not configured.');
@@ -859,8 +1102,7 @@ Respond in Korean.`;
     const data = (await res.json()) as {
       candidates?: { content?: { parts?: { text?: string }[] } }[];
     };
-    const answer = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    return { answer };
+    return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   }
 
   private isReaderType(type: SqlQueryType) {

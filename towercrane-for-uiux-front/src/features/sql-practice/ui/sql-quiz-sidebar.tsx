@@ -1,6 +1,15 @@
-import { BookOpenCheck, ChevronLeft, ChevronRight, NotebookPen } from 'lucide-react'
+import {
+  BookOpenCheck,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  NotebookPen,
+  Trophy,
+  XCircle,
+} from 'lucide-react'
 import { useState } from 'react'
 
+import type { SqlPracticeSubmissionStatus } from '../../../entities/sql-practice/model/types'
 import type {
   SqlExampleLevel,
   SqlPracticeExample,
@@ -24,6 +33,10 @@ type SqlQuizSidebarProps = {
   onOpenNotes: () => void
   isOpen: boolean
   onToggle: () => void
+  submissionStatusByExample: Record<string, SqlPracticeSubmissionStatus>
+  totalScore: number
+  maxScore: number
+  onOpenRanking: () => void
 }
 
 export function SqlQuizSidebar({
@@ -33,6 +46,10 @@ export function SqlQuizSidebar({
   onOpenNotes,
   isOpen,
   onToggle,
+  submissionStatusByExample,
+  totalScore,
+  maxScore,
+  onOpenRanking,
 }: SqlQuizSidebarProps) {
   const [activeLevel, setActiveLevel] = useState<SqlExampleLevel>('beginner')
 
@@ -156,12 +173,54 @@ export function SqlQuizSidebar({
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold">
                     {example.title}
                   </span>
+                  <SubmissionStatusIcon status={submissionStatusByExample[example.id]} />
                 </button>
               )
             })}
           </div>
         )}
       </div>
+
+      <div className="border-t border-surface-border bg-surface-muted p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-widest text-text-muted">
+              총점
+            </p>
+            <p className="mt-0.5 text-sm font-black tabular-nums text-text-primary">
+              {totalScore} / {maxScore}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-2.5 text-[11px] font-bold text-brand-primary transition-colors hover:brightness-110"
+            onClick={onOpenRanking}
+          >
+            <Trophy className="size-3.5" />
+            랭킹 보기
+          </button>
+        </div>
+      </div>
     </aside>
+  )
+}
+
+function SubmissionStatusIcon({ status }: { status?: SqlPracticeSubmissionStatus }) {
+  if (!status) return null
+
+  if (status.isCorrect) {
+    return (
+      <CheckCircle
+        className="size-3.5 shrink-0 text-brand-primary"
+        aria-label="정답"
+      />
+    )
+  }
+
+  return (
+    <XCircle
+      className="size-3.5 shrink-0 text-destructive"
+      aria-label="오답"
+    />
   )
 }

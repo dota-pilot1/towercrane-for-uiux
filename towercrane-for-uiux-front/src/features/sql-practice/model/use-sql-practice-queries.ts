@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { sqlPracticeApi } from '../../../entities/sql-practice/api/sql-practice-api'
 import type {
   CreateSqlPracticeNotePayload,
+  SqlPracticeGradePayload,
   SqlPracticeNoteFilter,
   SqlPracticeSeedSource,
   UpdateSqlPracticeNotePayload,
@@ -15,6 +16,8 @@ export const sqlPracticeQueryKeys = {
   seeds: ['sql-practice', 'seeds'] as const,
   erd: (fileName: string) => ['sql-practice', 'erd', fileName] as const,
   notes: (filter?: SqlPracticeNoteFilter) => ['sql-practice', 'notes', filter ?? {}] as const,
+  submissions: (seedFile: string) => ['sql-practice', 'submissions', seedFile] as const,
+  ranking: (seedFile: string) => ['sql-practice', 'ranking', seedFile] as const,
 }
 
 function messageFromError(error: unknown, fallback: string) {
@@ -128,6 +131,39 @@ export function useSqlPracticeNotes(filter?: SqlPracticeNoteFilter, enabled = tr
     queryKey: sqlPracticeQueryKeys.notes(filter),
     queryFn: () => sqlPracticeApi.getNotes(filter),
     enabled,
+  })
+}
+
+export function useSqlPracticeMySubmissions(seedFile: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.submissions(seedFile ?? ''),
+    queryFn: () => sqlPracticeApi.getMySubmissions(seedFile!),
+    enabled: Boolean(seedFile),
+  })
+}
+
+export function useSqlPracticeRanking(seedFile: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.ranking(seedFile ?? ''),
+    queryFn: () => sqlPracticeApi.getRanking(seedFile!),
+    enabled: Boolean(seedFile) && enabled,
+  })
+}
+
+export function useGradeSqlPracticeSubmission() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: SqlPracticeGradePayload) => sqlPracticeApi.gradeSubmission(payload),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({
+        queryKey: sqlPracticeQueryKeys.submissions(response.submission.seedFile),
+      })
+      queryClient.invalidateQueries({
+        queryKey: sqlPracticeQueryKeys.ranking(response.submission.seedFile),
+      })
+    },
+    onError: (error) => toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
   })
 }
 
