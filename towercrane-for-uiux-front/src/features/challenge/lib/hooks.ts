@@ -80,7 +80,19 @@ export function useReorderCategories() {
   return useMutation({
     mutationFn: (categoryIds: string[]) =>
       apiRequest('/challenge/categories/reorder', { method: 'POST', body: JSON.stringify({ categoryIds }) }),
-    onSuccess: () => {
+    onMutate: async (categoryIds) => {
+      await queryClient.cancelQueries({ queryKey: CHALLENGE_KEYS.categories() })
+      const prev = queryClient.getQueryData<any[]>(CHALLENGE_KEYS.categories())
+      if (prev) {
+        const reordered = categoryIds.map((id) => prev.find((c) => c.id === id)).filter(Boolean)
+        queryClient.setQueryData(CHALLENGE_KEYS.categories(), reordered)
+      }
+      return { prev }
+    },
+    onError: (_err, _ids, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(CHALLENGE_KEYS.categories(), ctx.prev)
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.categories() })
     },
   })
@@ -91,7 +103,19 @@ export function useReorderSections() {
   return useMutation({
     mutationFn: ({ categoryId, sectionIds }: { categoryId: string; sectionIds: string[] }) =>
       apiRequest('/challenge/sections/reorder', { method: 'POST', body: JSON.stringify({ categoryId, sectionIds }) }),
-    onSuccess: (_, variables) => {
+    onMutate: async ({ categoryId, sectionIds }) => {
+      await queryClient.cancelQueries({ queryKey: CHALLENGE_KEYS.sections(categoryId) })
+      const prev = queryClient.getQueryData<any[]>(CHALLENGE_KEYS.sections(categoryId))
+      if (prev) {
+        const reordered = sectionIds.map((id) => prev.find((s) => s.id === id)).filter(Boolean)
+        queryClient.setQueryData(CHALLENGE_KEYS.sections(categoryId), reordered)
+      }
+      return { prev, categoryId }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(CHALLENGE_KEYS.sections(ctx.categoryId), ctx.prev)
+    },
+    onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: CHALLENGE_KEYS.sections(variables.categoryId) })
     },
   })
