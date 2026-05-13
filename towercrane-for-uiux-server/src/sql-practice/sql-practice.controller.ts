@@ -51,4 +51,9 @@ export class SqlPracticeController {
   seedErd(@Param('fileName') fileName: string) {
     return this.sqlPracticeService.getSeedErd(fileName);
   }
+
+  @Post('gemini')
+  geminiAsk(@Body() body: unknown) {
+    return this.sqlPracticeService.geminiAsk(body);
+  }
 }

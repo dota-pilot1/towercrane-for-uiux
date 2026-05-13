@@ -14,5 +14,11 @@ export const activateSeedSchema = z.object({
   fileName: seedFileNameSchema,
 });
 
+export const geminiAskSchema = z.object({
+  content: z.string().trim().min(1, 'Content is required'),
+  mode: z.enum(['sql', 'general']),
+});
+
 export type ExecuteSqlInput = z.infer<typeof executeSqlSchema>;
 export type ActivateSeedInput = z.infer<typeof activateSeedSchema>;
+export type GeminiAskInput = z.infer<typeof geminiAskSchema>;
