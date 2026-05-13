@@ -99,20 +99,13 @@ export function SqlPracticePageHeader({
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-4 rounded-md bg-text-primary px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-background/20 bg-background/10 text-background">
-          <Database className="size-5" />
-        </div>
-        <div className="min-w-0">
-          <h1 className="text-xl font-black text-background">SQL 연습장</h1>
-          <p className="mt-1 text-xs text-background/60">
-            별도 SQLite 연습 DB에 SQL을 실행합니다.
-          </p>
-        </div>
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded-md bg-text-primary px-4 py-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <Database className="size-3.5 shrink-0 text-background/70" />
+        <h1 className="text-sm font-black text-background">SQL 연습장</h1>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {mode === 'level-picker' ? (
           <LevelPicker
             exampleSet={exampleSet}
@@ -122,10 +115,10 @@ export function SqlPracticePageHeader({
         ) : (
           <button
             type="button"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-background/20 bg-background/10 px-3 text-xs font-bold text-background transition-colors hover:bg-background/20"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-background/20 bg-background/10 px-2.5 text-xs font-bold text-background transition-colors hover:bg-background/20"
             onClick={() => setMode('level-picker')}
           >
-            <BookOpenCheck className="size-3.5" />
+            <BookOpenCheck className="size-3" />
             문제 풀기
           </button>
         )}
@@ -133,12 +126,12 @@ export function SqlPracticePageHeader({
         {hasHistory && (
           <button
             type="button"
-            className="flex size-8 items-center justify-center rounded-md border border-background/20 bg-background/10 text-background/80 transition-colors hover:bg-background/20"
+            className="flex size-7 items-center justify-center rounded-md border border-background/20 bg-background/10 text-background/80 transition-colors hover:bg-background/20"
             onClick={onClearHistory}
             aria-label="히스토리 비우기"
             title="히스토리 비우기"
           >
-            <Trash2 className="size-3.5" />
+            <Trash2 className="size-3" />
           </button>
         )}
       </div>
