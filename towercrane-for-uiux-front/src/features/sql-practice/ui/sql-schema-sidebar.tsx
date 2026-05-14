@@ -1,4 +1,6 @@
 import {
+  ChevronLeft,
+  ChevronRight,
   Database,
   Info,
   RefreshCw,
@@ -13,6 +15,7 @@ import type {
   SqlPracticeSeedSummary,
   TableInfo,
 } from "../../../entities/sql-practice/model/types";
+import { useSessionStore } from "../../../shared/store/session-store";
 import {
   useActivateSqlPracticeSeed,
   useSqlPracticeErd,
@@ -60,9 +63,15 @@ export function SqlSchemaSidebar({
       setSeedDialogOpen(false);
     },
   });
+  const isAdmin = useSessionStore((s) => s.userRole === "admin");
 
+  const seeds = seedsQuery.data?.seeds ?? [];
   const activeSeed =
-    seedsQuery.data?.seeds.find((seed) => seed.isActive) ?? meta?.activeSeed;
+    seeds.find((seed) => seed.isActive) ?? meta?.activeSeed;
+
+  const activeIndex = seeds.findIndex((s) => s.isActive);
+  const prevSeed = activeIndex > 0 ? seeds[activeIndex - 1] : null;
+  const nextSeed = activeIndex >= 0 && activeIndex < seeds.length - 1 ? seeds[activeIndex + 1] : null;
 
   const handleActivateSeed = (seed: SqlPracticeSeedSummary) => {
     return activateSeedMutation.mutateAsync({
@@ -129,34 +138,60 @@ export function SqlSchemaSidebar({
                 hash: {meta?.seedHash ? meta.seedHash.slice(0, 10) : "loading"}
               </p>
             </div>
+
+            <div className="mt-3 flex items-center gap-1">
+              <button
+                type="button"
+                className="ui-icon-button size-7 shrink-0"
+                onClick={() => prevSeed && handleActivateSeed(prevSeed)}
+                disabled={!prevSeed || activateSeedMutation.isPending}
+                title={prevSeed ? `이전: ${prevSeed.fileName}` : "이전 파일 없음"}
+              >
+                <ChevronLeft className="size-3.5" />
+              </button>
+              <span className="flex-1 truncate text-center text-xs text-text-muted">
+                {activeSeed?.fileName ?? meta?.seedFile ?? "파일 선택"}
+              </span>
+              <button
+                type="button"
+                className="ui-icon-button size-7 shrink-0"
+                onClick={() => nextSeed && handleActivateSeed(nextSeed)}
+                disabled={!nextSeed || activateSeedMutation.isPending}
+                title={nextSeed ? `다음: ${nextSeed.fileName}` : "다음 파일 없음"}
+              >
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
           </div>
 
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              className="ui-icon-button h-8 gap-1.5 text-xs"
-              onClick={onReset}
-              disabled={isResetting || isReloading}
-              title="테이블 구조 + 데이터 전체 초기화"
-            >
-              <RotateCcw
-                className={`size-3.5 ${isResetting ? "animate-spin" : ""}`}
-              />
-              테이블 리셋
-            </button>
-            <button
-              type="button"
-              className="ui-icon-button h-8 gap-1.5 text-xs"
-              onClick={onReloadSeed}
-              disabled={isResetting || isReloading}
-              title="데이터만 seed 재적용"
-            >
-              <UploadCloud
-                className={`size-3.5 ${isReloading ? "animate-spin" : ""}`}
-              />
-              데이터 리셋
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="ui-icon-button h-8 gap-1.5 text-xs"
+                onClick={onReset}
+                disabled={isResetting || isReloading}
+                title="테이블 구조 + 데이터 전체 초기화"
+              >
+                <RotateCcw
+                  className={`size-3.5 ${isResetting ? "animate-spin" : ""}`}
+                />
+                테이블 리셋
+              </button>
+              <button
+                type="button"
+                className="ui-icon-button h-8 gap-1.5 text-xs"
+                onClick={onReloadSeed}
+                disabled={isResetting || isReloading}
+                title="데이터만 seed 재적용"
+              >
+                <UploadCloud
+                  className={`size-3.5 ${isReloading ? "animate-spin" : ""}`}
+                />
+                데이터 리셋
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
