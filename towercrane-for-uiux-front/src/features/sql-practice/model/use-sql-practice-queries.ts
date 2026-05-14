@@ -18,6 +18,7 @@ export const sqlPracticeQueryKeys = {
   notes: (filter?: SqlPracticeNoteFilter) => ['sql-practice', 'notes', filter ?? {}] as const,
   submissions: (seedFile: string) => ['sql-practice', 'submissions', seedFile] as const,
   ranking: (seedFile: string) => ['sql-practice', 'ranking', seedFile] as const,
+  activity: (seedFile: string) => ['sql-practice', 'activity', seedFile] as const,
 }
 
 function messageFromError(error: unknown, fallback: string) {
@@ -147,6 +148,16 @@ export function useSqlPracticeRanking(seedFile: string | undefined, enabled = tr
     queryKey: sqlPracticeQueryKeys.ranking(seedFile ?? ''),
     queryFn: () => sqlPracticeApi.getRanking(seedFile!),
     enabled: Boolean(seedFile) && enabled,
+    refetchInterval: enabled ? 5000 : false,
+  })
+}
+
+export function useSqlPracticeActivity(seedFile: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.activity(seedFile ?? ''),
+    queryFn: () => sqlPracticeApi.getActivity(seedFile!, 30),
+    enabled: Boolean(seedFile) && enabled,
+    refetchInterval: enabled ? 5000 : false,
   })
 }
 
@@ -161,6 +172,9 @@ export function useGradeSqlPracticeSubmission() {
       })
       queryClient.invalidateQueries({
         queryKey: sqlPracticeQueryKeys.ranking(response.submission.seedFile),
+      })
+      queryClient.invalidateQueries({
+        queryKey: sqlPracticeQueryKeys.activity(response.submission.seedFile),
       })
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),

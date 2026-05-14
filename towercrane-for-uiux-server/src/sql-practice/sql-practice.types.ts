@@ -152,3 +152,23 @@ export type SqlPracticeRankingResponse = {
   seedFile: string;
   rankings: SqlPracticeRankingItem[];
 };
+
+export type SqlPracticeActivityItem = {
+  id: string;
+  userId: string;
+  userName: string;
+  seedFile: string;
+  exampleId: string;
+  exampleTitle: string;
+  exampleLevel: SqlPracticeSubmissionLevel;
+  exampleOrder: number;
+  isCorrect: boolean;
+  score: number;
+  maxScore: number;
+  createdAt: string;
+};
+
+export type SqlPracticeActivityResponse = {
+  seedFile: string;
+  activities: SqlPracticeActivityItem[];
+};

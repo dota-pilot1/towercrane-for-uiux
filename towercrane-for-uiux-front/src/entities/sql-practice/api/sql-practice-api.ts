@@ -5,6 +5,7 @@ import type {
   SqlExecuteResponse,
   SqlPracticeGradePayload,
   SqlPracticeGradeResponse,
+  SqlPracticeActivityResponse,
   SqlPracticeMySubmissionsResponse,
   SqlPracticeNote,
   SqlPracticeNoteFilter,
@@ -71,6 +72,10 @@ export const sqlPracticeApi = {
   getRanking: (seedFile: string) =>
     apiRequest<SqlPracticeRankingResponse>(
       `/sql/submissions/ranking?seedFile=${encodeURIComponent(seedFile)}`,
+    ),
+  getActivity: (seedFile: string, limit = 30) =>
+    apiRequest<SqlPracticeActivityResponse>(
+      `/sql/submissions/activity?seedFile=${encodeURIComponent(seedFile)}&limit=${limit}`,
     ),
   getNotes: (filter?: SqlPracticeNoteFilter) =>
     apiRequest<SqlPracticeNote[]>(`/sql/notes/mine${toSearchParams(filter)}`),

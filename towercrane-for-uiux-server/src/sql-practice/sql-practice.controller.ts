@@ -78,6 +78,11 @@ export class SqlPracticeController {
     return this.sqlPracticeService.getRanking(query);
   }
 
+  @Get('submissions/activity')
+  activity(@Query() query: unknown) {
+    return this.sqlPracticeService.getRecentActivity(query);
+  }
+
   @Get('notes/mine')
   notes(@Query() query: unknown, @Req() req: SessionRequest) {
     const filter = listSqlPracticeNotesQuerySchema.parse(query);

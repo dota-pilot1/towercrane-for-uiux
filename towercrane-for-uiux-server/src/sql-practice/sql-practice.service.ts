@@ -31,6 +31,7 @@ import {
   geminiAskSchema,
   gradeSqlPracticeSubmissionSchema,
   seedFileNameSchema,
+  sqlPracticeSubmissionActivityQuerySchema,
   sqlPracticeSubmissionSeedQuerySchema,
   type CreateSqlPracticeNoteInput,
   type GradeSqlPracticeSubmissionInput,
@@ -42,6 +43,7 @@ import type {
   ColumnInfo,
   SqlActivateSeedResponse,
   SqlExecuteResponse,
+  SqlPracticeActivityResponse,
   SqlPracticeGradeSubmissionResponse,
   SqlPracticeMySubmissionsResponse,
   SqlPracticeMeta,
@@ -513,6 +515,40 @@ export class SqlPracticeService {
     });
 
     return { seedFile, rankings };
+  }
+
+  getRecentActivity(query: unknown): SqlPracticeActivityResponse {
+    const { seedFile, limit } =
+      sqlPracticeSubmissionActivityQuerySchema.parse(query);
+    const rows = this.databaseService.db
+      .select({
+        id: sqlPracticeSubmissionsTable.id,
+        userId: sqlPracticeSubmissionsTable.userId,
+        userName: usersTable.name,
+        seedFile: sqlPracticeSubmissionsTable.seedFile,
+        exampleId: sqlPracticeSubmissionsTable.exampleId,
+        exampleTitle: sqlPracticeSubmissionsTable.exampleTitle,
+        exampleLevel: sqlPracticeSubmissionsTable.exampleLevel,
+        exampleOrder: sqlPracticeSubmissionsTable.exampleOrder,
+        isCorrect: sqlPracticeSubmissionsTable.isCorrect,
+        score: sqlPracticeSubmissionsTable.score,
+        maxScore: sqlPracticeSubmissionsTable.maxScore,
+        createdAt: sqlPracticeSubmissionsTable.createdAt,
+      })
+      .from(sqlPracticeSubmissionsTable)
+      .leftJoin(usersTable, eq(sqlPracticeSubmissionsTable.userId, usersTable.id))
+      .where(eq(sqlPracticeSubmissionsTable.seedFile, seedFile))
+      .orderBy(desc(sqlPracticeSubmissionsTable.createdAt))
+      .limit(limit)
+      .all();
+
+    return {
+      seedFile,
+      activities: rows.map((row) => ({
+        ...row,
+        userName: row.userName ?? 'Unknown User',
+      })),
+    };
   }
 
   private executeReader(

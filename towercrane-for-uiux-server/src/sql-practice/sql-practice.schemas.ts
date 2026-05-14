@@ -37,6 +37,11 @@ export const sqlPracticeSubmissionSeedQuerySchema = z.object({
   seedFile: seedFileNameSchema,
 });
 
+export const sqlPracticeSubmissionActivityQuerySchema = z.object({
+  seedFile: seedFileNameSchema,
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+});
+
 const optionalTrimmedString = z
   .string()
   .trim()
@@ -79,6 +84,9 @@ export type GeminiAskInput = z.infer<typeof geminiAskSchema>;
 export type GradeSqlPracticeSubmissionInput = z.infer<typeof gradeSqlPracticeSubmissionSchema>;
 export type SqlPracticeSubmissionSeedQuery = z.infer<
   typeof sqlPracticeSubmissionSeedQuerySchema
+>;
+export type SqlPracticeSubmissionActivityQuery = z.infer<
+  typeof sqlPracticeSubmissionActivityQuerySchema
 >;
 export type ListSqlPracticeNotesQuery = z.infer<typeof listSqlPracticeNotesQuerySchema>;
 export type CreateSqlPracticeNoteInput = z.infer<typeof createSqlPracticeNoteSchema>;

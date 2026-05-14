@@ -28,6 +28,7 @@ import {
   useExecuteSqlPracticeQuery,
   useGradeSqlPracticeSubmission,
   useReloadSqlPracticeSeed,
+  useSqlPracticeActivity,
   useResetSqlPracticeDb,
   useSqlPracticeMySubmissions,
   useSqlPracticeMeta,
@@ -39,6 +40,7 @@ import { getSqlPracticeExampleSet, sqlExampleLevelLabels } from '../../../featur
 import { SqlHistoryItem as SqlHistoryItemView } from '../../../features/sql-practice/ui/sql-history-item'
 import { SqlInputBar } from '../../../features/sql-practice/ui/sql-input-bar'
 import { SqlNotesDialog } from '../../../features/sql-practice/ui/sql-notes-dialog'
+import { SqlPracticeFooterDrawer } from '../../../features/sql-practice/ui/sql-practice-footer-drawer'
 import { SqlPracticePageHeader } from '../../../features/sql-practice/ui/sql-practice-page-header'
 import { SqlQuizSidebar } from '../../../features/sql-practice/ui/sql-quiz-sidebar'
 import { SqlRankingDialog } from '../../../features/sql-practice/ui/sql-ranking-dialog'
@@ -62,6 +64,7 @@ export function SqlPracticePage() {
   const [quizSidebarOpen, setQuizSidebarOpen] = useState(true)
   const [notesDialogOpen, setNotesDialogOpen] = useState(false)
   const [rankingDialogOpen, setRankingDialogOpen] = useState(false)
+  const [footerOpen, setFooterOpen] = useState(false)
   const [selectedExample, setSelectedExample] = useState<SqlPracticeExample | null>(null)
   const [answerOpen, setAnswerOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -74,7 +77,8 @@ export function SqlPracticePage() {
   const resetMutation = useResetSqlPracticeDb()
   const reloadSeedMutation = useReloadSqlPracticeSeed()
   const submissionsQuery = useSqlPracticeMySubmissions(metaQuery.data?.seedFile)
-  const rankingQuery = useSqlPracticeRanking(metaQuery.data?.seedFile, rankingDialogOpen)
+  const rankingQuery = useSqlPracticeRanking(metaQuery.data?.seedFile, true)
+  const activityQuery = useSqlPracticeActivity(metaQuery.data?.seedFile, true)
 
   const tables = tablesQuery.data ?? EMPTY_TABLES
   const selectedTable = useMemo(() => {
@@ -153,7 +157,7 @@ export function SqlPracticePage() {
   }
 
   return (
-    <section className="space-y-4">
+    <section className={footerOpen ? 'space-y-4 pb-[400px]' : 'space-y-4 pb-16'}>
       <SqlPracticePageHeader
         key={metaQuery.data?.seedFile ?? 'loading'}
         seedFile={metaQuery.data?.seedFile}
@@ -253,6 +257,19 @@ export function SqlPracticePage() {
         rankings={rankingQuery.data?.rankings ?? []}
         isLoading={rankingQuery.isFetching}
         currentUserId={userId}
+      />
+
+      <SqlPracticeFooterDrawer
+        open={footerOpen}
+        onOpenChange={setFooterOpen}
+        seedFile={metaQuery.data?.seedFile}
+        rankings={rankingQuery.data?.rankings ?? []}
+        activities={activityQuery.data?.activities ?? []}
+        rankingLoading={rankingQuery.isFetching}
+        activityLoading={activityQuery.isFetching}
+        currentUserId={userId}
+        myScore={submissionsQuery.data?.summary.totalScore ?? 0}
+        maxScore={totalProblemCount}
       />
     </section>
   )
