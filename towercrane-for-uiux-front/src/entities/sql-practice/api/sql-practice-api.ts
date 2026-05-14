@@ -1,6 +1,7 @@
 import { apiRequest } from '../../../shared/api/http'
 import type {
   CreateSqlPracticeNotePayload,
+  PublicSqlPracticeNote,
   SqlActivateSeedResponse,
   SqlExecuteResponse,
   SqlPracticeGradePayload,
@@ -77,8 +78,23 @@ export const sqlPracticeApi = {
     apiRequest<SqlPracticeActivityResponse>(
       `/sql/submissions/activity?seedFile=${encodeURIComponent(seedFile)}&limit=${limit}`,
     ),
+  getMyActivity: (seedFile: string, limit = 30) =>
+    apiRequest<SqlPracticeActivityResponse>(
+      `/sql/submissions/activity/mine?seedFile=${encodeURIComponent(seedFile)}&limit=${limit}`,
+    ),
   getNotes: (filter?: SqlPracticeNoteFilter) =>
     apiRequest<SqlPracticeNote[]>(`/sql/notes/mine${toSearchParams(filter)}`),
+  getNote: (id: string) =>
+    apiRequest<SqlPracticeNote | null>(`/sql/notes/${encodeURIComponent(id)}`),
+  getPublicNote: (token: string) =>
+    apiRequest<PublicSqlPracticeNote | null>(
+      `/public/sql/notes/${encodeURIComponent(token)}`,
+      { skipAuth: true },
+    ),
+  shareNote: (id: string) =>
+    apiRequest<SqlPracticeNote>(`/sql/notes/${encodeURIComponent(id)}/share`, {
+      method: 'POST',
+    }),
   createNote: (payload: CreateSqlPracticeNotePayload) =>
     apiRequest<SqlPracticeNote>('/sql/notes', {
       method: 'POST',

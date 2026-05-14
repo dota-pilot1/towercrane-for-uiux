@@ -495,6 +495,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         title TEXT,
         content TEXT NOT NULL,
         pinned INTEGER NOT NULL DEFAULT 0,
+        is_public INTEGER NOT NULL DEFAULT 0,
+        public_token TEXT UNIQUE,
+        public_shared_at TEXT,
         order_idx INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -1403,6 +1406,25 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'payload',
       'ALTER TABLE meeting_messages ADD COLUMN payload TEXT',
     );
+    this.ensureColumn(
+      'sql_practice_notes',
+      'is_public',
+      'ALTER TABLE sql_practice_notes ADD COLUMN is_public INTEGER DEFAULT 0 NOT NULL',
+    );
+    this.ensureColumn(
+      'sql_practice_notes',
+      'public_token',
+      'ALTER TABLE sql_practice_notes ADD COLUMN public_token TEXT',
+    );
+    this.ensureColumn(
+      'sql_practice_notes',
+      'public_shared_at',
+      'ALTER TABLE sql_practice_notes ADD COLUMN public_shared_at TEXT',
+    );
+    this.sqlite.exec(`
+      CREATE INDEX IF NOT EXISTS idx_sql_practice_notes_public_token
+        ON sql_practice_notes(public_token);
+    `);
 
     const now = new Date().toISOString();
     const demoUser = this.ensureDemoUser(now);

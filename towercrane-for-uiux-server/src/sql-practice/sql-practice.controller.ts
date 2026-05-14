@@ -78,6 +78,11 @@ export class SqlPracticeController {
     return this.sqlPracticeService.getRanking(query);
   }
 
+  @Get('submissions/activity/mine')
+  myActivity(@Query() query: unknown, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.getMyRecentActivity(query, req.user.id);
+  }
+
   @Get('submissions/activity')
   activity(@Query() query: unknown) {
     return this.sqlPracticeService.getRecentActivity(query);
@@ -102,6 +107,11 @@ export class SqlPracticeController {
     return note;
   }
 
+  @Post('notes/:id/share')
+  shareNote(@Param('id') id: string, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.enableNotePublicShare(id, req.user.id);
+  }
+
   @Patch('notes/:id')
   updateNote(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
     const input = updateSqlPracticeNoteSchema.parse(body);
@@ -112,5 +122,15 @@ export class SqlPracticeController {
   @HttpCode(204)
   deleteNote(@Param('id') id: string, @Req() req: SessionRequest) {
     return this.sqlPracticeService.deleteNote(id, req.user.id);
+  }
+}
+
+@Controller('public/sql')
+export class SqlPracticePublicController {
+  constructor(private readonly sqlPracticeService: SqlPracticeService) {}
+
+  @Get('notes/:token')
+  publicNote(@Param('token') token: string) {
+    return this.sqlPracticeService.getPublicNoteByToken(token) ?? null;
   }
 }

@@ -3,8 +3,8 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
+  History,
   NotebookPen,
-  Trophy,
   XCircle,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -36,7 +36,7 @@ type SqlQuizSidebarProps = {
   submissionStatusByExample: Record<string, SqlPracticeSubmissionStatus>
   totalScore: number
   maxScore: number
-  onOpenRanking: () => void
+  onOpenHistory: () => void
 }
 
 export function SqlQuizSidebar({
@@ -49,7 +49,7 @@ export function SqlQuizSidebar({
   submissionStatusByExample,
   totalScore,
   maxScore,
-  onOpenRanking,
+  onOpenHistory,
 }: SqlQuizSidebarProps) {
   const [activeLevel, setActiveLevel] = useState<SqlExampleLevel>('beginner')
 
@@ -104,7 +104,7 @@ export function SqlQuizSidebar({
               type="button"
               className="ui-icon-button size-8"
               onClick={onOpenNotes}
-              title="SQL 노트 열기"
+              title="SQL 노트 새 탭에서 열기"
             >
               <NotebookPen className="size-3.5" />
             </button>
@@ -198,10 +198,10 @@ export function SqlQuizSidebar({
           <button
             type="button"
             className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-2.5 text-[11px] font-bold text-brand-primary transition-colors hover:brightness-110"
-            onClick={onOpenRanking}
+            onClick={onOpenHistory}
           >
-            <Trophy className="size-3.5" />
-            랭킹 보기
+            <History className="size-3.5" />
+            풀이 히스토리
           </button>
         </div>
       </div>

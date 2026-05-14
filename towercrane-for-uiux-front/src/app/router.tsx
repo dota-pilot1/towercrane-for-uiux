@@ -24,6 +24,8 @@ import { StudyDiaryPage } from '../pages/study-diary/ui/study-diary-page'
 import { DevChallengePage } from '../pages/dev-challenge/ui/dev-challenge-page'
 import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
 import { SqlPracticeExamplesPage } from '../pages/sql-practice/ui/sql-practice-examples-page'
+import { SqlNotesPage } from '../pages/sql-practice/ui/sql-notes-page'
+import { SqlPublicNotePage } from '../pages/sql-practice/ui/sql-public-note-page'
 import { useSessionStore } from '../shared/store/session-store'
 import { useCurrentUser } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
@@ -66,6 +68,12 @@ function LoginRoute() {
     </div>
   )
 }
+
+const publicSqlNoteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/share/sql-notes/$token',
+  component: SqlPublicNotePage,
+})
 
 // ─── App layout (auth guard) ─────────────────────────────────────────────────
 
@@ -235,6 +243,18 @@ const sqlPracticeExamplesRoute = createRoute({
   component: SqlPracticeExamplesPage,
 })
 
+const sqlNotesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql/notes',
+  component: SqlNotesPage,
+})
+
+const sqlNoteDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql/notes/$noteId',
+  component: SqlNotesPage,
+})
+
 // ─── /task ───────────────────────────────────────────────────────────────────
 
 const taskRoute = createRoute({
@@ -394,6 +414,7 @@ const adminReadmeRoute = createRoute({
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     loginRoute,
+    publicSqlNoteRoute,
     appLayoutRoute.addChildren([
       indexRoute,
       prototypeIndexRoute,
@@ -408,6 +429,8 @@ export const router = createRouter({
       apiDocRoute,
       sqlPracticeRoute,
       sqlPracticeExamplesRoute,
+      sqlNotesRoute,
+      sqlNoteDetailRoute,
       taskRoute,
       prototypeIssuesRoute,
       profileRoute,

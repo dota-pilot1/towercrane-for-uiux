@@ -16,9 +16,12 @@ export const sqlPracticeQueryKeys = {
   seeds: ['sql-practice', 'seeds'] as const,
   erd: (fileName: string) => ['sql-practice', 'erd', fileName] as const,
   notes: (filter?: SqlPracticeNoteFilter) => ['sql-practice', 'notes', filter ?? {}] as const,
+  note: (id: string) => ['sql-practice', 'note', id] as const,
+  publicNote: (token: string) => ['sql-practice', 'public-note', token] as const,
   submissions: (seedFile: string) => ['sql-practice', 'submissions', seedFile] as const,
   ranking: (seedFile: string) => ['sql-practice', 'ranking', seedFile] as const,
   activity: (seedFile: string) => ['sql-practice', 'activity', seedFile] as const,
+  myActivity: (seedFile: string) => ['sql-practice', 'my-activity', seedFile] as const,
 }
 
 function messageFromError(error: unknown, fallback: string) {
@@ -135,6 +138,22 @@ export function useSqlPracticeNotes(filter?: SqlPracticeNoteFilter, enabled = tr
   })
 }
 
+export function useSqlPracticeNote(id: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.note(id ?? ''),
+    queryFn: () => sqlPracticeApi.getNote(id!),
+    enabled: Boolean(id),
+  })
+}
+
+export function usePublicSqlPracticeNote(token: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.publicNote(token ?? ''),
+    queryFn: () => sqlPracticeApi.getPublicNote(token!),
+    enabled: Boolean(token),
+  })
+}
+
 export function useSqlPracticeMySubmissions(seedFile: string | undefined) {
   return useQuery({
     queryKey: sqlPracticeQueryKeys.submissions(seedFile ?? ''),
@@ -161,6 +180,14 @@ export function useSqlPracticeActivity(seedFile: string | undefined, enabled = t
   })
 }
 
+export function useSqlPracticeMyActivity(seedFile: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.myActivity(seedFile ?? ''),
+    queryFn: () => sqlPracticeApi.getMyActivity(seedFile!, 30),
+    enabled: Boolean(seedFile) && enabled,
+  })
+}
+
 export function useGradeSqlPracticeSubmission() {
   const queryClient = useQueryClient()
 
@@ -175,6 +202,9 @@ export function useGradeSqlPracticeSubmission() {
       })
       queryClient.invalidateQueries({
         queryKey: sqlPracticeQueryKeys.activity(response.submission.seedFile),
+      })
+      queryClient.invalidateQueries({
+        queryKey: sqlPracticeQueryKeys.myActivity(response.submission.seedFile),
       })
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
@@ -218,6 +248,19 @@ export function useUpdateSqlPracticeNote() {
       toast.success('SQL 노트를 수정했습니다.')
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 노트 수정에 실패했습니다.')),
+  })
+}
+
+export function useShareSqlPracticeNote() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => sqlPracticeApi.shareNote(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...sqlPracticeQueryKeys.all, 'notes'] })
+      toast.success('공개 공유 링크를 만들었습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '공유 링크 생성에 실패했습니다.')),
   })
 }
 

@@ -284,6 +284,58 @@ export class SqlPracticeService {
       .get();
   }
 
+  getPublicNoteByToken(token: string) {
+    return this.databaseService.db
+      .select({
+        id: sqlPracticeNotesTable.id,
+        authorName: usersTable.name,
+        seedFile: sqlPracticeNotesTable.seedFile,
+        exampleId: sqlPracticeNotesTable.exampleId,
+        exampleTitle: sqlPracticeNotesTable.exampleTitle,
+        tableName: sqlPracticeNotesTable.tableName,
+        title: sqlPracticeNotesTable.title,
+        content: sqlPracticeNotesTable.content,
+        pinned: sqlPracticeNotesTable.pinned,
+        isPublic: sqlPracticeNotesTable.isPublic,
+        publicToken: sqlPracticeNotesTable.publicToken,
+        publicSharedAt: sqlPracticeNotesTable.publicSharedAt,
+        orderIdx: sqlPracticeNotesTable.orderIdx,
+        createdAt: sqlPracticeNotesTable.createdAt,
+        updatedAt: sqlPracticeNotesTable.updatedAt,
+      })
+      .from(sqlPracticeNotesTable)
+      .innerJoin(usersTable, eq(usersTable.id, sqlPracticeNotesTable.userId))
+      .where(
+        and(
+          eq(sqlPracticeNotesTable.publicToken, token),
+          eq(sqlPracticeNotesTable.isPublic, true),
+        ),
+      )
+      .get();
+  }
+
+  enableNotePublicShare(id: string, userId: string) {
+    const note = this.getNoteById(id);
+    if (!note) throw new NotFoundException('SQL note not found.');
+    if (note.userId !== userId) throw new ForbiddenException('Not authorized.');
+
+    const now = new Date().toISOString();
+    const publicToken = note.publicToken ?? randomUUID();
+
+    this.databaseService.db
+      .update(sqlPracticeNotesTable)
+      .set({
+        isPublic: true,
+        publicToken,
+        publicSharedAt: note.publicSharedAt ?? now,
+        updatedAt: now,
+      })
+      .where(eq(sqlPracticeNotesTable.id, id))
+      .run();
+
+    return this.getNoteById(id);
+  }
+
   createNote(input: CreateSqlPracticeNoteInput, userId: string) {
     const id = randomUUID();
     const now = new Date().toISOString();
@@ -538,6 +590,45 @@ export class SqlPracticeService {
       .from(sqlPracticeSubmissionsTable)
       .leftJoin(usersTable, eq(sqlPracticeSubmissionsTable.userId, usersTable.id))
       .where(eq(sqlPracticeSubmissionsTable.seedFile, seedFile))
+      .orderBy(desc(sqlPracticeSubmissionsTable.createdAt))
+      .limit(limit)
+      .all();
+
+    return {
+      seedFile,
+      activities: rows.map((row) => ({
+        ...row,
+        userName: row.userName ?? 'Unknown User',
+      })),
+    };
+  }
+
+  getMyRecentActivity(query: unknown, userId: string): SqlPracticeActivityResponse {
+    const { seedFile, limit } =
+      sqlPracticeSubmissionActivityQuerySchema.parse(query);
+    const rows = this.databaseService.db
+      .select({
+        id: sqlPracticeSubmissionsTable.id,
+        userId: sqlPracticeSubmissionsTable.userId,
+        userName: usersTable.name,
+        seedFile: sqlPracticeSubmissionsTable.seedFile,
+        exampleId: sqlPracticeSubmissionsTable.exampleId,
+        exampleTitle: sqlPracticeSubmissionsTable.exampleTitle,
+        exampleLevel: sqlPracticeSubmissionsTable.exampleLevel,
+        exampleOrder: sqlPracticeSubmissionsTable.exampleOrder,
+        isCorrect: sqlPracticeSubmissionsTable.isCorrect,
+        score: sqlPracticeSubmissionsTable.score,
+        maxScore: sqlPracticeSubmissionsTable.maxScore,
+        createdAt: sqlPracticeSubmissionsTable.createdAt,
+      })
+      .from(sqlPracticeSubmissionsTable)
+      .leftJoin(usersTable, eq(sqlPracticeSubmissionsTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(sqlPracticeSubmissionsTable.userId, userId),
+          eq(sqlPracticeSubmissionsTable.seedFile, seedFile),
+        ),
+      )
       .orderBy(desc(sqlPracticeSubmissionsTable.createdAt))
       .limit(limit)
       .all();

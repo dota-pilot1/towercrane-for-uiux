@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { CalendarDays, Edit2, NotebookPen, Trash2, UserRound, X } from 'lucide-react'
+import { CalendarDays, Edit2, ExternalLink, NotebookPen, Share2, Trash2, UserRound, X } from 'lucide-react'
 import { useState } from 'react'
 
 import type { SqlPracticeNote } from '../../../entities/sql-practice/model/types'
@@ -7,6 +7,7 @@ import type { SqlPracticeExample } from '../../../entities/sql-practice/model/ex
 import {
   useCreateSqlPracticeNote,
   useDeleteSqlPracticeNote,
+  useShareSqlPracticeNote,
   useSqlPracticeNotes,
   useUpdateSqlPracticeNote,
 } from '../model/use-sql-practice-queries'
@@ -35,6 +36,10 @@ function getNoteTitle(note: SqlPracticeNote) {
   return note.title?.trim() || note.exampleTitle || note.tableName || '제목 없는 노트'
 }
 
+function getPublicSqlNoteUrl(publicToken: string) {
+  return `${window.location.origin}/share/sql-notes/${publicToken}`
+}
+
 export function SqlNotesDialog({
   open,
   onOpenChange,
@@ -48,10 +53,12 @@ export function SqlNotesDialog({
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
+  const [shareCopied, setShareCopied] = useState(false)
 
   const notesQuery = useSqlPracticeNotes(undefined, open)
   const createNote = useCreateSqlPracticeNote()
   const updateNote = useUpdateSqlPracticeNote()
+  const shareNote = useShareSqlPracticeNote()
   const deleteNote = useDeleteSqlPracticeNote()
 
   const notes = notesQuery.data ?? []
@@ -65,6 +72,28 @@ export function SqlNotesDialog({
     setEditingNoteId(null)
     setConfirmingDeleteId(null)
     setFormOpen(true)
+  }
+
+  const copyPublicShareLink = async (note: SqlPracticeNote) => {
+    const publicToken = await ensurePublicToken(note)
+
+    if (!publicToken) return
+
+    await navigator.clipboard.writeText(getPublicSqlNoteUrl(publicToken))
+    setShareCopied(true)
+    window.setTimeout(() => setShareCopied(false), 1400)
+  }
+
+  const openPublicSharePage = async (note: SqlPracticeNote) => {
+    const publicToken = await ensurePublicToken(note)
+    if (!publicToken) return
+
+    window.open(getPublicSqlNoteUrl(publicToken), '_blank', 'noopener,noreferrer')
+  }
+
+  const ensurePublicToken = async (note: SqlPracticeNote) => {
+    if (note.isPublic && note.publicToken) return note.publicToken
+    return (await shareNote.mutateAsync(note.id)).publicToken
   }
 
   return (
@@ -255,6 +284,27 @@ export function SqlNotesDialog({
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        className="ui-icon-button h-8 gap-1.5 px-3 text-xs font-bold"
+                        title="공개 공유 링크 복사"
+                        disabled={shareNote.isPending}
+                        onClick={() => copyPublicShareLink(selectedNote)}
+                      >
+                        <Share2 className="size-3.5" />
+                        {shareCopied ? '복사됨' : '공유'}
+                      </button>
+                      <button
+                        type="button"
+                        className="ui-icon-button size-8"
+                        title="공개 페이지 새 탭에서 열기"
+                        disabled={shareNote.isPending}
+                        onClick={() => {
+                          openPublicSharePage(selectedNote)
+                        }}
+                      >
+                        <ExternalLink className="size-4" />
+                      </button>
                       <button
                         type="button"
                         className="ui-icon-button size-8"

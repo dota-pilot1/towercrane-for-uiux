@@ -92,9 +92,16 @@ export type SqlPracticeNote = {
   title: string | null
   content: string
   pinned: boolean
+  isPublic: boolean
+  publicToken: string | null
+  publicSharedAt: string | null
   orderIdx: number
   createdAt: string
   updatedAt: string
+}
+
+export type PublicSqlPracticeNote = Omit<SqlPracticeNote, 'userId'> & {
+  authorName: string
 }
 
 export type SqlPracticeNoteFilter = {
