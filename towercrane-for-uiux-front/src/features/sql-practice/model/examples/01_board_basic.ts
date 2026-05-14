@@ -3,6 +3,7 @@ import { defineExampleSet } from './shared'
 export const boardBasicExamples = defineExampleSet('01_board_basic.sql', {
   beginner: [
     {
+      id: '01_board_basic.beginner.01',
       title: '사용자 가입일순 목록',
       description:
         '전체 사용자 목록을 가입한 순서대로 오래된 사용자부터 보여주세요. 아이디(id), 이름(name), 이메일(email), 도시(city), 역할(role), 가입일(created_at) 컬럼을 출력합니다.',
@@ -15,6 +16,7 @@ FROM users
 ORDER BY created_at ASC;`,
     },
     {
+      id: '01_board_basic.beginner.02',
       title: '서울 사용자만 보기',
       description:
         '거주 도시가 "서울"인 사용자만 골라 이름(name), 이메일(email), 역할(role)을 이름 가나다순으로 보여주세요.',
@@ -28,6 +30,7 @@ WHERE city = '서울'
 ORDER BY name;`,
     },
     {
+      id: '01_board_basic.beginner.03',
       title: '활성 게시판 목록',
       description:
         '운영 중인(활성 상태인) 게시판만 골라 아이디(id), 이름(name), 카테고리(category)를 아이디 순으로 보여주세요.',
@@ -41,6 +44,7 @@ WHERE is_active = 1
 ORDER BY id;`,
     },
     {
+      id: '01_board_basic.beginner.04',
       title: '조회수 높은 게시글',
       description:
         '게시글 중 조회수가 가장 높은 5개를 찾으세요. 제목(title), 조회수(views), 작성일(created_at) 세 컬럼을 조회수 많은 순으로 정렬해 출력합니다.',
@@ -54,6 +58,7 @@ ORDER BY views DESC
 LIMIT 5;`,
     },
     {
+      id: '01_board_basic.beginner.05',
       title: '고정 게시글 찾기',
       description:
         '상단에 고정된 게시글만 찾아 아이디(id), 제목(title), 작성일(created_at)을 최신 작성일부터 보여주세요.',
@@ -67,6 +72,7 @@ WHERE is_pinned = 1
 ORDER BY created_at DESC;`,
     },
     {
+      id: '01_board_basic.beginner.06',
       title: '최근 댓글 목록',
       description:
         '모든 댓글을 최신순으로 보여주세요. 아이디(id), 게시글 아이디(post_id), 작성자 아이디(user_id), 내용(content), 작성일(created_at) 컬럼을 포함합니다.',
@@ -79,6 +85,7 @@ FROM comments
 ORDER BY created_at DESC;`,
     },
     {
+      id: '01_board_basic.beginner.07',
       title: '도시별 사용자 수',
       description:
         '도시(city)별로 사용자가 몇 명인지 집계해서 보여주세요. 사용자가 많은 도시부터, 같은 인원이면 도시 이름 가나다순으로 정렬합니다.',
@@ -92,6 +99,7 @@ GROUP BY city
 ORDER BY user_count DESC, city;`,
     },
     {
+      id: '01_board_basic.beginner.08',
       title: '게시판별 게시글 수',
       description:
         '게시판별로 게시글이 몇 개 올라왔는지 집계해서 글이 많은 게시판부터 보여주세요. 게시판 아이디(board_id)와 게시글 수(post_count)를 출력합니다.',
@@ -105,6 +113,7 @@ GROUP BY board_id
 ORDER BY post_count DESC;`,
     },
     {
+      id: '01_board_basic.beginner.09',
       title: '게시글별 댓글 수',
       description:
         '게시글별로 댓글이 몇 개 달렸는지 집계해서 댓글이 많은 게시글부터 보여주세요. 게시글 아이디(post_id)와 댓글 수(comment_count)를 출력합니다.',
@@ -118,6 +127,7 @@ GROUP BY post_id
 ORDER BY comment_count DESC;`,
     },
     {
+      id: '01_board_basic.beginner.10',
       title: '게시글별 좋아요 수',
       description:
         '게시글별로 좋아요가 몇 개 눌렸는지 집계해서 좋아요가 많은 게시글부터 보여주세요. 게시글 아이디(post_id)와 좋아요 수(like_count)를 출력합니다.',
@@ -133,6 +143,7 @@ ORDER BY like_count DESC;`,
   ],
   intermediate: [
     {
+      id: '01_board_basic.intermediate.01',
       title: '사용자 프로필 함께 보기',
       description:
         '프로필 정보가 등록된 사용자만 골라 이름(name), 이메일(email), 회사(company), 소개(bio)를 이름 가나다순으로 보여주세요.',
@@ -146,6 +157,7 @@ JOIN profiles p ON p.user_id = u.id
 ORDER BY u.name;`,
     },
     {
+      id: '01_board_basic.intermediate.02',
       title: '게시글 작성자 표시',
       description:
         '각 게시글의 제목(title), 작성자 이름(author), 조회수(views)를 조회수가 많은 순으로 보여주세요.',
@@ -159,6 +171,7 @@ JOIN users u ON u.id = p.user_id
 ORDER BY p.views DESC;`,
     },
     {
+      id: '01_board_basic.intermediate.03',
       title: '게시글과 게시판명',
       description:
         '게시글을 어느 게시판에 올라왔는지와 함께 보여주세요. 게시판 이름(board_name), 제목(title), 작성일(created_at)을 게시판 이름순, 같은 게시판이면 작성일순으로 정렬합니다.',
@@ -172,6 +185,7 @@ JOIN boards b ON b.id = p.board_id
 ORDER BY b.name, p.created_at;`,
     },
     {
+      id: '01_board_basic.intermediate.04',
       title: '댓글 작성자와 원문',
       description:
         '댓글을 작성 순서대로 보여주는데, 어느 게시글의 댓글인지 제목(title), 댓글 작성자 이름(commenter), 댓글 내용(content)이 함께 보여야 합니다.',
@@ -186,6 +200,7 @@ JOIN users u ON u.id = c.user_id
 ORDER BY c.created_at;`,
     },
     {
+      id: '01_board_basic.intermediate.05',
       title: '좋아요 누른 사용자',
       description:
         '누가 어떤 게시글에 좋아요를 눌렀는지 시간순으로 보여주세요. 게시글 제목(title), 좋아요 누른 사람 이름(liked_by), 좋아요 시각(created_at)을 출력합니다.',
@@ -200,6 +215,7 @@ JOIN users u ON u.id = l.user_id
 ORDER BY l.created_at;`,
     },
     {
+      id: '01_board_basic.intermediate.06',
       title: '게시판별 게시글 수와 평균 조회수',
       description:
         '게시판별 운영 현황 리포트를 만들어 주세요. 게시판 이름(name), 게시글 수(post_count), 평균 조회수(avg_views, 소수 첫째 자리까지)를 게시글이 많은 게시판부터 보여줍니다. 글이 한 건도 없는 게시판도 포함합니다.',
@@ -214,6 +230,7 @@ GROUP BY b.id, b.name
 ORDER BY post_count DESC;`,
     },
     {
+      id: '01_board_basic.intermediate.07',
       title: '사용자별 작성 글 수',
       description:
         '사용자별로 작성한 글이 몇 개인지 보여주세요. 글을 한 건도 쓰지 않은 사용자도 0으로 표시되어야 합니다. 이름(name)과 글 수(post_count)를 글이 많은 순, 같으면 이름 가나다순으로 정렬합니다.',
@@ -228,6 +245,7 @@ GROUP BY u.id, u.name
 ORDER BY post_count DESC, u.name;`,
     },
     {
+      id: '01_board_basic.intermediate.08',
       title: '게시글별 댓글 수 포함',
       description:
         '모든 게시글의 제목(title)과 그 글에 달린 댓글 수(comment_count)를 댓글이 많은 순으로 보여주세요. 댓글이 0개인 게시글도 포함해야 합니다.',
@@ -242,6 +260,7 @@ GROUP BY p.id, p.title
 ORDER BY comment_count DESC;`,
     },
     {
+      id: '01_board_basic.intermediate.09',
       title: '게시글별 좋아요 수 포함',
       description:
         '모든 게시글의 제목(title)과 받은 좋아요 수(like_count)를 좋아요가 많은 순으로 보여주세요. 좋아요가 0인 글도 표시되어야 합니다.',
@@ -256,6 +275,7 @@ GROUP BY p.id, p.title
 ORDER BY like_count DESC;`,
     },
     {
+      id: '01_board_basic.intermediate.10',
       title: '작성자가 받은 댓글 수',
       description:
         '작성자별로 자기 글에 받은 댓글이 총 몇 개인지 집계해서 보여주세요. 이름(name)과 받은 댓글 수(received_comments)를 댓글이 많은 순으로 정렬합니다.',
@@ -273,6 +293,7 @@ ORDER BY received_comments DESC;`,
   ],
   advanced: [
     {
+      id: '01_board_basic.advanced.01',
       title: '게시글 참여도 집계',
       description:
         '각 게시글의 참여도 점수를 계산해 보여주세요. 점수는 조회수에 댓글 수 × 10, 좋아요 수 × 20을 더한 값입니다. 제목(title), 조회수(views), 댓글 수(comment_count), 좋아요 수(like_count), 참여도 점수(engagement_score)를 점수가 높은 순으로 출력합니다.',
@@ -302,6 +323,7 @@ LEFT JOIN like_counts l ON l.post_id = p.id
 ORDER BY engagement_score DESC;`,
     },
     {
+      id: '01_board_basic.advanced.02',
       title: '글을 쓰지 않은 사용자',
       description:
         '회원 가입은 했지만 글을 한 건도 쓰지 않은 사용자를 찾아 아이디(id), 이름(name), 이메일(email)을 아이디 순으로 보여주세요.',
@@ -316,6 +338,7 @@ WHERE p.id IS NULL
 ORDER BY u.id;`,
     },
     {
+      id: '01_board_basic.advanced.03',
       title: '댓글 없는 게시글',
       description:
         '아직 댓글이 한 개도 달리지 않은 게시글의 아이디(id)와 제목(title)을 아이디 순으로 보여주세요.',
@@ -330,6 +353,7 @@ WHERE c.id IS NULL
 ORDER BY p.id;`,
     },
     {
+      id: '01_board_basic.advanced.04',
       title: '게시판별 조회수 1위 글',
       description:
         '각 게시판에서 조회수가 가장 높은 게시글 한 건씩만 뽑아 보여주세요. 게시판 이름(board_name), 제목(title), 조회수(views)를 조회수가 큰 순으로 정렬합니다.',
@@ -350,6 +374,7 @@ WHERE r.rank_no = 1
 ORDER BY r.views DESC;`,
     },
     {
+      id: '01_board_basic.advanced.05',
       title: '대댓글 구조 확인',
       description:
         '대댓글(다른 댓글에 달린 댓글)만 추려 어떤 원댓글에 달린 답글인지 보여주세요. 댓글 아이디(comment_id), 답글 내용(reply_content), 원댓글 내용(parent_content)을 아이디 순으로 출력합니다.',
@@ -366,6 +391,7 @@ JOIN comments parent ON parent.id = child.parent_id
 ORDER BY child.id;`,
     },
     {
+      id: '01_board_basic.advanced.06',
       title: '활성 게시판 중 글 없는 곳',
       description:
         '활성 상태이지만 게시글이 한 건도 없는 빈 게시판을 찾아 아이디(id)와 이름(name)을 보여주세요.',
@@ -381,6 +407,7 @@ GROUP BY b.id, b.name
 HAVING COUNT(p.id) = 0;`,
     },
     {
+      id: '01_board_basic.advanced.07',
       title: '일자별 게시글 작성량',
       description:
         '날짜별로 게시글이 몇 건 작성됐고 그날 글들의 총 조회수가 얼마인지 보여주세요. 작성일(created_at), 글 수(post_count), 총 조회수(total_views)를 날짜순으로 출력합니다.',
@@ -394,6 +421,7 @@ GROUP BY created_at
 ORDER BY created_at;`,
     },
     {
+      id: '01_board_basic.advanced.08',
       title: '좋아요 대비 댓글 비율',
       description:
         '게시글마다 댓글 수와 좋아요 수, 그리고 좋아요 대비 댓글 비율(comment_per_like)을 소수 둘째 자리까지 보여주세요. 비율이 높은 순으로 정렬하고, 좋아요가 0이어서 0으로 나누는 경우는 NULL이 되어야 합니다.',
@@ -413,6 +441,7 @@ GROUP BY p.id, p.title
 ORDER BY comment_per_like DESC;`,
     },
     {
+      id: '01_board_basic.advanced.09',
       title: '도시와 역할별 사용자 분포',
       description:
         '도시(city)와 역할(role)을 동시에 묶어 각 조합에 몇 명이 있는지 집계해 보여주세요. 도시순, 같은 도시 안에서는 역할순으로 정렬합니다.',
@@ -426,6 +455,7 @@ GROUP BY city, role
 ORDER BY city, role;`,
     },
     {
+      id: '01_board_basic.advanced.10',
       title: '게시글 종합 리포트',
       description:
         '게시글 운영 리포트를 만들어 주세요. 게시판 이름(board_name), 제목(title), 작성자 이름(author), 조회수(views), 댓글 수(comment_count), 좋아요 수(like_count)를 조회수가 많은 순으로 보여줍니다.',

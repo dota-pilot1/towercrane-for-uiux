@@ -5,6 +5,7 @@ import type {
 } from '../../../../entities/sql-practice/model/example-types'
 
 export type SqlExampleSpec = {
+  id?: string
   title: string
   relatedTables: string[]
   sql: string
@@ -39,7 +40,7 @@ function buildExamples(
     const relatedTables = example.relatedTables
 
     return {
-      id: `${seedSlug}.${level}.${String(order).padStart(2, '0')}`,
+      id: example.id ?? `${seedSlug}.${level}.${String(order).padStart(2, '0')}`,
       seedFile,
       level,
       order,

@@ -3,6 +3,7 @@ import { defineExampleSet } from './shared'
 export const shopOrderExamples = defineExampleSet('02_shop_order.sql', {
   beginner: [
     {
+      id: '02_shop_order.beginner.01',
       title: '최근 주문부터 보기',
       description:
         '쇼핑몰 주문 내역을 최신순으로 확인하세요. 주문번호(id), 고객번호(customer_id), 주문 상태(status), 주문일시(ordered_at)를 최근 주문부터 위에 보여줍니다.',
@@ -15,6 +16,7 @@ FROM orders
 ORDER BY ordered_at DESC;`,
     },
     {
+      id: '02_shop_order.beginner.02',
       title: '재고가 적은 상품 찾기',
       description:
         '재고가 15개 이하로 부족한 상품을 찾으세요. 상품명(name), 카테고리(category), 가격(price), 재고 수량(stock_qty)을 재고가 적은 순으로 보여줍니다.',
@@ -28,6 +30,7 @@ WHERE stock_qty <= 15
 ORDER BY stock_qty ASC;`,
     },
     {
+      id: '02_shop_order.beginner.03',
       title: '고객 등급별 인원',
       description:
         'VIP, REGULAR 같은 고객 등급별로 몇 명이 있는지 집계하세요. 등급(grade)과 고객 수(customer_count)를 인원이 많은 등급부터 보여줍니다.',
@@ -41,6 +44,7 @@ GROUP BY grade
 ORDER BY customer_count DESC;`,
     },
     {
+      id: '02_shop_order.beginner.04',
       title: '가격이 높은 상품',
       description:
         '가장 비싼 상품 상위 3개를 찾으세요. 상품명(name), 카테고리(category), 가격(price)을 가격이 높은 순으로 보여줍니다.',
@@ -54,6 +58,7 @@ ORDER BY price DESC
 LIMIT 3;`,
     },
     {
+      id: '02_shop_order.beginner.05',
       title: '결제 상태별 건수',
       description:
         '승인·대기·실패 같은 결제 상태별로 건수를 집계하세요. 상태(status)와 결제 건수(payment_count)를 건수가 많은 상태부터 보여줍니다.',
@@ -67,6 +72,7 @@ GROUP BY status
 ORDER BY payment_count DESC;`,
     },
     {
+      id: '02_shop_order.beginner.06',
       title: '배송 대기 주문',
       description:
         '아직 고객에게 도착하지 않은 배송 건을 찾으세요. 주문번호(order_id), 배송사(carrier), 배송 상태(status)를 주문번호 순으로 보여주며, 준비 중이거나 운송 중인 건만 대상입니다.',
@@ -81,6 +87,7 @@ WHERE delivered_at IS NULL
 ORDER BY order_id;`,
     },
     {
+      id: '02_shop_order.beginner.07',
       title: '상품 카테고리별 평균 가격',
       description:
         '상품 카테고리별 평균 단가를 구하세요. 카테고리(category)와 평균 가격(avg_price)을 평균 가격이 비싼 카테고리부터 보여줍니다.',
@@ -94,6 +101,7 @@ GROUP BY category
 ORDER BY avg_price DESC;`,
     },
     {
+      id: '02_shop_order.beginner.08',
       title: '주문 상태별 건수',
       description:
         '결제 대기·결제 완료·취소 같은 주문 상태별로 몇 건씩 있는지 집계하세요. 상태(status)와 주문 건수(order_count)를 건수가 많은 순으로 보여줍니다.',
@@ -107,6 +115,7 @@ GROUP BY status
 ORDER BY order_count DESC;`,
     },
     {
+      id: '02_shop_order.beginner.09',
       title: '결제 수단별 결제액',
       description:
         '카드·현금 등 결제 수단별 총 결제 금액을 집계하세요. 결제 수단(method)과 총 금액(total_amount)을 금액이 큰 수단부터 보여줍니다.',
@@ -120,6 +129,7 @@ GROUP BY method
 ORDER BY total_amount DESC;`,
     },
     {
+      id: '02_shop_order.beginner.10',
       title: '주문 상품 수량 큰 순서',
       description:
         '어떤 주문이 가장 많은 상품을 담았는지 보세요. 주문번호(order_id)와 총 상품 수량(item_qty)을 수량이 많은 주문부터 보여줍니다.',
@@ -135,6 +145,7 @@ ORDER BY item_qty DESC;`,
   ],
   intermediate: [
     {
+      id: '02_shop_order.intermediate.01',
       title: '주문별 결제 대상 금액 계산',
       description:
         '주문별로 실제 결제해야 할 금액을 계산하세요. 주문번호(order_id), 고객명(customer_name), 주문 상태(status), 주문 합계(order_total)를 금액이 큰 주문부터 보여줍니다.',
@@ -154,6 +165,7 @@ GROUP BY o.id, c.name, o.status
 ORDER BY order_total DESC;`,
     },
     {
+      id: '02_shop_order.intermediate.02',
       title: '카테고리별 판매 수량과 매출',
       description:
         '취소된 주문을 제외하고 카테고리별 판매 수량과 매출을 집계하세요. 카테고리(category), 판매 수량(sold_qty), 매출(revenue)을 매출이 큰 카테고리부터 보여줍니다.',
@@ -173,6 +185,7 @@ GROUP BY p.category
 ORDER BY revenue DESC;`,
     },
     {
+      id: '02_shop_order.intermediate.03',
       title: '고객별 주문 횟수',
       description:
         '주문이 한 번도 없는 고객까지 포함해서 고객별 주문 횟수를 구하세요. 고객명(name)과 주문 건수(order_count)를 주문이 많은 고객부터 보여줍니다.',
@@ -187,6 +200,7 @@ GROUP BY c.id, c.name
 ORDER BY order_count DESC;`,
     },
     {
+      id: '02_shop_order.intermediate.04',
       title: '주문별 배송 상태',
       description:
         '각 주문이 어떤 배송 단계에 있는지 확인하세요. 주문번호(order_id), 주문 상태(order_status), 배송 상태(shipment_status), 배송사(carrier)를 주문번호 순으로 보여줍니다.',
@@ -200,6 +214,7 @@ JOIN shipments s ON s.order_id = o.id
 ORDER BY o.id;`,
     },
     {
+      id: '02_shop_order.intermediate.05',
       title: '주문별 결제 상태',
       description:
         '각 주문의 결제 정보를 한눈에 확인하세요. 주문번호(order_id), 주문 상태(order_status), 결제 수단(method), 결제 상태(payment_status), 결제 금액(amount)을 주문번호 순으로 보여줍니다.',
@@ -213,6 +228,7 @@ JOIN payments p ON p.order_id = o.id
 ORDER BY o.id;`,
     },
     {
+      id: '02_shop_order.intermediate.06',
       title: '상품별 판매 수량',
       description:
         '한 번도 팔리지 않은 상품까지 포함해 상품별 판매 수량을 구하세요. 상품명(name)과 판매 수량(sold_qty)을 많이 팔린 상품부터 보여줍니다.',
@@ -227,6 +243,7 @@ GROUP BY p.id, p.name
 ORDER BY sold_qty DESC;`,
     },
     {
+      id: '02_shop_order.intermediate.07',
       title: '고객별 승인 결제액',
       description:
         '결제가 정상 승인된 건만 합산해 고객별 결제 금액을 구하세요. 고객명(name)과 승인 결제액(approved_amount)을 금액이 큰 고객부터 보여줍니다.',
@@ -243,6 +260,7 @@ GROUP BY c.id, c.name
 ORDER BY approved_amount DESC;`,
     },
     {
+      id: '02_shop_order.intermediate.08',
       title: '배송사별 배송 건수',
       description:
         '배송사·배송 상태 조합별 건수를 집계하세요. 배송사(carrier), 상태(status), 배송 건수(shipment_count)를 배송사 가나다순, 같은 배송사 안에서는 건수가 많은 상태부터 보여줍니다.',
@@ -256,6 +274,7 @@ GROUP BY carrier, status
 ORDER BY carrier, shipment_count DESC;`,
     },
     {
+      id: '02_shop_order.intermediate.09',
       title: '두 번 이상 주문한 고객',
       description:
         '재구매 고객을 찾으세요. 주문을 2건 이상 한 고객의 이름(name)과 주문 횟수(order_count)를 주문이 많은 순으로 보여줍니다.',
@@ -271,6 +290,7 @@ HAVING COUNT(o.id) >= 2
 ORDER BY order_count DESC;`,
     },
     {
+      id: '02_shop_order.intermediate.10',
       title: '주문 상세 라인 보기',
       description:
         '어떤 고객이 어떤 상품을 얼마에 몇 개 샀는지 라인 단위로 펼쳐 보세요. 주문번호(order_id), 고객명(customer_name), 상품명(product_name), 수량(quantity), 단가(unit_price)를 주문번호와 라인 순서대로 보여줍니다.',
@@ -288,6 +308,7 @@ ORDER BY o.id, oi.id;`,
   ],
   advanced: [
     {
+      id: '02_shop_order.advanced.01',
       title: '주문 합계와 결제 금액 검증',
       description:
         '주문 라인 합계와 실제 결제 금액이 다른 이상 주문을 찾으세요. 주문번호(order_id), 고객명(customer_name), 라인 합계(item_total), 결제 금액(payment_amount), 차이(diff)를 차이가 큰 순으로 보여줍니다.',
@@ -314,6 +335,7 @@ WHERE p.amount != ot.item_total
 ORDER BY ABS(p.amount - ot.item_total) DESC;`,
     },
     {
+      id: '02_shop_order.advanced.02',
       title: '배송 완료 주문의 리드타임 분석',
       description:
         '배송이 끝난 주문의 출고~수령까지 걸린 일수를 구하세요. 주문번호(order_id), 고객명(customer_name), 배송사(carrier), 배송 소요일(delivery_days)을 오래 걸린 주문부터 보여줍니다.',
@@ -333,6 +355,7 @@ WHERE s.delivered_at IS NOT NULL
 ORDER BY delivery_days DESC;`,
     },
     {
+      id: '02_shop_order.advanced.03',
       title: '고객별 객단가',
       description:
         '고객별 주문 횟수와 1회 평균 주문 금액(객단가)을 구하세요. 고객명(name), 주문 건수(order_count), 평균 주문 금액(avg_order_total)을 객단가가 높은 고객부터 보여줍니다.',
@@ -353,6 +376,7 @@ GROUP BY c.id, c.name
 ORDER BY avg_order_total DESC;`,
     },
     {
+      id: '02_shop_order.advanced.04',
       title: '취소 주문 제외 매출 랭킹',
       description:
         '취소 주문을 제외한 상품별 매출과 순위를 구하세요. 상품명(name), 매출(revenue), 매출 순위(revenue_rank)를 순위가 높은 순으로 보여줍니다.',
@@ -372,6 +396,7 @@ GROUP BY p.id, p.name
 ORDER BY revenue_rank;`,
     },
     {
+      id: '02_shop_order.advanced.05',
       title: '재고 대비 판매 위험 상품',
       description:
         '지금까지 팔린 수량을 빼고 남는 재고를 계산해 재고 위험 상품을 파악하세요. 상품명(name), 현재 재고(stock_qty), 누적 판매량(sold_qty), 판매 후 잔여 재고(stock_after_sales)를 잔여 재고가 적은 순으로 보여줍니다.',
@@ -390,6 +415,7 @@ GROUP BY p.id, p.name, p.stock_qty
 ORDER BY stock_after_sales ASC;`,
     },
     {
+      id: '02_shop_order.advanced.06',
       title: '배송 단계별 주문 금액',
       description:
         '배송 단계별로 묶여있는 매출 규모를 파악하세요. 배송 상태(shipment_status)와 라인 합계(item_total)를 금액이 큰 단계부터 보여줍니다.',
@@ -405,6 +431,7 @@ GROUP BY s.status
 ORDER BY item_total DESC;`,
     },
     {
+      id: '02_shop_order.advanced.07',
       title: '결제 승인 후 미배송 주문',
       description:
         '돈은 받았지만 아직 배송이 끝나지 않은 주문을 찾으세요. 주문번호(order_id), 고객명(name), 결제일시(paid_at), 배송 상태(shipment_status)를 오래된 결제부터 보여줍니다.',
@@ -422,6 +449,7 @@ WHERE p.status = 'APPROVED'
 ORDER BY p.paid_at;`,
     },
     {
+      id: '02_shop_order.advanced.08',
       title: '등급별 매출 기여',
       description:
         '취소 주문을 제외하고 고객 등급별 매출 기여도를 구하세요. 등급(grade)과 매출(revenue)을 매출이 큰 등급부터 보여줍니다.',
@@ -438,6 +466,7 @@ GROUP BY c.grade
 ORDER BY revenue DESC;`,
     },
     {
+      id: '02_shop_order.advanced.09',
       title: '주문 상태별 평균 상품 수',
       description:
         '주문 상태별로 한 주문에 평균 몇 개의 상품이 담기는지 구하세요. 상태(status)와 평균 상품 수(avg_qty)를 평균이 큰 상태부터 보여줍니다.',
@@ -457,6 +486,7 @@ GROUP BY status
 ORDER BY avg_qty DESC;`,
     },
     {
+      id: '02_shop_order.advanced.10',
       title: '상품 구매 고객 목록',
       description:
         '상품별로 그 상품을 산 고객 이름을 한 줄로 모아 보세요. 상품명(product_name)과 구매 고객 명단(customer_names)을 상품명 가나다순으로 보여주며, 같은 고객이 여러 번 샀어도 한 번만 표시합니다.',
