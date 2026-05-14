@@ -3,6 +3,7 @@ import { defineExampleSet } from './shared'
 export const salesCrmExamples = defineExampleSet('07_sales_crm.sql', {
   beginner: [
     {
+      id: '07_sales_crm.beginner.01',
       title: '거래처 지역별 수',
       description: '거래처(accounts)를 지역(region) 기준으로 묶어 각 지역에 거래처가 몇 곳 있는지 보여 주세요. 거래처가 많은 지역이 위로 오도록 정렬합니다.',
       hint: '지역별 집계',
@@ -14,6 +15,7 @@ GROUP BY region
 ORDER BY account_count DESC;`,
     },
     {
+      id: '07_sales_crm.beginner.02',
       title: '거래처 산업별 수',
       description: '거래처(accounts)를 산업군(industry) 기준으로 묶어 산업별 거래처 수를 보여 주세요. 거래처가 많은 산업이 먼저 보이게 정렬합니다.',
       hint: '산업별 집계',
@@ -25,6 +27,7 @@ GROUP BY industry
 ORDER BY account_count DESC;`,
     },
     {
+      id: '07_sales_crm.beginner.03',
       title: '영업 담당자 목록',
       description: '영업 담당자(sales_reps)의 식별자(id), 이름(name), 소속 팀(team)을 한 화면에서 확인할 수 있게 정리해 주세요. 팀 순서, 그 안에서 이름 순서로 정렬합니다.',
       hint: '단순 조회와 다중 정렬',
@@ -35,6 +38,7 @@ FROM sales_reps
 ORDER BY team, name;`,
     },
     {
+      id: '07_sales_crm.beginner.04',
       title: '리드 상태별 수',
       description: '리드(leads)를 진행 상태(status, 예: NEW/QUALIFIED/CONVERTED) 기준으로 묶어 상태별 건수를 보여 주세요. 많은 상태가 먼저 보이게 정렬합니다.',
       hint: '상태별 카운트',
@@ -46,6 +50,7 @@ GROUP BY status
 ORDER BY lead_count DESC;`,
     },
     {
+      id: '07_sales_crm.beginner.05',
       title: '리드 소스별 수',
       description: '리드(leads)가 어디에서 유입됐는지 소스(source, 예: WEB/REFERRAL/COLD_CALL)별로 건수를 보여 주세요. 유입이 많은 소스가 위로 오게 정렬합니다.',
       hint: '유입 채널별 집계',
@@ -57,6 +62,7 @@ GROUP BY source
 ORDER BY lead_count DESC;`,
     },
     {
+      id: '07_sales_crm.beginner.06',
       title: '영업기회 단계별 파이프라인',
       description: '영업기회(opportunities)를 영업 단계(stage, 예: PROSPECT/PROPOSAL/NEGOTIATION/WON/LOST)별로 묶어 건수와 예상 금액(expected_amount) 합계를 보여 주세요. 파이프라인 금액이 큰 단계가 먼저 오게 정렬합니다.',
       hint: '단계별 합계 + 카운트',
@@ -68,6 +74,7 @@ GROUP BY stage
 ORDER BY pipeline DESC;`,
     },
     {
+      id: '07_sales_crm.beginner.07',
       title: '예상 금액 큰 영업기회',
       description: '예상 금액(expected_amount)이 큰 영업기회(opportunities)부터 차례로 이름, 단계(stage), 예상 금액을 보여 주세요.',
       hint: '단순 정렬',
@@ -78,6 +85,7 @@ FROM opportunities
 ORDER BY expected_amount DESC;`,
     },
     {
+      id: '07_sales_crm.beginner.08',
       title: '활동 유형별 수',
       description: '영업 활동(activities)을 활동 유형(activity_type, 예: CALL/EMAIL/MEETING)별로 묶어 활동 건수를 집계해 주세요. 많이 한 유형이 위로 오게 정렬합니다.',
       hint: '유형별 카운트',
@@ -89,6 +97,7 @@ GROUP BY activity_type
 ORDER BY activity_count DESC;`,
     },
     {
+      id: '07_sales_crm.beginner.09',
       title: '계약 금액 큰 순서',
       description: '계약(contracts) 데이터를 계약 금액(contract_amount)이 큰 순서로 정리해 거래처 식별자(account_id), 금액, 체결일(signed_at), 상태(status)를 보여 주세요.',
       hint: '금액 내림차순',
@@ -99,6 +108,7 @@ FROM contracts
 ORDER BY contract_amount DESC;`,
     },
     {
+      id: '07_sales_crm.beginner.10',
       title: '월별 신규 리드',
       description: '리드(leads)의 생성일(created_at)을 월 단위로 잘라 매월 새 리드가 몇 건씩 들어왔는지 보여 주세요. 시간 순서대로 정렬합니다.',
       hint: '월 단위 시계열 집계',
@@ -112,6 +122,7 @@ ORDER BY lead_month;`,
   ],
   intermediate: [
     {
+      id: '07_sales_crm.intermediate.01',
       title: '거래처와 담당자',
       description: '거래처(accounts)와 그 거래처의 담당자(contacts)를 짝지어 거래처명, 담당자명, 직책(title), 이메일(email)을 한 줄에 보여 주세요. 거래처 이름 순서로 정렬합니다.',
       hint: '두 테이블 조인',
@@ -123,6 +134,7 @@ JOIN accounts a ON a.id = c.account_id
 ORDER BY a.name;`,
     },
     {
+      id: '07_sales_crm.intermediate.02',
       title: '리드와 영업 담당자',
       description: '각 리드(leads)에 어떤 거래처와 어떤 영업 담당자가 매칭되어 있는지, 그리고 그 리드의 유입 소스(source)와 상태(status)를 함께 보여 주세요. 리드 생성일 순서로 정렬합니다.',
       hint: '3개 테이블 조인',
@@ -135,6 +147,7 @@ JOIN sales_reps r ON r.id = l.sales_rep_id
 ORDER BY l.created_at;`,
     },
     {
+      id: '07_sales_crm.intermediate.03',
       title: '담당자별 리드 수',
       description: '영업 담당자(sales_reps)별로 본인이 보유한 리드 수를 보여 주세요. 리드가 아직 한 건도 없는 담당자도 0으로 포함되어야 합니다.',
       hint: 'LEFT JOIN + 그룹 카운트',
@@ -147,6 +160,7 @@ GROUP BY r.id, r.name
 ORDER BY lead_count DESC;`,
     },
     {
+      id: '07_sales_crm.intermediate.04',
       title: '담당자별 영업기회 수',
       description: '영업 담당자(sales_reps)별로 담당 중인 영업기회(opportunities) 수를 보여 주세요. 영업기회가 없는 담당자도 0으로 함께 보이게 합니다.',
       hint: 'LEFT JOIN + 카운트',
@@ -159,6 +173,7 @@ GROUP BY r.id, r.name
 ORDER BY opportunity_count DESC;`,
     },
     {
+      id: '07_sales_crm.intermediate.05',
       title: '거래처별 파이프라인',
       description: '거래처(accounts)별로 영업기회(opportunities)의 예상 금액(expected_amount) 합계를 보여 주세요. 파이프라인이 큰 거래처가 먼저 오게 정렬합니다.',
       hint: '조인 후 합계',
@@ -171,6 +186,7 @@ GROUP BY a.id, a.name
 ORDER BY pipeline DESC;`,
     },
     {
+      id: '07_sales_crm.intermediate.06',
       title: '영업기회별 활동 수',
       description: '각 영업기회(opportunities)에 얼마나 많은 영업 활동(activities)이 쌓였는지 보여 주세요. 활동이 한 건도 없는 영업기회도 0으로 포함합니다.',
       hint: 'LEFT JOIN + 카운트',
@@ -183,6 +199,7 @@ GROUP BY o.id, o.name
 ORDER BY activity_count DESC;`,
     },
     {
+      id: '07_sales_crm.intermediate.07',
       title: '계약된 거래처',
       description: '계약(contracts)이 체결된 거래처들의 이름, 계약 금액(contract_amount), 체결일(signed_at), 계약 상태(status)를 보여 주세요. 금액이 큰 계약이 먼저 보이도록 정렬합니다.',
       hint: '계약 + 거래처 조인',
@@ -194,6 +211,7 @@ JOIN accounts a ON a.id = c.account_id
 ORDER BY c.contract_amount DESC;`,
     },
     {
+      id: '07_sales_crm.intermediate.08',
       title: '팀별 예상 매출',
       description: '영업 팀(team)별로 보유한 영업기회의 예상 금액(expected_amount) 합계를 보여 주세요. 합계가 큰 팀이 먼저 오게 정렬합니다.',
       hint: '팀 단위 합계',
@@ -206,6 +224,7 @@ GROUP BY r.team
 ORDER BY pipeline DESC;`,
     },
     {
+      id: '07_sales_crm.intermediate.09',
       title: 'WON 영업기회와 계약',
       description: '수주(WON) 단계의 영업기회와, 그 영업기회에 연결된 계약(contracts)의 금액과 체결일을 함께 보여 주세요. 아직 계약이 체결되지 않은 WON 건도 결과에 남아 있어야 합니다.',
       hint: '조건 필터 + LEFT JOIN',
@@ -218,6 +237,7 @@ WHERE o.stage = 'WON'
 ORDER BY c.signed_at;`,
     },
     {
+      id: '07_sales_crm.intermediate.10',
       title: '활동 담당자와 영업기회',
       description: '각 영업 활동(activities)에 대해 어떤 담당자가, 어떤 영업기회에서, 어떤 유형의 활동을 언제 수행했는지 한 줄로 보여 주세요. 발생 시각 순으로 정렬합니다.',
       hint: '3개 테이블 조인',
@@ -232,6 +252,7 @@ ORDER BY a.occurred_at;`,
   ],
   advanced: [
     {
+      id: '07_sales_crm.advanced.01',
       title: '리드에서 계약까지 전환',
       description: '리드 상태(status)별로, 그 리드가 영업기회로 얼마나 발전했고 또 계약까지 이어진 건수가 얼마나 되는지 한 줄에 보여 주세요. 깔때기(funnel) 단계별 전환을 한눈에 보고 싶습니다.',
       hint: '깔때기(Funnel) 분석',
@@ -249,6 +270,7 @@ GROUP BY l.status
 ORDER BY lead_count DESC;`,
     },
     {
+      id: '07_sales_crm.advanced.02',
       title: '담당자별 계약 전환율',
       description: '영업 담당자별로 영업기회 수, 계약 수, 그리고 영업기회 대비 계약 비율(%)을 소수점 1자리로 보여 주세요. 비율이 높은 담당자가 먼저 보이게 합니다.',
       hint: '비율 계산 + 0 나눗셈 방어',
@@ -266,6 +288,7 @@ GROUP BY r.id, r.name
 ORDER BY contract_rate DESC;`,
     },
     {
+      id: '07_sales_crm.advanced.03',
       title: '단계별 평균 예상 금액',
       description: '영업기회(opportunities)를 단계(stage)별로 묶어 예상 금액(expected_amount)의 평균을 정수로 반올림해 보여 주세요. 평균이 큰 단계가 위로 오게 정렬합니다.',
       hint: '그룹 평균 + 반올림',
@@ -277,6 +300,7 @@ GROUP BY stage
 ORDER BY avg_amount DESC;`,
     },
     {
+      id: '07_sales_crm.advanced.04',
       title: '활동 없는 영업기회',
       description: '아직 영업 활동(activities)이 한 건도 기록되지 않은 영업기회만 골라 id, 이름, 단계(stage)를 보여 주세요. 방치된 딜을 찾아내는 게 목적입니다.',
       hint: 'LEFT JOIN 후 NULL 필터(anti-join)',
@@ -289,6 +313,7 @@ WHERE a.id IS NULL
 ORDER BY o.id;`,
     },
     {
+      id: '07_sales_crm.advanced.05',
       title: '담당자별 최신 활동',
       description: '영업 담당자별로 가장 최근에 수행한 활동 한 건만 골라 담당자명, 활동 유형, 발생 시각을 보여 주세요. 가장 최근 활동이 위에 오게 정렬합니다.',
       hint: '그룹별 최신 1건 (윈도우 함수)',
@@ -307,6 +332,7 @@ WHERE ra.rank_no = 1
 ORDER BY ra.occurred_at DESC;`,
     },
     {
+      id: '07_sales_crm.advanced.06',
       title: '계약 금액과 예상 금액 차이',
       description: '체결된 계약마다 거래처명, 영업기회명, 처음 예상했던 금액, 실제 계약 금액, 그리고 둘의 차이(실제 − 예상)를 함께 보여 주세요. 차이가 큰 건이 먼저 보이게 정렬합니다.',
       hint: '컬럼 간 산술 + 정렬',
@@ -320,6 +346,7 @@ JOIN accounts a ON a.id = c.account_id
 ORDER BY diff DESC;`,
     },
     {
+      id: '07_sales_crm.advanced.07',
       title: '지역별 계약 현황',
       description: '거래처(accounts) 지역(region)별로 체결된 계약 수와 계약 금액 합계를 보여 주세요. 계약이 한 건도 없는 지역도 0으로 함께 보여야 합니다.',
       hint: 'LEFT JOIN + NULL 합계 보정',
@@ -332,6 +359,7 @@ GROUP BY a.region
 ORDER BY contract_amount DESC;`,
     },
     {
+      id: '07_sales_crm.advanced.08',
       title: '리드 생성 후 예상 마감까지 일수',
       description: '각 영업기회에 대해 원래 리드가 생성된 날짜와 예상 마감일(expected_close_date) 사이가 며칠인지 계산해 보여 주세요. 기간이 긴 딜이 먼저 보이게 정렬합니다.',
       hint: '날짜 차이 계산',
@@ -347,6 +375,7 @@ JOIN leads l ON l.id = o.lead_id
 ORDER BY days_to_close DESC;`,
     },
     {
+      id: '07_sales_crm.advanced.09',
       title: '파이프라인 누적 순위',
       description: '영업기회를 예상 금액이 큰 순서로 줄세우면서, 위에서부터 누적으로 합산된 파이프라인 금액도 함께 보여 주세요. "상위 몇 건이 파이프라인의 몇 %를 차지하는가"를 보고 싶을 때 쓰는 형태입니다.',
       hint: '누적 합계 윈도우 함수',
@@ -361,6 +390,7 @@ FROM opportunities
 ORDER BY expected_amount DESC;`,
     },
     {
+      id: '07_sales_crm.advanced.10',
       title: '거래처 영업 종합 리포트',
       description: '거래처별로 담당자 수, 리드 수, 영업기회 수, 계약 수를 한 줄에 모아 종합 현황을 보여 주세요. 영업기회가 많은 거래처가 먼저 오게 정렬합니다.',
       hint: '다중 LEFT JOIN + DISTINCT 카운트',

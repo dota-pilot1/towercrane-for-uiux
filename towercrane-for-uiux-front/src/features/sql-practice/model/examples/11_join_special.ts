@@ -3,6 +3,7 @@ import { defineExampleSet } from './shared'
 export const joinSpecialExamples = defineExampleSet('11_join_special.sql', {
   beginner: [
     {
+      id: '11_join_special.beginner.01',
       title: '부서 목록과 예산',
       description: '부서의 식별자(id), 이름(name), 위치(location), 예산(budget)을 예산이 큰 순서대로 보여주세요. 어느 부서가 가장 큰 예산을 가지고 있는지 한눈에 확인하기 위한 자료입니다.',
       hint: '단일 테이블 정렬',
@@ -13,6 +14,7 @@ FROM departments
 ORDER BY budget DESC;`,
     },
     {
+      id: '11_join_special.beginner.02',
       title: '직원 연봉 순서',
       description: '직원의 이름(name), 역할(role), 연봉(salary), 입사일(hire_date)을 연봉이 높은 순서대로 보여주세요. 보상 수준을 한눈에 비교하기 위한 자료입니다.',
       hint: '단일 테이블 정렬',
@@ -23,6 +25,7 @@ FROM employees
 ORDER BY salary DESC;`,
     },
     {
+      id: '11_join_special.beginner.03',
       title: '서울 부서',
       description: '위치(location)가 서울인 부서의 이름(name)과 예산(budget)을 이름순으로 보여주세요. 특정 지역의 부서만 빠르게 찾는 용도입니다.',
       hint: '단순 조건 필터',
@@ -34,6 +37,7 @@ WHERE location = '서울'
 ORDER BY name;`,
     },
     {
+      id: '11_join_special.beginner.04',
       title: '프로젝트 상태별 수',
       description: '프로젝트의 상태(status)별로 프로젝트가 몇 건씩 있는지 많은 순서대로 보여주세요. 진행 상황을 한눈에 파악하기 위한 집계 자료입니다.',
       hint: '단일 컬럼 그룹 집계',
@@ -45,6 +49,7 @@ GROUP BY status
 ORDER BY project_count DESC;`,
     },
     {
+      id: '11_join_special.beginner.05',
       title: '고객 산업별 수',
       description: '고객의 산업(industry)별로 고객사가 몇 곳씩 있는지 많은 순서대로 보여주세요. 어떤 산업군 고객이 많은지 한눈에 확인하기 위한 자료입니다.',
       hint: '단일 컬럼 그룹 집계',
@@ -56,6 +61,7 @@ GROUP BY industry
 ORDER BY client_count DESC;`,
     },
     {
+      id: '11_join_special.beginner.06',
       title: '프로젝트 예산 큰 순서',
       description: '프로젝트의 이름(name), 상태(status), 예산(budget)을 예산이 큰 순서로 상위 5건만 보여주세요. 가장 큰 비중을 가진 프로젝트를 추려내는 용도입니다.',
       hint: '상위 N건 추출',
@@ -67,6 +73,7 @@ ORDER BY budget DESC
 LIMIT 5;`,
     },
     {
+      id: '11_join_special.beginner.07',
       title: '프로젝트 역할별 멤버 수',
       description: '프로젝트 참여자들의 역할(role)별로 인원이 몇 명씩 되는지 많은 순서대로 보여주세요. 어떤 역할이 가장 많이 투입되는지 파악하기 위한 자료입니다.',
       hint: '단일 컬럼 그룹 집계',
@@ -78,6 +85,7 @@ GROUP BY role
 ORDER BY member_count DESC;`,
     },
     {
+      id: '11_join_special.beginner.08',
       title: '회의 일자 순서',
       description: '회의의 소속 프로젝트 식별자(project_id), 제목(title), 개최일(held_at)을 개최일이 빠른 순서로 보여주세요. 시간 순으로 진행된 회의 목록을 정리하기 위한 용도입니다.',
       hint: '단일 테이블 시간 정렬',
@@ -88,6 +96,7 @@ FROM meetings
 ORDER BY held_at;`,
     },
     {
+      id: '11_join_special.beginner.09',
       title: '회의 참석 여부별 수',
       description: '회의 참석 여부(attended)별로 인원이 몇 명씩 되는지 참석=1이 위에 오도록 정리해서 보여주세요. 전체 참석률 감각을 잡기 위한 자료입니다.',
       hint: '플래그 컬럼 그룹 집계',
@@ -99,6 +108,7 @@ GROUP BY attended
 ORDER BY attended DESC;`,
     },
     {
+      id: '11_join_special.beginner.10',
       title: '활성 직원 수',
       description: '활성 상태(is_active=1)인 직원이 총 몇 명인지 한 줄로 보여주세요. 현재 재직 인원 규모를 빠르게 확인하기 위한 용도입니다.',
       hint: '조건부 카운트',
@@ -111,6 +121,7 @@ WHERE is_active = 1;`,
   ],
   intermediate: [
     {
+      id: '11_join_special.intermediate.01',
       title: '직원과 부서',
       description: '직원의 이름(name)과 함께 소속 부서의 이름(department_name) 및 위치(location)를 보여주세요. 부서명, 직원명 순으로 정렬해 부서 단위로 묶이도록 합니다.',
       hint: '기본 두 테이블 조인',
@@ -122,6 +133,7 @@ JOIN departments d ON d.id = e.dept_id
 ORDER BY d.name, e.name;`,
     },
     {
+      id: '11_join_special.intermediate.02',
       title: '직원과 매니저 SELF JOIN',
       description: '직원(employee)과 그 직원의 매니저(manager) 이름, 그리고 역할(role)을 함께 보여주세요. 매니저가 없는 직원도 빠지지 않게 포함합니다.',
       hint: '셀프 조인',
@@ -133,6 +145,7 @@ LEFT JOIN employees m ON m.id = e.manager_id
 ORDER BY manager, employee;`,
     },
     {
+      id: '11_join_special.intermediate.03',
       title: '프로젝트와 담당 부서',
       description: '프로젝트의 이름(project_name)과 담당 부서의 이름(department_name), 그리고 상태(status)를 부서명·프로젝트명 순으로 보여주세요. 어느 부서가 어떤 프로젝트를 맡고 있는지 파악하기 위한 자료입니다.',
       hint: '기본 두 테이블 조인',
@@ -144,6 +157,7 @@ JOIN departments d ON d.id = p.dept_id
 ORDER BY d.name, p.name;`,
     },
     {
+      id: '11_join_special.intermediate.04',
       title: '프로젝트와 고객사',
       description: '프로젝트의 이름(project_name)과 고객사 이름(client_name), 산업(industry)을 보여주세요. 고객사가 없는 사내 프로젝트도 함께 보여야 합니다.',
       hint: '선택 관계 보존 조인',
@@ -155,6 +169,7 @@ LEFT JOIN clients c ON c.id = p.client_id
 ORDER BY p.name;`,
     },
     {
+      id: '11_join_special.intermediate.05',
       title: '프로젝트 참여 직원',
       description: '프로젝트 이름(project_name), 참여 직원 이름(employee_name), 그리고 참여 역할(role)을 프로젝트별·역할별로 정렬해 보여주세요. 누가 어떤 프로젝트에 어떤 역할로 들어가 있는지 한눈에 보기 위한 자료입니다.',
       hint: 'N:M 브리지 테이블 조인',
@@ -167,6 +182,7 @@ JOIN employees e ON e.id = pm.employee_id
 ORDER BY p.name, pm.role;`,
     },
     {
+      id: '11_join_special.intermediate.06',
       title: '부서별 인원과 평균 연봉',
       description: '부서 이름별로 소속 직원 수(headcount)와 평균 연봉(avg_salary, 정수 반올림)을 평균 연봉이 높은 순서로 보여주세요. 부서별 인적 자원과 보상 수준을 비교하기 위한 자료입니다.',
       hint: '조인 후 그룹 집계',
@@ -179,6 +195,7 @@ GROUP BY d.id, d.name
 ORDER BY avg_salary DESC;`,
     },
     {
+      id: '11_join_special.intermediate.07',
       title: '프로젝트별 멤버 수',
       description: '프로젝트 이름과 거기에 참여한 인원 수(member_count)를 인원이 많은 순서로 보여주세요. 멤버가 한 명도 없는 프로젝트는 0으로 표시되어야 합니다.',
       hint: '왼쪽 보존 + 그룹 집계',
@@ -191,6 +208,7 @@ GROUP BY p.id, p.name
 ORDER BY member_count DESC;`,
     },
     {
+      id: '11_join_special.intermediate.08',
       title: '회의별 참석자 수',
       description: '회의 제목(title)과 실제 참석한 인원 수(attendee_count)를 참석자가 많은 순서로 보여주세요. 참석자가 없는 회의도 0으로 함께 나와야 합니다.',
       hint: 'ON 절 조건이 붙은 LEFT JOIN',
@@ -203,6 +221,7 @@ GROUP BY m.id, m.title
 ORDER BY attendee_count DESC;`,
     },
     {
+      id: '11_join_special.intermediate.09',
       title: '배정 없는 직원',
       description: '어떤 프로젝트에도 참여하고 있지 않은 직원의 이름과 소속 부서 이름(department_name)을 직원 식별자 순서로 보여주세요. 유휴 인력 파악을 위한 자료입니다.',
       hint: '안티조인',
@@ -216,6 +235,7 @@ WHERE pm.id IS NULL
 ORDER BY e.id;`,
     },
     {
+      id: '11_join_special.intermediate.10',
       title: '회의 없는 프로젝트',
       description: '회의가 한 건도 잡혀 있지 않은 프로젝트의 식별자(id), 이름(name), 상태(status)를 식별자 순서로 보여주세요. 소통이 부족한 프로젝트를 점검하기 위한 자료입니다.',
       hint: '안티조인',
@@ -230,6 +250,7 @@ ORDER BY p.id;`,
   ],
   advanced: [
     {
+      id: '11_join_special.advanced.01',
       title: '프로젝트별 참석률',
       description: '프로젝트 이름과 함께 회의에 초대된 총 인원(invited_count), 실제 참석한 인원(attended_count), 그리고 참석률(attendance_rate, %, 소수 한 자리)을 참석률이 높은 순서로 보여주세요. 어느 프로젝트가 회의 참여가 활발한지 비교하는 자료입니다.',
       hint: '복수 조인 + 조건부 비율',
@@ -247,6 +268,7 @@ GROUP BY p.id, p.name
 ORDER BY attendance_rate DESC;`,
     },
     {
+      id: '11_join_special.advanced.02',
       title: '부서 예산 대비 프로젝트 예산',
       description: '부서 이름과 그 부서의 예산(department_budget), 해당 부서가 맡은 프로젝트 예산 합계(project_budget), 그리고 둘의 차이(budget_gap)를 차이가 큰 순서로 보여주세요. 부서별 예산이 프로젝트 규모와 균형이 맞는지 점검하기 위한 자료입니다.',
       hint: '왼쪽 보존 + 차이 계산',
@@ -263,6 +285,7 @@ GROUP BY d.id, d.name, d.budget
 ORDER BY budget_gap DESC;`,
     },
     {
+      id: '11_join_special.advanced.03',
       title: '직원별 프로젝트 수 순위',
       description: '직원 이름과 참여 중인 프로젝트 수(project_count), 그리고 그 수를 기준으로 매긴 순위(project_rank)를 순위·이름 순으로 보여주세요. 프로젝트 부하가 누구에게 집중되어 있는지 확인하기 위한 자료입니다.',
       hint: '집계 + 윈도우 RANK',
@@ -278,6 +301,7 @@ GROUP BY e.id, e.name
 ORDER BY project_rank, e.name;`,
     },
     {
+      id: '11_join_special.advanced.04',
       title: '고객사별 프로젝트 예산',
       description: '고객사 이름과 의뢰한 프로젝트 수(project_count), 그리고 총 프로젝트 예산(total_budget)을 예산 큰 순으로 보여주세요. 고객사별 매출 규모를 비교하기 위한 자료입니다.',
       hint: '왼쪽 보존 + 합계 집계',
@@ -290,6 +314,7 @@ GROUP BY c.id, c.name
 ORDER BY total_budget DESC;`,
     },
     {
+      id: '11_join_special.advanced.05',
       title: '사내 프로젝트 비중',
       description: '프로젝트를 사내(INTERNAL)와 고객사(CLIENT) 두 그룹으로 나누어 각 그룹의 프로젝트 수(project_count)와 총 예산(total_budget)을 예산이 큰 순으로 보여주세요. 사내 투자와 외부 수주 규모를 비교하기 위한 자료입니다.',
       hint: 'CASE 식으로 그룹 분기',
@@ -304,6 +329,7 @@ GROUP BY CASE WHEN client_id IS NULL THEN 'INTERNAL' ELSE 'CLIENT' END
 ORDER BY total_budget DESC;`,
     },
     {
+      id: '11_join_special.advanced.06',
       title: '회의 불참 직원 통계',
       description: '회의에 불참(attended=0)한 횟수가 많은 직원의 이름과 불참 횟수(absent_count)를 많은 순서로 보여주세요. 회의 참여가 저조한 인원을 식별하기 위한 자료입니다.',
       hint: '필터 + 그룹 집계',
@@ -317,6 +343,7 @@ GROUP BY e.id, e.name
 ORDER BY absent_count DESC;`,
     },
     {
+      id: '11_join_special.advanced.07',
       title: '프로젝트별 직군 구성',
       description: '프로젝트 이름과 함께 개발자 수(dev_count), PM 수(pm_count), 기타 직군 수(other_count)를 한 행으로 보여주세요. 프로젝트마다 직군 구성이 어떻게 다른지 비교하기 위한 자료입니다.',
       hint: '조건부 집계 피벗',
@@ -333,6 +360,7 @@ GROUP BY p.id, p.name
 ORDER BY p.name;`,
     },
     {
+      id: '11_join_special.advanced.08',
       title: '팀장과 팀원 수',
       description: '팀원이 한 명 이상 있는 팀장의 이름(manager_name)과 그 팀장이 거느린 팀원 수(member_count)를 팀원이 많은 순서로 보여주세요. 어느 팀장이 가장 큰 조직을 이끄는지 파악하기 위한 자료입니다.',
       hint: '셀프 조인 + HAVING',
@@ -346,6 +374,7 @@ HAVING member_count > 0
 ORDER BY member_count DESC;`,
     },
     {
+      id: '11_join_special.advanced.09',
       title: '프로젝트 기간 계산',
       description: '프로젝트의 이름과 상태, 시작일(start_date), 종료일(end_date), 그리고 진행 일수(project_days)를 일수가 긴 순서로 보여주세요. 종료일이 비어 있는 프로젝트는 2024-12-31까지로 가정합니다.',
       hint: '날짜 차이 + NULL 기본값',
@@ -361,6 +390,7 @@ FROM projects
 ORDER BY project_days DESC;`,
     },
     {
+      id: '11_join_special.advanced.10',
       title: 'JOIN 종합 리포트',
       description: '담당 부서 이름(department_name), 프로젝트 이름(project_name), 고객사 이름(client_name, 없으면 "사내"), 참여 인원 수(member_count), 회의 수(meeting_count)를 인원 많은 순·회의 많은 순으로 보여주세요. 프로젝트 단위의 전반적인 현황을 한 화면에 모으는 리포트입니다.',
       hint: '복수 LEFT JOIN + DISTINCT 집계',

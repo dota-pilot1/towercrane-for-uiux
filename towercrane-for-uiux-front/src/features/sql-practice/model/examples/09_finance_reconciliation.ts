@@ -3,6 +3,7 @@ import { defineExampleSet } from './shared'
 export const financeReconciliationExamples = defineExampleSet('09_finance_reconciliation.sql', {
   beginner: [
     {
+      id: '09_finance_reconciliation.beginner.01',
       title: '가맹점 수수료율 목록',
       description: '가맹점 정보를 한눈에 확인하려고 합니다. 가맹점 아이디(id), 이름(name), 수수료율(fee_rate), 정산일(settlement_day)을 수수료율이 높은 순서로 보여주세요.',
       hint: '단일 테이블 정렬 조회',
@@ -13,6 +14,7 @@ FROM merchants
 ORDER BY fee_rate DESC;`,
     },
     {
+      id: '09_finance_reconciliation.beginner.02',
       title: '주문 금액 큰 순서',
       description: '고액 주문부터 살펴보려고 합니다. 주문번호(order_no), 가맹점 아이디(merchant_id), 주문 금액(order_amount), 주문 일시(ordered_at)를 주문 금액이 큰 순서로 정렬해 주세요.',
       hint: '단일 테이블 정렬',
@@ -23,6 +25,7 @@ FROM orders
 ORDER BY order_amount DESC;`,
     },
     {
+      id: '09_finance_reconciliation.beginner.03',
       title: '결제 수단별 금액',
       description: '결제 수단(method)별로 매출 분포를 파악하고 싶습니다. 결제 수단별로 결제 금액(amount) 합계를 구해 합계가 큰 순서로 보여주세요.',
       hint: '단순 그룹 합계',
@@ -34,6 +37,7 @@ GROUP BY method
 ORDER BY payment_amount DESC;`,
     },
     {
+      id: '09_finance_reconciliation.beginner.04',
       title: '결제 상태별 수',
       description: '결제 상태(status)별 분포를 확인하려고 합니다. 상태별로 결제 건수를 세어서 건수가 많은 순서로 보여주세요.',
       hint: '그룹 카운트',
@@ -45,6 +49,7 @@ GROUP BY status
 ORDER BY payment_count DESC;`,
     },
     {
+      id: '09_finance_reconciliation.beginner.05',
       title: '환불 사유별 금액',
       description: '환불 사유(reason)별로 손실 규모를 파악하고 싶습니다. 사유별 환불 금액(amount) 합계를 합계가 큰 순서로 보여주세요.',
       hint: '사유별 합계 집계',
@@ -56,6 +61,7 @@ GROUP BY reason
 ORDER BY refund_amount DESC;`,
     },
     {
+      id: '09_finance_reconciliation.beginner.06',
       title: '정산 차액 보기',
       description: '월별 정산에서 예상액과 실지급액의 차이를 확인하려고 합니다. 가맹점 아이디(merchant_id), 정산월(settlement_month), 예상 금액(expected_amount), 정산 금액(settled_amount)과 그 차이를 차이의 절대값이 큰 순서로 보여주세요.',
       hint: '계산 컬럼 + 절대값 정렬',
@@ -67,6 +73,7 @@ FROM settlements
 ORDER BY ABS(expected_amount - settled_amount) DESC;`,
     },
     {
+      id: '09_finance_reconciliation.beginner.07',
       title: '수수료 유형별 금액',
       description: '수수료 유형(fee_type)별 비용 규모를 확인하려고 합니다. 유형별 수수료 금액(amount) 합계를 합계가 큰 순서로 보여주세요.',
       hint: '유형별 합계',
@@ -78,6 +85,7 @@ GROUP BY fee_type
 ORDER BY fee_amount DESC;`,
     },
     {
+      id: '09_finance_reconciliation.beginner.08',
       title: '열린 미수금',
       description: '아직 회수되지 않은 미수금만 모아 보려고 합니다. 상태(status)가 OPEN 인 항목의 가맹점 아이디(merchant_id), 주문 아이디(order_id), 금액(amount), 만기일(due_date)을 만기일이 빠른 순서로 보여주세요.',
       hint: '단일 조건 필터링',
@@ -89,6 +97,7 @@ WHERE status = 'OPEN'
 ORDER BY due_date;`,
     },
     {
+      id: '09_finance_reconciliation.beginner.09',
       title: '월별 정산 건수',
       description: '월별로 정산이 몇 건씩 발생했는지 추세를 보려고 합니다. 정산월(settlement_month)별 정산 건수를 월 오름차순으로 보여주세요.',
       hint: '시간 단위 그룹 카운트',
@@ -100,6 +109,7 @@ GROUP BY settlement_month
 ORDER BY settlement_month;`,
     },
     {
+      id: '09_finance_reconciliation.beginner.10',
       title: '승인 결제 목록',
       description: '정상 승인된 결제만 시간 순으로 살펴보려고 합니다. 상태(status)가 APPROVED 인 결제의 주문 아이디(order_id), 금액(amount), 결제 수단(method), 승인 일시(approved_at)를 승인 일시 순으로 보여주세요.',
       hint: '필터 + 시간 정렬',
@@ -113,6 +123,7 @@ ORDER BY approved_at;`,
   ],
   intermediate: [
     {
+      id: '09_finance_reconciliation.intermediate.01',
       title: '가맹점별 승인 결제액',
       description: '가맹점별 실제 매출(승인된 결제만 합산)을 비교하고 싶습니다. 가맹점 이름(name)별로 승인된 결제의 금액(amount) 합계를 합계가 큰 순서로 보여주세요.',
       hint: '3중 조인 + 조건부 합계',
@@ -127,6 +138,7 @@ GROUP BY m.id, m.name
 ORDER BY paid_amount DESC;`,
     },
     {
+      id: '09_finance_reconciliation.intermediate.02',
       title: '주문별 환불 합계',
       description: '주문 하나당 환불이 얼마나 발생했는지 확인하려고 합니다. 환불이 없는 주문은 0 으로 표시하고, 주문번호(order_no)와 환불 합계를 환불이 큰 순서로 보여주세요.',
       hint: 'LEFT JOIN + COALESCE',
@@ -139,6 +151,7 @@ GROUP BY o.id, o.order_no
 ORDER BY refund_total DESC;`,
     },
     {
+      id: '09_finance_reconciliation.intermediate.03',
       title: '결제별 수수료',
       description: '결제 한 건당 부과된 수수료 총액을 확인하려고 합니다. 결제 아이디(payment_id), 결제 금액(amount), 수수료 합계를 수수료가 큰 순서로 보여주세요. 수수료가 없으면 0 으로 표시합니다.',
       hint: 'LEFT JOIN + 그룹 합계',
@@ -151,6 +164,7 @@ GROUP BY p.id, p.amount
 ORDER BY fee_amount DESC;`,
     },
     {
+      id: '09_finance_reconciliation.intermediate.04',
       title: '가맹점별 미수금',
       description: '아직 받지 못한 미수금을 가맹점별로 집계하려고 합니다. 상태(status)가 OPEN 인 미수금만 합산해서 가맹점 이름(name)과 미수금 합계를 합계가 큰 순서로 보여주세요.',
       hint: '조인 + 조건부 합계',
@@ -164,6 +178,7 @@ GROUP BY m.id, m.name
 ORDER BY open_receivable DESC;`,
     },
     {
+      id: '09_finance_reconciliation.intermediate.05',
       title: '정산과 가맹점명',
       description: '정산 기록에 가맹점 이름까지 함께 표시하려고 합니다. 가맹점 이름(name), 정산월(settlement_month), 예상 금액(expected_amount), 정산 금액(settled_amount)을 월·이름 순으로 정렬해 보여주세요.',
       hint: '코드값을 이름으로 치환하는 조인',
@@ -175,6 +190,7 @@ JOIN merchants m ON m.id = s.merchant_id
 ORDER BY s.settlement_month, m.name;`,
     },
     {
+      id: '09_finance_reconciliation.intermediate.06',
       title: '주문과 결제 비교',
       description: '주문 금액과 실제 결제 금액을 나란히 비교하려고 합니다. 주문번호(order_no), 주문 금액(order_amount), 결제 금액(amount), 결제 상태(status)를 주문 순으로 보여주세요.',
       hint: '주문·결제 1:1 매핑 조인',
@@ -186,6 +202,7 @@ JOIN payments p ON p.order_id = o.id
 ORDER BY o.id;`,
     },
     {
+      id: '09_finance_reconciliation.intermediate.07',
       title: '가맹점별 환불 금액',
       description: '가맹점별 환불 손실 규모를 보려고 합니다. 환불이 없는 가맹점은 0 으로 표시하고, 가맹점 이름(name)과 환불 금액 합계를 합계가 큰 순서로 보여주세요.',
       hint: '다단 LEFT JOIN + COALESCE',
@@ -199,6 +216,7 @@ GROUP BY m.id, m.name
 ORDER BY refund_amount DESC;`,
     },
     {
+      id: '09_finance_reconciliation.intermediate.08',
       title: '정산 차액 있는 가맹점',
       description: '예상 정산액과 실제 지급액이 다른 건만 추려 보려고 합니다. 가맹점 이름(name), 예상 금액(expected_amount), 정산 금액(settled_amount), 차액을 차액 절대값이 큰 순서로 보여주세요.',
       hint: '불일치 필터 + 절대값 정렬',
@@ -212,6 +230,7 @@ WHERE s.expected_amount != s.settled_amount
 ORDER BY ABS(diff) DESC;`,
     },
     {
+      id: '09_finance_reconciliation.intermediate.09',
       title: '주문별 순매출',
       description: '환불을 차감한 주문별 실제 매출을 확인하려고 합니다. 주문번호(order_no), 주문 금액(order_amount), 환불 금액, 그리고 주문 금액에서 환불을 뺀 순매출을 순매출이 큰 순서로 보여주세요.',
       hint: 'LEFT JOIN + 계산 컬럼',
@@ -225,6 +244,7 @@ GROUP BY o.id, o.order_no, o.order_amount
 ORDER BY net_amount DESC;`,
     },
     {
+      id: '09_finance_reconciliation.intermediate.10',
       title: '가맹점별 주문 수와 금액',
       description: '가맹점별 거래량과 거래 규모를 동시에 보려고 합니다. 가맹점 이름(name), 주문 건수, 주문 금액 합계를 금액이 큰 순서로 보여주세요.',
       hint: '동시 집계',
@@ -239,6 +259,7 @@ ORDER BY order_amount DESC;`,
   ],
   advanced: [
     {
+      id: '09_finance_reconciliation.advanced.01',
       title: '예상 정산액 재계산',
       description: '결제와 환불 내역으로 가맹점별 정산 예상액을 직접 계산하려고 합니다. 승인 결제 합계에서 환불을 빼고 수수료율(fee_rate)을 적용해 가맹점 이름(name), 결제액, 환불액, 계산된 정산액을 정산액이 큰 순서로 보여주세요.',
       hint: 'CTE 두 개 + 가중치 계산',
@@ -268,6 +289,7 @@ LEFT JOIN refunded ON refunded.merchant_id = m.id
 ORDER BY calculated_settlement DESC;`,
     },
     {
+      id: '09_finance_reconciliation.advanced.02',
       title: '정산 불일치 검증',
       description: '예상 정산액과 실제 지급액 사이에 오차가 있는 건만 골라 감사하려고 합니다. 가맹점 이름(name), 예상 금액(expected_amount), 정산 금액(settled_amount), 차액을 차액 절대값이 큰 순서로 보여주세요.',
       hint: '불일치 필터링',
@@ -284,6 +306,7 @@ WHERE s.expected_amount != s.settled_amount
 ORDER BY ABS(diff) DESC;`,
     },
     {
+      id: '09_finance_reconciliation.advanced.03',
       title: '수수료율과 실제 수수료 비교',
       description: '가맹점 계약 수수료율로 산출한 예상 수수료와 실제 부과된 수수료를 결제 단위로 비교하려고 합니다. 가맹점 이름(name), 결제 아이디(payment_id), 결제 금액(amount), 예상 수수료, 실제 수수료를 결제 순으로 보여주세요.',
       hint: '계산식 vs 실제값 비교',
@@ -303,6 +326,7 @@ GROUP BY m.name, p.id, p.amount, m.fee_rate
 ORDER BY p.id;`,
     },
     {
+      id: '09_finance_reconciliation.advanced.04',
       title: '가맹점별 순매출 순위',
       description: '가맹점별 순매출(주문 금액에서 환불 차감)을 계산해 순위를 매기려고 합니다. 가맹점 이름(name), 순매출, 순위를 순위 순서로 보여주세요.',
       hint: '윈도우 함수 RANK',
@@ -319,6 +343,7 @@ GROUP BY m.id, m.name
 ORDER BY sales_rank;`,
     },
     {
+      id: '09_finance_reconciliation.advanced.05',
       title: '미수금과 정산 차액 연결',
       description: '정산 차액과 미수금이 함께 큰 가맹점을 식별하려고 합니다. 가맹점 이름(name), 정산 차액(예상-지급), 열린 미수금 합계를 미수금이 큰 순서로 보여주세요.',
       hint: '서로 다른 두 지표 결합',
@@ -335,6 +360,7 @@ GROUP BY m.id, m.name, s.expected_amount, s.settled_amount
 ORDER BY open_receivable DESC;`,
     },
     {
+      id: '09_finance_reconciliation.advanced.06',
       title: '환불 후 결제 잔액',
       description: '결제별로 환불을 차감하고 남은 잔액을 확인하려고 합니다. 주문번호(order_no), 결제 금액, 환불 합계, 잔액을 잔액이 큰 순서로 보여주세요.',
       hint: '결제 단위 차감 계산',
@@ -352,6 +378,7 @@ GROUP BY o.order_no, p.id, p.amount
 ORDER BY remaining_amount DESC;`,
     },
     {
+      id: '09_finance_reconciliation.advanced.07',
       title: '월 정산 지급률',
       description: '예상 정산액 대비 실제 지급된 비율을 확인하려고 합니다. 가맹점 이름(name), 정산월(settlement_month), 지급률(퍼센트)을 지급률이 낮은 순서로 보여주세요.',
       hint: '비율 계산 + 소수점 반올림',
@@ -366,6 +393,7 @@ JOIN merchants m ON m.id = s.merchant_id
 ORDER BY payout_rate ASC;`,
     },
     {
+      id: '09_finance_reconciliation.advanced.08',
       title: '주문 정산 종합표',
       description: '주문 한 건에 얽힌 결제, 환불, 수수료를 한 줄로 종합해서 보려고 합니다. 가맹점 이름(name), 주문번호(order_no), 주문 금액(order_amount), 결제 금액, 환불 합계, 수수료 합계를 주문번호 순으로 보여주세요.',
       hint: '복수 LEFT JOIN + DISTINCT 합계',
@@ -387,6 +415,7 @@ GROUP BY m.name, o.order_no, o.order_amount, p.amount
 ORDER BY o.order_no;`,
     },
     {
+      id: '09_finance_reconciliation.advanced.09',
       title: '가맹점별 미수금 비중',
       description: '예상 정산액 대비 미수금이 차지하는 비중을 확인하려고 합니다. 가맹점 이름(name), 열린 미수금 합계, 예상 정산액, 미수금 비율(퍼센트)을 비율이 높은 순서로 보여주세요.',
       hint: '집계 + 비율 + 조건부 조인',
@@ -404,6 +433,7 @@ GROUP BY m.id, m.name
 ORDER BY receivable_rate DESC;`,
     },
     {
+      id: '09_finance_reconciliation.advanced.10',
       title: '정산 완료 지연 일수',
       description: '정산이 약속한 정산일보다 며칠 늦게 처리됐는지 확인하려고 합니다. 가맹점 이름(name), 정산월(settlement_month), 실제 정산 일시(settled_at), 지연 일수를 지연이 큰 순서로 보여주세요.',
       hint: '날짜 차이 계산 (julianday)',

@@ -3,6 +3,7 @@ import { defineExampleSet } from './shared'
 export const hrAttendanceExamples = defineExampleSet('03_hr_attendance.sql', {
   beginner: [
     {
+      id: '03_hr_attendance.beginner.01',
       title: '부서 목록 보기',
       description:
         '회사의 모든 부서를 한눈에 볼 수 있도록 목록을 보여주세요. 부서ID(id), 부서명(name), 부서장(manager_name), 위치(location)를 출력하고, 부서ID가 작은 순으로 정렬합니다.',
@@ -15,6 +16,7 @@ FROM departments
 ORDER BY id;`,
     },
     {
+      id: '03_hr_attendance.beginner.02',
       title: '연봉 높은 직원',
       description:
         '회사의 모든 직원을 연봉이 높은 순으로 정렬해서 보여주세요. 이름(name), 직책(position), 연봉(salary)을 출력합니다.',
@@ -27,6 +29,7 @@ FROM employees
 ORDER BY salary DESC;`,
     },
     {
+      id: '03_hr_attendance.beginner.03',
       title: '서울 부서 찾기',
       description:
         '위치가 서울인 부서만 골라서 보여주세요. 부서명(name)과 부서장(manager_name)을 출력하고, 부서명 가나다 순으로 정렬합니다.',
@@ -40,6 +43,7 @@ WHERE location = '서울'
 ORDER BY name;`,
     },
     {
+      id: '03_hr_attendance.beginner.04',
       title: '지각 또는 결근 로그',
       description:
         '근태 로그 중 정상이 아닌(지각·결근 등) 기록만 골라서 보여주세요. 직원ID(employee_id), 근무일(work_date), 상태(status)를 출력하고 근무일이 빠른 순으로 정렬합니다.',
@@ -53,6 +57,7 @@ WHERE status != 'NORMAL'
 ORDER BY work_date, employee_id;`,
     },
     {
+      id: '03_hr_attendance.beginner.05',
       title: '휴가 상태별 건수',
       description:
         '휴가 신청 상태(승인 대기, 승인 완료 등)별로 신청이 몇 건씩 있는지 집계해서 보여주세요. 상태(status)와 건수(request_count)를 출력하고 건수가 많은 순으로 정렬합니다.',
@@ -66,6 +71,7 @@ GROUP BY status
 ORDER BY request_count DESC;`,
     },
     {
+      id: '03_hr_attendance.beginner.06',
       title: '근무 스케줄 목록',
       description:
         '직원별 근무 스케줄을 모두 보여주세요. 직원ID(employee_id), 요일(weekday), 시작 시각(start_time), 종료 시각(end_time)을 출력하고 직원ID 순으로 정렬합니다.',
@@ -78,6 +84,7 @@ FROM work_schedules
 ORDER BY employee_id;`,
     },
     {
+      id: '03_hr_attendance.beginner.07',
       title: '직책별 직원 수',
       description:
         '각 직책별로 몇 명의 직원이 있는지 집계해서 보여주세요. 직책(position)과 직원 수(employee_count)를 출력하고 인원이 많은 직책부터 표시합니다.',
@@ -91,6 +98,7 @@ GROUP BY position
 ORDER BY employee_count DESC;`,
     },
     {
+      id: '03_hr_attendance.beginner.08',
       title: '부서별 직원 수',
       description:
         '부서별로 직원이 몇 명인지 집계해서 보여주세요. 부서ID(department_id)와 직원 수(employee_count)를 출력하고 인원이 많은 부서부터 정렬합니다.',
@@ -104,6 +112,7 @@ GROUP BY department_id
 ORDER BY employee_count DESC;`,
     },
     {
+      id: '03_hr_attendance.beginner.09',
       title: '입사일 빠른 순서',
       description:
         '직원들을 입사일이 빠른 순으로 정렬해서 보여주세요. 이름(name), 직책(position), 입사일(hired_at)을 출력합니다.',
@@ -116,6 +125,7 @@ FROM employees
 ORDER BY hired_at ASC;`,
     },
     {
+      id: '03_hr_attendance.beginner.10',
       title: '근태 상태별 건수',
       description:
         '근태 로그를 상태(정상, 지각, 결근 등)별로 몇 건이 쌓였는지 집계해서 보여주세요. 상태(status)와 건수(log_count)를 출력하고 건수가 많은 순으로 정렬합니다.',
@@ -131,6 +141,7 @@ ORDER BY log_count DESC;`,
   ],
   intermediate: [
     {
+      id: '03_hr_attendance.intermediate.01',
       title: '부서명과 직원 목록',
       description:
         '각 직원이 어느 부서 소속인지 한눈에 볼 수 있도록 부서명과 직원 정보를 함께 보여주세요. 부서명(department_name), 직원명(employee_name), 직책(position)을 출력하고 부서명, 직원명 순으로 정렬합니다.',
@@ -144,6 +155,7 @@ JOIN departments d ON d.id = e.department_id
 ORDER BY d.name, e.name;`,
     },
     {
+      id: '03_hr_attendance.intermediate.02',
       title: '부서별 평균 연봉',
       description:
         '각 부서의 평균 연봉을 계산해서 보여주세요. 부서명(name)과 평균 연봉(avg_salary, 반올림한 정수)을 출력하고 평균 연봉이 높은 순으로 정렬합니다.',
@@ -158,6 +170,7 @@ GROUP BY d.id, d.name
 ORDER BY avg_salary DESC;`,
     },
     {
+      id: '03_hr_attendance.intermediate.03',
       title: '이상 근태 직원명',
       description:
         '정상이 아닌 근태 로그를 직원 이름과 함께 보여주세요. 이름(name), 근무일(work_date), 상태(status)를 출력하고 근무일이 빠른 순으로 정렬합니다.',
@@ -172,6 +185,7 @@ WHERE a.status != 'NORMAL'
 ORDER BY a.work_date;`,
     },
     {
+      id: '03_hr_attendance.intermediate.04',
       title: '직원별 근태 로그 수',
       description:
         '모든 직원의 누적 근태 로그 수를 보여주세요. 로그가 한 건도 없는 직원도 0으로 표시되어야 합니다. 이름(name)과 로그 수(log_count)를 출력하고 로그 수가 많은 순으로 정렬합니다.',
@@ -186,6 +200,7 @@ GROUP BY e.id, e.name
 ORDER BY log_count DESC;`,
     },
     {
+      id: '03_hr_attendance.intermediate.05',
       title: '직원별 휴가 신청 수',
       description:
         '모든 직원의 휴가 신청 누적 건수를 보여주세요. 신청 이력이 없는 직원도 0으로 표시되어야 합니다. 이름(name)과 신청 수(leave_count)를 출력하고 신청이 많은 순으로 정렬합니다.',
@@ -200,6 +215,7 @@ GROUP BY e.id, e.name
 ORDER BY leave_count DESC;`,
     },
     {
+      id: '03_hr_attendance.intermediate.06',
       title: '승인된 휴가와 부서',
       description:
         '승인된 휴가 신청을 부서·직원 정보와 함께 보여주세요. 부서명(department_name), 직원명(employee_name), 휴가 종류(leave_type), 시작일(start_date), 종료일(end_date)을 출력하고 시작일이 빠른 순으로 정렬합니다.',
@@ -215,6 +231,7 @@ WHERE l.status = 'APPROVED'
 ORDER BY l.start_date;`,
     },
     {
+      id: '03_hr_attendance.intermediate.07',
       title: '월요일 스케줄과 직원',
       description:
         '월요일 근무 스케줄을 직원 이름과 함께 보여주세요. 이름(name), 요일(weekday), 시작 시각(start_time), 종료 시각(end_time)을 출력하고 시작 시각이 빠른 순, 동률이면 이름 순으로 정렬합니다.',
@@ -229,6 +246,7 @@ WHERE w.weekday = 'MON'
 ORDER BY w.start_time, e.name;`,
     },
     {
+      id: '03_hr_attendance.intermediate.08',
       title: '부서별 이상 근태 수',
       description:
         '부서별로 비정상 근태(지각·결근 등)가 몇 건씩 있었는지 집계해서 보여주세요. 이상 근태가 0건인 부서도 0으로 표시되어야 합니다. 부서명(name)과 이상 근태 수(abnormal_count)를 출력하고 건수가 많은 순으로 정렬합니다.',
@@ -244,6 +262,7 @@ GROUP BY d.id, d.name
 ORDER BY abnormal_count DESC;`,
     },
     {
+      id: '03_hr_attendance.intermediate.09',
       title: '휴가 대기 직원',
       description:
         '아직 승인되지 않은 휴가(대기 상태) 신청을 직원 이름과 함께 보여주세요. 이름(name), 휴가 종류(leave_type), 시작일(start_date)을 출력하고 시작일이 빠른 순으로 정렬합니다.',
@@ -258,6 +277,7 @@ WHERE l.status = 'PENDING'
 ORDER BY l.start_date;`,
     },
     {
+      id: '03_hr_attendance.intermediate.10',
       title: '부서별 고연봉 직원 수',
       description:
         '연봉이 4,800만원 이상인 직원이 부서별로 몇 명인지 집계해서 보여주세요. 부서명(name)과 고연봉 직원 수(high_salary_count)를 출력하고 인원이 많은 순으로 정렬합니다.',
@@ -275,6 +295,7 @@ ORDER BY high_salary_count DESC;`,
   ],
   advanced: [
     {
+      id: '03_hr_attendance.advanced.01',
       title: '부서별 근태 리스크 점수',
       description:
         '부서별 근태 리스크 점수를 계산해서 보여주세요. 지각은 1점, 결근은 3점, 그 외는 0점으로 환산해 부서별 합계를 냅니다. 부서명(name)과 리스크 점수(risk_score)를 출력하고 점수가 높은 순으로 정렬합니다.',
@@ -292,6 +313,7 @@ GROUP BY d.id, d.name
 ORDER BY risk_score DESC;`,
     },
     {
+      id: '03_hr_attendance.advanced.02',
       title: '직원별 평균 출근 시각',
       description:
         '직원별 평균 출근 시각을 "0시 기준 분"으로 환산해서 보여주세요(예: 09:30 → 570). 이름(name)과 평균 출근 분(avg_clock_in_minutes)을 출력하고 일찍 출근하는 직원부터 정렬합니다.',
@@ -307,6 +329,7 @@ GROUP BY e.id, e.name
 ORDER BY avg_clock_in_minutes;`,
     },
     {
+      id: '03_hr_attendance.advanced.03',
       title: '근무 기록 없는 직원',
       description:
         '근태 로그가 한 건도 없는 직원만 찾아서 보여주세요. 직원ID(id)와 이름(name)을 출력하고 직원ID 순으로 정렬합니다.',
@@ -321,6 +344,7 @@ WHERE a.id IS NULL
 ORDER BY e.id;`,
     },
     {
+      id: '03_hr_attendance.advanced.04',
       title: '부서별 연봉 순위',
       description:
         '각 부서 안에서 연봉이 높은 순으로 순위를 매겨 보여주세요. 부서명(department_name), 직원명(employee_name), 연봉(salary), 부서 내 순위(salary_rank)를 출력하고 부서명, 순위 순으로 정렬합니다.',
@@ -338,6 +362,7 @@ JOIN departments d ON d.id = e.department_id
 ORDER BY d.name, salary_rank;`,
     },
     {
+      id: '03_hr_attendance.advanced.05',
       title: '휴가 일수 계산',
       description:
         '각 휴가 신청의 사용 일수(시작일과 종료일을 모두 포함)를 계산해서 보여주세요. 이름(name), 휴가 종류(leave_type), 상태(status), 휴가 일수(leave_days)를 출력하고 일수가 많은 순으로 정렬합니다.',
@@ -355,6 +380,7 @@ JOIN employees e ON e.id = l.employee_id
 ORDER BY leave_days DESC;`,
     },
     {
+      id: '03_hr_attendance.advanced.06',
       title: '일자별 정상 근태율',
       description:
         '날짜별 전체 근태 로그 수, 정상 로그 수, 정상 근태율(%)을 계산해서 보여주세요. 근무일(work_date), 전체 건수(total_logs), 정상 건수(normal_count), 정상율(normal_rate, 소수 1자리)을 출력하고 날짜가 빠른 순으로 정렬합니다.',
@@ -372,6 +398,7 @@ GROUP BY work_date
 ORDER BY work_date;`,
     },
     {
+      id: '03_hr_attendance.advanced.07',
       title: '스케줄 대비 늦은 출근',
       description:
         '직원의 실제 출근 시각이 예정된 근무 시작 시각보다 늦은 경우만 찾아서 보여주세요. 이름(name), 근무일(work_date), 예정 시작 시각(start_time), 실제 출근 시각(clock_in)을 출력하고 근무일·출근 시각 순으로 정렬합니다.',
@@ -387,6 +414,7 @@ WHERE a.clock_in > w.start_time
 ORDER BY a.work_date, a.clock_in;`,
     },
     {
+      id: '03_hr_attendance.advanced.08',
       title: '휴가 승인과 결근 연결',
       description:
         '결근으로 기록된 근태 로그에 대해, 같은 직원·같은 날짜에 승인된 휴가가 있었는지 함께 보여주세요. 이름(name), 근무일(work_date), 근태 상태(status), 휴가 종류(leave_type), 휴가 상태(leave_status)를 출력하고 근무일이 빠른 순으로 정렬합니다.',
@@ -404,6 +432,7 @@ WHERE a.status = 'ABSENT'
 ORDER BY a.work_date;`,
     },
     {
+      id: '03_hr_attendance.advanced.09',
       title: '부서별 인건비 비중',
       description:
         '부서별 인건비 총액과, 전체 인건비에서 차지하는 비중(%)을 계산해서 보여주세요. 부서명(name), 인건비 합계(salary_total), 비중(salary_share, 소수 1자리)을 출력하고 비중이 높은 순으로 정렬합니다.',
@@ -422,6 +451,7 @@ FROM dept_salary
 ORDER BY salary_share DESC;`,
     },
     {
+      id: '03_hr_attendance.advanced.10',
       title: '직원 근태 종합표',
       description:
         '각 직원의 부서, 누적 근태 로그 수, 누적 휴가 신청 수를 한 줄로 정리한 종합표를 보여주세요. 부서명(department_name), 이름(name), 근태 로그 수(attendance_count), 휴가 신청 수(leave_count)를 출력하고 부서명·이름 순으로 정렬합니다.',
