@@ -12,6 +12,8 @@ import { HorizontalRulePlugin } from '@lexical/react/LexicalHorizontalRulePlugin
 import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode'
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin'
+import { TRANSFORMERS } from '@lexical/markdown'
 import { CodeNode, CodeHighlightNode, registerCodeHighlighting } from '@lexical/code'
 import { HeadingNode, QuoteNode } from '@lexical/rich-text'
 import { ListNode, ListItemNode } from '@lexical/list'
@@ -132,6 +134,7 @@ export function LexicalEditor({
         <HorizontalRulePlugin />
         <TablePlugin hasHorizontalScroll />
         <CodeHighlightPlugin />
+        {readOnly ? null : <MarkdownShortcutPlugin transformers={TRANSFORMERS} />}
         {readOnly ? null : <ImagePlugin />}
         {readOnly ? null : <DragDropImagePlugin onUpload={uploadImageToS3} />}
         {readOnly ? null : <YoutubePlugin />}

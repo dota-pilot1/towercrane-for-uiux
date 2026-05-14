@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   $createParagraphNode,
+  $createTextNode,
+  $getRoot,
   $getSelection,
   $isRangeSelection,
   CAN_REDO_COMMAND,
@@ -12,6 +15,7 @@ import {
   SELECTION_CHANGE_COMMAND,
   UNDO_COMMAND,
   type ElementFormatType,
+  type LexicalNode,
   type TextFormatType,
 } from 'lexical'
 import {
@@ -21,6 +25,8 @@ import {
 } from '@lexical/selection'
 import { $createHeadingNode, $createQuoteNode, type HeadingTagType } from '@lexical/rich-text'
 import {
+  $createListItemNode,
+  $createListNode,
   INSERT_CHECK_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
@@ -55,7 +61,9 @@ import {
   Underline,
   Undo,
   Video,
+  X,
 } from 'lucide-react'
+import { Button } from '../button'
 import { INSERT_IMAGE_COMMAND } from './plugins/image-plugin'
 import { INSERT_YOUTUBE_COMMAND } from './plugins/youtube-plugin'
 import { extractYouTubeId } from './nodes/youtube-node'
@@ -284,6 +292,7 @@ export function LexicalToolbar({ className, onImageUpload }: Props) {
       <ToolbarButton onClick={formatCodeBlock} title="Code block">
         <span className="px-1 font-mono text-[10px] font-semibold">{'{ }'}</span>
       </ToolbarButton>
+      <MarkdownInsertButton />
 
       <Divider />
 
@@ -318,6 +327,231 @@ export function LexicalToolbar({ className, onImageUpload }: Props) {
       <YoutubeInsertButton />
     </div>
   )
+}
+
+function MarkdownInsertButton() {
+  const [editor] = useLexicalComposerContext()
+  const [open, setOpen] = useState(false)
+  const [markdown, setMarkdown] = useState('')
+
+  const handleInsert = () => {
+    const content = markdown.trim()
+    if (!content) return
+
+    editor.focus()
+    editor.update(() => {
+      const nodes = createMarkdownNodes(content)
+      const selection = $getSelection()
+      if ($isRangeSelection(selection)) {
+        selection.insertNodes(nodes)
+      } else {
+        $getRoot().append(...nodes)
+      }
+    })
+    setMarkdown('')
+    setOpen(false)
+  }
+
+  return (
+    <>
+      <ToolbarButton onClick={() => setOpen(true)} title="Markdown 삽입">
+        <span className="font-mono text-[10px] font-bold">MD</span>
+      </ToolbarButton>
+
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-[240] ui-overlay" />
+          <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[241] flex w-[min(760px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-surface-border-soft px-5 py-4">
+              <div className="min-w-0">
+                <Dialog.Title className="text-base font-semibold text-text-primary">
+                  Markdown 삽입
+                </Dialog.Title>
+                <Dialog.Description className="mt-1 text-xs text-text-muted">
+                  붙여넣은 Markdown을 Lexical 블록으로 변환해서 현재 커서 위치에 넣습니다.
+                </Dialog.Description>
+              </div>
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
+                  aria-label="닫기"
+                >
+                  <X className="size-4" />
+                </button>
+              </Dialog.Close>
+            </div>
+
+            <div className="p-5">
+              <textarea
+                value={markdown}
+                onChange={(event) => setMarkdown(event.target.value)}
+                onKeyDown={(event) => {
+                  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                    event.preventDefault()
+                    handleInsert()
+                  }
+                }}
+                autoFocus
+                spellCheck={false}
+                className="ui-input min-h-[340px] w-full resize-y rounded-md border px-4 py-3 font-mono text-xs leading-6 outline-none"
+                placeholder={[
+                  '## Sql 문제 정답',
+                  '',
+                  '```sql',
+                  'SELECT *',
+                  'FROM users;',
+                  '```',
+                  '',
+                  '## Sql 주요 문법 설명',
+                  '',
+                  '- SELECT는 조회할 컬럼을 지정합니다.',
+                ].join('\n')}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-surface-border-soft bg-surface-muted/60 px-5 py-4">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-9 min-w-16 px-4"
+                onClick={() => setOpen(false)}
+              >
+                취소
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="h-9 min-w-20 px-4"
+                disabled={!markdown.trim()}
+                onClick={handleInsert}
+              >
+                삽입
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </>
+  )
+}
+
+function createMarkdownNodes(markdown: string): LexicalNode[] {
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n')
+  const nodes: LexicalNode[] = []
+  let index = 0
+
+  while (index < lines.length) {
+    const line = lines[index]
+    const trimmed = line.trim()
+
+    if (!trimmed) {
+      index += 1
+      continue
+    }
+
+    const codeStart = trimmed.match(/^```(\w+)?/)
+    if (codeStart) {
+      const language = codeStart[1]
+      const codeLines: string[] = []
+      index += 1
+
+      while (index < lines.length && !lines[index].trim().startsWith('```')) {
+        codeLines.push(lines[index])
+        index += 1
+      }
+      if (index < lines.length) index += 1
+
+      const codeNode = $createCodeNode(language)
+      codeNode.append($createTextNode(codeLines.join('\n')))
+      nodes.push(codeNode)
+      continue
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/)
+    if (heading) {
+      const level = heading[1].length
+      const headingNode = $createHeadingNode(`h${level}` as 'h1' | 'h2' | 'h3')
+      appendInlineMarkdown(headingNode, heading[2])
+      nodes.push(headingNode)
+      index += 1
+      continue
+    }
+
+    if (/^[-*+]\s+/.test(trimmed)) {
+      const list = $createListNode('bullet')
+      while (index < lines.length && /^[-*+]\s+/.test(lines[index].trim())) {
+        const item = $createListItemNode()
+        appendInlineMarkdown(item, lines[index].trim().replace(/^[-*+]\s+/, ''))
+        list.append(item)
+        index += 1
+      }
+      nodes.push(list)
+      continue
+    }
+
+    if (/^\d+\.\s+/.test(trimmed)) {
+      const list = $createListNode('number')
+      while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
+        const item = $createListItemNode()
+        appendInlineMarkdown(item, lines[index].trim().replace(/^\d+\.\s+/, ''))
+        list.append(item)
+        index += 1
+      }
+      nodes.push(list)
+      continue
+    }
+
+    const paragraphLines = [trimmed]
+    index += 1
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !/^```/.test(lines[index].trim()) &&
+      !/^(#{1,3})\s+/.test(lines[index].trim()) &&
+      !/^[-*+]\s+/.test(lines[index].trim()) &&
+      !/^\d+\.\s+/.test(lines[index].trim())
+    ) {
+      paragraphLines.push(lines[index].trim())
+      index += 1
+    }
+
+    const paragraph = $createParagraphNode()
+    appendInlineMarkdown(paragraph, paragraphLines.join(' '))
+    nodes.push(paragraph)
+  }
+
+  return nodes
+}
+
+function appendInlineMarkdown(
+  node: ReturnType<typeof $createParagraphNode> | ReturnType<typeof $createHeadingNode> | ReturnType<typeof $createListItemNode>,
+  text: string,
+) {
+  const pattern = /(\*\*[^*]+?\*\*|`[^`]+?`)/g
+  let cursor = 0
+  let match: RegExpExecArray | null
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > cursor) {
+      node.append($createTextNode(text.slice(cursor, match.index)))
+    }
+
+    const token = match[0]
+    const textNode = $createTextNode(token.slice(token.startsWith('**') ? 2 : 1, token.endsWith('**') ? -2 : -1))
+    if (token.startsWith('**')) {
+      textNode.toggleFormat('bold')
+    } else {
+      textNode.toggleFormat('code')
+    }
+    node.append(textNode)
+    cursor = match.index + token.length
+  }
+
+  if (cursor < text.length) {
+    node.append($createTextNode(text.slice(cursor)))
+  }
 }
 
 function LinkInsertButton() {
