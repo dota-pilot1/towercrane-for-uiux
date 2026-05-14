@@ -11,7 +11,7 @@ import { Input } from '../../../shared/ui/input'
 
 const schema = z.object({
   title: z.string().min(2).max(40),
-  summary: z.string().min(8).max(140),
+  summary: z.string().min(2).max(140),
 })
 
 type FormValues = z.infer<typeof schema>
