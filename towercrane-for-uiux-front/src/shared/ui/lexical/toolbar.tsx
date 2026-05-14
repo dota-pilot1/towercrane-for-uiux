@@ -64,6 +64,7 @@ import {
   X,
 } from 'lucide-react'
 import { Button } from '../button'
+import { CompactSelect } from '../compact-select'
 import { INSERT_IMAGE_COMMAND } from './plugins/image-plugin'
 import { INSERT_YOUTUBE_COMMAND } from './plugins/youtube-plugin'
 import { extractYouTubeId } from './nodes/youtube-node'
@@ -698,36 +699,36 @@ function ColorPicker({
 function FontSizeSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const current = FONT_SIZES.includes(value) ? value : '15px'
   return (
-    <select
+    <CompactSelect
       value={current}
       onChange={(event) => onChange(event.target.value)}
       title="글씨 크기"
-      className="h-8 rounded-md border border-surface-border bg-surface-raised px-2 text-xs text-text-primary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-brand-border"
+      wrapperClassName="w-[68px]"
     >
       {FONT_SIZES.map((size) => (
         <option key={size} value={size}>
           {size.replace('px', '')}
         </option>
       ))}
-    </select>
+    </CompactSelect>
   )
 }
 
 function FontFamilySelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const match = FONT_FAMILIES.find((font) => font.value === value)
   return (
-    <select
+    <CompactSelect
       value={match ? match.value : 'inherit'}
       onChange={(event) => onChange(event.target.value)}
       title="글씨체"
-      className="h-8 max-w-[118px] rounded-md border border-surface-border bg-surface-raised px-2 text-xs text-text-primary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-brand-border"
+      wrapperClassName="w-[100px]"
     >
       {FONT_FAMILIES.map((font) => (
         <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
           {font.label}
         </option>
       ))}
-    </select>
+    </CompactSelect>
   )
 }
 
