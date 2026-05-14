@@ -8,6 +8,14 @@ export function SqlResultTable({ response }: SqlResultTableProps) {
   const columns = response.columns ?? []
   const rows = response.rows ?? []
 
+  if (!response.success) {
+    return (
+      <p className="rounded-md border border-destructive/40 bg-danger-glass px-3 py-2 text-sm font-semibold text-destructive">
+        {response.message || 'SQL 실행에 실패했습니다.'}
+      </p>
+    )
+  }
+
   if (rows.length === 0) {
     return (
       <p className="rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2 text-sm text-text-muted">

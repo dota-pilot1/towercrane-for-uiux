@@ -218,3 +218,8 @@ export type SqlPracticeActivityResponse = {
   seedFile: string
   activities: SqlPracticeActivityItem[]
 }
+
+export type SqlPracticeDeleteActivityResponse = {
+  seedFile: string
+  deletedCount: number
+}

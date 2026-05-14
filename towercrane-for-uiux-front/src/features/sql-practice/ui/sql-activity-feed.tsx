@@ -1,4 +1,4 @@
-import { CheckCircle, Clock, Loader2, XCircle } from 'lucide-react'
+import { CheckCircle, Clock, Loader2, Trash2, XCircle } from 'lucide-react'
 
 import type { SqlPracticeActivityItem } from '../../../entities/sql-practice/model/types'
 import { cn } from '../../../shared/lib/utils'
@@ -7,12 +7,16 @@ type SqlActivityFeedProps = {
   activities: SqlPracticeActivityItem[]
   isLoading: boolean
   currentUserId: string
+  deletingActivityId?: string | null
+  onDeleteActivity?: (activity: SqlPracticeActivityItem) => void
 }
 
 export function SqlActivityFeed({
   activities,
   isLoading,
   currentUserId,
+  deletingActivityId,
+  onDeleteActivity,
 }: SqlActivityFeedProps) {
   if (isLoading && activities.length === 0) {
     return (
@@ -57,21 +61,39 @@ export function SqlActivityFeed({
                 <span className="tabular-nums">{formatDateTime(item.createdAt)}</span>
               </p>
             </div>
-            <span
-              className={cn(
-                'inline-flex size-7 shrink-0 items-center justify-center rounded-md border text-[11px] font-black',
-                item.isCorrect
-                  ? 'border-brand-border bg-brand-glass text-brand-primary'
-                  : 'border-destructive/40 bg-danger-glass text-destructive',
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span
+                className={cn(
+                  'inline-flex size-7 items-center justify-center rounded-md border text-[11px] font-black',
+                  item.isCorrect
+                    ? 'border-brand-border bg-brand-glass text-brand-primary'
+                    : 'border-destructive/40 bg-danger-glass text-destructive',
+                )}
+                title={item.isCorrect ? '정답' : '오답'}
+              >
+                {item.isCorrect ? (
+                  <CheckCircle className="size-3" />
+                ) : (
+                  <XCircle className="size-3" />
+                )}
+              </span>
+              {onDeleteActivity && (
+                <button
+                  type="button"
+                  className="ui-icon-button-danger size-7"
+                  onClick={() => onDeleteActivity(item)}
+                  disabled={deletingActivityId === item.id}
+                  aria-label="풀이 로그 삭제"
+                  title="풀이 로그 삭제"
+                >
+                  {deletingActivityId === item.id ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-3" />
+                  )}
+                </button>
               )}
-              title={item.isCorrect ? '정답' : '오답'}
-            >
-              {item.isCorrect ? (
-                <CheckCircle className="size-3" />
-              ) : (
-                <XCircle className="size-3" />
-              )}
-            </span>
+            </div>
           </div>
         </div>
       ))}

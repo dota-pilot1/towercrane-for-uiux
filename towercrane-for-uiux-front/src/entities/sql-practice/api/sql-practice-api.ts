@@ -7,6 +7,7 @@ import type {
   SqlPracticeGradePayload,
   SqlPracticeGradeResponse,
   SqlPracticeActivityResponse,
+  SqlPracticeDeleteActivityResponse,
   SqlPracticeMySubmissionsResponse,
   SqlPracticeNote,
   SqlPracticeNoteFilter,
@@ -81,6 +82,16 @@ export const sqlPracticeApi = {
   getMyActivity: (seedFile: string, limit = 30) =>
     apiRequest<SqlPracticeActivityResponse>(
       `/sql/submissions/activity/mine?seedFile=${encodeURIComponent(seedFile)}&limit=${limit}`,
+    ),
+  deleteMyActivityItem: (id: string) =>
+    apiRequest<SqlPracticeDeleteActivityResponse>(
+      `/sql/submissions/activity/mine/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    ),
+  clearMyActivity: (seedFile: string) =>
+    apiRequest<SqlPracticeDeleteActivityResponse>(
+      `/sql/submissions/activity/mine?seedFile=${encodeURIComponent(seedFile)}`,
+      { method: 'DELETE' },
     ),
   getNotes: (filter?: SqlPracticeNoteFilter) =>
     apiRequest<SqlPracticeNote[]>(`/sql/notes/mine${toSearchParams(filter)}`),

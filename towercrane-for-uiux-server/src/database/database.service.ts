@@ -545,6 +545,60 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_sql_practice_submissions_seed_score
         ON sql_practice_submissions(seed_file, score, created_at);
 
+      CREATE TABLE IF NOT EXISTS sql_practice_submission_logs (
+        id TEXT PRIMARY KEY,
+        submission_id TEXT UNIQUE,
+        user_id TEXT NOT NULL,
+        seed_file TEXT NOT NULL,
+        seed_hash TEXT,
+        example_id TEXT NOT NULL,
+        example_title TEXT NOT NULL,
+        example_level TEXT NOT NULL,
+        example_order INTEGER NOT NULL,
+        is_correct INTEGER NOT NULL,
+        score INTEGER NOT NULL DEFAULT 0,
+        max_score INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_practice_submission_logs_user_seed_created
+        ON sql_practice_submission_logs(user_id, seed_file, created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_practice_submission_logs_seed_created
+        ON sql_practice_submission_logs(seed_file, created_at);
+
+      INSERT OR IGNORE INTO sql_practice_submission_logs (
+        id,
+        submission_id,
+        user_id,
+        seed_file,
+        seed_hash,
+        example_id,
+        example_title,
+        example_level,
+        example_order,
+        is_correct,
+        score,
+        max_score,
+        created_at
+      )
+      SELECT
+        id,
+        id,
+        user_id,
+        seed_file,
+        seed_hash,
+        example_id,
+        example_title,
+        example_level,
+        example_order,
+        is_correct,
+        score,
+        max_score,
+        created_at
+      FROM sql_practice_submissions;
+
       CREATE TABLE IF NOT EXISTS dev_challenge_categories (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,

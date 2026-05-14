@@ -211,6 +211,44 @@ export function useGradeSqlPracticeSubmission() {
   })
 }
 
+function invalidateSqlPracticeLogs(
+  queryClient: ReturnType<typeof useQueryClient>,
+  seedFile: string,
+) {
+  queryClient.invalidateQueries({
+    queryKey: sqlPracticeQueryKeys.activity(seedFile),
+  })
+  queryClient.invalidateQueries({
+    queryKey: sqlPracticeQueryKeys.myActivity(seedFile),
+  })
+}
+
+export function useDeleteSqlPracticeActivityItem() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => sqlPracticeApi.deleteMyActivityItem(id),
+    onSuccess: (response) => {
+      invalidateSqlPracticeLogs(queryClient, response.seedFile)
+      toast.success('풀이 로그를 삭제했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '풀이 로그 삭제에 실패했습니다.')),
+  })
+}
+
+export function useClearSqlPracticeMyActivity() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (seedFile: string) => sqlPracticeApi.clearMyActivity(seedFile),
+    onSuccess: (response) => {
+      invalidateSqlPracticeLogs(queryClient, response.seedFile)
+      toast.success('풀이 로그를 모두 삭제했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '풀이 로그 전체 삭제에 실패했습니다.')),
+  })
+}
+
 export function useSqlPracticeSupplementExplanation() {
   return useMutation({
     mutationFn: (content: string) => sqlPracticeApi.geminiAsk(content, 'general'),

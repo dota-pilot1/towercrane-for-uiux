@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { History, RefreshCw, X } from 'lucide-react'
+import { History, RefreshCw, Trash2, X } from 'lucide-react'
 
 import type { SqlPracticeActivityItem } from '../../../entities/sql-practice/model/types'
 import { SqlActivityFeed } from './sql-activity-feed'
@@ -13,6 +13,10 @@ type SqlMyActivityDialogProps = {
   isRefreshing: boolean
   currentUserId: string
   onRefresh: () => void
+  onClearAll: () => void
+  onDeleteActivity: (activity: SqlPracticeActivityItem) => void
+  isClearing: boolean
+  deletingActivityId?: string | null
 }
 
 export function SqlMyActivityDialog({
@@ -24,7 +28,13 @@ export function SqlMyActivityDialog({
   isRefreshing,
   currentUserId,
   onRefresh,
+  onClearAll,
+  onDeleteActivity,
+  isClearing,
+  deletingActivityId,
 }: SqlMyActivityDialogProps) {
+  const hasActivities = activities.length > 0
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -52,6 +62,20 @@ export function SqlMyActivityDialog({
             >
               <RefreshCw className={isRefreshing ? 'size-4 animate-spin' : 'size-4'} />
             </button>
+            <button
+              type="button"
+              className="ui-icon-button-danger size-8"
+              onClick={onClearAll}
+              disabled={!hasActivities || isClearing}
+              aria-label="풀이 로그 모두 삭제"
+              title="풀이 로그 모두 삭제"
+            >
+              {isClearing ? (
+                <RefreshCw className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+            </button>
             <Dialog.Close asChild>
               <button
                 type="button"
@@ -68,6 +92,8 @@ export function SqlMyActivityDialog({
               activities={activities}
               isLoading={isLoading}
               currentUserId={currentUserId}
+              deletingActivityId={deletingActivityId}
+              onDeleteActivity={onDeleteActivity}
             />
           </div>
         </Dialog.Content>

@@ -22,6 +22,7 @@ import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { DatabaseService } from '../database/database.service';
 import {
   sqlPracticeNotesTable,
+  sqlPracticeSubmissionLogsTable,
   sqlPracticeSubmissionsTable,
   usersTable,
 } from '../database/schema';
@@ -394,11 +395,22 @@ export class SqlPracticeService {
     userId: string,
   ): Promise<SqlPracticeGradeSubmissionResponse> {
     const input = gradeSqlPracticeSubmissionSchema.parse(body);
-    const raw = await this.callGemini(
-      this.buildSqlGradePrompt(input),
-      'grading',
-    );
-    const parsed = this.parseSqlGradeResponse(raw);
+    const syntaxCheck = this.executeSubmittedSqlForGrade(input.submittedSql);
+    let geminiRaw: string | null = null;
+    let parsed: {
+      validity: SqlGradeValidity | null;
+      body: string;
+    };
+
+    if (syntaxCheck.success) {
+      geminiRaw = await this.callGemini(this.buildSqlGradePrompt(input), 'grading');
+      parsed = this.parseSqlGradeResponse(geminiRaw);
+    } else {
+      parsed = {
+        validity: 'incorrect',
+        body: `SQL 실행에 실패했습니다.\n\n오류: ${syntaxCheck.message}\n\n문법 오류나 테이블/컬럼 이름, GROUP BY/FROM/ORDER BY 절의 순서를 확인해주세요.`,
+      };
+    }
 
     if (!parsed.validity) {
       throw new InternalServerErrorException('Gemini 채점 결과를 판별하지 못했습니다.');
@@ -421,11 +433,29 @@ export class SqlPracticeService {
       score: isCorrect ? 1 : 0,
       maxScore: 1,
       feedback: parsed.body,
-      geminiRaw: raw,
+      geminiRaw,
       createdAt: now,
     };
 
     this.databaseService.db.insert(sqlPracticeSubmissionsTable).values(submission).run();
+    this.databaseService.db
+      .insert(sqlPracticeSubmissionLogsTable)
+      .values({
+        id: randomUUID(),
+        submissionId: submission.id,
+        userId,
+        seedFile: input.seedFile,
+        seedHash: input.seedHash ?? null,
+        exampleId: input.exampleId,
+        exampleTitle: input.exampleTitle,
+        exampleLevel: input.exampleLevel,
+        exampleOrder: input.exampleOrder,
+        isCorrect,
+        score: submission.score,
+        maxScore: submission.maxScore,
+        createdAt: now,
+      })
+      .run();
 
     return {
       submission,
@@ -574,23 +604,23 @@ export class SqlPracticeService {
       sqlPracticeSubmissionActivityQuerySchema.parse(query);
     const rows = this.databaseService.db
       .select({
-        id: sqlPracticeSubmissionsTable.id,
-        userId: sqlPracticeSubmissionsTable.userId,
+        id: sqlPracticeSubmissionLogsTable.id,
+        userId: sqlPracticeSubmissionLogsTable.userId,
         userName: usersTable.name,
-        seedFile: sqlPracticeSubmissionsTable.seedFile,
-        exampleId: sqlPracticeSubmissionsTable.exampleId,
-        exampleTitle: sqlPracticeSubmissionsTable.exampleTitle,
-        exampleLevel: sqlPracticeSubmissionsTable.exampleLevel,
-        exampleOrder: sqlPracticeSubmissionsTable.exampleOrder,
-        isCorrect: sqlPracticeSubmissionsTable.isCorrect,
-        score: sqlPracticeSubmissionsTable.score,
-        maxScore: sqlPracticeSubmissionsTable.maxScore,
-        createdAt: sqlPracticeSubmissionsTable.createdAt,
+        seedFile: sqlPracticeSubmissionLogsTable.seedFile,
+        exampleId: sqlPracticeSubmissionLogsTable.exampleId,
+        exampleTitle: sqlPracticeSubmissionLogsTable.exampleTitle,
+        exampleLevel: sqlPracticeSubmissionLogsTable.exampleLevel,
+        exampleOrder: sqlPracticeSubmissionLogsTable.exampleOrder,
+        isCorrect: sqlPracticeSubmissionLogsTable.isCorrect,
+        score: sqlPracticeSubmissionLogsTable.score,
+        maxScore: sqlPracticeSubmissionLogsTable.maxScore,
+        createdAt: sqlPracticeSubmissionLogsTable.createdAt,
       })
-      .from(sqlPracticeSubmissionsTable)
-      .leftJoin(usersTable, eq(sqlPracticeSubmissionsTable.userId, usersTable.id))
-      .where(eq(sqlPracticeSubmissionsTable.seedFile, seedFile))
-      .orderBy(desc(sqlPracticeSubmissionsTable.createdAt))
+      .from(sqlPracticeSubmissionLogsTable)
+      .leftJoin(usersTable, eq(sqlPracticeSubmissionLogsTable.userId, usersTable.id))
+      .where(eq(sqlPracticeSubmissionLogsTable.seedFile, seedFile))
+      .orderBy(desc(sqlPracticeSubmissionLogsTable.createdAt))
       .limit(limit)
       .all();
 
@@ -608,28 +638,28 @@ export class SqlPracticeService {
       sqlPracticeSubmissionActivityQuerySchema.parse(query);
     const rows = this.databaseService.db
       .select({
-        id: sqlPracticeSubmissionsTable.id,
-        userId: sqlPracticeSubmissionsTable.userId,
+        id: sqlPracticeSubmissionLogsTable.id,
+        userId: sqlPracticeSubmissionLogsTable.userId,
         userName: usersTable.name,
-        seedFile: sqlPracticeSubmissionsTable.seedFile,
-        exampleId: sqlPracticeSubmissionsTable.exampleId,
-        exampleTitle: sqlPracticeSubmissionsTable.exampleTitle,
-        exampleLevel: sqlPracticeSubmissionsTable.exampleLevel,
-        exampleOrder: sqlPracticeSubmissionsTable.exampleOrder,
-        isCorrect: sqlPracticeSubmissionsTable.isCorrect,
-        score: sqlPracticeSubmissionsTable.score,
-        maxScore: sqlPracticeSubmissionsTable.maxScore,
-        createdAt: sqlPracticeSubmissionsTable.createdAt,
+        seedFile: sqlPracticeSubmissionLogsTable.seedFile,
+        exampleId: sqlPracticeSubmissionLogsTable.exampleId,
+        exampleTitle: sqlPracticeSubmissionLogsTable.exampleTitle,
+        exampleLevel: sqlPracticeSubmissionLogsTable.exampleLevel,
+        exampleOrder: sqlPracticeSubmissionLogsTable.exampleOrder,
+        isCorrect: sqlPracticeSubmissionLogsTable.isCorrect,
+        score: sqlPracticeSubmissionLogsTable.score,
+        maxScore: sqlPracticeSubmissionLogsTable.maxScore,
+        createdAt: sqlPracticeSubmissionLogsTable.createdAt,
       })
-      .from(sqlPracticeSubmissionsTable)
-      .leftJoin(usersTable, eq(sqlPracticeSubmissionsTable.userId, usersTable.id))
+      .from(sqlPracticeSubmissionLogsTable)
+      .leftJoin(usersTable, eq(sqlPracticeSubmissionLogsTable.userId, usersTable.id))
       .where(
         and(
-          eq(sqlPracticeSubmissionsTable.userId, userId),
-          eq(sqlPracticeSubmissionsTable.seedFile, seedFile),
+          eq(sqlPracticeSubmissionLogsTable.userId, userId),
+          eq(sqlPracticeSubmissionLogsTable.seedFile, seedFile),
         ),
       )
-      .orderBy(desc(sqlPracticeSubmissionsTable.createdAt))
+      .orderBy(desc(sqlPracticeSubmissionLogsTable.createdAt))
       .limit(limit)
       .all();
 
@@ -640,6 +670,101 @@ export class SqlPracticeService {
         userName: row.userName ?? 'Unknown User',
       })),
     };
+  }
+
+  deleteMyActivityLog(id: string, userId: string) {
+    const row = this.databaseService.db
+      .select({
+        seedFile: sqlPracticeSubmissionLogsTable.seedFile,
+      })
+      .from(sqlPracticeSubmissionLogsTable)
+      .where(
+        and(
+          eq(sqlPracticeSubmissionLogsTable.id, id),
+          eq(sqlPracticeSubmissionLogsTable.userId, userId),
+        ),
+      )
+      .get();
+
+    if (!row) throw new NotFoundException('SQL practice activity log not found.');
+
+    this.databaseService.db
+      .delete(sqlPracticeSubmissionLogsTable)
+      .where(eq(sqlPracticeSubmissionLogsTable.id, id))
+      .run();
+
+    return {
+      seedFile: row.seedFile,
+      deletedCount: 1,
+    };
+  }
+
+  clearMyActivityLogs(query: unknown, userId: string) {
+    const { seedFile } = sqlPracticeSubmissionSeedQuerySchema.parse(query);
+    const result = this.databaseService.db
+      .delete(sqlPracticeSubmissionLogsTable)
+      .where(
+        and(
+          eq(sqlPracticeSubmissionLogsTable.userId, userId),
+          eq(sqlPracticeSubmissionLogsTable.seedFile, seedFile),
+        ),
+      )
+      .run();
+
+    return {
+      seedFile,
+      deletedCount: result.changes,
+    };
+  }
+
+  private executeSubmittedSqlForGrade(query: string): {
+    success: boolean;
+    message: string;
+  } {
+    const start = Date.now();
+
+    try {
+      const { query: sanitizedQuery, type } = sanitizeSql(
+        query,
+        this.getMaxQueryLength(),
+      );
+
+      if (type !== 'SELECT') {
+        return {
+          success: false,
+          message: '답안 제출은 SELECT/WITH 조회 쿼리만 허용됩니다.',
+        };
+      }
+
+      const freshness = this.ensureDatabaseFresh();
+      const db = this.openDatabase();
+
+      try {
+        const response = this.executeReader(
+          db,
+          sanitizedQuery,
+          type,
+          start,
+          freshness.seedReloaded,
+        );
+        return {
+          success: response.success,
+          message: response.message,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : 'SQL execution failed.',
+        };
+      } finally {
+        db.close();
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'SQL validation failed.',
+      };
+    }
   }
 
   private executeReader(

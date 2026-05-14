@@ -21,6 +21,7 @@ import { Card } from '../../../shared/ui/card'
 import type {
   SqlExecuteResponse,
   SqlHistoryItem,
+  SqlPracticeActivityItem,
   TableInfo,
 } from '../../../entities/sql-practice/model/types'
 import type {
@@ -29,6 +30,8 @@ import type {
   SqlPracticeExampleSet,
 } from '../../../entities/sql-practice/model/example-types'
 import {
+  useClearSqlPracticeMyActivity,
+  useDeleteSqlPracticeActivityItem,
   useExecuteSqlPracticeQuery,
   useGradeSqlPracticeSubmission,
   useReloadSqlPracticeSeed,
@@ -88,6 +91,8 @@ export function SqlPracticePage() {
   const executeMutation = useExecuteSqlPracticeQuery()
   const resetMutation = useResetSqlPracticeDb()
   const reloadSeedMutation = useReloadSqlPracticeSeed()
+  const deleteActivityMutation = useDeleteSqlPracticeActivityItem()
+  const clearActivityMutation = useClearSqlPracticeMyActivity()
   const submissionsQuery = useSqlPracticeMySubmissions(metaQuery.data?.seedFile)
   const rankingQuery = useSqlPracticeRanking(metaQuery.data?.seedFile, true)
   const activityQuery = useSqlPracticeActivity(metaQuery.data?.seedFile, true)
@@ -170,6 +175,31 @@ export function SqlPracticePage() {
     }
     await reloadSeedMutation.mutateAsync()
     handleSeedChange()
+  }
+
+  const handleDeleteMyActivity = (activity: SqlPracticeActivityItem) => {
+    if (
+      !window.confirm(
+        `#${String(activity.exampleOrder).padStart(2, '0')} ${activity.exampleTitle} 풀이 로그를 삭제할까요? 점수와 정답 상태는 유지됩니다.`,
+      )
+    ) {
+      return
+    }
+    deleteActivityMutation.mutate(activity.id)
+  }
+
+  const handleClearMyActivity = () => {
+    const seedFile = metaQuery.data?.seedFile
+    if (!seedFile) return
+
+    if (
+      !window.confirm(
+        `${seedFile} 기준 내 풀이 로그를 모두 삭제할까요? 점수와 정답 상태는 유지됩니다.`,
+      )
+    ) {
+      return
+    }
+    clearActivityMutation.mutate(seedFile)
   }
 
   return (
@@ -266,6 +296,12 @@ export function SqlPracticePage() {
         isRefreshing={myActivityQuery.isFetching}
         currentUserId={userId}
         onRefresh={() => myActivityQuery.refetch()}
+        onClearAll={handleClearMyActivity}
+        onDeleteActivity={handleDeleteMyActivity}
+        isClearing={clearActivityMutation.isPending}
+        deletingActivityId={
+          deleteActivityMutation.isPending ? (deleteActivityMutation.variables ?? null) : null
+        }
       />
 
       <SqlPracticeFooterDrawer
@@ -790,7 +826,7 @@ function SqlSubmissionResultDialog({
                 {result.gradeError ? (
                   <p className="text-sm font-semibold text-destructive">{result.gradeError}</p>
                 ) : result.gradeBody ? (
-                  <pre className="max-h-[360px] whitespace-pre-wrap break-words font-sans text-sm leading-6 text-text-secondary">
+                  <pre className="max-h-[360px] overflow-y-auto whitespace-pre-wrap break-words font-sans text-sm leading-6 text-text-secondary">
                     {result.gradeBody}
                   </pre>
                 ) : (

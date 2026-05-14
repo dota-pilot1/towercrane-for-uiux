@@ -83,6 +83,16 @@ export class SqlPracticeController {
     return this.sqlPracticeService.getMyRecentActivity(query, req.user.id);
   }
 
+  @Delete('submissions/activity/mine/:id')
+  deleteMyActivityItem(@Param('id') id: string, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.deleteMyActivityLog(id, req.user.id);
+  }
+
+  @Delete('submissions/activity/mine')
+  clearMyActivity(@Query() query: unknown, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.clearMyActivityLogs(query, req.user.id);
+  }
+
   @Get('submissions/activity')
   activity(@Query() query: unknown) {
     return this.sqlPracticeService.getRecentActivity(query);
