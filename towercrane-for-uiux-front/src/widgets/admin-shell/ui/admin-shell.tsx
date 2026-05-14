@@ -1,7 +1,6 @@
 import { GitBranch } from 'lucide-react'
 import { useAdminShell } from '../model/use-admin-shell'
 import { Card } from '../../../shared/ui/card'
-import { PageHeader } from '../../../shared/ui/page-header'
 import { PrototypeDetailPage } from '../../../features/prototype-review/ui/prototype-detail-page'
 import { AdminShellCategoryHeader } from './admin-shell-category-header'
 import { AdminShellEmptyState } from './admin-shell-empty-state'
@@ -47,13 +46,15 @@ export function AdminShell({ categoryId, prototypeId }: AdminShellProps) {
   const mainPanelInsetClass = 'px-5'
 
   return (
-    <div className="w-full min-w-0 ui-page-bg pb-8 space-y-4">
-      <PageHeader
-        icon={GitBranch}
-        title="Prototype"
-        description="카테고리별 프로토타입과 설계 문서를 관리합니다."
-      />
-      <div className="grid min-h-[calc(100vh-6rem)] min-w-0 gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
+    <div className="w-full min-w-0 ui-page-bg space-y-3">
+      <div className="flex min-w-0 items-center gap-2 rounded-md bg-text-primary px-4 py-2">
+        <GitBranch className="size-3.5 shrink-0 text-background/70" />
+        <h1 className="text-sm font-black text-background">Prototype</h1>
+        <span className="hidden text-xs text-background/50 sm:block">
+          카테고리별 프로토타입과 설계 문서를 관리합니다.
+        </span>
+      </div>
+      <div className="grid h-[calc(100dvh-160px)] min-w-0 gap-3 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)]">
         <AdminShellSidebar
           activeCategoryId={activeCategoryId}
           categories={categories}
