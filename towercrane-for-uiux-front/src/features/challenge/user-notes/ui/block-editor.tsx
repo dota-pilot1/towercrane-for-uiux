@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { LexicalEditor } from '../../../../shared/ui/lexical/lexical-editor'
 import { Mermaid } from '../../../../shared/ui/mermaid'
@@ -24,16 +24,16 @@ const BLOCK_TYPES: BlockType[] = ['NOTE', 'MMD', 'FIGMA', 'GITHUB', 'CHECKLIST']
 export function BlockEditor({ blockType, data, onBlockTypeChange, onDataChange }: BlockEditorProps) {
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="flex shrink-0 flex-wrap gap-1.5">
+      <div className="flex shrink-0 flex-wrap gap-2">
         {BLOCK_TYPES.map((type) => (
           <button
             key={type}
             type="button"
             onClick={() => onBlockTypeChange(type)}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+            className={`flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-bold transition-colors ${
               blockType === type
-                ? 'bg-brand-glass border border-brand-border text-brand-primary'
-                : 'border border-surface-border ui-text-secondary hover:bg-surface-muted'
+                ? 'border-brand-border bg-brand-glass text-brand-primary'
+                : 'border-surface-border bg-surface-raised text-text-secondary hover:bg-surface-muted'
             }`}
           >
             <span>{BLOCK_META[type].icon}</span>
@@ -67,7 +67,7 @@ export function BlockEditor({ blockType, data, onBlockTypeChange, onDataChange }
 
 function NoteInput({ data, onChange }: { data: string; onChange: (v: string) => void }) {
   return (
-    <div className="h-full min-h-[200px] rounded-md border border-surface-border overflow-auto">
+    <div className="h-full min-h-[200px] overflow-auto rounded-md border border-surface-border bg-surface-raised shadow-sm">
       <LexicalEditor
         initialState={data || undefined}
         onChange={onChange}
@@ -212,7 +212,7 @@ function ChecklistInput({ data, onChange }: { data: string; onChange: (v: string
             onClick={() => removeItem(item.id)}
             className="shrink-0 p-0.5 rounded hover:bg-surface-border transition-colors"
           >
-            <Trash2 className="size-3 text-red-400" />
+            <Trash2 className="size-3 text-destructive" />
           </button>
         </div>
       ))}

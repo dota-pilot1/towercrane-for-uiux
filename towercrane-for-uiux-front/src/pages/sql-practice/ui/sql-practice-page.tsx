@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import {
+  BookOpenText,
   CheckCircle,
   Code2,
   Database,
   Eye,
   EyeOff,
+  Info,
   Lightbulb,
   Loader2,
   Send,
@@ -28,6 +31,7 @@ import {
   useSqlPracticeMySubmissions,
   useSqlPracticeMeta,
   useSqlPracticeRanking,
+  useSqlPracticeSupplementExplanation,
   useSqlPracticeTables,
 } from '../../../features/sql-practice/model/use-sql-practice-queries'
 import { getSqlPracticeExampleSet, sqlExampleLevelLabels } from '../../../features/sql-practice/model/sql-practice-examples'
@@ -38,6 +42,7 @@ import { SqlPracticePageHeader } from '../../../features/sql-practice/ui/sql-pra
 import { SqlQuizSidebar } from '../../../features/sql-practice/ui/sql-quiz-sidebar'
 import { SqlRankingDialog } from '../../../features/sql-practice/ui/sql-ranking-dialog'
 import { SqlSchemaSidebar } from '../../../features/sql-practice/ui/sql-schema-sidebar'
+import { SqlTableSchemaDialog } from '../../../features/sql-practice/ui/sql-table-schema-dialog'
 import { useSessionStore } from '../../../shared/store/session-store'
 
 const EMPTY_TABLES: TableInfo[] = []
@@ -155,7 +160,7 @@ export function SqlPracticePage() {
         onClearHistory={() => setHistory([])}
       />
 
-      <div className="flex gap-4">
+      <div className="flex h-[calc(100dvh-220px)] min-h-0 gap-4 overflow-hidden">
         {/* 왼쪽 문제 목록 사이드바 */}
         <SqlQuizSidebar
           exampleSet={exampleSet}
@@ -171,17 +176,19 @@ export function SqlPracticePage() {
         />
 
         {/* 메인 SQL 영역 */}
-        <Card className="flex min-h-[calc(100vh-220px)] min-w-0 flex-1 flex-col overflow-hidden rounded-md p-0">
+        <Card className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md p-0">
           <div className="flex-1 overflow-y-auto p-4">
             {/* 선택된 문제 패널 */}
             {selectedExample && (
               <ProblemPanel
+                key={selectedExample.id}
                 example={selectedExample}
                 answerOpen={answerOpen}
                 onToggleAnswer={() => setAnswerOpen((v) => !v)}
                 onClose={handleCloseExample}
                 seedFile={metaQuery.data?.seedFile ?? selectedExample.seedFile}
                 seedHash={metaQuery.data?.seedHash}
+                tables={tables}
                 className="mb-4"
               />
             )}
@@ -204,11 +211,13 @@ export function SqlPracticePage() {
             ) : null}
           </div>
 
-          <SqlInputBar
-            onExecute={handleExecute}
-            onClear={() => setHistory([])}
-            isLoading={executeMutation.isPending}
-          />
+          {!selectedExample && (
+            <SqlInputBar
+              onExecute={handleExecute}
+              onClear={() => setHistory([])}
+              isLoading={executeMutation.isPending}
+            />
+          )}
         </Card>
 
         {/* 오른쪽 테이블 정보 사이드바 */}
@@ -259,6 +268,7 @@ function ProblemPanel({
   onClose,
   seedFile,
   seedHash,
+  tables,
   className,
 }: {
   example: SqlPracticeExample
@@ -267,21 +277,29 @@ function ProblemPanel({
   onClose: () => void
   seedFile: string
   seedHash?: string
+  tables: TableInfo[]
   className?: string
 }) {
   const [submittedSql, setSubmittedSql] = useState('')
   const [gradeStatus, setGradeStatus] = useState<SqlGradeStatus>(null)
   const [gradeBody, setGradeBody] = useState('')
   const [gradeError, setGradeError] = useState('')
+  const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null)
+  const [supplementOpen, setSupplementOpen] = useState(false)
+  const [supplementBody, setSupplementBody] = useState('')
+  const [supplementError, setSupplementError] = useState('')
   const gradeMutation = useGradeSqlPracticeSubmission()
+  const supplementMutation = useSqlPracticeSupplementExplanation()
   const isGrading = gradeMutation.isPending
-
-  useEffect(() => {
-    setSubmittedSql('')
-    setGradeStatus(null)
-    setGradeBody('')
-    setGradeError('')
-  }, [example.id])
+  const isSupplementLoading = supplementMutation.isPending
+  const targetTables = useMemo(
+    () =>
+      example.relatedTables.map((tableName) => ({
+        tableName,
+        info: tables.find((table) => table.tableName === tableName),
+      })),
+    [example.relatedTables, tables],
+  )
 
   const handleSubmitAnswer = async () => {
     const trimmed = submittedSql.trim()
@@ -290,6 +308,8 @@ function ProblemPanel({
     setGradeStatus(null)
     setGradeBody('')
     setGradeError('')
+    setSupplementBody('')
+    setSupplementError('')
 
     try {
       const response = await gradeMutation.mutateAsync({
@@ -312,23 +332,52 @@ function ProblemPanel({
     }
   }
 
+  const handleOpenSupplement = async () => {
+    setSupplementOpen(true)
+    setSupplementError('')
+    if (supplementBody.trim() || isSupplementLoading) return
+
+    try {
+      const response = await supplementMutation.mutateAsync(
+        buildSqlSupplementPrompt({
+          example,
+          submittedSql: submittedSql.trim(),
+          answerSql: example.answerSql,
+          gradeFeedback: gradeBody,
+        }),
+      )
+      setSupplementBody(response.answer.trim() || '보충 설명을 생성하지 못했습니다.')
+    } catch (error) {
+      setSupplementError(
+        error instanceof Error ? error.message : '보충 설명을 생성하는 중 오류가 발생했습니다.',
+      )
+    }
+  }
+
+  const handleAnswerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault()
+      handleSubmitAnswer()
+    }
+  }
+
   return (
-    <div
-      className={`overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-sm ${className ?? ''}`}
-    >
-      {/* 문제 헤더 */}
-      <div className="flex items-start justify-between gap-3 border-b border-surface-border bg-surface-muted px-5 py-4">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <span className="rounded-sm border border-surface-border bg-surface-raised px-2 py-0.5 text-[11px] font-black text-text-primary">
-            문제
+    <>
+      <div
+        className={`overflow-hidden rounded-md border border-surface-border bg-surface-raised shadow-sm ${className ?? ''}`}
+      >
+      <div className="flex items-center justify-between gap-3 border-b border-surface-border bg-surface-muted px-5 py-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-surface-border bg-surface-raised text-xs font-black tabular-nums text-text-primary">
+            {String(example.order).padStart(2, '0')}
           </span>
           <span
-            className={`rounded-sm border px-2 py-0.5 text-[11px] font-black ${LEVEL_BADGE_CLASS[example.level]}`}
+            className={`rounded-md border px-2 py-1 text-[11px] font-black ${LEVEL_BADGE_CLASS[example.level]}`}
           >
             {sqlExampleLevelLabels[example.level]}
           </span>
-          <span className="text-xs font-bold tabular-nums text-text-muted">
-            Q.{String(example.order).padStart(2, '0')}
+          <span className="min-w-0 truncate text-xs font-semibold text-text-muted">
+            {seedFile}
           </span>
         </div>
         <button
@@ -341,69 +390,119 @@ function ProblemPanel({
         </button>
       </div>
 
-      {/* 문제 본문 */}
-      <div className="px-5 py-4">
-        <h2 className="text-base font-black leading-snug text-text-primary">{example.title}</h2>
-        <p className="mt-2 text-sm leading-6 text-text-secondary">{example.description}</p>
-
-        {/* 관련 테이블 */}
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {example.relatedTables.map((tableName) => (
-            <span
-              key={tableName}
-              className="inline-flex items-center gap-1 rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-[11px] font-bold text-text-secondary"
-            >
-              <Table2 className="size-3" />
-              {tableName}
-            </span>
-          ))}
-        </div>
-
-        {/* 힌트 */}
-        <div className="mt-3 flex items-start gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
-          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-brand-primary" />
-          <p className="text-[11px] leading-5 text-text-muted">{example.hint}</p>
-        </div>
-
-        {/* 정답 제출 */}
-        <div className="mt-4 rounded-md border border-surface-border-soft bg-surface-muted p-3">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black text-text-primary">정답 입력</p>
-              <p className="mt-0.5 text-[11px] text-text-muted">
-                작성한 SQL을 제출하면 Gemini가 실제 정답과 비교합니다.
+      <div className="space-y-4 px-5 py-5">
+        <div className="rounded-md border border-surface-border-soft bg-surface-muted px-4 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-black uppercase text-text-muted">문제</p>
+              <h2 className="mt-1 text-xl font-black leading-tight text-text-primary">
+                {example.title}
+              </h2>
+              <p className="mt-3 max-w-4xl text-sm leading-7 text-text-secondary">
+                {example.description}
               </p>
             </div>
             {gradeStatus === 'correct' && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2 py-1 text-[11px] font-bold text-brand-primary">
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 py-1.5 text-xs font-bold text-brand-primary">
                 <CheckCircle className="size-3.5" />
                 정답
               </span>
             )}
             {gradeStatus === 'incorrect' && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-destructive/40 bg-danger-glass px-2 py-1 text-[11px] font-bold text-destructive">
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-destructive/40 bg-danger-glass px-3 py-1.5 text-xs font-bold text-destructive">
                 <XCircle className="size-3.5" />
                 오답
               </span>
             )}
           </div>
+        </div>
 
-          <textarea
-            value={submittedSql}
-            onChange={(event) => setSubmittedSql(event.target.value)}
-            className="ui-input min-h-28 w-full resize-y font-mono text-xs leading-5"
-            placeholder={
-              '예: SELECT id, name, email, city, role, created_at\nFROM users\nORDER BY created_at ASC;'
-            }
-            spellCheck={false}
-          />
+        <div className="rounded-md border border-surface-border-soft bg-surface-raised">
+          <div className="flex items-center justify-between gap-3 border-b border-surface-border-soft px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Table2 className="size-4 text-brand-primary" />
+              <p className="text-sm font-black text-text-primary">대상 테이블</p>
+            </div>
+            <span className="rounded-md border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[11px] font-bold text-text-muted">
+              {targetTables.length}개
+            </span>
+          </div>
 
-          <div className="mt-2 flex justify-end">
+          <div className={`grid gap-2 p-3 ${targetTables.length > 1 ? 'md:grid-cols-2' : ''}`}>
+            {targetTables.map(({ tableName, info }) => (
+              <div
+                key={tableName}
+                className="rounded-md border border-surface-border-soft bg-surface-muted px-3 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Database className="size-3.5 shrink-0 text-brand-primary" />
+                    <span className="truncate text-sm font-black text-text-primary">
+                      {tableName}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {info && (
+                      <span className="text-[11px] font-bold tabular-nums text-text-muted">
+                        {info.rowCount}행
+                      </span>
+                    )}
+                    {info && (
+                      <button
+                        type="button"
+                        className="ui-icon-button size-7"
+                        onClick={() => setSchemaDialog(info)}
+                        aria-label={`${tableName} 스키마 보기`}
+                        title="스키마 보기"
+                      >
+                        <Info className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {info ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {info.columns.slice(0, 6).map((column) => (
+                      <span
+                        key={column.name}
+                        className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary"
+                      >
+                        <span className="truncate">{column.name}</span>
+                        {column.primaryKey && (
+                          <span className="text-[9px] font-black text-brand-primary">PK</span>
+                        )}
+                      </span>
+                    ))}
+                    {info.columns.length > 6 && (
+                      <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-semibold text-text-muted">
+                        +{info.columns.length - 6}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-text-muted">테이블 정보를 불러오는 중입니다.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2 rounded-md border border-brand-border bg-brand-glass px-3 py-2.5">
+          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-brand-primary" />
+          <p className="text-xs leading-5 text-text-secondary">{example.hint}</p>
+        </div>
+
+        <div className="rounded-md border border-surface-border bg-surface-muted p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-black text-text-primary">답안 SQL</p>
+              <p className="mt-1 text-xs text-text-muted">Ctrl+Enter로 바로 제출할 수 있습니다.</p>
+            </div>
             <button
               type="button"
               onClick={handleSubmitAnswer}
               disabled={!submittedSql.trim() || isGrading}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-bold text-brand-primary transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-bold text-brand-primary transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isGrading ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -413,6 +512,17 @@ function ProblemPanel({
               제출
             </button>
           </div>
+
+          <textarea
+            value={submittedSql}
+            onChange={(event) => setSubmittedSql(event.target.value)}
+            onKeyDown={handleAnswerKeyDown}
+            className="ui-input min-h-40 w-full resize-y font-mono text-sm leading-6"
+            placeholder={
+              'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'
+            }
+            spellCheck={false}
+          />
 
           {(isGrading || gradeError || gradeBody) && (
             <div className="mt-3 rounded-md border border-surface-border bg-surface-raised px-3 py-2">
@@ -426,16 +536,30 @@ function ProblemPanel({
                 <p className="text-xs font-semibold text-destructive">{gradeError}</p>
               )}
               {!isGrading && !gradeError && gradeBody && (
-                <pre className="whitespace-pre-wrap font-sans text-xs leading-5 text-text-secondary">
-                  {gradeBody}
-                </pre>
+                <div className="flex items-start gap-3">
+                  <pre className="min-w-0 flex-1 whitespace-pre-wrap font-sans text-xs leading-5 text-text-secondary">
+                    {gradeBody}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={handleOpenSupplement}
+                    className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-[11px] font-bold text-brand-primary transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={isSupplementLoading}
+                  >
+                    {isSupplementLoading ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <BookOpenText className="size-3.5" />
+                    )}
+                    보충 설명
+                  </button>
+                </div>
               )}
             </div>
           )}
         </div>
 
-        {/* 정답 보기 버튼 */}
-        <div className="mt-4 flex justify-end">
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={onToggleAnswer}
@@ -450,9 +574,8 @@ function ProblemPanel({
           </button>
         </div>
 
-        {/* 정답 영역 */}
         {answerOpen && (
-          <div className="mt-3 space-y-2">
+          <div className="space-y-2">
             <pre className="max-h-56 overflow-auto rounded-md border border-surface-border bg-surface-muted px-4 py-3 font-mono text-xs leading-5 text-text-secondary">
               {example.answerSql}
             </pre>
@@ -464,6 +587,127 @@ function ProblemPanel({
         )}
       </div>
     </div>
+
+      {schemaDialog && (
+        <SqlTableSchemaDialog
+          table={schemaDialog}
+          tables={tables}
+          onClose={() => setSchemaDialog(null)}
+        />
+      )}
+
+      <SqlSupplementExplanationDialog
+        open={supplementOpen}
+        onOpenChange={setSupplementOpen}
+        title={`${example.title} 문제에 대한 보충 설명`}
+        body={supplementBody}
+        error={supplementError}
+        isLoading={isSupplementLoading}
+      />
+    </>
+  )
+}
+
+function buildSqlSupplementPrompt({
+  example,
+  submittedSql,
+  answerSql,
+  gradeFeedback,
+}: {
+  example: SqlPracticeExample
+  submittedSql: string
+  answerSql: string
+  gradeFeedback: string
+}) {
+  return `다음 SQL 연습 문제에 대해 학습자용 보충 설명을 작성해주세요.
+
+반드시 아래 제목 구조를 그대로 사용하고, 한국어로 간결하지만 충분히 설명해주세요.
+
+Sql 문제 정답:
+
+Sql 주요 문법 설명:
+
+주의할점:
+
+또 다른 예제:
+
+[문제 제목]
+${example.title}
+
+[문제 설명]
+${example.description}
+
+[힌트]
+${example.hint}
+
+[관련 테이블]
+${example.relatedTables.join(', ') || '없음'}
+
+[정답 SQL]
+${answerSql}
+
+[사용자 제출 SQL]
+${submittedSql}
+
+[채점 피드백]
+${gradeFeedback}`
+}
+
+function SqlSupplementExplanationDialog({
+  open,
+  onOpenChange,
+  title,
+  body,
+  error,
+  isLoading,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  body: string
+  error: string
+  isLoading: boolean
+}) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[220] ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[221] flex max-h-[min(760px,calc(100vh-2rem))] w-[min(760px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-md border border-surface-border shadow-2xl">
+          <div className="flex items-center justify-between gap-4 border-b border-surface-border px-5 py-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="ui-icon-button-brand size-8 shrink-0">
+                <BookOpenText className="size-4" />
+              </div>
+              <Dialog.Title className="truncate text-base font-black text-text-primary">
+                {title}
+              </Dialog.Title>
+            </div>
+            <Dialog.Close asChild>
+              <button type="button" className="ui-icon-button size-8 shrink-0" aria-label="닫기">
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto bg-surface-muted/50 p-5">
+            <div className="rounded-md border border-surface-border-soft bg-surface-raised px-5 py-4">
+              {isLoading ? (
+                <div className="flex min-h-40 items-center justify-center gap-2 text-sm font-semibold text-text-muted">
+                  <Loader2 className="size-4 animate-spin" />
+                  보충 설명을 생성하는 중입니다.
+                </div>
+              ) : error ? (
+                <p className="text-sm font-semibold text-destructive">{error}</p>
+              ) : (
+                <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-text-secondary">
+                  {body || '보충 설명이 아직 없습니다.'}
+                </pre>
+              )}
+            </div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 

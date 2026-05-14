@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { BookOpenCheck, CalendarDays, Database, Edit2, NotebookPen, Table2, Trash2, UserRound, X } from 'lucide-react'
+import { CalendarDays, Edit2, NotebookPen, Trash2, UserRound, X } from 'lucide-react'
 import { useState } from 'react'
 
 import type { SqlPracticeNote } from '../../../entities/sql-practice/model/types'
@@ -61,14 +61,6 @@ export function SqlNotesDialog({
   const isBusy = createNote.isPending || updateNote.isPending || deleteNote.isPending
   const displayName = userName.trim() ? `${userName}의 SQL 노트` : '나의 SQL 노트'
 
-  const contextBadges = [
-    seedFile ? { icon: Database, label: seedFile } : null,
-    selectedExample
-      ? { icon: BookOpenCheck, label: `Q.${String(selectedExample.order).padStart(2, '0')} ${selectedExample.title}` }
-      : null,
-    selectedTable ? { icon: Table2, label: selectedTable } : null,
-  ].filter(Boolean) as { icon: typeof Database; label: string }[]
-
   const openCreateForm = () => {
     setEditingNoteId(null)
     setConfirmingDeleteId(null)
@@ -80,30 +72,16 @@ export function SqlNotesDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[210] ui-overlay" />
         <Dialog.Content className="glass-panel fixed inset-4 z-[211] flex flex-col overflow-hidden rounded-md border border-surface-border-soft shadow-2xl">
-          <div className="flex items-start justify-between gap-4 border-b border-surface-border px-5 py-4">
+          <div className="flex min-h-16 items-center justify-between gap-4 border-b border-surface-border px-5 py-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <div className="ui-icon-button-brand size-9 shrink-0">
+                <div className="ui-icon-button-brand size-8 shrink-0">
                   <NotebookPen className="size-4" />
                 </div>
                 <Dialog.Title className="truncate text-lg font-black text-text-primary">
                   {displayName}
                 </Dialog.Title>
               </div>
-
-              {contextBadges.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {contextBadges.map(({ icon: Icon, label }) => (
-                    <span
-                      key={label}
-                      className="inline-flex max-w-[420px] items-center gap-1.5 rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-[11px] font-bold text-text-secondary"
-                    >
-                      <Icon className="size-3 shrink-0 text-brand-primary" />
-                      <span className="truncate">{label}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
 
             <Dialog.Close asChild>
@@ -115,15 +93,16 @@ export function SqlNotesDialog({
 
           <div className="grid min-h-0 flex-1 grid-cols-[390px_minmax(0,1fr)] gap-4 bg-surface-muted/50 p-4">
             <aside className="ui-panel flex min-h-0 flex-col overflow-hidden rounded-md">
-              <div className="flex items-center justify-between border-b border-surface-border-soft px-4 py-4">
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.08em] text-brand-primary">SQL NOTES</p>
-                  <p className="mt-1 text-base font-black text-text-primary">노트 목록</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md border border-surface-border-soft bg-surface-raised px-2.5 py-1 text-xs font-black text-text-secondary">
-                    {notes.length} notes
+              <div className="flex min-h-12 items-center justify-between gap-3 border-b border-surface-border-soft px-4 py-2.5">
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="shrink-0 text-base font-black leading-none text-text-primary">
+                    노트 목록
+                  </p>
+                  <span className="inline-flex h-6 min-w-7 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass px-2 text-[11px] font-black tabular-nums text-brand-primary">
+                    {notes.length}
                   </span>
+                </div>
+                <div className="flex h-8 shrink-0 items-center">
                   <button
                     type="button"
                     className="ui-icon-button-brand size-8"
@@ -135,7 +114,7 @@ export function SqlNotesDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-[52px_minmax(0,1fr)_72px] border-b border-surface-border-soft bg-surface-muted px-4 py-3 text-[11px] font-black uppercase text-text-muted">
+              <div className="grid grid-cols-[34px_minmax(0,1fr)_76px] items-center gap-2 border-b border-surface-border-soft bg-surface-muted px-4 py-3 text-[11px] font-black uppercase text-text-muted">
                 <span>NO.</span>
                 <span>제목</span>
                 <span className="text-right">날짜</span>
@@ -169,21 +148,21 @@ export function SqlNotesDialog({
                             setSelectedNoteId(note.id)
                             setConfirmingDeleteId(null)
                           }}
-                          className={`group relative w-full overflow-hidden rounded-md border px-3.5 py-3 text-left shadow-sm transition-colors ${
+                          className={`group relative w-full overflow-hidden rounded-md border px-3 py-2.5 text-left shadow-sm transition-colors ${
                             isSelected
                               ? 'border-brand-border bg-brand-glass text-brand-primary shadow-md'
                               : 'border-surface-border-soft bg-surface-raised text-text-primary hover:border-brand-border hover:bg-surface-muted'
                           }`}
                         >
-                          {isSelected && <span className="absolute inset-y-3 left-0 w-1 rounded-r bg-brand-primary" />}
-                          <div className="grid grid-cols-[44px_minmax(0,1fr)_64px] items-center gap-3">
-                            <div className="flex size-8 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-sm font-black text-brand-primary">
+                          {isSelected && <span className="absolute inset-y-2.5 left-0 w-1 rounded-r bg-brand-primary" />}
+                          <div className="grid grid-cols-[34px_minmax(0,1fr)_76px] items-center gap-2">
+                            <div className="flex size-7 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-xs font-black tabular-nums text-brand-primary">
                               {index + 1}
                             </div>
                             <div className="min-w-0">
                               <p className="truncate text-sm font-black">{getNoteTitle(note)}</p>
                             </div>
-                            <span className="rounded-md border border-surface-border-soft bg-surface-muted px-2 py-1 text-center text-[11px] font-black text-text-secondary">
+                            <span className="inline-flex h-7 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted px-1.5 text-[11px] font-black tabular-nums text-text-secondary">
                               {formatDate(note.updatedAt).replace(/\s/g, '')}
                             </span>
                           </div>
@@ -197,9 +176,10 @@ export function SqlNotesDialog({
 
             <main className="ui-panel flex min-h-0 flex-col overflow-hidden rounded-md">
               {formOpen ? (
-                <div className="flex min-h-0 flex-1 flex-col p-5">
+                <div className="flex min-h-0 flex-1 flex-col bg-surface-muted/50 px-6 py-5">
                   <NoteForm
                     key={editingNote?.id ?? 'create'}
+                    surface="plain"
                     loading={isBusy}
                     initialTitle={editingNote?.title ?? ''}
                     initialContent={editingBlock?.data ?? ''}

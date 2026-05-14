@@ -167,6 +167,14 @@ export function useGradeSqlPracticeSubmission() {
   })
 }
 
+export function useSqlPracticeSupplementExplanation() {
+  return useMutation({
+    mutationFn: (content: string) => sqlPracticeApi.geminiAsk(content, 'general'),
+    onError: (error) =>
+      toast.error(messageFromError(error, 'SQL 보충 설명을 생성하지 못했습니다.')),
+  })
+}
+
 export function useCreateSqlPracticeNote() {
   const queryClient = useQueryClient()
 

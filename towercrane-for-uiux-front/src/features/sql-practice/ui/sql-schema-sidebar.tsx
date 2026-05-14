@@ -82,7 +82,7 @@ export function SqlSchemaSidebar({
 
   return (
     <>
-      <aside className="ui-panel flex min-h-[360px] w-[300px] shrink-0 flex-col overflow-hidden rounded-md p-0">
+      <aside className="ui-panel flex h-full min-h-0 w-[300px] shrink-0 flex-col overflow-hidden rounded-md p-0">
         <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
           <div>
             <h2 className="text-sm font-bold text-text-primary">테이블</h2>

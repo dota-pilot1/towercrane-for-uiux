@@ -58,14 +58,14 @@ export function SqlQuizSidebar({
 
   if (!isOpen) {
     return (
-      <div className="flex w-10 shrink-0 flex-col items-center gap-3 rounded-md border border-surface-border bg-surface-raised py-3">
+      <div className="flex h-full min-h-0 w-10 shrink-0 flex-col items-center gap-3 rounded-md border border-surface-border bg-surface-raised py-3">
         <button
           type="button"
-          className="ui-icon-button size-7"
+          className="ui-icon-button size-8"
           onClick={onToggle}
           title="문제 목록 열기"
         >
-          <ChevronRight className="size-4" />
+          <ChevronRight className="size-3.5" />
         </button>
         <div className="flex flex-1 items-center justify-center">
           <span
@@ -83,14 +83,18 @@ export function SqlQuizSidebar({
   }
 
   return (
-    <aside className="ui-panel flex w-64 shrink-0 flex-col overflow-hidden rounded-md p-0">
+    <aside className="ui-panel flex h-full min-h-0 w-64 shrink-0 flex-col overflow-hidden rounded-md p-0">
       <div className="border-b border-surface-border px-3 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BookOpenCheck className="size-4 text-brand-primary" />
-            <h2 className="text-sm font-bold text-text-primary">문제 목록</h2>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex h-8 min-w-0 items-center gap-1.5">
+            <span className="flex size-6 shrink-0 items-center justify-center text-brand-primary">
+              <BookOpenCheck className="size-4" />
+            </span>
+            <h2 className="shrink-0 text-sm font-bold leading-none text-text-primary">
+              문제 목록
+            </h2>
             {totalCount > 0 && (
-              <span className="rounded-sm border border-brand-border bg-brand-glass px-1.5 py-0.5 text-[10px] font-black text-brand-primary">
+              <span className="ml-1 inline-flex h-6 min-w-7 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass px-2 text-[11px] font-black tabular-nums text-brand-primary">
                 {totalCount}
               </span>
             )}
@@ -98,25 +102,25 @@ export function SqlQuizSidebar({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              className="ui-icon-button size-7"
+              className="ui-icon-button size-8"
               onClick={onOpenNotes}
               title="SQL 노트 열기"
             >
-              <NotebookPen className="size-4" />
+              <NotebookPen className="size-3.5" />
             </button>
             <button
               type="button"
-              className="ui-icon-button size-7"
+              className="ui-icon-button size-8"
               onClick={onToggle}
               title="문제 목록 닫기"
             >
-              <ChevronLeft className="size-4" />
+              <ChevronLeft className="size-3.5" />
             </button>
           </div>
         </div>
 
         {totalCount > 0 && (
-          <div className="mt-2.5 flex gap-1.5">
+          <div className="mt-3 flex gap-1.5">
             {LEVEL_ORDER.map((level) => {
               const isActive = activeLevel === level
               const count = exampleSet[level].length
@@ -127,7 +131,7 @@ export function SqlQuizSidebar({
                   disabled={count === 0}
                   onClick={() => setActiveLevel(level)}
                   className={cn(
-                    'flex-1 rounded-md border py-1 text-[11px] font-black transition-colors',
+                    'flex h-8 flex-1 items-center justify-center rounded-md border text-[11px] font-black transition-colors',
                     isActive
                       ? LEVEL_ACTIVE_BUTTON_CLASS[level]
                       : 'border-surface-border-soft bg-surface-muted text-text-muted hover:border-surface-border hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-40',
@@ -161,13 +165,13 @@ export function SqlQuizSidebar({
                   type="button"
                   onClick={() => onSelectExample(example)}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left transition-colors',
+                    'flex h-9 w-full items-center gap-2 rounded-md border px-3 text-left transition-colors',
                     isActive
                       ? 'border-brand-border bg-brand-glass text-brand-primary'
                       : 'border-transparent text-text-primary hover:border-surface-border-soft hover:bg-surface-muted',
                   )}
                 >
-                  <span className="shrink-0 text-[10px] font-black tabular-nums text-text-muted">
+                  <span className="inline-flex h-5 w-6 shrink-0 items-center justify-center text-[10px] font-black tabular-nums text-text-muted">
                     {String(idx + 1).padStart(2, '0')}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { type BlockType, serializeBlock } from '../lib/block-types'
 import { BlockEditor } from './block-editor'
+import { cn } from '../../../../shared/lib/utils'
 
 interface NoteFormProps {
   onSubmit: (data: { title?: string; content: string; visibility: string; pinned: boolean }) => void
@@ -9,6 +10,7 @@ interface NoteFormProps {
   initialTitle?: string
   initialContent?: string
   initialBlockType?: BlockType
+  surface?: 'panel' | 'plain'
 }
 
 export function NoteForm({
@@ -18,6 +20,7 @@ export function NoteForm({
   initialTitle = '',
   initialContent = '',
   initialBlockType = 'NOTE',
+  surface = 'panel',
 }: NoteFormProps) {
   const [title, setTitle] = useState(initialTitle)
   const [blockType, setBlockType] = useState<BlockType>(initialBlockType)
@@ -36,7 +39,12 @@ export function NoteForm({
   const isEmpty = !blockData.trim() || blockData === '{"root":{"children":[{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
 
   return (
-    <div className="ui-panel-soft rounded-md p-4 space-y-3 h-full flex flex-col">
+    <div
+      className={cn(
+        'flex h-full flex-col rounded-md',
+        surface === 'panel' ? 'ui-panel-soft space-y-3 p-4' : 'space-y-4 bg-transparent',
+      )}
+    >
       <input
         type="text"
         placeholder="제목 (선택)"
@@ -54,18 +62,20 @@ export function NoteForm({
         />
       </div>
 
-      <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
+      <div className="flex shrink-0 items-center justify-end gap-2 rounded-md border border-surface-border-soft bg-surface-muted/60 px-4 py-3">
         <button
+          type="button"
           onClick={onCancel}
           disabled={loading}
-          className="px-3 py-1.5 text-xs rounded border border-surface-border ui-text-secondary hover:bg-surface-muted disabled:opacity-50"
+          className="inline-flex h-9 min-w-16 items-center justify-center rounded-md border border-surface-border bg-surface-raised px-3 text-xs font-bold text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary disabled:opacity-50"
         >
           취소
         </button>
         <button
+          type="button"
           onClick={handleSubmit}
           disabled={loading || isEmpty}
-          className="px-3 py-1.5 text-xs rounded bg-brand-primary text-white hover:opacity-90 disabled:opacity-50"
+          className="inline-flex h-9 min-w-16 items-center justify-center rounded-md border border-brand-border bg-brand-primary px-3 text-xs font-bold text-text-on-brand shadow-sm transition-colors hover:brightness-110 disabled:opacity-50"
         >
           {loading ? '저장 중...' : '저장'}
         </button>

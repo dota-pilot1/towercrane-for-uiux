@@ -208,7 +208,7 @@ export function LexicalToolbar({ className, onImageUpload }: Props) {
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-0.5 border-b border-surface-border-soft bg-[color:color-mix(in_srgb,var(--surface-muted)_42%,var(--card))] px-2 py-1.5 ${className ?? ''}`}
+      className={`flex flex-wrap items-center gap-1 border-b border-surface-border-soft bg-surface-muted px-3 py-2 ${className ?? ''}`}
     >
       <ToolbarButton onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)} disabled={!canUndo} title="실행 취소">
         <Undo className="size-3.5" />
@@ -468,7 +468,7 @@ function FontSizeSelect({ value, onChange }: { value: string; onChange: (value: 
       value={current}
       onChange={(event) => onChange(event.target.value)}
       title="글씨 크기"
-      className="h-7 rounded-md border border-surface-border bg-surface-raised px-1.5 text-xs text-text-primary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-brand-border"
+      className="h-8 rounded-md border border-surface-border bg-surface-raised px-2 text-xs text-text-primary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-brand-border"
     >
       {FONT_SIZES.map((size) => (
         <option key={size} value={size}>
@@ -486,7 +486,7 @@ function FontFamilySelect({ value, onChange }: { value: string; onChange: (value
       value={match ? match.value : 'inherit'}
       onChange={(event) => onChange(event.target.value)}
       title="글씨체"
-      className="h-7 max-w-[110px] rounded-md border border-surface-border bg-surface-raised px-1.5 text-xs text-text-primary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-brand-border"
+      className="h-8 max-w-[118px] rounded-md border border-surface-border bg-surface-raised px-2 text-xs text-text-primary hover:bg-surface-muted focus:outline-none focus:ring-1 focus:ring-brand-border"
     >
       {FONT_FAMILIES.map((font) => (
         <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
@@ -580,7 +580,7 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`flex h-7 min-w-7 items-center justify-center rounded-md transition-colors ${
+      className={`flex size-8 items-center justify-center rounded-md transition-colors ${
         active
           ? 'bg-brand-glass text-brand-primary'
           : 'text-text-secondary hover:bg-surface-strong hover:text-text-primary'
@@ -592,5 +592,5 @@ function ToolbarButton({
 }
 
 function Divider() {
-  return <span className="mx-1 h-5 w-px bg-surface-border" />
+  return <span className="mx-1.5 h-6 w-px bg-surface-border-soft" />
 }
