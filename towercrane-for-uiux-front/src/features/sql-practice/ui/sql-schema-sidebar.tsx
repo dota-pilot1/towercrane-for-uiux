@@ -140,27 +140,35 @@ export function SqlSchemaSidebar({
             </div>
 
             <div className="mt-3 flex items-center gap-1">
-              <button
-                type="button"
-                className="ui-icon-button size-7 shrink-0"
-                onClick={() => prevSeed && handleActivateSeed(prevSeed)}
-                disabled={!prevSeed || activateSeedMutation.isPending}
-                title={prevSeed ? `이전: ${prevSeed.fileName}` : "이전 파일 없음"}
-              >
-                <ChevronLeft className="size-3.5" />
-              </button>
+              {prevSeed ? (
+                <button
+                  type="button"
+                  className="ui-icon-button size-7 shrink-0"
+                  onClick={() => handleActivateSeed(prevSeed)}
+                  disabled={activateSeedMutation.isPending}
+                  title={`이전: ${prevSeed.fileName}`}
+                >
+                  <ChevronLeft className="size-3.5" />
+                </button>
+              ) : (
+                <span className="size-7 shrink-0" />
+              )}
               <span className="flex-1 truncate text-center text-xs text-text-muted">
                 {activeSeed?.fileName ?? meta?.seedFile ?? "파일 선택"}
               </span>
-              <button
-                type="button"
-                className="ui-icon-button size-7 shrink-0"
-                onClick={() => nextSeed && handleActivateSeed(nextSeed)}
-                disabled={!nextSeed || activateSeedMutation.isPending}
-                title={nextSeed ? `다음: ${nextSeed.fileName}` : "다음 파일 없음"}
-              >
-                <ChevronRight className="size-3.5" />
-              </button>
+              {nextSeed ? (
+                <button
+                  type="button"
+                  className="ui-icon-button size-7 shrink-0"
+                  onClick={() => handleActivateSeed(nextSeed)}
+                  disabled={activateSeedMutation.isPending}
+                  title={`다음: ${nextSeed.fileName}`}
+                >
+                  <ChevronRight className="size-3.5" />
+                </button>
+              ) : (
+                <span className="size-7 shrink-0" />
+              )}
             </div>
           </div>
 
