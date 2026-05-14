@@ -3,6 +3,7 @@ import { defineExampleSet } from './shared'
 export const reservationScheduleExamples = defineExampleSet('05_reservation_schedule.sql', {
   beginner: [
     {
+      id: '05_reservation_schedule.beginner.01',
       title: '활성 리소스 목록',
       description: '현재 운영 중인 리소스의 ID, 이름(name), 유형(resource_type), 수용 인원(capacity)을 보여 주세요. 유형 가나다순으로 묶고 같은 유형 안에서는 이름순으로 정렬합니다.',
       hint: '단일 테이블 필터 + 다중 컬럼 정렬',
@@ -14,6 +15,7 @@ WHERE is_active = 1
 ORDER BY resource_type, name;`,
     },
     {
+      id: '05_reservation_schedule.beginner.02',
       title: '예약 상태별 건수',
       description: '예약 상태(status)별로 몇 건이 있는지 집계해 상태와 건수(reservation_count)를 보여 주세요. 건수가 많은 순으로 정렬합니다.',
       hint: '카테고리별 COUNT 집계',
@@ -25,6 +27,7 @@ GROUP BY status
 ORDER BY reservation_count DESC;`,
     },
     {
+      id: '05_reservation_schedule.beginner.03',
       title: '가격 높은 예약 항목',
       description: '예약 라인 중 가격이 높은 것부터 보여 주세요. 예약 ID(reservation_id), 리소스 ID(resource_id), 가격(price)을 출력합니다.',
       hint: '단일 컬럼 내림차순 정렬',
@@ -35,6 +38,7 @@ FROM reservation_items
 ORDER BY price DESC;`,
     },
     {
+      id: '05_reservation_schedule.beginner.04',
       title: '차단 기간 목록',
       description: '리소스별 차단 기간을 시작 시각이 빠른 순서로 보여 주세요. 리소스 ID(resource_id), 사유(reason), 시작(starts_at)과 종료(ends_at) 시각을 출력합니다.',
       hint: '시간순 정렬',
@@ -45,6 +49,7 @@ FROM blackout_periods
 ORDER BY starts_at;`,
     },
     {
+      id: '05_reservation_schedule.beginner.05',
       title: '점검 필요 리소스',
       description: '점검 상태가 정상(OK)이 아닌 이력만 골라 리소스 ID(resource_id), 담당자(manager_name), 상태(status)를 보여 주세요. 점검 일시가 빠른 순으로 정렬합니다.',
       hint: '같지 않음 비교 필터',
@@ -56,6 +61,7 @@ WHERE status != 'OK'
 ORDER BY checked_at;`,
     },
     {
+      id: '05_reservation_schedule.beginner.06',
       title: '리소스 유형별 수',
       description: '리소스 유형(resource_type)별로 등록된 리소스 개수(resource_count)를 보여 주세요. 개수가 많은 유형이 먼저 오게 정렬합니다.',
       hint: '범주별 COUNT 집계',
@@ -67,6 +73,7 @@ GROUP BY resource_type
 ORDER BY resource_count DESC;`,
     },
     {
+      id: '05_reservation_schedule.beginner.07',
       title: '고객 메모 있는 목록',
       description: '메모(memo)가 비어 있지 않은 고객만 골라 이름(name), 전화번호(phone), 메모를 보여 주세요. 이름 가나다순으로 정렬합니다.',
       hint: 'NULL 아님 필터',
@@ -78,6 +85,7 @@ WHERE memo IS NOT NULL
 ORDER BY name;`,
     },
     {
+      id: '05_reservation_schedule.beginner.08',
       title: '확정 예약만 보기',
       description: '상태가 확정(CONFIRMED)인 예약만 골라 예약 ID(id), 고객 ID(customer_id), 요청 시각(requested_at)을 보여 주세요. 요청 시각이 빠른 순으로 정렬합니다.',
       hint: '단일 값 동등 필터',
@@ -89,6 +97,7 @@ WHERE status = 'CONFIRMED'
 ORDER BY requested_at;`,
     },
     {
+      id: '05_reservation_schedule.beginner.09',
       title: '예약 항목 시간순',
       description: '예약 라인을 시작 시각이 빠른 순으로 보여 주세요. 예약 ID(reservation_id), 리소스 ID(resource_id), 시작(starts_at)/종료(ends_at) 시각을 출력합니다.',
       hint: '타임라인 정렬',
@@ -99,6 +108,7 @@ FROM reservation_items
 ORDER BY starts_at;`,
     },
     {
+      id: '05_reservation_schedule.beginner.10',
       title: '리소스별 예약 항목 수',
       description: '리소스 ID(resource_id)별로 예약된 라인 수(booking_count)를 보여 주세요. 많이 예약된 리소스가 먼저 오게 정렬합니다.',
       hint: '그룹별 카운트 + 정렬',
@@ -112,6 +122,7 @@ ORDER BY booking_count DESC;`,
   ],
   intermediate: [
     {
+      id: '05_reservation_schedule.intermediate.01',
       title: '예약과 고객명',
       description: '예약 목록에 고객 이름을 붙여서 보여 주세요. 예약 ID(id), 고객명(customer_name), 상태(status), 요청 시각(requested_at)을 출력하고 요청 시각이 빠른 순으로 정렬합니다.',
       hint: '두 테이블 INNER JOIN',
@@ -123,6 +134,7 @@ JOIN customers c ON c.id = r.customer_id
 ORDER BY r.requested_at;`,
     },
     {
+      id: '05_reservation_schedule.intermediate.02',
       title: '예약 항목과 리소스명',
       description: '예약 라인에 리소스 이름을 붙여서 보여 주세요. 예약 ID(reservation_id), 리소스명(resource_name), 시작/종료 시각(starts_at, ends_at), 가격(price)을 출력하고 시작 시각이 빠른 순으로 정렬합니다.',
       hint: '라인 + 마스터 JOIN',
@@ -134,6 +146,7 @@ JOIN resources res ON res.id = ri.resource_id
 ORDER BY ri.starts_at;`,
     },
     {
+      id: '05_reservation_schedule.intermediate.03',
       title: '리소스별 예약 매출',
       description: '리소스별 예약 매출 합계(total_price)를 이름(name)과 함께 보여 주세요. 예약 라인이 하나도 없는 리소스도 포함되어야 하며 매출이 큰 순으로 정렬합니다.',
       hint: 'LEFT JOIN + SUM',
@@ -146,6 +159,7 @@ GROUP BY res.id, res.name
 ORDER BY total_price DESC;`,
     },
     {
+      id: '05_reservation_schedule.intermediate.04',
       title: '예약별 총 금액',
       description: '예약 단위로 라인 가격을 합산해 예약 ID(id), 상태(status), 예약 총액(reservation_total)을 보여 주세요. 금액이 큰 예약이 먼저 오게 정렬합니다.',
       hint: '헤더 + 라인 SUM',
@@ -158,6 +172,7 @@ GROUP BY r.id, r.status
 ORDER BY reservation_total DESC;`,
     },
     {
+      id: '05_reservation_schedule.intermediate.05',
       title: '고객별 예약 수',
       description: '고객별 예약 건수(reservation_count)를 이름(name)과 함께 보여 주세요. 한 번도 예약하지 않은 고객도 0건으로 포함하고 건수가 많은 순으로 정렬합니다.',
       hint: 'LEFT JOIN + COUNT',
@@ -170,6 +185,7 @@ GROUP BY c.id, c.name
 ORDER BY reservation_count DESC;`,
     },
     {
+      id: '05_reservation_schedule.intermediate.06',
       title: '차단 리소스명 확인',
       description: '차단 기간에 어떤 리소스가 묶여 있는지 리소스명(name), 사유(reason), 시작(starts_at)/종료(ends_at) 시각을 보여 주세요. 시작 시각이 빠른 순으로 정렬합니다.',
       hint: '차단 + 리소스 JOIN',
@@ -181,6 +197,7 @@ JOIN resources res ON res.id = b.resource_id
 ORDER BY b.starts_at;`,
     },
     {
+      id: '05_reservation_schedule.intermediate.07',
       title: '점검 상태와 리소스',
       description: '점검 이력에 리소스명을 붙여서 보여 주세요. 리소스명(name), 담당자(manager_name), 점검 일시(checked_at), 상태(status)를 출력하고 점검 일시가 빠른 순으로 정렬합니다.',
       hint: '점검 + 리소스 JOIN',
@@ -192,6 +209,7 @@ JOIN resources res ON res.id = m.resource_id
 ORDER BY m.checked_at;`,
     },
     {
+      id: '05_reservation_schedule.intermediate.08',
       title: 'CONFIRMED 예약 리소스',
       description: '확정된 예약에 묶인 리소스 사용 일정을 보여 주세요. 예약 ID(reservation_id), 리소스명(resource_name), 시작 시각(starts_at)을 출력하고 시작 시각이 빠른 순으로 정렬합니다.',
       hint: '세 테이블 JOIN + 상태 필터',
@@ -205,6 +223,7 @@ WHERE r.status = 'CONFIRMED'
 ORDER BY ri.starts_at;`,
     },
     {
+      id: '05_reservation_schedule.intermediate.09',
       title: '활성 리소스별 예약 여부',
       description: '운영 중인 리소스 각각의 예약 라인 수(booking_count)를 이름(name)과 함께 보여 주세요. 예약이 0건인 리소스도 포함하고 예약이 많은 순으로 정렬합니다.',
       hint: 'LEFT JOIN + WHERE + GROUP BY',
@@ -218,6 +237,7 @@ GROUP BY res.id, res.name
 ORDER BY booking_count DESC;`,
     },
     {
+      id: '05_reservation_schedule.intermediate.10',
       title: '시간 겹치는 차단 기간',
       description: '특정 시간대(2026-05-12 13:00 ~ 15:00)와 겹치는 차단 기간을 리소스명(name), 사유(reason), 시작(starts_at)/종료(ends_at) 시각으로 보여 주세요. 시작 시각이 빠른 순으로 정렬합니다.',
       hint: '구간 겹침(overlap) 조건',
@@ -233,6 +253,7 @@ ORDER BY b.starts_at;`,
   ],
   advanced: [
     {
+      id: '05_reservation_schedule.advanced.01',
       title: '예약 항목과 차단 기간 충돌',
       description: '예약 라인 중 같은 리소스의 차단 기간과 시간이 겹치는 건을 찾아 주세요. 예약 ID(reservation_id), 리소스명(resource_name), 예약 시작/종료(reservation_start, reservation_end), 차단 사유(reason)를 보여 주고 예약 ID 순으로 정렬합니다.',
       hint: '같은 리소스 + 구간 겹침 조인',
@@ -252,6 +273,7 @@ WHERE ri.starts_at < b.ends_at
 ORDER BY ri.reservation_id;`,
     },
     {
+      id: '05_reservation_schedule.advanced.02',
       title: '리소스별 가동 금액 순위',
       description: '리소스별 매출 합계(total_price)와 매출 순위(revenue_rank)를 이름(name)과 함께 보여 주세요. 예약이 없는 리소스는 0원으로 처리하고 순위가 빠른 것부터 정렬합니다.',
       hint: 'LEFT JOIN + RANK() 윈도우',
@@ -267,6 +289,7 @@ GROUP BY res.id, res.name
 ORDER BY revenue_rank;`,
     },
     {
+      id: '05_reservation_schedule.advanced.03',
       title: '예약별 사용 시간',
       description: '예약별 총 사용 시간(reserved_hours)을 시간 단위로 계산해 예약 ID(reservation_id)와 함께 보여 주세요. 사용 시간이 긴 예약부터 정렬합니다.',
       hint: '시간 차이(julianday) 합계',
@@ -281,6 +304,7 @@ GROUP BY r.id
 ORDER BY reserved_hours DESC;`,
     },
     {
+      id: '05_reservation_schedule.advanced.04',
       title: '미점검 활성 리소스',
       description: '운영 중이지만 점검 이력이 전혀 없는 리소스의 ID(id)와 이름(name)을 보여 주세요. ID 오름차순으로 정렬합니다.',
       hint: 'LEFT JOIN + IS NULL 안티 조인',
@@ -294,6 +318,7 @@ WHERE res.is_active = 1
 ORDER BY res.id;`,
     },
     {
+      id: '05_reservation_schedule.advanced.05',
       title: '점검 필요 리소스 예약 영향',
       description: '점검 상태가 정상(OK)이 아닌 리소스 각각에 묶인 예약 라인 수(affected_booking_count)를 리소스명(name), 점검 상태(status)와 함께 보여 주세요.',
       hint: '필터 + LEFT JOIN + COUNT',
@@ -307,6 +332,7 @@ WHERE m.status != 'OK'
 GROUP BY res.id, res.name, m.status;`,
     },
     {
+      id: '05_reservation_schedule.advanced.06',
       title: '예약 상태별 매출',
       description: '예약 상태(status)별 매출 합계(total_price)를 보여 주세요. 매출이 많은 상태부터 정렬합니다.',
       hint: 'JOIN + 상태 그룹 합계',
@@ -319,6 +345,7 @@ GROUP BY r.status
 ORDER BY total_price DESC;`,
     },
     {
+      id: '05_reservation_schedule.advanced.07',
       title: '리소스 유형별 평균 예약가',
       description: '리소스 유형(resource_type)별 예약 라인의 평균 가격(avg_price)을 정수로 반올림해서 보여 주세요. 평균이 비싼 유형부터 정렬합니다.',
       hint: 'JOIN + AVG + ROUND',
@@ -331,6 +358,7 @@ GROUP BY res.resource_type
 ORDER BY avg_price DESC;`,
     },
     {
+      id: '05_reservation_schedule.advanced.08',
       title: '예약 없는 활성 리소스',
       description: '운영 중이지만 예약 라인이 단 한 건도 없는 리소스의 ID(id)와 이름(name)을 보여 주세요.',
       hint: 'LEFT JOIN + HAVING COUNT=0',
@@ -344,6 +372,7 @@ GROUP BY res.id, res.name
 HAVING COUNT(ri.id) = 0;`,
     },
     {
+      id: '05_reservation_schedule.advanced.09',
       title: '고객별 확정 예약 금액',
       description: '확정(CONFIRMED) 예약 기준으로 고객별 결제 합계(confirmed_price)를 이름(name)과 함께 보여 주세요. 금액이 큰 고객부터 정렬합니다.',
       hint: '세 테이블 JOIN + 필터 + SUM',
@@ -358,6 +387,7 @@ GROUP BY c.id, c.name
 ORDER BY confirmed_price DESC;`,
     },
     {
+      id: '05_reservation_schedule.advanced.10',
       title: '리소스 운영 상태 종합',
       description: '리소스별 예약 라인 수(booking_count), 차단 기간 수(blackout_count), 가장 최근 점검 상태(latest_maintenance_status)를 이름(name)과 함께 한 줄로 보여 주세요. 예약이 많은 리소스부터 정렬합니다.',
       hint: '여러 테이블 LEFT JOIN + DISTINCT COUNT',

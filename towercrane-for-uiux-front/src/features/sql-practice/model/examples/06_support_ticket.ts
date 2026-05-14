@@ -3,6 +3,7 @@ import { defineExampleSet } from './shared'
 export const supportTicketExamples = defineExampleSet('06_support_ticket.sql', {
   beginner: [
     {
+      id: '06_support_ticket.beginner.01',
       title: '고객 플랜별 수',
       relatedTables: ['customers'],
       description: '고객(customers) 데이터를 요금제(plan) 기준으로 묶어 각 플랜에 속한 고객 수를 집계하세요. 결과는 고객 수가 많은 플랜이 위로 오도록 정렬합니다.',
@@ -14,6 +15,7 @@ GROUP BY plan
 ORDER BY customer_count DESC;`,
     },
     {
+      id: '06_support_ticket.beginner.02',
       title: '활성 상담원 목록',
       relatedTables: ['agents'],
       description: '현재 활성 상태인 상담원(agents)만 골라 아이디(id), 이름(name), 소속 팀(team)을 보여주세요. 팀 이름, 같은 팀 내에서는 이름 순서로 정렬합니다.',
@@ -25,6 +27,7 @@ WHERE is_active = 1
 ORDER BY team, name;`,
     },
     {
+      id: '06_support_ticket.beginner.03',
       title: '티켓 상태별 수',
       relatedTables: ['tickets'],
       description: '티켓(tickets)을 상태(status) 값에 따라 분류해 각 상태에 몇 건이 있는지 집계하세요. 건수가 많은 상태가 위로 오도록 정렬합니다.',
@@ -36,6 +39,7 @@ GROUP BY status
 ORDER BY ticket_count DESC;`,
     },
     {
+      id: '06_support_ticket.beginner.04',
       title: '높은 우선순위 티켓',
       relatedTables: ['tickets'],
       description: '우선순위(priority)가 HIGH인 티켓만 골라 아이디(id), 제목(subject), 상태(status), 생성일시(created_at)를 보여주세요. 오래된 티켓이 위로 오도록 생성일시 순으로 정렬합니다.',
@@ -47,6 +51,7 @@ WHERE priority = 'HIGH'
 ORDER BY created_at;`,
     },
     {
+      id: '06_support_ticket.beginner.05',
       title: '미해결 티켓',
       relatedTables: ['tickets'],
       description: '아직 해결되지 않은 티켓을 골라 아이디(id), 제목(subject), 우선순위(priority), 상태(status)를 보여주세요. 해결일시(resolved_at)가 비어 있는 행이 대상이며, 생성일시 순으로 정렬합니다.',
@@ -58,6 +63,7 @@ WHERE resolved_at IS NULL
 ORDER BY created_at;`,
     },
     {
+      id: '06_support_ticket.beginner.06',
       title: '메시지 발신자별 수',
       relatedTables: ['ticket_messages'],
       description: '티켓 메시지(ticket_messages)를 발신자 유형(sender_type) 기준으로 묶어 고객과 상담원 각각이 작성한 메시지 수를 세어 보세요. 많은 쪽이 위로 오도록 정렬합니다.',
@@ -69,6 +75,7 @@ GROUP BY sender_type
 ORDER BY message_count DESC;`,
     },
     {
+      id: '06_support_ticket.beginner.07',
       title: '태그별 티켓 수',
       relatedTables: ['ticket_tags'],
       description: '티켓 태그(ticket_tags)를 태그 이름(tag)으로 묶어 각 태그가 몇 번 사용됐는지 집계하세요. 자주 쓰인 태그가 위로 오도록 정렬합니다.',
@@ -80,6 +87,7 @@ GROUP BY tag
 ORDER BY tag_count DESC;`,
     },
     {
+      id: '06_support_ticket.beginner.08',
       title: '상태 변경 로그',
       relatedTables: ['ticket_status_logs'],
       description: '티켓 상태 변경 이력(ticket_status_logs)을 시간순으로 펼쳐 티켓 아이디(ticket_id), 이전 상태(from_status), 새 상태(to_status), 변경 시각(changed_at)을 보여주세요.',
@@ -90,6 +98,7 @@ FROM ticket_status_logs
 ORDER BY changed_at;`,
     },
     {
+      id: '06_support_ticket.beginner.09',
       title: '담당자 없는 티켓',
       relatedTables: ['tickets'],
       description: '아직 상담원이 배정되지 않은 티켓을 골라 아이디(id), 제목(subject), 우선순위(priority), 상태(status)를 보여주세요. 생성일시 순으로 정렬합니다.',
@@ -101,6 +110,7 @@ WHERE agent_id IS NULL
 ORDER BY created_at;`,
     },
     {
+      id: '06_support_ticket.beginner.10',
       title: '팀별 상담원 수',
       relatedTables: ['agents'],
       description: '상담원(agents)을 소속 팀(team) 기준으로 묶어 팀별 인원수를 집계하세요. 인원이 많은 팀이 위로 오도록 정렬합니다.',
@@ -114,6 +124,7 @@ ORDER BY agent_count DESC;`,
   ],
   intermediate: [
     {
+      id: '06_support_ticket.intermediate.01',
       title: '티켓과 고객 정보',
       relatedTables: ['tickets', 'customers'],
       description: '티켓과 그 티켓을 등록한 고객 정보를 함께 보여주세요. 티켓 아이디(id), 고객 이름(name), 요금제(plan), 제목(subject), 상태(status)를 포함하고 생성일시 순으로 정렬합니다.',
@@ -125,6 +136,7 @@ JOIN customers c ON c.id = t.customer_id
 ORDER BY t.created_at;`,
     },
     {
+      id: '06_support_ticket.intermediate.02',
       title: '티켓과 상담원',
       relatedTables: ['tickets', 'agents'],
       description: '모든 티켓을 보여주되 배정된 상담원이 있다면 이름(name)과 팀(team)을 함께 표시하세요. 담당자가 없는 티켓도 결과에 포함해야 합니다.',
@@ -136,6 +148,7 @@ LEFT JOIN agents a ON a.id = t.agent_id
 ORDER BY t.id;`,
     },
     {
+      id: '06_support_ticket.intermediate.03',
       title: '상담원별 담당 티켓 수',
       relatedTables: ['agents', 'tickets'],
       description: '모든 상담원의 이름과 그가 담당한 티켓 수를 보여주세요. 아직 한 건도 맡지 않은 상담원도 0으로 표시해야 하며, 담당이 많은 순으로 정렬합니다.',
@@ -148,6 +161,7 @@ GROUP BY a.id, a.name
 ORDER BY assigned_count DESC;`,
     },
     {
+      id: '06_support_ticket.intermediate.04',
       title: '고객별 티켓 수',
       relatedTables: ['customers', 'tickets'],
       description: '모든 고객의 이름과 그 고객이 등록한 티켓 수를 보여주세요. 한 번도 문의하지 않은 고객도 0으로 표시해야 하며, 문의가 많은 고객이 위로 오도록 정렬합니다.',
@@ -160,6 +174,7 @@ GROUP BY c.id, c.name
 ORDER BY ticket_count DESC;`,
     },
     {
+      id: '06_support_ticket.intermediate.05',
       title: '티켓별 메시지 수',
       relatedTables: ['tickets', 'ticket_messages'],
       description: '각 티켓의 제목(subject)과 그 티켓에 달린 메시지 수를 함께 보여주세요. 아직 메시지가 없는 티켓도 0건으로 포함하고, 메시지가 많은 순으로 정렬합니다.',
@@ -172,6 +187,7 @@ GROUP BY t.id, t.subject
 ORDER BY message_count DESC;`,
     },
     {
+      id: '06_support_ticket.intermediate.06',
       title: '티켓별 태그 목록',
       relatedTables: ['tickets', 'ticket_tags'],
       description: '각 티켓의 제목(subject)과 그 티켓에 붙은 태그(tag)들을 한 줄의 문자열로 합쳐 보여주세요. 티켓 아이디 순으로 정렬합니다.',
@@ -184,6 +200,7 @@ GROUP BY t.id, t.subject
 ORDER BY t.id;`,
     },
     {
+      id: '06_support_ticket.intermediate.07',
       title: '최근 상태 변경 시각',
       relatedTables: ['tickets', 'ticket_status_logs'],
       description: '각 티켓의 제목(subject)과 그 티켓이 가장 마지막으로 상태 변경된 시각(changed_at)을 보여주세요. 최근에 변경된 티켓이 위로 오도록 정렬합니다.',
@@ -196,6 +213,7 @@ GROUP BY t.id, t.subject
 ORDER BY last_changed_at DESC;`,
     },
     {
+      id: '06_support_ticket.intermediate.08',
       title: 'TECH팀 담당 티켓',
       relatedTables: ['agents', 'tickets'],
       description: 'TECH 팀 소속 상담원이 담당하는 티켓만 골라 상담원 이름(name), 제목(subject), 우선순위(priority), 상태(status)를 보여주세요. 생성일시 순으로 정렬합니다.',
@@ -208,6 +226,7 @@ WHERE a.team = 'TECH'
 ORDER BY t.created_at;`,
     },
     {
+      id: '06_support_ticket.intermediate.09',
       title: '플랜별 미해결 티켓',
       relatedTables: ['customers', 'tickets'],
       description: '아직 해결되지 않은 티켓을 고객의 요금제(plan) 기준으로 묶어 플랜별 미해결 건수를 집계하세요. 미해결이 많은 플랜이 위로 오도록 정렬합니다.',
@@ -221,6 +240,7 @@ GROUP BY c.plan
 ORDER BY open_ticket_count DESC;`,
     },
     {
+      id: '06_support_ticket.intermediate.10',
       title: '티켓 메시지 상세',
       relatedTables: ['tickets', 'ticket_messages'],
       description: '모든 메시지를 티켓 제목(subject)과 함께 시간 순으로 펼쳐 보여주세요. 발신자 유형(sender_type), 본문(body), 작성 시각(created_at)을 포함합니다.',
@@ -234,6 +254,7 @@ ORDER BY m.created_at;`,
   ],
   advanced: [
     {
+      id: '06_support_ticket.advanced.01',
       title: '티켓 해결 시간 계산',
       relatedTables: ['tickets', 'customers'],
       description: '해결이 완료된 티켓만 골라 고객 이름(name), 제목(subject), 그리고 생성에서 해결까지 걸린 시간을 시간 단위로 계산해 보여주세요. 오래 걸린 티켓이 위로 오도록 정렬합니다.',
@@ -250,6 +271,7 @@ WHERE t.resolved_at IS NOT NULL
 ORDER BY resolution_hours DESC;`,
     },
     {
+      id: '06_support_ticket.advanced.02',
       title: '상담원별 해결 티켓 수',
       relatedTables: ['agents', 'tickets'],
       description: '모든 상담원의 이름과 그가 해결 완료(RESOLVED) 상태로 마무리한 티켓 수를 보여주세요. 한 건도 해결하지 못한 상담원도 0으로 포함하고, 많은 순으로 정렬합니다.',
@@ -262,6 +284,7 @@ GROUP BY a.id, a.name
 ORDER BY resolved_count DESC;`,
     },
     {
+      id: '06_support_ticket.advanced.03',
       title: '고객 플랜별 평균 메시지 수',
       relatedTables: ['customers', 'tickets', 'ticket_messages'],
       description: '각 티켓이 받은 메시지 수를 먼저 구한 다음, 고객의 요금제(plan)별로 티켓당 평균 메시지 수를 계산하세요. 평균이 큰 플랜이 위로 오도록 정렬합니다.',
@@ -280,6 +303,7 @@ GROUP BY plan
 ORDER BY avg_messages DESC;`,
     },
     {
+      id: '06_support_ticket.advanced.04',
       title: '상태 변경 없는 열린 티켓',
       relatedTables: ['tickets', 'ticket_status_logs'],
       description: '상태가 OPEN이지만 상태 변경 이력이 한 건도 없는 티켓을 찾아 아이디(id), 제목(subject), 상태(status)를 보여주세요. 신규로 등록된 후 손도 대지 않은 티켓이 대상입니다.',
@@ -293,6 +317,7 @@ WHERE l.id IS NULL
 ORDER BY t.id;`,
     },
     {
+      id: '06_support_ticket.advanced.05',
       title: '태그별 미해결 티켓',
       relatedTables: ['tickets', 'ticket_tags'],
       description: '아직 해결되지 않은 티켓을 태그(tag)별로 묶어 각 태그의 미해결 건수를 보여주세요. 미해결이 많은 태그가 위로 오도록 정렬합니다.',
@@ -306,6 +331,7 @@ GROUP BY tt.tag
 ORDER BY open_count DESC;`,
     },
     {
+      id: '06_support_ticket.advanced.06',
       title: '티켓 상태 전환 요약',
       relatedTables: ['ticket_status_logs'],
       description: '티켓 상태가 어떤 상태에서 어떤 상태로 얼마나 자주 바뀌었는지 요약하세요. 최초 생성 시점(이전 상태 없음)은 START로 표시하고, 전환 빈도가 높은 순으로 정렬합니다.',
@@ -320,6 +346,7 @@ GROUP BY COALESCE(from_status, 'START'), to_status
 ORDER BY transition_count DESC;`,
     },
     {
+      id: '06_support_ticket.advanced.07',
       title: '우선순위별 평균 해결 시간',
       relatedTables: ['tickets'],
       description: '해결이 완료된 티켓을 우선순위(priority)별로 묶어 평균 해결 소요 시간을 시간 단위로 계산하세요. 평균이 긴 우선순위가 위로 오도록 정렬합니다.',
@@ -334,6 +361,7 @@ GROUP BY priority
 ORDER BY avg_resolution_hours DESC;`,
     },
     {
+      id: '06_support_ticket.advanced.08',
       title: '상담원 업무 큐 리포트',
       relatedTables: ['agents', 'tickets'],
       description: '각 상담원이 맡은 전체 티켓 수, 그 중 아직 해결되지 않은 수, 해결 완료된 수를 한 줄에 모아 보여주세요. 진행 중인 일이 많은 상담원이 위로 오도록 정렬합니다.',
@@ -350,6 +378,7 @@ GROUP BY a.id, a.name
 ORDER BY open_count DESC;`,
     },
     {
+      id: '06_support_ticket.advanced.09',
       title: '최신 메시지 발신자',
       relatedTables: ['tickets', 'ticket_messages'],
       description: '각 티켓마다 가장 최근에 작성된 메시지 한 건만 골라, 티켓 제목(subject)과 함께 발신자 유형(sender_type), 본문(body), 작성 시각(created_at)을 보여주세요. 최신 메시지가 위로 오도록 정렬합니다.',
@@ -368,6 +397,7 @@ WHERE r.rank_no = 1
 ORDER BY r.created_at DESC;`,
     },
     {
+      id: '06_support_ticket.advanced.10',
       title: '고객지원 종합 현황',
       relatedTables: ['customers', 'tickets', 'ticket_messages', 'ticket_tags'],
       description: '각 고객마다 등록한 티켓 수, 그 티켓들에 달린 메시지 수, 붙은 태그 수를 한 줄에 모아 보여주세요. 티켓이 많은 고객이 위로 오도록 정렬합니다.',

@@ -3,6 +3,7 @@ import { defineExampleSet } from './shared'
 export const analyticsEventExamples = defineExampleSet('08_analytics_event.sql', {
   beginner: [
     {
+      id: '08_analytics_event.beginner.01',
       title: '마케팅 수신 동의 사용자',
       description: '마케팅 수신에 동의한 사용자들의 아이디(id), 이메일(email), 가입일(signed_up_at)을 가입일이 빠른 순서대로 보여주세요. 마케팅 캠페인 발송 대상 목록을 만들 때 사용합니다.',
       hint: '단일 테이블 필터 + 정렬',
@@ -14,6 +15,7 @@ WHERE marketing_opt_in = 1
 ORDER BY signed_up_at;`,
     },
     {
+      id: '08_analytics_event.beginner.02',
       title: '캠페인 채널별 수',
       description: '마케팅 캠페인을 채널(channel)별로 묶어 채널별 캠페인 개수를 많은 순서대로 보여주세요. 어느 채널에 캠페인이 집중되어 있는지 파악할 때 사용합니다.',
       hint: '카테고리별 집계',
@@ -25,6 +27,7 @@ GROUP BY channel
 ORDER BY campaign_count DESC;`,
     },
     {
+      id: '08_analytics_event.beginner.03',
       title: '디바이스 유형별 수',
       description: '디바이스를 유형(device_type)별로 묶어 각 유형의 등록 수를 많은 순서대로 보여주세요. 모바일·데스크톱·태블릿 비중을 비교할 때 사용합니다.',
       hint: '카테고리별 집계',
@@ -36,6 +39,7 @@ GROUP BY device_type
 ORDER BY device_count DESC;`,
     },
     {
+      id: '08_analytics_event.beginner.04',
       title: '페이지 그룹별 수',
       description: '페이지를 그룹(page_group)별로 묶어 그룹별 페이지 개수를 많은 순서대로 보여주세요. 홈·상품·결제 등 어느 영역에 페이지가 많은지 파악할 때 사용합니다.',
       hint: '카테고리별 집계',
@@ -47,6 +51,7 @@ GROUP BY page_group
 ORDER BY page_count DESC;`,
     },
     {
+      id: '08_analytics_event.beginner.05',
       title: '일자별 세션 수',
       description: '방문 세션을 일자별로 묶어 날짜(visit_date)와 그 날의 세션 수를 날짜 순서대로 보여주세요. 일별 트래픽 추세를 볼 때 사용합니다.',
       hint: '날짜 집계',
@@ -58,6 +63,7 @@ GROUP BY date(started_at)
 ORDER BY visit_date;`,
     },
     {
+      id: '08_analytics_event.beginner.06',
       title: '이벤트명별 수',
       description: '이벤트를 이름(event_name)별로 묶어 이벤트별 발생 횟수를 많은 순서대로 보여주세요. 페이지뷰·클릭·구매 등 어떤 행동이 자주 일어나는지 파악할 때 사용합니다.',
       hint: '카테고리별 집계',
@@ -69,6 +75,7 @@ GROUP BY event_name
 ORDER BY event_count DESC;`,
     },
     {
+      id: '08_analytics_event.beginner.07',
       title: '구매 이벤트',
       description: '구매(purchase)에 해당하는 이벤트만 골라 이벤트 아이디(id), 세션 아이디(session_id), 구매 금액(event_value), 발생 시각(occurred_at)을 시간 순서대로 보여주세요. 구매 발생 내역을 확인할 때 사용합니다.',
       hint: '단일 테이블 필터 + 정렬',
@@ -80,6 +87,7 @@ WHERE event_name = 'purchase'
 ORDER BY occurred_at;`,
     },
     {
+      id: '08_analytics_event.beginner.08',
       title: '익명 세션',
       description: '로그인하지 않은 익명 방문 세션만 골라 세션 아이디(id), 캠페인 아이디(campaign_id), 디바이스 아이디(device_id), 시작 시각(started_at)을 시작 시각 순서대로 보여주세요. 비회원 트래픽을 분석할 때 사용합니다.',
       hint: 'NULL 필터',
@@ -91,6 +99,7 @@ WHERE user_id IS NULL
 ORDER BY started_at;`,
     },
     {
+      id: '08_analytics_event.beginner.09',
       title: '세션 길이 보기',
       description: '종료된 방문 세션들을 대상으로 세션 아이디(id), 시작 시각(started_at), 종료 시각(ended_at), 세션 길이(session_minutes, 분 단위)를 길이가 긴 순서대로 보여주세요. 분 단위는 소수점 첫째 자리까지 반올림하세요. 체류 시간이 긴 세션을 찾을 때 사용합니다.',
       hint: '날짜 차이 계산',
@@ -103,6 +112,7 @@ WHERE ended_at IS NOT NULL
 ORDER BY session_minutes DESC;`,
     },
     {
+      id: '08_analytics_event.beginner.10',
       title: '이벤트 값 합계',
       description: '이벤트를 이름별로 묶어 이벤트 값(event_value)의 합계(total_value)를 큰 순서대로 보여주세요. 값이 비어 있는 경우 0으로 처리합니다. 어떤 행동이 가장 큰 가치를 만드는지 파악할 때 사용합니다.',
       hint: '집계 + NULL 처리',
@@ -116,6 +126,7 @@ ORDER BY total_value DESC;`,
   ],
   intermediate: [
     {
+      id: '08_analytics_event.intermediate.01',
       title: '세션과 사용자',
       description: '방문 세션마다 세션 아이디(session_id), 사용자 이메일(email), 시작 시각(started_at)을 시작 시각 순서대로 보여주세요. 익명 세션도 누락 없이 포함하고 이때 이메일은 비어 있는 채로 보여주세요.',
       hint: 'LEFT JOIN',
@@ -127,6 +138,7 @@ LEFT JOIN users u ON u.id = s.user_id
 ORDER BY s.started_at;`,
     },
     {
+      id: '08_analytics_event.intermediate.02',
       title: '세션과 캠페인',
       description: '방문 세션마다 세션 아이디(session_id), 캠페인 이름(campaign_name), 채널(channel), 시작 시각(started_at)을 시작 시각 순서대로 보여주세요. 캠페인 없이 들어온 자연유입 세션도 누락 없이 포함합니다.',
       hint: 'LEFT JOIN',
@@ -138,6 +150,7 @@ LEFT JOIN campaigns c ON c.id = s.campaign_id
 ORDER BY s.started_at;`,
     },
     {
+      id: '08_analytics_event.intermediate.03',
       title: '세션과 디바이스',
       description: '방문 세션마다 세션 아이디(session_id), 디바이스 유형(device_type), 운영체제(os), 브라우저(browser)를 세션 아이디 순서대로 보여주세요. 디바이스가 매칭되는 세션만 표시합니다.',
       hint: 'INNER JOIN',
@@ -149,6 +162,7 @@ JOIN devices d ON d.id = s.device_id
 ORDER BY s.id;`,
     },
     {
+      id: '08_analytics_event.intermediate.04',
       title: '페이지별 이벤트 수',
       description: '페이지별로 경로(path), 페이지 그룹(page_group), 그 페이지에서 발생한 이벤트 수(event_count)를 많은 순서대로 보여주세요. 이벤트가 없는 페이지도 0으로 포함합니다.',
       hint: 'LEFT JOIN 후 집계',
@@ -161,6 +175,7 @@ GROUP BY p.id, p.path, p.page_group
 ORDER BY event_count DESC;`,
     },
     {
+      id: '08_analytics_event.intermediate.05',
       title: '캠페인별 세션 수',
       description: '캠페인마다 캠페인 이름(name)과 해당 캠페인이 유치한 세션 수(session_count)를 많은 순서대로 보여주세요. 세션이 없는 캠페인도 0으로 함께 보여줍니다.',
       hint: 'LEFT JOIN 후 집계',
@@ -173,6 +188,7 @@ GROUP BY c.id, c.name
 ORDER BY session_count DESC;`,
     },
     {
+      id: '08_analytics_event.intermediate.06',
       title: '디바이스별 이벤트 수',
       description: '디바이스 유형(device_type)별로 발생한 전체 이벤트 수(event_count)를 많은 순서대로 보여주세요. 디바이스 → 세션 → 이벤트 경로로 연결해 집계합니다.',
       hint: '3-way JOIN 집계',
@@ -186,6 +202,7 @@ GROUP BY d.device_type
 ORDER BY event_count DESC;`,
     },
     {
+      id: '08_analytics_event.intermediate.07',
       title: '사용자별 세션 수',
       description: '사용자마다 이메일(email)과 그 사용자의 세션 수(session_count)를 많은 순서대로 보여주세요. 세션이 한 번도 없는 사용자도 0으로 포함합니다.',
       hint: 'LEFT JOIN 후 집계',
@@ -198,6 +215,7 @@ GROUP BY u.id, u.email
 ORDER BY session_count DESC;`,
     },
     {
+      id: '08_analytics_event.intermediate.08',
       title: '사용자별 이벤트 수',
       description: '사용자마다 이메일(email)과 그 사용자가 발생시킨 이벤트 수(event_count)를 많은 순서대로 보여주세요. 활동 이력이 있는 사용자만 표시합니다.',
       hint: '3-way INNER JOIN 집계',
@@ -211,6 +229,7 @@ GROUP BY u.id, u.email
 ORDER BY event_count DESC;`,
     },
     {
+      id: '08_analytics_event.intermediate.09',
       title: '캠페인 채널별 구매 금액',
       description: '캠페인 채널(channel)별로 그 채널을 통해 들어온 세션에서 발생한 구매 금액 합계(purchase_amount)를 큰 순서대로 보여주세요. 채널별 매출 기여도를 비교할 때 사용합니다.',
       hint: '필터 + 집계 JOIN',
@@ -225,6 +244,7 @@ GROUP BY c.channel
 ORDER BY purchase_amount DESC;`,
     },
     {
+      id: '08_analytics_event.intermediate.10',
       title: '페이지뷰 경로',
       description: '페이지뷰(page_view) 이벤트만 골라 세션 아이디(session_id), 페이지 경로(path), 발생 시각(occurred_at)을 세션 순서와 시간 순서대로 보여주세요. 사용자의 페이지 이동 동선을 추적할 때 사용합니다.',
       hint: '필터 + JOIN + 다중 정렬',
@@ -240,6 +260,7 @@ ORDER BY s.id, e.occurred_at;`,
   ],
   advanced: [
     {
+      id: '08_analytics_event.advanced.01',
       title: '일자별 순사용자',
       description: '로그인 사용자만 대상으로 일자(visit_date)별 순방문자 수(users, 중복 제거된 사용자 수)를 날짜 순서대로 보여주세요. 일별 DAU 지표를 만들 때 사용합니다.',
       hint: 'DISTINCT 집계',
@@ -252,6 +273,7 @@ GROUP BY date(started_at)
 ORDER BY visit_date;`,
     },
     {
+      id: '08_analytics_event.advanced.02',
       title: '캠페인별 전환율',
       description: '캠페인별로 이름(name), 세션 수(sessions), 전환 세션 수(converted_sessions, 회원가입 제출 또는 구매가 발생한 세션), 전환율(conversion_rate, %)을 전환율이 높은 순서대로 보여주세요. 전환율은 소수점 첫째 자리까지 반올림하세요.',
       hint: '조건부 DISTINCT 집계',
@@ -269,6 +291,7 @@ GROUP BY c.id, c.name
 ORDER BY conversion_rate DESC;`,
     },
     {
+      id: '08_analytics_event.advanced.03',
       title: '세션별 이벤트 순서',
       description: '각 세션 안에서 이벤트가 발생한 순서대로 세션 아이디(session_id), 단계 번호(step_no), 이벤트 이름(event_name), 페이지 경로(path)를 보여주세요. 사용자 행동 흐름을 단계별로 살펴볼 때 사용합니다.',
       hint: 'ROW_NUMBER 윈도우 함수',
@@ -284,6 +307,7 @@ JOIN pages p ON p.id = e.page_id
 ORDER BY e.session_id, step_no;`,
     },
     {
+      id: '08_analytics_event.advanced.04',
       title: '세션별 첫 페이지',
       description: '각 세션의 첫 번째 이벤트가 일어난 페이지를 찾아 세션 아이디(session_id), 첫 페이지 경로(first_path), 발생 시각(occurred_at)을 세션 아이디 순서대로 보여주세요. 랜딩 페이지 분석에 사용합니다.',
       hint: 'CTE + ROW_NUMBER 후 1행 필터',
@@ -300,6 +324,7 @@ WHERE r.rank_no = 1
 ORDER BY r.session_id;`,
     },
     {
+      id: '08_analytics_event.advanced.05',
       title: '디바이스별 평균 세션 길이',
       description: '종료된 세션만 대상으로 디바이스 유형(device_type)별 평균 세션 길이(avg_minutes, 분 단위)를 길이가 긴 순서대로 보여주세요. 평균은 소수점 첫째 자리까지 반올림합니다. 디바이스별 사용자 몰입도를 비교할 때 사용합니다.',
       hint: '시간 차이 + 그룹 평균',
@@ -313,6 +338,7 @@ GROUP BY d.device_type
 ORDER BY avg_minutes DESC;`,
     },
     {
+      id: '08_analytics_event.advanced.06',
       title: '회원가입 퍼널 세션',
       description: '회원가입 제출(signup_submit)이 일어난 세션만 골라 세션 아이디(session_id), 페이지뷰 수(page_views), 회원가입 제출 수(signup_submits)를 세션 아이디 순서대로 보여주세요. 가입 직전 행동량을 분석할 때 사용합니다.',
       hint: '조건부 합계 + HAVING',
@@ -329,6 +355,7 @@ HAVING signup_submits > 0
 ORDER BY s.id;`,
     },
     {
+      id: '08_analytics_event.advanced.07',
       title: '캠페인 없는 자연 유입',
       description: '캠페인 없이 자연 유입된 세션을 대상으로 세션 아이디(id)와 그 세션의 이벤트 수(event_count)를 많은 순서대로 보여주세요. 자연유입 트래픽의 활동량을 평가할 때 사용합니다.',
       hint: 'NULL 필터 + LEFT JOIN 집계',
@@ -342,6 +369,7 @@ GROUP BY s.id
 ORDER BY event_count DESC;`,
     },
     {
+      id: '08_analytics_event.advanced.08',
       title: '마케팅 동의 사용자 이벤트',
       description: '마케팅 수신에 동의한 사용자들만 골라 이메일(email)과 그 사용자가 만든 이벤트 수(event_count)를 많은 순서대로 보여주세요. 마케팅 타겟군의 참여도를 평가할 때 사용합니다.',
       hint: '필터 + 3-way JOIN 집계',
@@ -356,6 +384,7 @@ GROUP BY u.id, u.email
 ORDER BY event_count DESC;`,
     },
     {
+      id: '08_analytics_event.advanced.09',
       title: '일자별 구매 금액',
       description: '구매(purchase) 이벤트를 대상으로 일자(event_date)별 구매 금액 합계(purchase_amount)를 날짜 순서대로 보여주세요. 일별 매출 추세를 볼 때 사용합니다.',
       hint: '날짜 집계 + 필터',
@@ -368,6 +397,7 @@ GROUP BY date(occurred_at)
 ORDER BY event_date;`,
     },
     {
+      id: '08_analytics_event.advanced.10',
       title: '분석 종합 리포트',
       description: '캠페인별(없으면 organic으로 묶음) 세션 수(session_count), 전체 이벤트 수(event_count), 구매 금액 합계(purchase_amount)를 세션 수가 많은 순서대로 보여주세요. 유입 경로별 종합 성과 보드로 사용합니다.',
       hint: 'COALESCE 그룹화 + 조건부 합계',
