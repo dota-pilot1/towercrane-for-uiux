@@ -23,9 +23,8 @@ const BLOCK_TYPES: BlockType[] = ['NOTE', 'MMD', 'FIGMA', 'GITHUB', 'CHECKLIST']
 
 export function BlockEditor({ blockType, data, onBlockTypeChange, onDataChange }: BlockEditorProps) {
   return (
-    <div className="space-y-3">
-      {/* 블록 타입 선택 */}
-      <div className="flex flex-wrap gap-1.5">
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex shrink-0 flex-wrap gap-1.5">
         {BLOCK_TYPES.map((type) => (
           <button
             key={type}
@@ -43,22 +42,23 @@ export function BlockEditor({ blockType, data, onBlockTypeChange, onDataChange }
         ))}
       </div>
 
-      {/* 블록 타입별 입력 영역 */}
-      {blockType === 'NOTE' && (
-        <NoteInput data={data} onChange={onDataChange} key="note" />
-      )}
-      {blockType === 'MMD' && (
-        <MmdInput data={data} onChange={onDataChange} />
-      )}
-      {blockType === 'FIGMA' && (
-        <FigmaInput data={data} onChange={onDataChange} />
-      )}
-      {blockType === 'GITHUB' && (
-        <GitHubInput data={data} onChange={onDataChange} />
-      )}
-      {blockType === 'CHECKLIST' && (
-        <ChecklistInput data={data} onChange={onDataChange} />
-      )}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {blockType === 'NOTE' && (
+          <NoteInput data={data} onChange={onDataChange} key="note" />
+        )}
+        {blockType === 'MMD' && (
+          <MmdInput data={data} onChange={onDataChange} />
+        )}
+        {blockType === 'FIGMA' && (
+          <FigmaInput data={data} onChange={onDataChange} />
+        )}
+        {blockType === 'GITHUB' && (
+          <GitHubInput data={data} onChange={onDataChange} />
+        )}
+        {blockType === 'CHECKLIST' && (
+          <ChecklistInput data={data} onChange={onDataChange} />
+        )}
+      </div>
     </div>
   )
 }
@@ -67,10 +67,7 @@ export function BlockEditor({ blockType, data, onBlockTypeChange, onDataChange }
 
 function NoteInput({ data, onChange }: { data: string; onChange: (v: string) => void }) {
   return (
-    <div
-      className="border border-surface-border rounded-md overflow-auto resize-y"
-      style={{ minHeight: '200px' }}
-    >
+    <div className="h-full min-h-[200px] rounded-md border border-surface-border overflow-auto">
       <LexicalEditor
         initialState={data || undefined}
         onChange={onChange}
