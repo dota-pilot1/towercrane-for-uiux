@@ -78,7 +78,7 @@ export function useActivateSqlPracticeSeed(options?: { onSuccess?: () => void })
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.meta })
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.tables })
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.seeds })
-      toast.success(`${response.activeSeed.title} 파일로 연습 DB를 다시 만들었습니다.`)
+      toast.success(`${response.activeSeed.title} 파일로 이동했습니다.`)
       options?.onSuccess?.()
     },
     onError: (error) =>
