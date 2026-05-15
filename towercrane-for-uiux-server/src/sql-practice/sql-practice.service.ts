@@ -1409,6 +1409,58 @@ Respond in Korean.`;
     return data.choices?.[0]?.message?.content ?? '';
   }
 
+  private async callGrok(
+    content: string,
+    mode: 'sql' | 'general' | 'grading',
+  ): Promise<string> {
+    const apiKey = this.configService.get<string>('GROK_API_KEY');
+    if (!apiKey) {
+      throw new InternalServerErrorException('Grok API key is not configured.');
+    }
+
+    let systemPrompt =
+      "You are a helpful assistant. Answer the user's question clearly and concisely. Respond in Korean.";
+
+    if (mode === 'sql') {
+      systemPrompt = `You are an SQL expert. When given an SQL query:
+1. The VERY FIRST line of your response must be exactly one of: [SQL_VALID] or [SQL_INVALID] — nothing else on that line.
+2. Then on the next line, provide: validation result, explanation of what the query does, any errors or improvements, and a corrected version if needed.
+Respond in Korean.`;
+    }
+
+    if (mode === 'grading') {
+      systemPrompt = `You are an SQL grading assistant. Compare the reference answer SQL with the submitted SQL for the given practice problem.
+1. The VERY FIRST line of your response must be exactly one of: [SQL_CORRECT] or [SQL_INCORRECT] — nothing else on that line.
+2. Mark [SQL_CORRECT] only when the submitted SQL would produce the same required result as the reference answer for the problem, allowing harmless differences such as aliases, whitespace, or equivalent syntax.
+3. Then explain in Korean why it is correct or incorrect. If incorrect, point out the smallest concrete fix.`;
+    }
+
+    const res = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'grok-3-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new InternalServerErrorException(`Grok API error: ${err}`);
+    }
+
+    const data = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    return data.choices?.[0]?.message?.content ?? '';
+  }
+
   private isReaderType(type: SqlQueryType) {
     return type === 'SELECT' || type === 'PRAGMA' || type === 'EXPLAIN';
   }
