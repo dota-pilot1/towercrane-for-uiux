@@ -7,7 +7,6 @@ import {
   MessageSquareReply,
   Pencil,
   Pin,
-  Search,
   Trash2,
 } from 'lucide-react'
 import {
@@ -21,6 +20,7 @@ import {
 } from '../../../features/board/model/use-board-queries'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
+import { SearchField } from '../../../shared/ui/search-field'
 import { Textarea } from '../../../shared/ui/textarea'
 
 function formatDate(value: string) {
@@ -391,15 +391,13 @@ export function BoardListPage() {
           <section className="flex flex-col overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised shadow-sm">
             {/* 검색 */}
             <div className="border-b border-surface-border-soft p-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
-                <Input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="제목 또는 내용 검색"
-                  className="pl-10"
-                />
-              </div>
+              <SearchField
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onSearch={() => {}}
+                placeholder="제목 또는 내용 검색"
+                wrapperClassName="h-10"
+              />
             </div>
 
             {/* 컬럼 헤더 */}

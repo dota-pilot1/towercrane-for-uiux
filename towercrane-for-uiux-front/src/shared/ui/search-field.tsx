@@ -1,19 +1,27 @@
-import type { InputHTMLAttributes } from 'react'
-import { Search } from 'lucide-react'
+import type { InputHTMLAttributes, KeyboardEvent } from 'react'
+import { CornerDownLeft, Search } from 'lucide-react'
 
 import { cn } from '../lib/utils'
 
 type SearchFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   hint?: string
   wrapperClassName?: string
+  onSearch?: () => void
 }
 
 export function SearchField({
   className,
   hint,
   wrapperClassName,
+  onSearch,
+  onKeyDown,
   ...props
 }: SearchFieldProps) {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') onSearch?.()
+    onKeyDown?.(e)
+  }
+
   return (
     <label
       className={cn(
@@ -29,9 +37,19 @@ export function SearchField({
           'min-w-0 flex-1 border-0 bg-transparent p-0 text-[13px] leading-5 text-text-primary placeholder:text-text-muted outline-none',
           className,
         )}
+        onKeyDown={handleKeyDown}
         {...props}
       />
-      {hint ? (
+      {onSearch ? (
+        <button
+          type="button"
+          onClick={onSearch}
+          className="shrink-0 rounded-[1px] border border-surface-border bg-surface-muted p-0.5 text-text-muted transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
+          tabIndex={-1}
+        >
+          <CornerDownLeft className="size-3" />
+        </button>
+      ) : hint ? (
         <span className="shrink-0 rounded-[1px] border border-surface-border bg-surface-muted px-1.5 py-0.5 text-[9px] font-bold leading-none text-text-secondary">
           {hint}
         </span>
