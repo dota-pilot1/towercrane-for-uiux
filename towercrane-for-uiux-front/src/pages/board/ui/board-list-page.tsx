@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import {
   ArrowLeft,
@@ -337,6 +337,13 @@ export function BoardListPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showWrite, setShowWrite] = useState(false)
   const filters = useMemo(() => ({ page: 1, pageSize: 30, q }), [q])
+
+  useEffect(() => {
+    setSelectedId(null)
+    setShowWrite(false)
+    setInput('')
+    setQ('')
+  }, [code])
   const boardsQuery = useBoards(code, filters)
   const data = boardsQuery.data
   const items = data?.items ?? []
