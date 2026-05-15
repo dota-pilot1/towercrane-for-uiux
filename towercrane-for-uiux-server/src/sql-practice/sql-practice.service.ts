@@ -403,7 +403,7 @@ export class SqlPracticeService {
     };
 
     if (syntaxCheck.success) {
-      geminiRaw = await this.callGemini(this.buildSqlGradePrompt(input), 'grading');
+      geminiRaw = await this.callDeepSeek(this.buildSqlGradePrompt(input), 'grading');
       parsed = this.parseSqlGradeResponse(geminiRaw);
     } else {
       parsed = {
@@ -1265,7 +1265,7 @@ export class SqlPracticeService {
 
   async geminiAsk(body: unknown): Promise<{ answer: string }> {
     const { content, mode } = geminiAskSchema.parse(body);
-    return { answer: await this.callGemini(content, mode) };
+    return { answer: await this.callDeepSeek(content, mode) };
   }
 
   private buildSqlGradePrompt(input: GradeSqlPracticeSubmissionInput) {
@@ -1355,6 +1355,58 @@ Respond in Korean.`;
       candidates?: { content?: { parts?: { text?: string }[] } }[];
     };
     return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  }
+
+  private async callDeepSeek(
+    content: string,
+    mode: 'sql' | 'general' | 'grading',
+  ): Promise<string> {
+    const apiKey = this.configService.get<string>('DEEPSEEK_API_KEY');
+    if (!apiKey) {
+      throw new InternalServerErrorException('DeepSeek API key is not configured.');
+    }
+
+    let systemPrompt =
+      "You are a helpful assistant. Answer the user's question clearly and concisely. Respond in Korean.";
+
+    if (mode === 'sql') {
+      systemPrompt = `You are an SQL expert. When given an SQL query:
+1. The VERY FIRST line of your response must be exactly one of: [SQL_VALID] or [SQL_INVALID] — nothing else on that line.
+2. Then on the next line, provide: validation result, explanation of what the query does, any errors or improvements, and a corrected version if needed.
+Respond in Korean.`;
+    }
+
+    if (mode === 'grading') {
+      systemPrompt = `You are an SQL grading assistant. Compare the reference answer SQL with the submitted SQL for the given practice problem.
+1. The VERY FIRST line of your response must be exactly one of: [SQL_CORRECT] or [SQL_INCORRECT] — nothing else on that line.
+2. Mark [SQL_CORRECT] only when the submitted SQL would produce the same required result as the reference answer for the problem, allowing harmless differences such as aliases, whitespace, or equivalent syntax.
+3. Then explain in Korean why it is correct or incorrect. If incorrect, point out the smallest concrete fix.`;
+    }
+
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new InternalServerErrorException(`DeepSeek API error: ${err}`);
+    }
+
+    const data = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    return data.choices?.[0]?.message?.content ?? '';
   }
 
   private isReaderType(type: SqlQueryType) {
