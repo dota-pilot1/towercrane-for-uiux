@@ -109,10 +109,15 @@ export function AdminShellSidebar({
 
     const oldIndex = categories.findIndex((category) => category.id === active.id)
     const newIndex = categories.findIndex((category) => category.id === over.id)
+    const prevCategories = categories
     const nextCategories = arrayMove(categories, oldIndex, newIndex)
 
     onCategoriesReorder(nextCategories)
-    reorderCategories.mutate(nextCategories.map((category) => category.id))
+    reorderCategories.mutate(nextCategories.map((category) => category.id), {
+      onError: () => {
+        onCategoriesReorder(prevCategories)
+      },
+    })
   }
 
   return (

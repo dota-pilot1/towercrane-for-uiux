@@ -143,8 +143,21 @@ export function useReorderCategories() {
         method: 'POST',
         body: JSON.stringify({ categoryIds }),
       }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+    onMutate: async (categoryIds) => {
+      await queryClient.cancelQueries({ queryKey: ['catalog', 'categories'] })
+      const previousCategories = queryClient.getQueryData<ScenarioCategory[]>(['catalog', 'categories'])
+      if (previousCategories) {
+        const reordered = categoryIds
+          .map((id) => previousCategories.find((c) => c.id === id))
+          .filter((c): c is ScenarioCategory => Boolean(c))
+        queryClient.setQueryData(['catalog', 'categories'], reordered)
+      }
+      return { previousCategories }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousCategories) {
+        queryClient.setQueryData(['catalog', 'categories'], context.previousCategories)
+      }
     },
   })
 }
