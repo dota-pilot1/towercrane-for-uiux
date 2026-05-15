@@ -176,6 +176,73 @@ export const menusTable = sqliteTable('menus', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export type BoardKind =
+  | 'NOTICE'
+  | 'INQUIRY'
+  | 'QNA'
+  | 'FREE'
+  | 'FAQ'
+  | 'EVENT'
+  | 'GENERAL';
+export type BoardStatus = 'PUBLISHED' | 'HIDDEN' | 'DRAFT';
+
+export const boardConfigsTable = sqliteTable('board_configs', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  kind: text('kind').$type<BoardKind>().notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  allowUserWrite: integer('allow_user_write', { mode: 'boolean' })
+    .notNull()
+    .default(false),
+  allowComment: integer('allow_comment', { mode: 'boolean' })
+    .notNull()
+    .default(false),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const boardsTable = sqliteTable('boards', {
+  id: text('id').primaryKey(),
+  boardConfigId: text('board_config_id')
+    .notNull()
+    .references(() => boardConfigsTable.id, { onDelete: 'cascade' }),
+  authorId: text('author_id').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  authorName: text('author_name').notNull(),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  status: text('status').$type<BoardStatus>().notNull().default('PUBLISHED'),
+  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
+  pinnedOrder: integer('pinned_order'),
+  answered: integer('answered', { mode: 'boolean' }).notNull().default(false),
+  viewCount: integer('view_count').notNull().default(0),
+  deletedAt: text('deleted_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const boardCommentsTable = sqliteTable('board_comments', {
+  id: text('id').primaryKey(),
+  boardId: text('board_id')
+    .notNull()
+    .references(() => boardsTable.id, { onDelete: 'cascade' }),
+  authorId: text('author_id').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  authorName: text('author_name').notNull(),
+  content: text('content').notNull(),
+  adminReply: integer('admin_reply', { mode: 'boolean' })
+    .notNull()
+    .default(false),
+  deleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export type ApiDocHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export type ApiDocBlockType = 'API';
 
@@ -776,6 +843,9 @@ export const schema = {
   documentsTable,
   documentBlocksTable,
   menusTable,
+  boardConfigsTable,
+  boardsTable,
+  boardCommentsTable,
   apiDocCategoriesTable,
   apiDocEndpointsTable,
   apiDocBlocksTable,
@@ -831,6 +901,12 @@ export type PrototypeReviewRow = typeof prototypeReviewsTable.$inferSelect;
 export type PrototypeReviewInsert = typeof prototypeReviewsTable.$inferInsert;
 export type MenuRow = typeof menusTable.$inferSelect;
 export type MenuInsert = typeof menusTable.$inferInsert;
+export type BoardConfigRow = typeof boardConfigsTable.$inferSelect;
+export type BoardConfigInsert = typeof boardConfigsTable.$inferInsert;
+export type BoardRow = typeof boardsTable.$inferSelect;
+export type BoardInsert = typeof boardsTable.$inferInsert;
+export type BoardCommentRow = typeof boardCommentsTable.$inferSelect;
+export type BoardCommentInsert = typeof boardCommentsTable.$inferInsert;
 export type ApiDocCategoryRow = typeof apiDocCategoriesTable.$inferSelect;
 export type ApiDocCategoryInsert = typeof apiDocCategoriesTable.$inferInsert;
 export type ApiDocEndpointRow = typeof apiDocEndpointsTable.$inferSelect;

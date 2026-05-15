@@ -23,14 +23,22 @@ function sectionIdToPath(sectionId: string): string {
     api_doc: '/api-doc',
     sql: '/sql',
     sql_examples: '/sql/examples',
+    boards: '/boards',
+    board_notice: '/boards/notice',
+    board_inquiry: '/boards/inquiry',
+    board_qna: '/boards/qna',
+    board_free: '/boards/free',
     task: '/task',
     task_group: '/task',
     task_all: '/task',
     task_my: '/task/my',
+    task_issues: '/issues',
     profile: '/profile',
     users: '/admin/users',
     menu_admin: '/admin/menu',
     readme_admin: '/admin/readme',
+    admin_board_configs: '/admin/board-configs',
+    admin_boards: '/admin/boards',
   }
   return map[sectionId] ?? '/prototype'
 }
@@ -46,13 +54,21 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/api-doc')) return 'api_doc'
   if (pathname.startsWith('/sql/examples')) return 'sql_examples'
   if (pathname.startsWith('/sql')) return 'sql'
+  if (pathname.startsWith('/boards/notice')) return 'board_notice'
+  if (pathname.startsWith('/boards/inquiry')) return 'board_inquiry'
+  if (pathname.startsWith('/boards/qna')) return 'board_qna'
+  if (pathname.startsWith('/boards/free')) return 'board_free'
+  if (pathname.startsWith('/boards')) return 'boards'
   if (pathname.startsWith('/task/my')) return 'task_my'
   if (pathname.startsWith('/task/users')) return 'task_all'
   if (pathname.startsWith('/task')) return 'task_all'
+  if (pathname.startsWith('/issues')) return 'task_issues'
   if (pathname.startsWith('/profile')) return 'profile'
   if (pathname.startsWith('/admin/users')) return 'users'
   if (pathname.startsWith('/admin/menu')) return 'menu_admin'
   if (pathname.startsWith('/admin/readme')) return 'readme_admin'
+  if (pathname.startsWith('/admin/board-configs')) return 'admin_board_configs'
+  if (pathname.startsWith('/admin/boards')) return 'admin_boards'
   return 'prototype'
 }
 

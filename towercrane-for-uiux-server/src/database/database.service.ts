@@ -13,6 +13,7 @@ import { catalogSeed } from '../catalog/catalog.seed';
 import { eq } from 'drizzle-orm';
 import {
   categoriesTable,
+  boardConfigsTable,
   challengeCategoriesTable,
   challengeSectionsTable,
   devChallengeCategoriesTable,
@@ -204,6 +205,65 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_at TEXT NOT NULL,
         FOREIGN KEY(parent_id) REFERENCES menus(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS board_configs (
+        id TEXT PRIMARY KEY,
+        code TEXT NOT NULL UNIQUE,
+        kind TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        allow_user_write INTEGER NOT NULL DEFAULT 0,
+        allow_comment INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_board_configs_active_order
+        ON board_configs(is_active, order_idx);
+
+      CREATE TABLE IF NOT EXISTS boards (
+        id TEXT PRIMARY KEY,
+        board_config_id TEXT NOT NULL,
+        author_id TEXT,
+        author_name TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'PUBLISHED',
+        pinned INTEGER NOT NULL DEFAULT 0,
+        pinned_order INTEGER,
+        answered INTEGER NOT NULL DEFAULT 0,
+        view_count INTEGER NOT NULL DEFAULT 0,
+        deleted_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(board_config_id) REFERENCES board_configs(id) ON DELETE CASCADE,
+        FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_boards_config_status_deleted
+        ON boards(board_config_id, status, deleted_at);
+
+      CREATE INDEX IF NOT EXISTS idx_boards_pinned_order
+        ON boards(board_config_id, pinned, pinned_order, created_at);
+
+      CREATE TABLE IF NOT EXISTS board_comments (
+        id TEXT PRIMARY KEY,
+        board_id TEXT NOT NULL,
+        author_id TEXT,
+        author_name TEXT NOT NULL,
+        content TEXT NOT NULL,
+        admin_reply INTEGER NOT NULL DEFAULT 0,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(board_id) REFERENCES boards(id) ON DELETE CASCADE,
+        FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_board_comments_board_deleted
+        ON board_comments(board_id, deleted);
 
       CREATE TABLE IF NOT EXISTS api_doc_categories (
         id TEXT PRIMARY KEY,
@@ -900,6 +960,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     this.reconcileStudyDiaryAndDevChallengeMenus(now);
     this.reconcileTaskMenus(now);
+    this.seedBoardConfigs(now);
+    this.reconcileBoardMenus(now);
 
     const existingTaskMenu = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'task' LIMIT 1")
@@ -1778,6 +1840,303 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private seedBoardConfigs(now: string) {
+    const defaults = [
+      {
+        id: 'board-config-notice',
+        code: 'notice',
+        kind: 'NOTICE' as const,
+        name: '공지사항',
+        description: '프로젝트 공지와 안내를 확인합니다.',
+        allowUserWrite: false,
+        allowComment: false,
+        isActive: true,
+        orderIdx: 0,
+      },
+      {
+        id: 'board-config-inquiry',
+        code: 'inquiry',
+        kind: 'INQUIRY' as const,
+        name: '문의 게시판',
+        description: '질문과 요청을 남기고 답변을 확인합니다.',
+        allowUserWrite: true,
+        allowComment: true,
+        isActive: true,
+        orderIdx: 1,
+      },
+      {
+        id: 'board-config-qna',
+        code: 'qna',
+        kind: 'QNA' as const,
+        name: 'Q&A 게시판',
+        description: '구현과 사용 중 생긴 질문을 공유합니다.',
+        allowUserWrite: true,
+        allowComment: true,
+        isActive: true,
+        orderIdx: 2,
+      },
+      {
+        id: 'board-config-free',
+        code: 'free',
+        kind: 'FREE' as const,
+        name: '자유 게시판',
+        description: '자유롭게 의견과 정보를 나눕니다.',
+        allowUserWrite: true,
+        allowComment: true,
+        isActive: true,
+        orderIdx: 3,
+      },
+    ];
+
+    for (const config of defaults) {
+      this.db
+        .insert(boardConfigsTable)
+        .values({
+          ...config,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: boardConfigsTable.code,
+          set: {
+            kind: config.kind,
+            name: config.name,
+            description: config.description,
+            orderIdx: config.orderIdx,
+            updatedAt: now,
+          },
+        })
+        .run();
+    }
+  }
+
+  private reconcileBoardMenus(now: string) {
+    let boardMenu = this.sqlite
+      .prepare(
+        `
+          SELECT id, display_order as displayOrder
+          FROM menus
+          WHERE section_id = 'boards'
+          ORDER BY display_order ASC
+          LIMIT 1
+        `,
+      )
+      .get() as { id: string; displayOrder: number } | undefined;
+
+    if (!boardMenu) {
+      const adminMenu = this.sqlite
+        .prepare(
+          `
+            SELECT display_order as displayOrder
+            FROM menus
+            WHERE section_id = 'admin_dropdown'
+            ORDER BY display_order ASC
+            LIMIT 1
+          `,
+        )
+        .get() as { displayOrder: number } | undefined;
+      const displayOrder = adminMenu?.displayOrder ?? 11;
+
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET display_order = display_order + 1, updated_at = ?
+            WHERE parent_id IS NULL AND display_order >= ?
+          `,
+        )
+        .run(now, displayOrder);
+
+      boardMenu = {
+        id: randomUUID(),
+        displayOrder,
+      };
+
+      this.db
+        .insert(menusTable)
+        .values({
+          id: boardMenu.id,
+          name: '게시판',
+          sectionId: 'boards',
+          icon: 'MessageSquareText',
+          displayOrder,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    } else {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET name = '게시판',
+                icon = 'MessageSquareText',
+                is_visible = 1,
+                required_role = NULL,
+                updated_at = ?
+            WHERE id = ?
+          `,
+        )
+        .run(now, boardMenu.id);
+    }
+
+    this.upsertMenuBySectionId({
+      sectionId: 'board_notice',
+      name: '공지사항',
+      icon: 'Megaphone',
+      displayOrder: 0,
+      parentId: boardMenu.id,
+      requiredRole: null,
+      now,
+    });
+
+    this.upsertMenuBySectionId({
+      sectionId: 'board_inquiry',
+      name: '문의 게시판',
+      icon: 'MessagesSquare',
+      displayOrder: 1,
+      parentId: boardMenu.id,
+      requiredRole: null,
+      now,
+    });
+
+    this.upsertMenuBySectionId({
+      sectionId: 'board_qna',
+      name: 'Q&A 게시판',
+      icon: 'CircleHelp',
+      displayOrder: 2,
+      parentId: boardMenu.id,
+      requiredRole: null,
+      now,
+    });
+
+    this.upsertMenuBySectionId({
+      sectionId: 'board_free',
+      name: '자유 게시판',
+      icon: 'MessageCircle',
+      displayOrder: 3,
+      parentId: boardMenu.id,
+      requiredRole: null,
+      now,
+    });
+
+    const adminMenu = this.sqlite
+      .prepare(
+        `
+          SELECT id
+          FROM menus
+          WHERE section_id = 'admin_dropdown'
+             OR (parent_id IS NULL AND required_role = 'admin')
+          ORDER BY display_order ASC
+          LIMIT 1
+        `,
+      )
+      .get() as { id: string } | undefined;
+
+    if (adminMenu) {
+      this.upsertMenuBySectionId({
+        sectionId: 'admin_board_configs',
+        name: '게시판 설정',
+        icon: 'Settings2',
+        displayOrder: 3,
+        parentId: adminMenu.id,
+        requiredRole: 'admin',
+        now,
+      });
+
+      this.upsertMenuBySectionId({
+        sectionId: 'admin_boards',
+        name: '게시글 관리',
+        icon: 'Newspaper',
+        displayOrder: 4,
+        parentId: adminMenu.id,
+        requiredRole: 'admin',
+        now,
+      });
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          DELETE FROM menus
+          WHERE section_id IN (
+            'boards',
+            'board_notice',
+            'board_inquiry',
+            'board_qna',
+            'board_free',
+            'admin_board_configs',
+            'admin_boards'
+          )
+            AND rowid NOT IN (
+              SELECT MIN(rowid)
+              FROM menus
+              WHERE section_id IN (
+                'boards',
+                'board_notice',
+                'board_inquiry',
+                'board_qna',
+                'board_free',
+                'admin_board_configs',
+                'admin_boards'
+              )
+              GROUP BY section_id
+            )
+        `,
+      )
+      .run();
+  }
+
+  private upsertMenuBySectionId(input: {
+    sectionId: string;
+    name: string;
+    icon: string;
+    displayOrder: number;
+    parentId: string | null;
+    requiredRole: string | null;
+    now: string;
+  }) {
+    const existing = this.sqlite
+      .prepare('SELECT id FROM menus WHERE section_id = ? LIMIT 1')
+      .get(input.sectionId) as { id: string } | undefined;
+
+    if (existing) {
+      this.db
+        .update(menusTable)
+        .set({
+          name: input.name,
+          icon: input.icon,
+          displayOrder: input.displayOrder,
+          parentId: input.parentId,
+          requiredRole: input.requiredRole,
+          isVisible: true,
+          updatedAt: input.now,
+        })
+        .where(eq(menusTable.id, existing.id))
+        .run();
+      return;
+    }
+
+    this.db
+      .insert(menusTable)
+      .values({
+        id: randomUUID(),
+        parentId: input.parentId,
+        name: input.name,
+        sectionId: input.sectionId,
+        icon: input.icon,
+        displayOrder: input.displayOrder,
+        isVisible: true,
+        requiredRole: input.requiredRole,
+        createdAt: input.now,
+        updatedAt: input.now,
+      })
+      .run();
+  }
+
   private reconcileTaskMenus(now: string) {
     let taskMenu = this.sqlite
       .prepare(
@@ -1875,6 +2234,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         sectionId: 'task_my',
         icon: 'UserCheck',
         displayOrder: 1,
+      },
+      {
+        name: '이슈 관리',
+        sectionId: 'task_issues',
+        icon: 'Bug',
+        displayOrder: 2,
       },
     ];
 

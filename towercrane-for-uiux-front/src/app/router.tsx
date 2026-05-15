@@ -26,6 +26,11 @@ import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
 import { SqlPracticeExamplesPage } from '../pages/sql-practice/ui/sql-practice-examples-page'
 import { SqlNotesPage } from '../pages/sql-practice/ui/sql-notes-page'
 import { SqlPublicNotePage } from '../pages/sql-practice/ui/sql-public-note-page'
+import { BoardHomePage } from '../pages/board/ui/board-home-page'
+import { BoardListPage } from '../pages/board/ui/board-list-page'
+import { BoardDetailPage } from '../pages/board/ui/board-detail-page'
+import { AdminBoardConfigPage } from '../pages/board-admin/ui/admin-board-config-page'
+import { AdminBoardManagementPage } from '../pages/board-admin/ui/admin-board-management-page'
 import { useSessionStore } from '../shared/store/session-store'
 import { useCurrentUser } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
@@ -255,6 +260,26 @@ const sqlNoteDetailRoute = createRoute({
   component: SqlNotesPage,
 })
 
+// ─── /boards ────────────────────────────────────────────────────────────────
+
+const boardsHomeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/boards',
+  component: BoardHomePage,
+})
+
+const boardListRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/boards/$code',
+  component: BoardListPage,
+})
+
+const boardDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/boards/$code/$boardId',
+  component: BoardDetailPage,
+})
+
 // ─── /task ───────────────────────────────────────────────────────────────────
 
 const taskRoute = createRoute({
@@ -426,6 +451,18 @@ const adminReadmeRoute = createRoute({
   ),
 })
 
+const adminBoardConfigsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/admin/board-configs',
+  component: AdminBoardConfigPage,
+})
+
+const adminBoardsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/admin/boards',
+  component: AdminBoardManagementPage,
+})
+
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export const router = createRouter({
@@ -448,6 +485,9 @@ export const router = createRouter({
       sqlPracticeExamplesRoute,
       sqlNotesRoute,
       sqlNoteDetailRoute,
+      boardsHomeRoute,
+      boardListRoute,
+      boardDetailRoute,
       taskRoute,
       myTaskRoute,
       userTaskRoute,
@@ -456,6 +496,8 @@ export const router = createRouter({
       adminUsersRoute,
       adminMenuRoute,
       adminReadmeRoute,
+      adminBoardConfigsRoute,
+      adminBoardsRoute,
     ]),
   ]),
 })
