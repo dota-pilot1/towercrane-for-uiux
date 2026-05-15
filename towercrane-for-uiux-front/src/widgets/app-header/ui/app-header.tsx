@@ -33,6 +33,7 @@ function sectionIdToPath(sectionId: string): string {
     task_all: '/task',
     task_my: '/task/my',
     task_issues: '/issues',
+    project_issues: '/project-issues',
     profile: '/profile',
     users: '/admin/users',
     menu_admin: '/admin/menu',
@@ -61,6 +62,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/boards')) return 'boards'
   if (pathname.startsWith('/task/my')) return 'task_my'
   if (pathname.startsWith('/task/users')) return 'task_all'
+  if (pathname.startsWith('/project-issues')) return 'project_issues'
   if (pathname.startsWith('/task')) return 'task_all'
   if (pathname.startsWith('/issues')) return 'task_issues'
   if (pathname.startsWith('/profile')) return 'profile'

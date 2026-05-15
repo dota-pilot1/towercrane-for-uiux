@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module';
 import { MenusModule } from './menus/menus.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { TasksModule } from './tasks/tasks.module';
+import { ProjectIssuesModule } from './project-issues/project-issues.module';
 import { ApiDocModule } from './api-doc/api-doc.module';
 import { IssuesModule } from './issues/issues.module';
 import { ChallengeModule } from './challenge/challenge.module';
@@ -33,6 +34,7 @@ import { BoardsModule } from './boards/boards.module';
     MenusModule,
     MeetingModule,
     TasksModule,
+    ProjectIssuesModule,
     ApiDocModule,
     IssuesModule,
     ChallengeModule,

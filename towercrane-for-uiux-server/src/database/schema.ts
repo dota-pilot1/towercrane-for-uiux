@@ -310,6 +310,28 @@ export type TaskActivityType =
   | 'UPDATED'
   | 'ARCHIVED'
   | 'RESTORED';
+export type ProjectIssueType =
+  | 'BUG'
+  | 'FEATURE'
+  | 'IMPROVEMENT'
+  | 'QUESTION'
+  | 'RISK'
+  | 'OTHER';
+export type ProjectIssueStatus =
+  | 'OPEN'
+  | 'IN_PROGRESS'
+  | 'TESTING'
+  | 'CLOSED'
+  | 'HOLD';
+export type ProjectIssuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type ProjectIssueActivityType =
+  | 'CREATED'
+  | 'STATUS'
+  | 'ASSIGNEE'
+  | 'PRIORITY'
+  | 'UPDATED'
+  | 'ARCHIVED'
+  | 'RESTORED';
 
 export const tasksTable = sqliteTable('tasks', {
   id: text('id').primaryKey(),
@@ -394,6 +416,120 @@ export const taskActivityLogsTable = sqliteTable('task_activity_logs', {
   message: text('message'),
   createdAt: text('created_at').notNull(),
 });
+
+export const projectIssueCategoriesTable = sqliteTable(
+  'project_issue_categories',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    orderIdx: integer('order_idx').notNull().default(0),
+    archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+    createdBy: text('created_by').references(() => usersTable.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const projectIssuesTable = sqliteTable('project_issues', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => projectIssueCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  issueType: text('issue_type')
+    .$type<ProjectIssueType>()
+    .notNull()
+    .default('BUG'),
+  status: text('status').$type<ProjectIssueStatus>().notNull().default('OPEN'),
+  priority: text('priority')
+    .$type<ProjectIssuePriority>()
+    .notNull()
+    .default('MEDIUM'),
+  reporterId: text('reporter_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  assigneeId: text('assignee_id').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  dueDate: text('due_date'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const projectIssueChecklistsTable = sqliteTable(
+  'project_issue_checklists',
+  {
+    id: text('id').primaryKey(),
+    projectIssueId: text('project_issue_id')
+      .notNull()
+      .references(() => projectIssuesTable.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    completed: integer('completed', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const projectIssueCommentsTable = sqliteTable('project_issue_comments', {
+  id: text('id').primaryKey(),
+  projectIssueId: text('project_issue_id')
+    .notNull()
+    .references(() => projectIssuesTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  deleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const projectIssueAttachmentsTable = sqliteTable(
+  'project_issue_attachments',
+  {
+    id: text('id').primaryKey(),
+    projectIssueId: text('project_issue_id')
+      .notNull()
+      .references(() => projectIssuesTable.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    fileName: text('file_name').notNull(),
+    fileUrl: text('file_url').notNull(),
+    contentType: text('content_type').notNull(),
+    fileSize: integer('file_size').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+  },
+);
+
+export const projectIssueActivityLogsTable = sqliteTable(
+  'project_issue_activity_logs',
+  {
+    id: text('id').primaryKey(),
+    projectIssueId: text('project_issue_id')
+      .notNull()
+      .references(() => projectIssuesTable.id, { onDelete: 'cascade' }),
+    actorId: text('actor_id').references(() => usersTable.id, {
+      onDelete: 'set null',
+    }),
+    activityType: text('activity_type')
+      .$type<ProjectIssueActivityType>()
+      .notNull(),
+    fromValue: text('from_value'),
+    toValue: text('to_value'),
+    message: text('message'),
+    createdAt: text('created_at').notNull(),
+  },
+);
 
 export type MeetingRoomType =
   | 'ANNOUNCE'
@@ -854,6 +990,12 @@ export const schema = {
   taskCommentsTable,
   taskAttachmentsTable,
   taskActivityLogsTable,
+  projectIssueCategoriesTable,
+  projectIssuesTable,
+  projectIssueChecklistsTable,
+  projectIssueCommentsTable,
+  projectIssueAttachmentsTable,
+  projectIssueActivityLogsTable,
   meetingRoomsTable,
   meetingMessagesTable,
   meetingDmPairsTable,
@@ -923,6 +1065,28 @@ export type TaskAttachmentRow = typeof taskAttachmentsTable.$inferSelect;
 export type TaskAttachmentInsert = typeof taskAttachmentsTable.$inferInsert;
 export type TaskActivityLogRow = typeof taskActivityLogsTable.$inferSelect;
 export type TaskActivityLogInsert = typeof taskActivityLogsTable.$inferInsert;
+export type ProjectIssueCategoryRow =
+  typeof projectIssueCategoriesTable.$inferSelect;
+export type ProjectIssueCategoryInsert =
+  typeof projectIssueCategoriesTable.$inferInsert;
+export type ProjectIssueRow = typeof projectIssuesTable.$inferSelect;
+export type ProjectIssueInsert = typeof projectIssuesTable.$inferInsert;
+export type ProjectIssueChecklistRow =
+  typeof projectIssueChecklistsTable.$inferSelect;
+export type ProjectIssueChecklistInsert =
+  typeof projectIssueChecklistsTable.$inferInsert;
+export type ProjectIssueCommentRow =
+  typeof projectIssueCommentsTable.$inferSelect;
+export type ProjectIssueCommentInsert =
+  typeof projectIssueCommentsTable.$inferInsert;
+export type ProjectIssueAttachmentRow =
+  typeof projectIssueAttachmentsTable.$inferSelect;
+export type ProjectIssueAttachmentInsert =
+  typeof projectIssueAttachmentsTable.$inferInsert;
+export type ProjectIssueActivityLogRow =
+  typeof projectIssueActivityLogsTable.$inferSelect;
+export type ProjectIssueActivityLogInsert =
+  typeof projectIssueActivityLogsTable.$inferInsert;
 export type MeetingRoomRow = typeof meetingRoomsTable.$inferSelect;
 export type MeetingRoomInsert = typeof meetingRoomsTable.$inferInsert;
 export type MeetingMessageRow = typeof meetingMessagesTable.$inferSelect;

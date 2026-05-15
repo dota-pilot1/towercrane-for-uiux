@@ -18,6 +18,7 @@ import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-pag
 import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
 import { TaskPage } from '../pages/task/ui/task-page'
 import { PrototypeIssuesPage } from '../pages/prototype-issues/ui/prototype-issues-page'
+import { ProjectIssuesPage } from '../pages/project-issues/ui/project-issues-page'
 import { ProfilePage } from '../pages/profile/ui/profile-page'
 import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
 import { StudyDiaryPage } from '../pages/study-diary/ui/study-diary-page'
@@ -154,7 +155,8 @@ export const prototypeCategoryRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/prototype/$categoryId',
   validateSearch: (search: Record<string, unknown>) => ({
-    prototypeId: typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
+    prototypeId:
+      typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
   }),
   component: WorkbenchPage,
 })
@@ -213,7 +215,8 @@ export const docuRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/docu',
   validateSearch: (search: Record<string, unknown>) => ({
-    prototypeId: typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
+    prototypeId:
+      typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
   }),
   component: DocuPage,
 })
@@ -311,9 +314,22 @@ const prototypeIssuesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/issues',
   validateSearch: (search: Record<string, unknown>) => ({
-    prototypeId: typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
+    prototypeId:
+      typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
   }),
   component: PrototypeIssuesPage,
+})
+
+// ─── /project-issues ───────────────────────────────────────────────────────
+
+const projectIssuesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/project-issues',
+  validateSearch: (search: Record<string, unknown>) => ({
+    projectId:
+      typeof search.projectId === 'string' ? search.projectId : undefined,
+  }),
+  component: ProjectIssuesPage,
 })
 
 // ─── /profile ────────────────────────────────────────────────────────────────
@@ -352,7 +368,9 @@ function AdminUsersRoute() {
           </div>
           <div>
             <h2 className="text-xl font-bold ui-text-primary">유저 관리</h2>
-            <p className="text-xs ui-text-secondary">시스템 사용자 권한 및 계정을 관리합니다.</p>
+            <p className="text-xs ui-text-secondary">
+              시스템 사용자 권한 및 계정을 관리합니다.
+            </p>
           </div>
         </div>
         <div className="text-[10px] ui-text-muted uppercase tracking-widest font-bold">
@@ -381,21 +399,34 @@ function AdminUsersRoute() {
           <tbody className="divide-y divide-[var(--surface-border-soft)]">
             {usersListQuery.isLoading ? (
               <tr>
-                <td colSpan={4} className="px-6 py-20 text-center ui-text-muted">
+                <td
+                  colSpan={4}
+                  className="px-6 py-20 text-center ui-text-muted"
+                >
                   Loading users...
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-20 text-center ui-text-muted">
+                <td
+                  colSpan={4}
+                  className="px-6 py-20 text-center ui-text-muted"
+                >
                   No users found.
                 </td>
               </tr>
             ) : (
               users.map((u) => (
-                <tr key={u.id} className="transition-colors hover:bg-[var(--surface-muted)]">
-                  <td className="px-6 py-4 text-sm font-medium ui-text-primary">{u.name}</td>
-                  <td className="px-6 py-4 text-sm ui-text-secondary">{u.email}</td>
+                <tr
+                  key={u.id}
+                  className="transition-colors hover:bg-[var(--surface-muted)]"
+                >
+                  <td className="px-6 py-4 text-sm font-medium ui-text-primary">
+                    {u.name}
+                  </td>
+                  <td className="px-6 py-4 text-sm ui-text-secondary">
+                    {u.email}
+                  </td>
                   <td className="px-6 py-4 text-sm">
                     <span
                       className={`inline-flex px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase border ${
@@ -441,11 +472,15 @@ const adminReadmeRoute = createRoute({
         </div>
         <div>
           <h2 className="text-xl font-bold ui-text-primary">README 관리</h2>
-          <p className="text-xs ui-text-secondary">프로젝트 문서 및 가이드를 관리합니다.</p>
+          <p className="text-xs ui-text-secondary">
+            프로젝트 문서 및 가이드를 관리합니다.
+          </p>
         </div>
       </div>
       <div className="rounded-md border border-dashed border-[var(--surface-border-soft)] bg-[var(--surface-muted)] py-16 text-center">
-        <p className="ui-text-muted text-sm">README 편집 기능이 곧 구현될 예정입니다.</p>
+        <p className="ui-text-muted text-sm">
+          README 편집 기능이 곧 구현될 예정입니다.
+        </p>
       </div>
     </Card>
   ),
@@ -492,6 +527,7 @@ export const router = createRouter({
       myTaskRoute,
       userTaskRoute,
       prototypeIssuesRoute,
+      projectIssuesRoute,
       profileRoute,
       adminUsersRoute,
       adminMenuRoute,
