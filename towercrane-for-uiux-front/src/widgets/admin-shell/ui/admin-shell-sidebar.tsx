@@ -42,6 +42,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
 import { AddCategoryDialog } from '../../../features/category-management/ui/add-category-dialog'
 import { DeleteCategoryButton } from '../../../features/category-management/ui/delete-category-button'
@@ -114,8 +115,12 @@ export function AdminShellSidebar({
 
     onCategoriesReorder(nextCategories)
     reorderCategories.mutate(nextCategories.map((category) => category.id), {
+      onSuccess: () => {
+        toast.success('카테고리 순서가 저장됐어요')
+      },
       onError: () => {
         onCategoriesReorder(prevCategories)
+        toast.error('순서 저장에 실패했어요. 다시 시도해 주세요.')
       },
     })
   }
