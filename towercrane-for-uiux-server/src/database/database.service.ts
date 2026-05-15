@@ -2235,12 +2235,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         icon: 'UserCheck',
         displayOrder: 1,
       },
-      {
-        name: '이슈 관리',
-        sectionId: 'task_issues',
-        icon: 'Bug',
-        displayOrder: 2,
-      },
     ];
 
     for (const child of children) {
