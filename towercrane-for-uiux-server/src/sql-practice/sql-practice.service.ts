@@ -403,7 +403,7 @@ export class SqlPracticeService {
     };
 
     if (syntaxCheck.success) {
-      geminiRaw = await this.callDeepSeek(this.buildSqlGradePrompt(input), 'grading');
+      geminiRaw = await this.callGrok(this.buildSqlGradePrompt(input), 'grading');
       parsed = this.parseSqlGradeResponse(geminiRaw);
     } else {
       parsed = {
@@ -1265,7 +1265,7 @@ export class SqlPracticeService {
 
   async geminiAsk(body: unknown): Promise<{ answer: string }> {
     const { content, mode } = geminiAskSchema.parse(body);
-    return { answer: await this.callDeepSeek(content, mode) };
+    return { answer: await this.callGrok(content, mode) };
   }
 
   private buildSqlGradePrompt(input: GradeSqlPracticeSubmissionInput) {
