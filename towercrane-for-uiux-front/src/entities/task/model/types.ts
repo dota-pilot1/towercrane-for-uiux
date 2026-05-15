@@ -15,6 +15,8 @@ export type TaskStatus =
   | 'HOLD'
 
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+export type TaskScope = 'TEAM' | 'PERSONAL'
+export type TaskVisibility = 'TEAM' | 'PRIVATE'
 
 export type Task = {
   id: string
@@ -23,12 +25,17 @@ export type Task = {
   taskType: TaskType
   status: TaskStatus
   priority: TaskPriority
+  scope: TaskScope
+  visibility: TaskVisibility
   reporterId: string
   reporterName?: string | null
   reporterEmail?: string | null
   assigneeId?: string | null
   assigneeName?: string | null
   assigneeEmail?: string | null
+  ownerId?: string | null
+  ownerName?: string | null
+  ownerEmail?: string | null
   dueDate?: string | null
   orderIdx: number
   archived: boolean
@@ -47,6 +54,8 @@ export type TaskFilters = {
   page?: number
   pageSize?: number
   q?: string
+  scope?: 'all' | 'my' | 'user'
+  userId?: string
   taskType?: TaskType
   status?: TaskStatus
   priority?: TaskPriority
@@ -61,6 +70,8 @@ export type CreateTaskRequest = {
   taskType?: TaskType
   status?: TaskStatus
   priority?: TaskPriority
+  scope?: TaskScope
+  visibility?: TaskVisibility
   assigneeId?: string | null
   dueDate?: string | null
 }

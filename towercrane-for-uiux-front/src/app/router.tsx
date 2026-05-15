@@ -260,8 +260,25 @@ const sqlNoteDetailRoute = createRoute({
 const taskRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/task',
-  component: TaskPage,
+  component: () => <TaskPage scopeMode="all" />,
 })
+
+const myTaskRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/task/my',
+  component: () => <TaskPage scopeMode="my" />,
+})
+
+const userTaskRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/task/users/$userId',
+  component: UserTaskRoute,
+})
+
+function UserTaskRoute() {
+  const { userId } = userTaskRoute.useParams()
+  return <TaskPage scopeMode="user" targetUserId={userId} />
+}
 
 // ─── /issues ─────────────────────────────────────────────────────────────────
 
@@ -432,6 +449,8 @@ export const router = createRouter({
       sqlNotesRoute,
       sqlNoteDetailRoute,
       taskRoute,
+      myTaskRoute,
+      userTaskRoute,
       prototypeIssuesRoute,
       profileRoute,
       adminUsersRoute,

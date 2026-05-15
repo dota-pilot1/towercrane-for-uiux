@@ -90,6 +90,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_email_verifications_verified_token
         ON email_verifications(verified_token_hash);
 
+      CREATE TABLE IF NOT EXISTS study_diaries (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        visibility TEXT NOT NULL DEFAULT 'private',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user
+        ON study_diaries(user_id);
+
       CREATE TABLE IF NOT EXISTS categories (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -246,13 +260,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         priority TEXT NOT NULL DEFAULT 'MEDIUM',
         reporter_id TEXT NOT NULL,
         assignee_id TEXT,
+        scope TEXT NOT NULL DEFAULT 'TEAM',
+        owner_id TEXT,
+        visibility TEXT NOT NULL DEFAULT 'TEAM',
         due_date TEXT,
         order_idx INTEGER NOT NULL DEFAULT 0,
         archived INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(reporter_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE SET NULL
       );
 
       CREATE INDEX IF NOT EXISTS idx_tasks_status_order
@@ -372,6 +390,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE TABLE IF NOT EXISTS challenge_categories (
         id TEXT PRIMARY KEY,
+        diary_id TEXT,
         name TEXT NOT NULL,
         summary TEXT,
         icon TEXT NOT NULL DEFAULT 'Trophy',
@@ -379,6 +398,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        FOREIGN KEY(diary_id) REFERENCES study_diaries(id) ON DELETE CASCADE,
         FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
@@ -879,6 +899,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.reconcileStudyDiaryAndDevChallengeMenus(now);
+    this.reconcileTaskMenus(now);
 
     const existingTaskMenu = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'task' LIMIT 1")
@@ -1009,7 +1030,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .get() as { id: string } | undefined;
 
     if (!existingSqlExamplesMenu) {
-      const displayOrder = (sqlPracticeMenuForExamplesPlacement?.displayOrder ?? 5) + 1;
+      const displayOrder =
+        (sqlPracticeMenuForExamplesPlacement?.displayOrder ?? 5) + 1;
 
       this.sqlite
         .prepare(
@@ -1145,10 +1167,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     if (!existingChallengeCategory) {
       const categoryId = randomUUID();
+      const demoDiary = this.ensureStudyDiaryForUser(
+        demoUser.id,
+        demoUser.name,
+        now,
+      );
       this.db
         .insert(challengeCategoriesTable)
         .values({
           id: categoryId,
+          diaryId: demoDiary.id,
           name: 'Spring Boot',
           summary: 'Spring Framework 기초 학습',
           icon: 'Trophy',
@@ -1231,7 +1259,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             assignmentId,
             blockType: 'NOTE',
             title: '챌린지 설명',
-            content: '선택한 UI 상태에 따라 화면 문구와 버튼 상태가 자연스럽게 바뀌는 컴포넌트를 구현하세요.',
+            content:
+              '선택한 UI 상태에 따라 화면 문구와 버튼 상태가 자연스럽게 바뀌는 컴포넌트를 구현하세요.',
             orderIdx: 0,
             createdAt: now,
             updatedAt: now,
@@ -1243,8 +1272,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             title: '완료 조건',
             content: JSON.stringify([
               { id: 'state-ui', label: '상태별 UI가 명확하게 구분된다' },
-              { id: 'empty-loading-error', label: '빈 상태, 로딩, 오류 상태를 처리한다' },
-              { id: 'responsive', label: '모바일/데스크톱 레이아웃이 깨지지 않는다' },
+              {
+                id: 'empty-loading-error',
+                label: '빈 상태, 로딩, 오류 상태를 처리한다',
+              },
+              {
+                id: 'responsive',
+                label: '모바일/데스크톱 레이아웃이 깨지지 않는다',
+              },
             ]),
             orderIdx: 1,
             createdAt: now,
@@ -1292,7 +1327,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
               assignmentId,
               blockType: 'NOTE',
               title: '챌린지 설명',
-              content: '선택한 UI 상태에 따라 화면 문구와 버튼 상태가 자연스럽게 바뀌는 컴포넌트를 구현하세요.',
+              content:
+                '선택한 UI 상태에 따라 화면 문구와 버튼 상태가 자연스럽게 바뀌는 컴포넌트를 구현하세요.',
               orderIdx: 0,
               createdAt: now,
               updatedAt: now,
@@ -1304,8 +1340,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
               title: '완료 조건',
               content: JSON.stringify([
                 { id: 'state-ui', label: '상태별 UI가 명확하게 구분된다' },
-                { id: 'empty-loading-error', label: '빈 상태, 로딩, 오류 상태를 처리한다' },
-                { id: 'responsive', label: '모바일/데스크톱 레이아웃이 깨지지 않는다' },
+                {
+                  id: 'empty-loading-error',
+                  label: '빈 상태, 로딩, 오류 상태를 처리한다',
+                },
+                {
+                  id: 'responsive',
+                  label: '모바일/데스크톱 레이아웃이 깨지지 않는다',
+                },
               ]),
               orderIdx: 1,
               createdAt: now,
@@ -1451,6 +1493,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'ALTER TABLE challenge_categories ADD COLUMN order_idx INTEGER DEFAULT 0 NOT NULL',
     );
     this.ensureColumn(
+      'challenge_categories',
+      'diary_id',
+      'ALTER TABLE challenge_categories ADD COLUMN diary_id TEXT',
+    );
+    this.ensureColumn(
       'meeting_rooms',
       'archived',
       'ALTER TABLE meeting_rooms ADD COLUMN archived INTEGER DEFAULT 0 NOT NULL',
@@ -1475,13 +1522,45 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'public_shared_at',
       'ALTER TABLE sql_practice_notes ADD COLUMN public_shared_at TEXT',
     );
+    this.ensureColumn(
+      'tasks',
+      'scope',
+      "ALTER TABLE tasks ADD COLUMN scope TEXT DEFAULT 'TEAM' NOT NULL",
+    );
+    this.ensureColumn(
+      'tasks',
+      'owner_id',
+      'ALTER TABLE tasks ADD COLUMN owner_id TEXT',
+    );
+    this.ensureColumn(
+      'tasks',
+      'visibility',
+      "ALTER TABLE tasks ADD COLUMN visibility TEXT DEFAULT 'TEAM' NOT NULL",
+    );
     this.sqlite.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user
+        ON study_diaries(user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_challenge_categories_diary
+        ON challenge_categories(diary_id, order_idx);
+
       CREATE INDEX IF NOT EXISTS idx_sql_practice_notes_public_token
         ON sql_practice_notes(public_token);
+
+      CREATE INDEX IF NOT EXISTS idx_tasks_assignee_scope
+        ON tasks(assignee_id, scope, archived, status);
+
+      CREATE INDEX IF NOT EXISTS idx_tasks_owner_scope
+        ON tasks(owner_id, scope, archived, status);
+
+      CREATE INDEX IF NOT EXISTS idx_tasks_visibility_updated
+        ON tasks(visibility, archived, updated_at);
     `);
 
     const now = new Date().toISOString();
     const demoUser = this.ensureDemoUser(now);
+    this.ensureStudyDiariesForUsers(now);
+    this.backfillChallengeCategoryDiaries(demoUser.id, now);
 
     this.sqlite
       .prepare(
@@ -1650,7 +1729,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .run();
 
     const existingDevChallengeMenu = this.sqlite
-      .prepare("SELECT id FROM menus WHERE section_id = 'dev_challenge' LIMIT 1")
+      .prepare(
+        "SELECT id FROM menus WHERE section_id = 'dev_challenge' LIMIT 1",
+      )
       .get() as { id: string } | undefined;
 
     if (!existingDevChallengeMenu) {
@@ -1697,6 +1778,154 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private reconcileTaskMenus(now: string) {
+    let taskMenu = this.sqlite
+      .prepare(
+        `
+          SELECT id, display_order as displayOrder
+          FROM menus
+          WHERE section_id IN ('task_group', 'task')
+            AND parent_id IS NULL
+          ORDER BY
+            CASE WHEN section_id = 'task_group' THEN 0 ELSE 1 END,
+            display_order ASC
+          LIMIT 1
+        `,
+      )
+      .get() as { id: string; displayOrder: number } | undefined;
+
+    if (!taskMenu) {
+      const prototypeMenu = this.sqlite
+        .prepare(
+          `
+            SELECT display_order as displayOrder
+            FROM menus
+            WHERE section_id = 'prototype'
+            ORDER BY display_order ASC
+            LIMIT 1
+          `,
+        )
+        .get() as { displayOrder: number } | undefined;
+      const displayOrder = (prototypeMenu?.displayOrder ?? 2) + 1;
+
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET display_order = display_order + 1, updated_at = ?
+            WHERE parent_id IS NULL AND display_order >= ?
+          `,
+        )
+        .run(now, displayOrder);
+
+      const taskMenuId = randomUUID();
+      this.db
+        .insert(menusTable)
+        .values({
+          id: taskMenuId,
+          name: '업무 관리',
+          sectionId: 'task_group',
+          icon: 'CheckSquare',
+          displayOrder,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      taskMenu = { id: taskMenuId, displayOrder };
+    } else {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET name = '업무 관리',
+                section_id = 'task_group',
+                icon = 'CheckSquare',
+                is_visible = 1,
+                updated_at = ?
+            WHERE id = ?
+          `,
+        )
+        .run(now, taskMenu.id);
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          UPDATE menus
+          SET is_visible = 0, updated_at = ?
+          WHERE section_id = 'task'
+            AND id <> ?
+        `,
+      )
+      .run(now, taskMenu.id);
+
+    const children = [
+      {
+        name: '전체 업무',
+        sectionId: 'task_all',
+        icon: 'ListChecks',
+        displayOrder: 0,
+      },
+      {
+        name: '내 업무',
+        sectionId: 'task_my',
+        icon: 'UserCheck',
+        displayOrder: 1,
+      },
+    ];
+
+    for (const child of children) {
+      const existing = this.sqlite
+        .prepare('SELECT id FROM menus WHERE section_id = ? LIMIT 1')
+        .get(child.sectionId) as { id: string } | undefined;
+
+      if (existing) {
+        this.sqlite
+          .prepare(
+            `
+              UPDATE menus
+              SET parent_id = ?,
+                  name = ?,
+                  icon = ?,
+                  display_order = ?,
+                  is_visible = 1,
+                  required_role = NULL,
+                  updated_at = ?
+              WHERE id = ?
+            `,
+          )
+          .run(
+            taskMenu.id,
+            child.name,
+            child.icon,
+            child.displayOrder,
+            now,
+            existing.id,
+          );
+      } else {
+        this.db
+          .insert(menusTable)
+          .values({
+            id: randomUUID(),
+            parentId: taskMenu.id,
+            name: child.name,
+            sectionId: child.sectionId,
+            icon: child.icon,
+            displayOrder: child.displayOrder,
+            isVisible: true,
+            requiredRole: null,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+      }
+    }
+  }
+
   private ensureColumn(
     tableName: string,
     columnName: string,
@@ -1711,6 +1940,109 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.sqlite.exec(statement);
+  }
+
+  private ensureStudyDiariesForUsers(now: string) {
+    const users = this.sqlite
+      .prepare('SELECT id, name FROM users')
+      .all() as Array<{ id: string; name: string }>;
+
+    const insertDiary = this.sqlite.prepare(`
+      INSERT INTO study_diaries (
+        id, user_id, title, description, visibility, created_at, updated_at
+      )
+      SELECT ?, ?, ?, NULL, 'private', ?, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM study_diaries WHERE user_id = ?
+      )
+    `);
+
+    for (const user of users) {
+      insertDiary.run(
+        randomUUID(),
+        user.id,
+        `${user.name}의 스터디 다이어리`,
+        now,
+        now,
+        user.id,
+      );
+    }
+  }
+
+  private ensureStudyDiaryForUser(
+    userId: string,
+    userName: string,
+    now: string,
+  ) {
+    const existing = this.sqlite
+      .prepare('SELECT id FROM study_diaries WHERE user_id = ? LIMIT 1')
+      .get(userId) as { id: string } | undefined;
+
+    if (existing) {
+      return existing;
+    }
+
+    const diary = { id: randomUUID() };
+    this.sqlite
+      .prepare(
+        `
+          INSERT INTO study_diaries (
+            id, user_id, title, description, visibility, created_at, updated_at
+          ) VALUES (?, ?, ?, NULL, 'private', ?, ?)
+        `,
+      )
+      .run(diary.id, userId, `${userName}의 스터디 다이어리`, now, now);
+
+    return diary;
+  }
+
+  private backfillChallengeCategoryDiaries(
+    fallbackUserId: string,
+    now: string,
+  ) {
+    const fallbackUser = this.sqlite
+      .prepare('SELECT id, name FROM users WHERE id = ? LIMIT 1')
+      .get(fallbackUserId) as { id: string; name: string } | undefined;
+
+    if (!fallbackUser) {
+      return;
+    }
+
+    const fallbackDiary = this.ensureStudyDiaryForUser(
+      fallbackUser.id,
+      fallbackUser.name,
+      now,
+    );
+
+    this.sqlite
+      .prepare(
+        `
+          UPDATE challenge_categories
+          SET diary_id = (
+            SELECT study_diaries.id
+            FROM study_diaries
+            WHERE study_diaries.user_id = challenge_categories.created_by
+            LIMIT 1
+          )
+          WHERE diary_id IS NULL
+            AND EXISTS (
+              SELECT 1
+              FROM study_diaries
+              WHERE study_diaries.user_id = challenge_categories.created_by
+            )
+        `,
+      )
+      .run();
+
+    this.sqlite
+      .prepare(
+        `
+          UPDATE challenge_categories
+          SET diary_id = ?
+          WHERE diary_id IS NULL
+        `,
+      )
+      .run(fallbackDiary.id);
   }
 
   private ensureDemoUser(now: string) {

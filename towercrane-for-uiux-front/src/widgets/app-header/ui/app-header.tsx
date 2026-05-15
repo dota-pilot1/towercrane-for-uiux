@@ -24,6 +24,9 @@ function sectionIdToPath(sectionId: string): string {
     sql: '/sql',
     sql_examples: '/sql/examples',
     task: '/task',
+    task_group: '/task',
+    task_all: '/task',
+    task_my: '/task/my',
     profile: '/profile',
     users: '/admin/users',
     menu_admin: '/admin/menu',
@@ -43,7 +46,9 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/api-doc')) return 'api_doc'
   if (pathname.startsWith('/sql/examples')) return 'sql_examples'
   if (pathname.startsWith('/sql')) return 'sql'
-  if (pathname.startsWith('/task')) return 'task'
+  if (pathname.startsWith('/task/my')) return 'task_my'
+  if (pathname.startsWith('/task/users')) return 'task_all'
+  if (pathname.startsWith('/task')) return 'task_all'
   if (pathname.startsWith('/profile')) return 'profile'
   if (pathname.startsWith('/admin/users')) return 'users'
   if (pathname.startsWith('/admin/menu')) return 'menu_admin'
@@ -53,6 +58,7 @@ function getSectionIdFromPath(pathname: string): string {
 
 function normalizeSectionId(sectionId: string | null | undefined): string {
   if (sectionId === 'challenge' || sectionId === 'study_diary') return 'study_diary'
+  if (sectionId === 'task') return 'task_all'
   return sectionId ?? ''
 }
 

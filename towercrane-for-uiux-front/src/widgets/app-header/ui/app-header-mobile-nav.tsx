@@ -13,6 +13,7 @@ function getIcon(iconName: string | null): React.ElementType {
 
 function normalizeSectionId(sectionId: string | null | undefined): string {
   if (sectionId === 'challenge' || sectionId === 'study_diary') return 'study_diary'
+  if (sectionId === 'task') return 'task_all'
   return sectionId ?? ''
 }
 

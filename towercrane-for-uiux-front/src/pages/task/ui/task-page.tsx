@@ -27,16 +27,25 @@ import { TaskTableView } from '../../../features/task/ui/task-table-view'
 import { TaskToolbar, type TaskViewMode } from '../../../features/task/ui/task-toolbar'
 import { useArchiveTasks, useRestoreTasks, useTasks } from '../../../features/task/model/use-task-queries'
 import { PageHeader } from '../../../shared/ui/page-header'
+import { useSessionStore } from '../../../shared/store/session-store'
 
-const initialFilters: TaskFilters = {
-  archived: false,
-  sort: 'order',
-  page: 1,
-  pageSize: 50,
+type TaskScopeMode = 'all' | 'my' | 'user'
+
+function getInitialFilters(scopeMode: TaskScopeMode, targetUserId?: string): TaskFilters {
+  return {
+    archived: false,
+    sort: 'order',
+    page: 1,
+    pageSize: 50,
+    scope: scopeMode,
+    userId: scopeMode === 'user' ? targetUserId : undefined,
+  }
 }
 
-function emptyMessage(filters: TaskFilters) {
+function emptyMessage(filters: TaskFilters, scopeMode: TaskScopeMode) {
   if (filters.archived) return '보관된 업무가 없습니다.'
+  if (scopeMode === 'my') return '내 업무가 없습니다.'
+  if (scopeMode === 'user') return '선택한 담당자의 업무가 없습니다.'
   if (filters.q || filters.status || filters.taskType || filters.priority || filters.assigneeId) {
     return '검색 조건에 맞는 업무가 없습니다.'
   }
@@ -147,20 +156,32 @@ function TaskPagination({
   )
 }
 
-export function TaskPage() {
+export function TaskPage({
+  scopeMode,
+  targetUserId,
+}: {
+  scopeMode: TaskScopeMode
+  targetUserId?: string
+}) {
   const [viewMode, setViewMode] = useState<TaskViewMode>('table')
-  const [filters, setFilters] = useState<TaskFilters>(initialFilters)
+  const [filters, setFilters] = useState<TaskFilters>(() =>
+    getInitialFilters(scopeMode, targetUserId),
+  )
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const currentUserId = useSessionStore((state) => state.userId)
+  const currentUserName = useSessionStore((state) => state.userName)
 
   const normalizedFilters = useMemo(
     () => ({
-      ...initialFilters,
+      ...getInitialFilters(scopeMode, targetUserId),
       ...filters,
+      scope: scopeMode,
+      userId: scopeMode === 'user' ? targetUserId : undefined,
     }),
-    [filters],
+    [filters, scopeMode, targetUserId],
   )
 
   const tasksQuery = useTasks(normalizedFilters)
@@ -169,6 +190,21 @@ export function TaskPage() {
   const restoreTasks = useRestoreTasks()
   const tasks = tasksQuery.data?.items ?? []
   const users = assignableUsersQuery.data ?? []
+  const targetUser = targetUserId
+    ? users.find((user) => user.id === targetUserId)
+    : null
+  const scopeTitle =
+    scopeMode === 'my'
+      ? `${currentUserName || '내'}의 업무`
+      : scopeMode === 'user'
+        ? `${targetUser?.name ?? '선택한 사용자'}의 업무`
+        : '전체 업무'
+  const scopeDescription =
+    scopeMode === 'my'
+      ? '내가 담당하거나 개인으로 등록한 업무를 관리합니다.'
+      : scopeMode === 'user'
+        ? '선택한 담당자의 팀 업무를 확인합니다.'
+        : '프로젝트 전체 업무, 담당자, 체크리스트와 댓글을 관리합니다.'
   const total = tasksQuery.data?.total ?? 0
   const page = normalizedFilters.page ?? 1
   const pageSize = normalizedFilters.pageSize ?? 50
@@ -202,17 +238,19 @@ export function TaskPage() {
     <section className="space-y-4 ui-page-bg pb-8">
       <PageHeader
         icon={CheckSquare}
-        title="Task 관리"
-        description="프로젝트 업무, 담당자, 체크리스트와 댓글을 관리합니다."
+        title={scopeTitle}
+        description={scopeDescription}
       />
 
       <TaskToolbar
         filters={normalizedFilters}
         onFiltersChange={setFilters}
         users={users}
+        assigneeLabel={scopeMode === 'user' ? (targetUser?.name ?? '담당자') : '내 업무'}
         isFetching={tasksQuery.isFetching}
         onCreate={() => setIsFormOpen(true)}
         onRefresh={() => tasksQuery.refetch()}
+        showAssigneeFilter={scopeMode === 'all'}
       />
 
       {/* content bar: 상태 필터(좌) + 선택 보관 + 뷰 토글(우) */}
@@ -271,6 +309,8 @@ export function TaskPage() {
                 pageSize: normalizedFilters.pageSize ?? 50,
                 archived: false,
                 sort: 'order',
+                scope: scopeMode,
+                userId: scopeMode === 'user' ? targetUserId : undefined,
               })
             }
           >
@@ -322,7 +362,9 @@ export function TaskPage() {
 
       {!tasksQuery.isLoading && !tasksQuery.error && tasks.length === 0 ? (
         <div className="rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-4 py-16 text-center">
-          <p className="text-sm text-text-muted">{emptyMessage(normalizedFilters)}</p>
+          <p className="text-sm text-text-muted">
+            {emptyMessage(normalizedFilters, scopeMode)}
+          </p>
           {!normalizedFilters.archived ? (
             <Button
               type="button"
@@ -379,6 +421,9 @@ export function TaskPage() {
       <TaskFormDialog
         open={isFormOpen}
         users={users}
+        defaultScope={scopeMode === 'my' ? 'PERSONAL' : 'TEAM'}
+        currentUserId={currentUserId}
+        lockAssigneeToCurrentUser={scopeMode === 'my'}
         onOpenChange={setIsFormOpen}
       />
       <TaskDetailDialog

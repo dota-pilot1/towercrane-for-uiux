@@ -12,6 +12,7 @@ import {
 import type {
   CreateTaskRequest,
   TaskPriority,
+  TaskScope,
   TaskStatus,
   TaskType,
 } from '../../../entities/task/model/types'
@@ -22,33 +23,54 @@ import { Select } from '../../../shared/ui/select'
 import { Textarea } from '../../../shared/ui/textarea'
 import { useCreateTask } from '../model/use-task-queries'
 
-const initialForm: Required<Omit<CreateTaskRequest, 'assigneeId' | 'dueDate'>> & {
+type TaskFormState = Required<
+  Omit<CreateTaskRequest, 'assigneeId' | 'dueDate' | 'visibility'>
+> & {
   assigneeId: string
   dueDate: string
-} = {
-  title: '',
-  content: '',
-  taskType: 'FEATURE',
-  status: 'TODO',
-  priority: 'MEDIUM',
-  assigneeId: '',
-  dueDate: '',
+}
+
+function getInitialForm(
+  defaultScope: TaskScope,
+  currentUserId?: string,
+  lockAssigneeToCurrentUser?: boolean,
+): TaskFormState {
+  return {
+    title: '',
+    content: '',
+    taskType: 'FEATURE',
+    status: 'TODO',
+    priority: 'MEDIUM',
+    scope: defaultScope,
+    assigneeId: lockAssigneeToCurrentUser ? (currentUserId ?? '') : '',
+    dueDate: '',
+  }
 }
 
 export function TaskFormDialog({
   open,
   users,
+  defaultScope = 'TEAM',
+  currentUserId,
+  lockAssigneeToCurrentUser,
   onOpenChange,
 }: {
   open: boolean
   users: AssignableUser[]
+  defaultScope?: TaskScope
+  currentUserId?: string
+  lockAssigneeToCurrentUser?: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const [form, setForm] = useState(initialForm)
+  const [form, setForm] = useState(() =>
+    getInitialForm(defaultScope, currentUserId, lockAssigneeToCurrentUser),
+  )
   const createTask = useCreateTask()
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) setForm(initialForm)
+    if (!nextOpen) {
+      setForm(getInitialForm(defaultScope, currentUserId, lockAssigneeToCurrentUser))
+    }
     onOpenChange(nextOpen)
   }
 
@@ -62,10 +84,11 @@ export function TaskFormDialog({
       taskType: form.taskType,
       status: form.status,
       priority: form.priority,
+      scope: form.scope,
       assigneeId: form.assigneeId || null,
       dueDate: form.dueDate || null,
     })
-    setForm(initialForm)
+    setForm(getInitialForm(defaultScope, currentUserId, lockAssigneeToCurrentUser))
     handleOpenChange(false)
   }
 
@@ -80,7 +103,9 @@ export function TaskFormDialog({
                 새 업무
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-text-secondary">
-                제목과 담당 흐름을 정리합니다.
+                {form.scope === 'PERSONAL'
+                  ? '개인 업무의 제목과 완료 기준을 정리합니다.'
+                  : '제목과 담당 흐름을 정리합니다.'}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -121,6 +146,27 @@ export function TaskFormDialog({
               </label>
 
               <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-bold text-text-secondary">업무 범위</span>
+                  <Select
+                    value={form.scope}
+                    onChange={(event) => {
+                      const scope = event.target.value as TaskScope
+                      setForm((prev) => ({
+                        ...prev,
+                        scope,
+                        assigneeId:
+                          scope === 'PERSONAL'
+                            ? (currentUserId ?? prev.assigneeId)
+                            : prev.assigneeId,
+                      }))
+                    }}
+                  >
+                    <option value="TEAM">팀 업무</option>
+                    <option value="PERSONAL">개인 업무</option>
+                  </Select>
+                </label>
+
                 <label className="block space-y-1.5">
                   <span className="text-xs font-bold text-text-secondary">유형</span>
                   <Select
@@ -182,6 +228,7 @@ export function TaskFormDialog({
                   <span className="text-xs font-bold text-text-secondary">담당자</span>
                   <Select
                     value={form.assigneeId}
+                    disabled={lockAssigneeToCurrentUser || form.scope === 'PERSONAL'}
                     onChange={(event) =>
                       setForm((prev) => ({ ...prev, assigneeId: event.target.value }))
                     }

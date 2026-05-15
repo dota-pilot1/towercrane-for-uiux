@@ -54,9 +54,9 @@ export class TasksService {
     return this.databaseService.db;
   }
 
-  listTasks(_user: TaskUser, rawQuery: unknown) {
+  listTasks(user: TaskUser, rawQuery: unknown) {
     const query = listTasksQuerySchema.parse(rawQuery ?? {});
-    const conditions = this.buildListConditions(query);
+    const conditions = this.buildListConditions(user, query);
     const offset = (query.page - 1) * query.pageSize;
 
     const rows = this.db
@@ -84,14 +84,23 @@ export class TasksService {
     };
   }
 
-  getTaskDetail(_user: TaskUser, taskId: string) {
+  getTaskDetail(user: TaskUser, taskId: string) {
     const task = this.ensureTask(taskId);
+    this.ensureCanReadTask(user, task);
     return this.toTaskDto(task, this.getUsersById());
   }
 
   createTask(user: TaskUser, payload: unknown) {
     const input = createTaskSchema.parse(payload);
-    this.ensureAssignableUser(input.assigneeId ?? null);
+    const isPersonalTask = input.scope === 'PERSONAL';
+    const assigneeId = isPersonalTask
+      ? (input.assigneeId ?? user.id)
+      : (input.assigneeId ?? null);
+    const ownerId = isPersonalTask ? user.id : null;
+    const visibility =
+      input.visibility ?? (isPersonalTask ? 'PRIVATE' : 'TEAM');
+
+    this.ensureAssignableUser(assigneeId);
 
     const now = new Date().toISOString();
     const maxOrder = this.db
@@ -107,8 +116,11 @@ export class TasksService {
       taskType: input.taskType,
       status: input.status,
       priority: input.priority,
+      scope: input.scope,
+      ownerId,
+      visibility,
       reporterId: user.id,
-      assigneeId: input.assigneeId ?? null,
+      assigneeId,
       dueDate: input.dueDate ?? null,
       orderIdx: maxOrder + 1,
       archived: false,
@@ -145,6 +157,12 @@ export class TasksService {
     if (input.taskType !== undefined) changes.taskType = input.taskType;
     if (input.status !== undefined) changes.status = input.status;
     if (input.priority !== undefined) changes.priority = input.priority;
+    if (input.scope !== undefined && user.role === 'admin') {
+      changes.scope = input.scope;
+    }
+    if (input.visibility !== undefined && user.role === 'admin') {
+      changes.visibility = input.visibility;
+    }
     if ('assigneeId' in input) changes.assigneeId = input.assigneeId ?? null;
     if ('dueDate' in input) changes.dueDate = input.dueDate ?? null;
 
@@ -253,7 +271,8 @@ export class TasksService {
   }
 
   listChecklists(_user: TaskUser, taskId: string) {
-    this.ensureTask(taskId);
+    const task = this.ensureTask(taskId);
+    this.ensureCanReadTask(_user, task);
     return this.db
       .select()
       .from(taskChecklistsTable)
@@ -357,7 +376,8 @@ export class TasksService {
   }
 
   listComments(_user: TaskUser, taskId: string) {
-    this.ensureTask(taskId);
+    const task = this.ensureTask(taskId);
+    this.ensureCanReadTask(_user, task);
     const comments = this.db
       .select()
       .from(taskCommentsTable)
@@ -376,7 +396,8 @@ export class TasksService {
   }
 
   createComment(user: TaskUser, taskId: string, payload: unknown) {
-    this.ensureTask(taskId);
+    const task = this.ensureTask(taskId);
+    this.ensureCanReadTask(user, task);
     const input = createCommentSchema.parse(payload);
     const now = new Date().toISOString();
     const row: TaskCommentInsert = {
@@ -402,7 +423,8 @@ export class TasksService {
     commentId: string,
     payload: unknown,
   ) {
-    this.ensureTask(taskId);
+    const task = this.ensureTask(taskId);
+    this.ensureCanReadTask(user, task);
     const comment = this.ensureComment(taskId, commentId);
     this.ensureCanEditComment(user, comment);
     const input = updateCommentSchema.parse(payload);
@@ -425,7 +447,8 @@ export class TasksService {
   }
 
   deleteComment(user: TaskUser, taskId: string, commentId: string) {
-    this.ensureTask(taskId);
+    const task = this.ensureTask(taskId);
+    this.ensureCanReadTask(user, task);
     const comment = this.ensureComment(taskId, commentId);
     this.ensureCanEditComment(user, comment);
 
@@ -444,7 +467,8 @@ export class TasksService {
   }
 
   listActivity(_user: TaskUser, taskId: string) {
-    this.ensureTask(taskId);
+    const task = this.ensureTask(taskId);
+    this.ensureCanReadTask(_user, task);
     const usersById = this.getUsersById();
 
     return this.db
@@ -462,7 +486,8 @@ export class TasksService {
   }
 
   listAttachments(_user: TaskUser, taskId: string) {
-    this.ensureTask(taskId);
+    const task = this.ensureTask(taskId);
+    this.ensureCanReadTask(_user, task);
     const usersById = this.getUsersById();
 
     return this.db
@@ -524,9 +549,24 @@ export class TasksService {
   }
 
   private buildListConditions(
+    user: TaskUser,
     query: ReturnType<typeof listTasksQuerySchema.parse>,
   ) {
     const conditions: SQL[] = [eq(tasksTable.archived, query.archived)];
+
+    if (query.scope === 'my') {
+      const mine = or(
+        eq(tasksTable.assigneeId, user.id),
+        eq(tasksTable.ownerId, user.id),
+      );
+      if (mine) conditions.push(mine);
+    } else if (query.scope === 'user') {
+      const targetUserId = query.userId || user.id;
+      conditions.push(eq(tasksTable.assigneeId, targetUserId));
+      conditions.push(eq(tasksTable.visibility, 'TEAM'));
+    } else {
+      conditions.push(eq(tasksTable.visibility, 'TEAM'));
+    }
 
     if (query.taskType)
       conditions.push(eq(tasksTable.taskType, query.taskType));
@@ -619,7 +659,14 @@ export class TasksService {
       });
     }
 
-    const onlySystemFields = ['status', 'priority', 'assigneeId', 'updatedAt'];
+    const onlySystemFields = [
+      'status',
+      'priority',
+      'assigneeId',
+      'scope',
+      'visibility',
+      'updatedAt',
+    ];
     const hasGeneralUpdate = Object.keys(changes).some(
       (key) => !onlySystemFields.includes(key),
     );
@@ -751,7 +798,8 @@ export class TasksService {
     if (
       user.role === 'admin' ||
       task.reporterId === user.id ||
-      task.assigneeId === user.id
+      task.assigneeId === user.id ||
+      task.ownerId === user.id
     ) {
       return;
     }
@@ -759,8 +807,26 @@ export class TasksService {
     throw new ForbiddenException('You cannot modify this task');
   }
 
+  private ensureCanReadTask(user: TaskUser, task: TaskRow) {
+    if (
+      task.visibility === 'TEAM' ||
+      user.role === 'admin' ||
+      task.reporterId === user.id ||
+      task.assigneeId === user.id ||
+      task.ownerId === user.id
+    ) {
+      return;
+    }
+
+    throw new ForbiddenException('You cannot read this task');
+  }
+
   private ensureCanArchiveTask(user: TaskUser, task: TaskRow) {
-    if (user.role === 'admin' || task.reporterId === user.id) {
+    if (
+      user.role === 'admin' ||
+      task.reporterId === user.id ||
+      task.ownerId === user.id
+    ) {
       return;
     }
 
@@ -783,6 +849,7 @@ export class TasksService {
   private toTaskDto(task: TaskRow, usersById: Map<string, UserRow>) {
     const reporter = usersById.get(task.reporterId);
     const assignee = task.assigneeId ? usersById.get(task.assigneeId) : null;
+    const owner = task.ownerId ? usersById.get(task.ownerId) : null;
 
     return {
       ...task,
@@ -790,6 +857,8 @@ export class TasksService {
       reporterEmail: reporter?.email ?? null,
       assigneeName: assignee?.name ?? null,
       assigneeEmail: assignee?.email ?? null,
+      ownerName: owner?.name ?? null,
+      ownerEmail: owner?.email ?? null,
     };
   }
 

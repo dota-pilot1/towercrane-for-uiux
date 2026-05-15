@@ -19,6 +19,8 @@ export const taskStatusSchema = z.enum([
 ]);
 
 export const taskPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
+export const taskScopeSchema = z.enum(['TEAM', 'PERSONAL']);
+export const taskVisibilitySchema = z.enum(['TEAM', 'PRIVATE']);
 
 const queryBooleanSchema = z.preprocess((value) => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -31,6 +33,8 @@ export const listTasksQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
   q: z.string().trim().max(120).optional().default(''),
+  scope: z.enum(['all', 'my', 'user']).default('all'),
+  userId: z.string().optional(),
   taskType: taskTypeSchema.optional(),
   status: taskStatusSchema.optional(),
   priority: taskPrioritySchema.optional(),
@@ -47,6 +51,8 @@ export const createTaskSchema = z.object({
   taskType: taskTypeSchema.default('FEATURE'),
   status: taskStatusSchema.default('TODO'),
   priority: taskPrioritySchema.default('MEDIUM'),
+  scope: taskScopeSchema.default('TEAM'),
+  visibility: taskVisibilitySchema.optional(),
   assigneeId: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
 });

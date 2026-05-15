@@ -17,9 +17,11 @@ type TaskToolbarProps = {
   filters: TaskFilters
   onFiltersChange: (filters: TaskFilters) => void
   users: AssignableUser[]
+  assigneeLabel?: string
   isFetching?: boolean
   onCreate: () => void
   onRefresh: () => void
+  showAssigneeFilter?: boolean
 }
 
 function updateFilter<T extends keyof TaskFilters>(
@@ -38,9 +40,11 @@ export function TaskToolbar({
   filters,
   onFiltersChange,
   users,
+  assigneeLabel,
   isFetching,
   onCreate,
   onRefresh,
+  showAssigneeFilter = true,
 }: TaskToolbarProps) {
   return (
     <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
@@ -89,20 +93,26 @@ export function TaskToolbar({
             ))}
           </CompactSelect>
 
-          <CompactSelect
-            value={filters.assigneeId ?? ''}
-            onChange={(event) =>
-              onFiltersChange(updateFilter(filters, 'assigneeId', event.target.value))
-            }
-            aria-label="담당자 필터"
-          >
-            <option value="">전체 담당자</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
-            ))}
-          </CompactSelect>
+          {showAssigneeFilter ? (
+            <CompactSelect
+              value={filters.assigneeId ?? ''}
+              onChange={(event) =>
+                onFiltersChange(updateFilter(filters, 'assigneeId', event.target.value))
+              }
+              aria-label="담당자 필터"
+            >
+              <option value="">전체 담당자</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </CompactSelect>
+          ) : (
+            <div className="flex h-10 items-center rounded-md border border-surface-border-soft bg-surface-raised px-3 text-sm font-semibold text-text-secondary">
+              {assigneeLabel ?? '내 업무'}
+            </div>
+          )}
 
           <CompactSelect
             value={filters.sort ?? 'order'}
