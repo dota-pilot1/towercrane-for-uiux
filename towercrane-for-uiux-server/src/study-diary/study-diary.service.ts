@@ -1,0 +1,497 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { DatabaseService } from '../database/database.service';
+import {
+  challengeCategoriesTable,
+  challengeSectionsTable,
+  challengeTopicsTable,
+  challengeUserNotesTable,
+  studyDiariesTable,
+  usersTable,
+  type ChallengeCategoryRow,
+  type ChallengeSectionRow,
+  type ChallengeTopicRow,
+  type StudyDiaryRow,
+} from '../database/schema';
+import type {
+  CreateStudyDiaryCategoryInput,
+  CreateStudyDiaryNoteInput,
+  CreateStudyDiarySectionInput,
+  UpdateStudyDiaryCategoryInput,
+  UpdateStudyDiaryInput,
+  UpdateStudyDiaryNoteInput,
+  UpdateStudyDiarySectionInput,
+} from './dto/study-diary.schema';
+
+@Injectable()
+export class StudyDiaryService {
+  constructor(private readonly db: DatabaseService) {}
+
+  getMyDiary(userId: string) {
+    const diary = this.getOrCreateMyDiary(userId);
+    const user = this.getUser(userId);
+
+    return {
+      ...diary,
+      ownerName: user.name,
+    };
+  }
+
+  updateMyDiary(userId: string, input: UpdateStudyDiaryInput) {
+    const diary = this.getOrCreateMyDiary(userId);
+    const now = new Date().toISOString();
+
+    this.db.db
+      .update(studyDiariesTable)
+      .set({
+        ...input,
+        updatedAt: now,
+      })
+      .where(eq(studyDiariesTable.id, diary.id))
+      .run();
+
+    return this.getMyDiary(userId);
+  }
+
+  getCategories(userId: string) {
+    const diary = this.getOrCreateMyDiary(userId);
+
+    return this.db.db
+      .select()
+      .from(challengeCategoriesTable)
+      .where(eq(challengeCategoriesTable.diaryId, diary.id))
+      .orderBy(challengeCategoriesTable.orderIdx)
+      .all();
+  }
+
+  createCategory(userId: string, input: CreateStudyDiaryCategoryInput) {
+    const diary = this.getOrCreateMyDiary(userId);
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const orderIdx = this.getNextCategoryOrderIdx(diary.id);
+
+    this.db.db
+      .insert(challengeCategoriesTable)
+      .values({
+        id,
+        diaryId: diary.id,
+        ...input,
+        orderIdx,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.assertCategoryInMyDiary(id, userId);
+  }
+
+  updateCategory(
+    userId: string,
+    id: string,
+    input: UpdateStudyDiaryCategoryInput,
+  ) {
+    this.assertCategoryInMyDiary(id, userId);
+
+    this.db.db
+      .update(challengeCategoriesTable)
+      .set({
+        ...input,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(challengeCategoriesTable.id, id))
+      .run();
+
+    return this.assertCategoryInMyDiary(id, userId);
+  }
+
+  deleteCategory(userId: string, id: string) {
+    this.assertCategoryInMyDiary(id, userId);
+
+    this.db.db
+      .delete(challengeCategoriesTable)
+      .where(eq(challengeCategoriesTable.id, id))
+      .run();
+  }
+
+  reorderCategories(userId: string, categoryIds: string[]) {
+    const categories = this.getCategories(userId);
+    const ownedIds = new Set(categories.map((category) => category.id));
+
+    if (categoryIds.some((id) => !ownedIds.has(id))) {
+      throw new ForbiddenException('Not authorized');
+    }
+
+    const now = new Date().toISOString();
+    for (let i = 0; i < categoryIds.length; i++) {
+      this.db.db
+        .update(challengeCategoriesTable)
+        .set({ orderIdx: i, updatedAt: now })
+        .where(eq(challengeCategoriesTable.id, categoryIds[i]))
+        .run();
+    }
+  }
+
+  getSectionsByCategory(userId: string, categoryId: string) {
+    this.assertCategoryInMyDiary(categoryId, userId);
+
+    return this.db.db
+      .select()
+      .from(challengeSectionsTable)
+      .where(eq(challengeSectionsTable.categoryId, categoryId))
+      .orderBy(challengeSectionsTable.orderIdx)
+      .all();
+  }
+
+  createSection(userId: string, input: CreateStudyDiarySectionInput) {
+    this.assertCategoryInMyDiary(input.categoryId, userId);
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const orderIdx =
+      input.orderIdx ?? this.getNextSectionOrderIdx(input.categoryId);
+
+    this.db.db
+      .insert(challengeSectionsTable)
+      .values({
+        id,
+        categoryId: input.categoryId,
+        title: input.title,
+        summary: input.summary,
+        orderIdx,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.assertSectionInMyDiary(id, userId);
+  }
+
+  updateSection(
+    userId: string,
+    id: string,
+    input: UpdateStudyDiarySectionInput,
+  ) {
+    this.assertSectionInMyDiary(id, userId);
+
+    this.db.db
+      .update(challengeSectionsTable)
+      .set({
+        ...input,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(challengeSectionsTable.id, id))
+      .run();
+
+    return this.assertSectionInMyDiary(id, userId);
+  }
+
+  deleteSection(userId: string, id: string) {
+    this.assertSectionInMyDiary(id, userId);
+
+    this.db.db
+      .delete(challengeSectionsTable)
+      .where(eq(challengeSectionsTable.id, id))
+      .run();
+  }
+
+  reorderSections(userId: string, categoryId: string, sectionIds: string[]) {
+    this.assertCategoryInMyDiary(categoryId, userId);
+    const sections = this.getSectionsByCategory(userId, categoryId);
+    const ownedIds = new Set(sections.map((section) => section.id));
+
+    if (sectionIds.some((id) => !ownedIds.has(id))) {
+      throw new ForbiddenException('Not authorized');
+    }
+
+    const now = new Date().toISOString();
+    for (let i = 0; i < sectionIds.length; i++) {
+      this.db.db
+        .update(challengeSectionsTable)
+        .set({ orderIdx: i, updatedAt: now })
+        .where(eq(challengeSectionsTable.id, sectionIds[i]))
+        .run();
+    }
+  }
+
+  getMyNotes(userId: string, sectionId: string) {
+    this.assertSectionInMyDiary(sectionId, userId);
+
+    return this.db.db
+      .select()
+      .from(challengeUserNotesTable)
+      .where(
+        and(
+          eq(challengeUserNotesTable.userId, userId),
+          eq(challengeUserNotesTable.sectionId, sectionId),
+        ),
+      )
+      .orderBy(
+        desc(challengeUserNotesTable.pinned),
+        desc(challengeUserNotesTable.updatedAt),
+      )
+      .all();
+  }
+
+  createNote(userId: string, input: CreateStudyDiaryNoteInput) {
+    this.assertNoteTargetInMyDiary(userId, input.sectionId, input.topicId);
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    this.db.db
+      .insert(challengeUserNotesTable)
+      .values({
+        id,
+        ...input,
+        userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.getNoteById(id, userId);
+  }
+
+  updateNote(userId: string, id: string, input: UpdateStudyDiaryNoteInput) {
+    const note = this.getNoteById(id, userId);
+    if (!note) {
+      throw new NotFoundException('Note not found');
+    }
+
+    this.assertNoteTargetInMyDiary(
+      userId,
+      input.sectionId ?? note.sectionId ?? undefined,
+      input.topicId ?? note.topicId ?? undefined,
+    );
+
+    this.db.db
+      .update(challengeUserNotesTable)
+      .set({
+        ...input,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(challengeUserNotesTable.id, id))
+      .run();
+
+    return this.getNoteById(id, userId);
+  }
+
+  deleteNote(userId: string, id: string) {
+    const note = this.getNoteById(id, userId);
+    if (!note) {
+      throw new NotFoundException('Note not found');
+    }
+
+    this.db.db
+      .delete(challengeUserNotesTable)
+      .where(eq(challengeUserNotesTable.id, id))
+      .run();
+  }
+
+  private getOrCreateMyDiary(userId: string): StudyDiaryRow {
+    const existing = this.db.db
+      .select()
+      .from(studyDiariesTable)
+      .where(eq(studyDiariesTable.userId, userId))
+      .get();
+
+    if (existing) {
+      return existing;
+    }
+
+    const user = this.getUser(userId);
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    this.db.db
+      .insert(studyDiariesTable)
+      .values({
+        id,
+        userId,
+        title: `${user.name}의 스터디 다이어리`,
+        description: null,
+        visibility: 'private',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    const diary = this.db.db
+      .select()
+      .from(studyDiariesTable)
+      .where(eq(studyDiariesTable.id, id))
+      .get();
+
+    if (!diary) {
+      throw new BadRequestException('Failed to create study diary');
+    }
+
+    return diary;
+  }
+
+  private getUser(userId: string) {
+    const user = this.db.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .get();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
+  private assertCategoryInMyDiary(
+    categoryId: string,
+    userId: string,
+  ): ChallengeCategoryRow {
+    const row = this.db.db
+      .select({ category: challengeCategoriesTable })
+      .from(challengeCategoriesTable)
+      .innerJoin(
+        studyDiariesTable,
+        eq(challengeCategoriesTable.diaryId, studyDiariesTable.id),
+      )
+      .where(
+        and(
+          eq(challengeCategoriesTable.id, categoryId),
+          eq(studyDiariesTable.userId, userId),
+        ),
+      )
+      .get();
+
+    if (!row) {
+      throw new ForbiddenException('Not authorized');
+    }
+
+    return row.category;
+  }
+
+  private assertSectionInMyDiary(
+    sectionId: string,
+    userId: string,
+  ): ChallengeSectionRow {
+    const row = this.db.db
+      .select({ section: challengeSectionsTable })
+      .from(challengeSectionsTable)
+      .innerJoin(
+        challengeCategoriesTable,
+        eq(challengeSectionsTable.categoryId, challengeCategoriesTable.id),
+      )
+      .innerJoin(
+        studyDiariesTable,
+        eq(challengeCategoriesTable.diaryId, studyDiariesTable.id),
+      )
+      .where(
+        and(
+          eq(challengeSectionsTable.id, sectionId),
+          eq(studyDiariesTable.userId, userId),
+        ),
+      )
+      .get();
+
+    if (!row) {
+      throw new ForbiddenException('Not authorized');
+    }
+
+    return row.section;
+  }
+
+  private assertTopicInMyDiary(
+    topicId: string,
+    userId: string,
+  ): ChallengeTopicRow {
+    const row = this.db.db
+      .select({ topic: challengeTopicsTable })
+      .from(challengeTopicsTable)
+      .innerJoin(
+        challengeSectionsTable,
+        eq(challengeTopicsTable.sectionId, challengeSectionsTable.id),
+      )
+      .innerJoin(
+        challengeCategoriesTable,
+        eq(challengeSectionsTable.categoryId, challengeCategoriesTable.id),
+      )
+      .innerJoin(
+        studyDiariesTable,
+        eq(challengeCategoriesTable.diaryId, studyDiariesTable.id),
+      )
+      .where(
+        and(
+          eq(challengeTopicsTable.id, topicId),
+          eq(studyDiariesTable.userId, userId),
+        ),
+      )
+      .get();
+
+    if (!row) {
+      throw new ForbiddenException('Not authorized');
+    }
+
+    return row.topic;
+  }
+
+  private assertNoteTargetInMyDiary(
+    userId: string,
+    sectionId?: string,
+    topicId?: string,
+  ) {
+    if (sectionId) {
+      this.assertSectionInMyDiary(sectionId, userId);
+    }
+
+    if (topicId) {
+      this.assertTopicInMyDiary(topicId, userId);
+    }
+
+    if (!sectionId && !topicId) {
+      throw new BadRequestException('sectionId or topicId must be provided');
+    }
+  }
+
+  private getNoteById(id: string, userId: string) {
+    return this.db.db
+      .select()
+      .from(challengeUserNotesTable)
+      .where(
+        and(
+          eq(challengeUserNotesTable.id, id),
+          eq(challengeUserNotesTable.userId, userId),
+        ),
+      )
+      .get();
+  }
+
+  private getNextCategoryOrderIdx(diaryId: string) {
+    const result = this.db.db
+      .select({
+        maxOrderIdx: sql<number>`COALESCE(MAX(${challengeCategoriesTable.orderIdx}), -1)`,
+      })
+      .from(challengeCategoriesTable)
+      .where(eq(challengeCategoriesTable.diaryId, diaryId))
+      .get();
+
+    return (result?.maxOrderIdx ?? -1) + 1;
+  }
+
+  private getNextSectionOrderIdx(categoryId: string) {
+    const result = this.db.db
+      .select({
+        maxOrderIdx: sql<number>`COALESCE(MAX(${challengeSectionsTable.orderIdx}), -1)`,
+      })
+      .from(challengeSectionsTable)
+      .where(eq(challengeSectionsTable.categoryId, categoryId))
+      .get();
+
+    return (result?.maxOrderIdx ?? -1) + 1;
+  }
+}

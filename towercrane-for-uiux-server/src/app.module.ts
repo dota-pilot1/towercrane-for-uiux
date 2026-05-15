@@ -17,6 +17,7 @@ import { IssuesModule } from './issues/issues.module';
 import { ChallengeModule } from './challenge/challenge.module';
 import { SqlPracticeModule } from './sql-practice/sql-practice.module';
 import { DevChallengeModule } from './dev-challenge/dev-challenge.module';
+import { StudyDiaryModule } from './study-diary/study-diary.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { DevChallengeModule } from './dev-challenge/dev-challenge.module';
     ApiDocModule,
     IssuesModule,
     ChallengeModule,
+    StudyDiaryModule,
     DevChallengeModule,
     SqlPracticeModule,
   ],
