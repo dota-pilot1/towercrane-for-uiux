@@ -64,7 +64,7 @@ export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
       className={cn(
         'inline-flex items-center justify-center gap-1.5 rounded-[6px] px-3.5 py-1.5 text-sm font-medium transition-all',
         isActive
-          ? 'bg-background border border-surface-border-soft text-text-primary font-bold shadow-sm'
+          ? 'bg-brand-glass border border-brand-border text-brand-primary font-bold shadow-sm'
           : 'text-text-muted hover:text-text-primary hover:bg-surface-raised',
         className,
       )}
