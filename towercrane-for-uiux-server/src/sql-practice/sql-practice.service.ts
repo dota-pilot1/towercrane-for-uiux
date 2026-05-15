@@ -62,7 +62,12 @@ import type {
 
 const DEFAULT_BUILTIN_SEED_FILE = '01_board_basic.sql';
 const LEGACY_SEED_FILE = 'seed.sql';
-const SEED_LEVELS: SqlPracticeSeedLevel[] = ['beginner', 'basic', 'intermediate', 'advanced'];
+const SEED_LEVELS: SqlPracticeSeedLevel[] = [
+  'beginner',
+  'basic',
+  'intermediate',
+  'advanced',
+];
 
 type SeedState = {
   seedHash: string;
@@ -95,16 +100,16 @@ export class SqlPracticeService {
     private readonly databaseService: DatabaseService,
   ) {}
 
-  getMeta(): SqlPracticeMeta {
-    const freshness = this.ensureDatabaseFresh();
-    const activeSeed = this.getActiveSeedSummary(freshness.seedHash);
-    const db = this.openDatabase();
+  getMeta(userId: string): SqlPracticeMeta {
+    const freshness = this.ensureDatabaseFresh(userId);
+    const activeSeed = this.getActiveSeedSummary(userId, freshness.seedHash);
+    const db = this.openDatabase(userId);
 
     try {
       return {
         seedFile: activeSeed.fileName,
         seedHash: freshness.seedHash,
-        dbFile: basename(this.getDatabaseFile()),
+        dbFile: basename(this.getDatabaseFile(userId)),
         lastLoadedAt: freshness.loadedAt,
         tableCount: this.listTableNames(db).length,
         activeSeed,
@@ -114,8 +119,8 @@ export class SqlPracticeService {
     }
   }
 
-  listSeeds(): SqlPracticeSeedListResponse {
-    const activeSeed = this.resolveActiveSeedFile();
+  listSeeds(userId: string): SqlPracticeSeedListResponse {
+    const activeSeed = this.resolveActiveSeedFile(userId);
     const seeds = [
       ...this.scanSeedDirectory('builtin', activeSeed),
       ...this.scanSeedDirectory('uploaded', activeSeed),
@@ -126,7 +131,8 @@ export class SqlPracticeService {
     }
 
     const activeSummary =
-      seeds.find((seed) => seed.isActive) ?? this.buildSeedSummary(activeSeed, activeSeed);
+      seeds.find((seed) => seed.isActive) ??
+      this.buildSeedSummary(activeSeed, activeSeed);
 
     return {
       active: {
@@ -138,10 +144,12 @@ export class SqlPracticeService {
     };
   }
 
-  activateSeed(payload: unknown): SqlActivateSeedResponse {
+  activateSeed(payload: unknown, userId: string): SqlActivateSeedResponse {
     const parsed = activateSeedSchema.safeParse(payload);
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues[0]?.message ?? 'Invalid SQL seed request.');
+      throw new BadRequestException(
+        parsed.error.issues[0]?.message ?? 'Invalid SQL seed request.',
+      );
     }
 
     const seed = this.resolveSeedFile(parsed.data.source, parsed.data.fileName);
@@ -149,11 +157,11 @@ export class SqlPracticeService {
     this.validateSeedSql(seedSql, seed.fileName);
 
     const seedHash = this.hashSql(seedSql);
-    this.writeActiveSeedState({
+    this.writeActiveSeedState(userId, {
       source: seed.source,
       fileName: seed.fileName,
     });
-    const loadedHash = this.rebuildDatabase(seedHash, seed);
+    const loadedHash = this.rebuildDatabase(userId, seedHash, seed);
 
     return {
       success: true,
@@ -163,9 +171,9 @@ export class SqlPracticeService {
     };
   }
 
-  getTables(): TableInfo[] {
-    this.ensureDatabaseFresh();
-    const db = this.openDatabase();
+  getTables(userId: string): TableInfo[] {
+    this.ensureDatabaseFresh(userId);
+    const db = this.openDatabase(userId);
 
     try {
       return this.listTableNames(db).map((tableName) => ({
@@ -178,9 +186,9 @@ export class SqlPracticeService {
     }
   }
 
-  getTable(tableName: string): TableInfo {
-    this.ensureDatabaseFresh();
-    const db = this.openDatabase();
+  getTable(tableName: string, userId: string): TableInfo {
+    this.ensureDatabaseFresh(userId);
+    const db = this.openDatabase(userId);
 
     try {
       this.ensureTableExists(db, tableName);
@@ -194,21 +202,29 @@ export class SqlPracticeService {
     }
   }
 
-  execute(payload: unknown): SqlExecuteResponse {
+  execute(payload: unknown, userId: string): SqlExecuteResponse {
     const start = Date.now();
     const parsed = executeSqlSchema.safeParse(payload);
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues[0]?.message ?? 'Invalid SQL request.');
+      throw new BadRequestException(
+        parsed.error.issues[0]?.message ?? 'Invalid SQL request.',
+      );
     }
     const input = parsed.data;
     const maxQueryLength = this.getMaxQueryLength();
     const { query, type } = sanitizeSql(input.query, maxQueryLength);
-    const freshness = this.ensureDatabaseFresh();
-    const db = this.openDatabase();
+    const freshness = this.ensureDatabaseFresh(userId);
+    const db = this.openDatabase(userId);
 
     try {
       if (this.isReaderType(type)) {
-        return this.executeReader(db, query, type, start, freshness.seedReloaded);
+        return this.executeReader(
+          db,
+          query,
+          type,
+          start,
+          freshness.seedReloaded,
+        );
       }
 
       return this.executeWriter(db, query, type, start, freshness.seedReloaded);
@@ -219,7 +235,8 @@ export class SqlPracticeService {
         columns: null,
         rows: null,
         affectedRows: 0,
-        message: error instanceof Error ? error.message : 'SQL execution failed.',
+        message:
+          error instanceof Error ? error.message : 'SQL execution failed.',
         executionTimeMs: Date.now() - start,
         schemaChanged: false,
         seedReloaded: freshness.seedReloaded,
@@ -229,9 +246,9 @@ export class SqlPracticeService {
     }
   }
 
-  reset(): SqlResetResponse {
-    const activeSeed = this.resolveActiveSeedFile();
-    const seedHash = this.rebuildDatabase(undefined, activeSeed);
+  reset(userId: string): SqlResetResponse {
+    const activeSeed = this.resolveActiveSeedFile(userId);
+    const seedHash = this.rebuildDatabase(userId, undefined, activeSeed);
     return {
       success: true,
       message: `SQL 연습 DB를 ${activeSeed.fileName} 기준으로 다시 만들었습니다.`,
@@ -239,12 +256,14 @@ export class SqlPracticeService {
     };
   }
 
-  reloadSeed(): SqlResetResponse {
-    return this.reset();
+  reloadSeed(userId: string): SqlResetResponse {
+    return this.reset(userId);
   }
 
   getSeedErd(fileName: string): { mmd: string | null } {
-    const parsed = seedFileNameSchema.safeParse(fileName.replace(/\.mmd$/, '.sql'));
+    const parsed = seedFileNameSchema.safeParse(
+      fileName.replace(/\.mmd$/, '.sql'),
+    );
     if (!parsed.success) return { mmd: null };
 
     const baseName = parsed.data.replace(/\.sql$/, '');
@@ -273,7 +292,10 @@ export class SqlPracticeService {
       .select()
       .from(sqlPracticeNotesTable)
       .where(and(...conditions))
-      .orderBy(desc(sqlPracticeNotesTable.pinned), desc(sqlPracticeNotesTable.updatedAt))
+      .orderBy(
+        desc(sqlPracticeNotesTable.pinned),
+        desc(sqlPracticeNotesTable.updatedAt),
+      )
       .all();
   }
 
@@ -395,7 +417,10 @@ export class SqlPracticeService {
     userId: string,
   ): Promise<SqlPracticeGradeSubmissionResponse> {
     const input = gradeSqlPracticeSubmissionSchema.parse(body);
-    const syntaxCheck = this.executeSubmittedSqlForGrade(input.submittedSql);
+    const syntaxCheck = this.executeSubmittedSqlForGrade(
+      input.submittedSql,
+      userId,
+    );
     let geminiRaw: string | null = null;
     let parsed: {
       validity: SqlGradeValidity | null;
@@ -403,7 +428,10 @@ export class SqlPracticeService {
     };
 
     if (syntaxCheck.success) {
-      geminiRaw = await this.callGroq(this.buildSqlGradePrompt(input), 'grading');
+      geminiRaw = await this.callGroq(
+        this.buildSqlGradePrompt(input),
+        'grading',
+      );
       parsed = this.parseSqlGradeResponse(geminiRaw);
     } else {
       parsed = {
@@ -413,7 +441,9 @@ export class SqlPracticeService {
     }
 
     if (!parsed.validity) {
-      throw new InternalServerErrorException('Gemini 채점 결과를 판별하지 못했습니다.');
+      throw new InternalServerErrorException(
+        'Gemini 채점 결과를 판별하지 못했습니다.',
+      );
     }
 
     const now = new Date().toISOString();
@@ -437,7 +467,10 @@ export class SqlPracticeService {
       createdAt: now,
     };
 
-    this.databaseService.db.insert(sqlPracticeSubmissionsTable).values(submission).run();
+    this.databaseService.db
+      .insert(sqlPracticeSubmissionsTable)
+      .values(submission)
+      .run();
     this.databaseService.db
       .insert(sqlPracticeSubmissionLogsTable)
       .values({
@@ -511,7 +544,10 @@ export class SqlPracticeService {
     };
   }
 
-  getMySubmissions(query: unknown, userId: string): SqlPracticeMySubmissionsResponse {
+  getMySubmissions(
+    query: unknown,
+    userId: string,
+  ): SqlPracticeMySubmissionsResponse {
     const parsed = sqlPracticeSubmissionSeedQuerySchema.parse(query);
     return this.getMySubmissionSummary(userId, parsed.seedFile);
   }
@@ -527,7 +563,10 @@ export class SqlPracticeService {
         createdAt: sqlPracticeSubmissionsTable.createdAt,
       })
       .from(sqlPracticeSubmissionsTable)
-      .leftJoin(usersTable, eq(sqlPracticeSubmissionsTable.userId, usersTable.id))
+      .leftJoin(
+        usersTable,
+        eq(sqlPracticeSubmissionsTable.userId, usersTable.id),
+      )
       .where(eq(sqlPracticeSubmissionsTable.seedFile, seedFile))
       .all();
 
@@ -542,14 +581,12 @@ export class SqlPracticeService {
     >();
 
     for (const row of rows) {
-      const current =
-        users.get(row.userId) ??
-        {
-          userName: row.userName ?? 'Unknown User',
-          examples: new Map<string, number>(),
-          submittedExamples: new Set<string>(),
-          lastSubmittedAt: row.createdAt,
-        };
+      const current = users.get(row.userId) ?? {
+        userName: row.userName ?? 'Unknown User',
+        examples: new Map<string, number>(),
+        submittedExamples: new Set<string>(),
+        lastSubmittedAt: row.createdAt,
+      };
 
       current.userName = row.userName ?? current.userName;
       current.submittedExamples.add(row.exampleId);
@@ -618,7 +655,10 @@ export class SqlPracticeService {
         createdAt: sqlPracticeSubmissionLogsTable.createdAt,
       })
       .from(sqlPracticeSubmissionLogsTable)
-      .leftJoin(usersTable, eq(sqlPracticeSubmissionLogsTable.userId, usersTable.id))
+      .leftJoin(
+        usersTable,
+        eq(sqlPracticeSubmissionLogsTable.userId, usersTable.id),
+      )
       .where(eq(sqlPracticeSubmissionLogsTable.seedFile, seedFile))
       .orderBy(desc(sqlPracticeSubmissionLogsTable.createdAt))
       .limit(limit)
@@ -633,7 +673,10 @@ export class SqlPracticeService {
     };
   }
 
-  getMyRecentActivity(query: unknown, userId: string): SqlPracticeActivityResponse {
+  getMyRecentActivity(
+    query: unknown,
+    userId: string,
+  ): SqlPracticeActivityResponse {
     const { seedFile, limit } =
       sqlPracticeSubmissionActivityQuerySchema.parse(query);
     const rows = this.databaseService.db
@@ -652,7 +695,10 @@ export class SqlPracticeService {
         createdAt: sqlPracticeSubmissionLogsTable.createdAt,
       })
       .from(sqlPracticeSubmissionLogsTable)
-      .leftJoin(usersTable, eq(sqlPracticeSubmissionLogsTable.userId, usersTable.id))
+      .leftJoin(
+        usersTable,
+        eq(sqlPracticeSubmissionLogsTable.userId, usersTable.id),
+      )
       .where(
         and(
           eq(sqlPracticeSubmissionLogsTable.userId, userId),
@@ -686,7 +732,8 @@ export class SqlPracticeService {
       )
       .get();
 
-    if (!row) throw new NotFoundException('SQL practice activity log not found.');
+    if (!row)
+      throw new NotFoundException('SQL practice activity log not found.');
 
     this.databaseService.db
       .delete(sqlPracticeSubmissionLogsTable)
@@ -717,7 +764,10 @@ export class SqlPracticeService {
     };
   }
 
-  private executeSubmittedSqlForGrade(query: string): {
+  private executeSubmittedSqlForGrade(
+    query: string,
+    userId: string,
+  ): {
     success: boolean;
     message: string;
   } {
@@ -736,8 +786,8 @@ export class SqlPracticeService {
         };
       }
 
-      const freshness = this.ensureDatabaseFresh();
-      const db = this.openDatabase();
+      const freshness = this.ensureDatabaseFresh(userId);
+      const db = this.openDatabase(userId);
 
       try {
         const response = this.executeReader(
@@ -754,7 +804,8 @@ export class SqlPracticeService {
       } catch (error) {
         return {
           success: false,
-          message: error instanceof Error ? error.message : 'SQL execution failed.',
+          message:
+            error instanceof Error ? error.message : 'SQL execution failed.',
         };
       } finally {
         db.close();
@@ -762,7 +813,8 @@ export class SqlPracticeService {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'SQL validation failed.',
+        message:
+          error instanceof Error ? error.message : 'SQL validation failed.',
       };
     }
   }
@@ -780,7 +832,9 @@ export class SqlPracticeService {
     const rows: Record<string, unknown>[] = [];
     let truncated = false;
 
-    for (const row of statement.iterate() as Iterable<Record<string, unknown>>) {
+    for (const row of statement.iterate() as Iterable<
+      Record<string, unknown>
+    >) {
       if (rows.length >= maxRows) {
         truncated = true;
         break;
@@ -825,11 +879,11 @@ export class SqlPracticeService {
     };
   }
 
-  private ensureDatabaseFresh(): Freshness {
-    const activeSeed = this.resolveActiveSeedFile();
+  private ensureDatabaseFresh(userId: string): Freshness {
+    const activeSeed = this.resolveActiveSeedFile(userId);
     const seedHash = this.getSeedHash(activeSeed);
-    const dbFile = this.getDatabaseFile();
-    const seedState = this.readSeedState();
+    const dbFile = this.getDatabaseFile(userId);
+    const seedState = this.readSeedState(userId);
 
     if (
       !existsSync(dbFile) ||
@@ -837,8 +891,8 @@ export class SqlPracticeService {
       seedState?.source !== activeSeed.source ||
       seedState?.fileName !== activeSeed.fileName
     ) {
-      const loadedHash = this.rebuildDatabase(seedHash, activeSeed);
-      const nextState = this.readSeedState();
+      const loadedHash = this.rebuildDatabase(userId, seedHash, activeSeed);
+      const nextState = this.readSeedState(userId);
       return {
         seedHash: loadedHash,
         seedReloaded: true,
@@ -853,8 +907,12 @@ export class SqlPracticeService {
     };
   }
 
-  private rebuildDatabase(currentHash?: string, activeSeed = this.resolveActiveSeedFile()) {
-    const dbFile = this.getDatabaseFile();
+  private rebuildDatabase(
+    userId: string,
+    currentHash?: string,
+    activeSeed = this.resolveActiveSeedFile(userId),
+  ) {
+    const dbFile = this.getDatabaseFile(userId);
     mkdirSync(dirname(dbFile), { recursive: true });
 
     for (const file of [dbFile, `${dbFile}-wal`, `${dbFile}-shm`]) {
@@ -863,16 +921,18 @@ export class SqlPracticeService {
       }
     }
 
-    const db = this.openDatabase();
+    const db = this.openDatabase(userId);
 
     try {
       const seedSql = readFileSync(activeSeed.filePath, 'utf8');
       const seedHash = currentHash ?? this.hashSql(seedSql);
       if (!seedSql.trim()) {
-        throw new InternalServerErrorException(`${activeSeed.fileName} is empty.`);
+        throw new InternalServerErrorException(
+          `${activeSeed.fileName} is empty.`,
+        );
       }
       db.exec(seedSql);
-      this.writeSeedState({
+      this.writeSeedState(userId, {
         seedHash,
         loadedAt: new Date().toISOString(),
         source: activeSeed.source,
@@ -881,15 +941,17 @@ export class SqlPracticeService {
       return seedHash;
     } catch (error) {
       throw new InternalServerErrorException(
-        error instanceof Error ? error.message : 'Failed to initialize SQL practice database.',
+        error instanceof Error
+          ? error.message
+          : 'Failed to initialize SQL practice database.',
       );
     } finally {
       db.close();
     }
   }
 
-  private openDatabase() {
-    const db = new Database(this.getDatabaseFile());
+  private openDatabase(userId: string) {
+    const db = new Database(this.getDatabaseFile(userId));
     db.pragma('foreign_keys = ON');
     db.pragma('journal_mode = WAL');
     return db;
@@ -962,13 +1024,19 @@ export class SqlPracticeService {
     }
   }
 
-  private getActiveSeedSummary(seedHash?: string) {
-    const activeSeed = this.resolveActiveSeedFile();
+  private getActiveSeedSummary(userId: string, seedHash?: string) {
+    const activeSeed = this.resolveActiveSeedFile(userId);
     return this.buildSeedSummary(activeSeed, activeSeed, seedHash);
   }
 
-  private scanSeedDirectory(source: SqlPracticeSeedSource, activeSeed: ResolvedSeed) {
-    const seedDir = source === 'builtin' ? this.getBuiltinSeedDir() : this.getUploadedSeedDir();
+  private scanSeedDirectory(
+    source: SqlPracticeSeedSource,
+    activeSeed: ResolvedSeed,
+  ) {
+    const seedDir =
+      source === 'builtin'
+        ? this.getBuiltinSeedDir()
+        : this.getUploadedSeedDir();
     if (!existsSync(seedDir)) return [];
 
     const fileNames = readdirSync(seedDir)
@@ -977,10 +1045,14 @@ export class SqlPracticeService {
       .sort((a, b) => a.localeCompare(b));
 
     const hasNumberedBuiltinSeeds =
-      source === 'builtin' && fileNames.some((fileName) => /^\d{2}_/.test(fileName));
+      source === 'builtin' &&
+      fileNames.some((fileName) => /^\d{2}_/.test(fileName));
 
     return fileNames
-      .filter((fileName) => !(hasNumberedBuiltinSeeds && fileName === LEGACY_SEED_FILE))
+      .filter(
+        (fileName) =>
+          !(hasNumberedBuiltinSeeds && fileName === LEGACY_SEED_FILE),
+      )
       .map((fileName) =>
         this.buildSeedSummary(
           {
@@ -993,7 +1065,11 @@ export class SqlPracticeService {
       );
   }
 
-  private buildSeedSummary(seed: ResolvedSeed, activeSeed: ResolvedSeed, hashOverride?: string) {
+  private buildSeedSummary(
+    seed: ResolvedSeed,
+    activeSeed: ResolvedSeed,
+    hashOverride?: string,
+  ) {
     const sql = readFileSync(seed.filePath, 'utf8');
     const stats = statSync(seed.filePath);
     const meta = this.parseSeedMeta(sql, seed.fileName);
@@ -1004,7 +1080,9 @@ export class SqlPracticeService {
       fileName: seed.fileName,
       hash: hashOverride ?? this.hashSql(sql),
       sizeBytes: stats.size,
-      updatedAt: Number.isFinite(stats.mtimeMs) ? stats.mtime.toISOString() : null,
+      updatedAt: Number.isFinite(stats.mtimeMs)
+        ? stats.mtime.toISOString()
+        : null,
       isActive: resolve(seed.filePath) === resolve(activeSeed.filePath),
       isUpload: seed.source === 'uploaded',
     };
@@ -1021,16 +1099,20 @@ export class SqlPracticeService {
 
     const fallbackTitle = this.toFallbackTitle(fileName);
     const title = rawMeta.title?.trim() || fallbackTitle;
-    const tables = this.parseMetaList(rawMeta.tables) ?? this.extractTableNames(sql);
+    const tables =
+      this.parseMetaList(rawMeta.tables) ?? this.extractTableNames(sql);
 
     return {
       title,
       slug: rawMeta.slug?.trim() || this.toFallbackSlug(fileName),
       level: this.parseSeedLevel(rawMeta.level),
-      description: rawMeta.description?.trim() || `${title} SQL 연습 파일입니다.`,
+      description:
+        rawMeta.description?.trim() || `${title} SQL 연습 파일입니다.`,
       topics: this.parseMetaList(rawMeta.topics) ?? [],
       tables,
-      recommendedQueries: this.parseRecommendedQueries(rawMeta.recommendedQueries),
+      recommendedQueries: this.parseRecommendedQueries(
+        rawMeta.recommendedQueries,
+      ),
     };
   }
 
@@ -1099,15 +1181,17 @@ export class SqlPracticeService {
       db.exec(sql);
     } catch (error) {
       throw new BadRequestException(
-        error instanceof Error ? error.message : `Failed to validate ${fileName}.`,
+        error instanceof Error
+          ? error.message
+          : `Failed to validate ${fileName}.`,
       );
     } finally {
       db.close();
     }
   }
 
-  private resolveActiveSeedFile(): ResolvedSeed {
-    const activeState = this.readActiveSeedState();
+  private resolveActiveSeedFile(userId: string): ResolvedSeed {
+    const activeState = this.readActiveSeedState(userId);
     if (activeState) {
       try {
         return this.resolveSeedFile(activeState.source, activeState.fileName);
@@ -1127,7 +1211,9 @@ export class SqlPracticeService {
 
     const builtinFileNames = this.getBuiltinSeedFileNames();
     const fileName =
-      builtinFileNames.find((candidate) => candidate === DEFAULT_BUILTIN_SEED_FILE) ??
+      builtinFileNames.find(
+        (candidate) => candidate === DEFAULT_BUILTIN_SEED_FILE,
+      ) ??
       builtinFileNames.find((candidate) => candidate === LEGACY_SEED_FILE) ??
       builtinFileNames[0] ??
       DEFAULT_BUILTIN_SEED_FILE;
@@ -1135,13 +1221,21 @@ export class SqlPracticeService {
     return this.resolveSeedFile('builtin', fileName);
   }
 
-  private resolveSeedFile(source: SqlPracticeSeedSource, fileName: string): ResolvedSeed {
+  private resolveSeedFile(
+    source: SqlPracticeSeedSource,
+    fileName: string,
+  ): ResolvedSeed {
     const parsed = seedFileNameSchema.safeParse(fileName);
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues[0]?.message ?? 'Invalid SQL seed file.');
+      throw new BadRequestException(
+        parsed.error.issues[0]?.message ?? 'Invalid SQL seed file.',
+      );
     }
 
-    const seedDir = source === 'builtin' ? this.getBuiltinSeedDir() : this.getUploadedSeedDir();
+    const seedDir =
+      source === 'builtin'
+        ? this.getBuiltinSeedDir()
+        : this.getUploadedSeedDir();
     const seedFile = join(seedDir, parsed.data);
 
     if (!existsSync(seedFile) || !statSync(seedFile).isFile()) {
@@ -1173,30 +1267,50 @@ export class SqlPracticeService {
       join(process.cwd(), 'dist/src/sql-practice/seeds'),
     ];
 
-    return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+    return (
+      candidates.find((candidate) => existsSync(candidate)) ?? candidates[0]
+    );
   }
 
   private getUploadedSeedDir() {
     const configured =
       this.configService.get<string>('SQL_PRACTICE_UPLOAD_SEED_DIR') ??
       './data/sql-practice/seeds';
-    return isAbsolute(configured) ? configured : join(process.cwd(), configured);
+    return isAbsolute(configured)
+      ? configured
+      : join(process.cwd(), configured);
   }
 
   private getConfiguredSeedFile() {
-    const configured = this.configService.get<string>('SQL_PRACTICE_SEED_FILE')?.trim();
+    const configured = this.configService
+      .get<string>('SQL_PRACTICE_SEED_FILE')
+      ?.trim();
     if (!configured) return null;
-    return isAbsolute(configured) ? configured : join(process.cwd(), configured);
+    return isAbsolute(configured)
+      ? configured
+      : join(process.cwd(), configured);
   }
 
-  private getDatabaseFile() {
+  private getBaseDatabaseFile() {
     const configured =
       this.configService.get<string>('SQL_PRACTICE_DB_FILE') ??
       './data/sql-practice/runtime/practice.sqlite';
-    return isAbsolute(configured) ? configured : join(process.cwd(), configured);
+    return isAbsolute(configured)
+      ? configured
+      : join(process.cwd(), configured);
   }
 
-  private getSeedHash(activeSeed = this.resolveActiveSeedFile()) {
+  private getDatabaseFile(userId: string) {
+    const baseFile = this.getBaseDatabaseFile();
+    return join(
+      dirname(baseFile),
+      'users',
+      this.getUserRuntimeKey(userId),
+      basename(baseFile),
+    );
+  }
+
+  private getSeedHash(activeSeed: ResolvedSeed) {
     if (!existsSync(activeSeed.filePath)) {
       throw new InternalServerErrorException(
         `SQL practice seed file not found: ${activeSeed.filePath}`,
@@ -1209,12 +1323,12 @@ export class SqlPracticeService {
     return createHash('sha256').update(sql).digest('hex');
   }
 
-  private getSeedStateFile() {
-    return `${this.getDatabaseFile()}.seedhash`;
+  private getSeedStateFile(userId: string) {
+    return `${this.getDatabaseFile(userId)}.seedhash`;
   }
 
-  private readSeedState(): SeedState | null {
-    const stateFile = this.getSeedStateFile();
+  private readSeedState(userId: string): SeedState | null {
+    const stateFile = this.getSeedStateFile(userId);
     if (!existsSync(stateFile)) return null;
 
     try {
@@ -1224,42 +1338,72 @@ export class SqlPracticeService {
     }
   }
 
-  private writeSeedState(state: SeedState) {
-    writeFileSync(this.getSeedStateFile(), JSON.stringify(state, null, 2));
+  private writeSeedState(userId: string, state: SeedState) {
+    writeFileSync(
+      this.getSeedStateFile(userId),
+      JSON.stringify(state, null, 2),
+    );
   }
 
-  private getActiveSeedStateFile() {
+  private getActiveSeedBaseStateFile() {
     const configured =
       this.configService.get<string>('SQL_PRACTICE_ACTIVE_SEED_FILE') ??
       './data/sql-practice/active-seed.json';
-    return isAbsolute(configured) ? configured : join(process.cwd(), configured);
+    return isAbsolute(configured)
+      ? configured
+      : join(process.cwd(), configured);
   }
 
-  private readActiveSeedState(): ActiveSeedState | null {
-    const stateFile = this.getActiveSeedStateFile();
+  private getActiveSeedStateFile(userId: string) {
+    const baseFile = this.getActiveSeedBaseStateFile();
+    return join(
+      dirname(baseFile),
+      'users',
+      this.getUserRuntimeKey(userId),
+      basename(baseFile),
+    );
+  }
+
+  private readActiveSeedState(userId: string): ActiveSeedState | null {
+    const stateFile = this.getActiveSeedStateFile(userId);
     if (!existsSync(stateFile)) return null;
 
     try {
-      const parsed = activateSeedSchema.safeParse(JSON.parse(readFileSync(stateFile, 'utf8')));
+      const parsed = activateSeedSchema.safeParse(
+        JSON.parse(readFileSync(stateFile, 'utf8')),
+      );
       return parsed.success ? parsed.data : null;
     } catch {
       return null;
     }
   }
 
-  private writeActiveSeedState(state: ActiveSeedState) {
-    const stateFile = this.getActiveSeedStateFile();
+  private writeActiveSeedState(userId: string, state: ActiveSeedState) {
+    const stateFile = this.getActiveSeedStateFile(userId);
     mkdirSync(dirname(stateFile), { recursive: true });
     writeFileSync(stateFile, JSON.stringify(state, null, 2));
   }
 
+  private getUserRuntimeKey(userId: string) {
+    const safe = userId
+      .trim()
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .slice(0, 64);
+    const hash = createHash('sha256').update(userId).digest('hex').slice(0, 8);
+    return `${safe || 'user'}-${hash}`;
+  }
+
   private getMaxRows() {
-    const value = Number(this.configService.get<string>('SQL_PRACTICE_MAX_ROWS') ?? 500);
+    const value = Number(
+      this.configService.get<string>('SQL_PRACTICE_MAX_ROWS') ?? 500,
+    );
     return Number.isFinite(value) && value > 0 ? Math.min(value, 5000) : 500;
   }
 
   private getMaxQueryLength() {
-    const value = Number(this.configService.get<string>('SQL_PRACTICE_MAX_QUERY_LENGTH') ?? 10000);
+    const value = Number(
+      this.configService.get<string>('SQL_PRACTICE_MAX_QUERY_LENGTH') ?? 10000,
+    );
     return Number.isFinite(value) && value > 0 ? Math.min(value, 50000) : 10000;
   }
 
@@ -1316,7 +1460,9 @@ ${input.submittedSql}
   ): Promise<string> {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     if (!apiKey) {
-      throw new InternalServerErrorException('Gemini API key is not configured.');
+      throw new InternalServerErrorException(
+        'Gemini API key is not configured.',
+      );
     }
 
     let systemPrompt =
@@ -1363,7 +1509,9 @@ Respond in Korean.`;
   ): Promise<string> {
     const apiKey = this.configService.get<string>('DEEPSEEK_API_KEY');
     if (!apiKey) {
-      throw new InternalServerErrorException('DeepSeek API key is not configured.');
+      throw new InternalServerErrorException(
+        'DeepSeek API key is not configured.',
+      );
     }
 
     let systemPrompt =

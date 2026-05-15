@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import type { SessionRequest } from '../auth/types';
 import { SqlPracticeService } from './sql-practice.service';
@@ -14,43 +26,43 @@ export class SqlPracticeController {
   constructor(private readonly sqlPracticeService: SqlPracticeService) {}
 
   @Get('meta')
-  meta() {
-    return this.sqlPracticeService.getMeta();
+  meta(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.getMeta(req.user.id);
   }
 
   @Get('seeds')
-  seeds() {
-    return this.sqlPracticeService.listSeeds();
+  seeds(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.listSeeds(req.user.id);
   }
 
   @Post('seeds/activate')
-  activateSeed(@Body() body: unknown) {
-    return this.sqlPracticeService.activateSeed(body);
+  activateSeed(@Body() body: unknown, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.activateSeed(body, req.user.id);
   }
 
   @Get('tables')
-  tables() {
-    return this.sqlPracticeService.getTables();
+  tables(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.getTables(req.user.id);
   }
 
   @Get('tables/:tableName')
-  table(@Param('tableName') tableName: string) {
-    return this.sqlPracticeService.getTable(tableName);
+  table(@Param('tableName') tableName: string, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.getTable(tableName, req.user.id);
   }
 
   @Post('execute')
-  execute(@Body() body: unknown) {
-    return this.sqlPracticeService.execute(body);
+  execute(@Body() body: unknown, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.execute(body, req.user.id);
   }
 
   @Post('reset')
-  reset() {
-    return this.sqlPracticeService.reset();
+  reset(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.reset(req.user.id);
   }
 
   @Post('reload-seed')
-  reloadSeed() {
-    return this.sqlPracticeService.reloadSeed();
+  reloadSeed(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.reloadSeed(req.user.id);
   }
 
   @Get('seeds/:fileName/erd')
@@ -123,7 +135,11 @@ export class SqlPracticeController {
   }
 
   @Patch('notes/:id')
-  updateNote(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  updateNote(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = updateSqlPracticeNoteSchema.parse(body);
     return this.sqlPracticeService.updateNote(id, input, req.user.id);
   }

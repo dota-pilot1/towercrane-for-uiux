@@ -82,7 +82,7 @@ export function useActivateSqlPracticeSeed(options?: { onSuccess?: () => void })
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.meta })
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.tables })
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.seeds })
-      toast.success(`${response.activeSeed.title} 파일로 이동했습니다.`)
+      toast.success(`내 연습 파일을 ${response.activeSeed.title}(으)로 변경했습니다.`)
       options?.onSuccess?.()
     },
     onError: (error) =>
@@ -99,7 +99,7 @@ export function useResetSqlPracticeDb() {
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.meta })
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.tables })
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.seeds })
-      toast.success('SQL 연습 DB를 초기화했습니다.')
+      toast.success('내 SQL 연습 DB를 초기화했습니다.')
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 연습 DB 초기화에 실패했습니다.')),
   })
@@ -123,7 +123,7 @@ export function useReloadSqlPracticeSeed() {
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.meta })
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.tables })
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.seeds })
-      toast.success('현재 SQL 연습 파일을 다시 적용했습니다.')
+      toast.success('내 SQL 연습 파일을 다시 적용했습니다.')
     },
     onError: (error) =>
       toast.error(messageFromError(error, 'SQL 연습 파일 적용에 실패했습니다.')),
