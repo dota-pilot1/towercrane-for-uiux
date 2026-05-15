@@ -332,6 +332,7 @@ export function BoardListPage() {
   const navigate = useNavigate()
   const params = useParams({ strict: false }) as { code?: string }
   const code = params.code ?? ''
+  const [input, setInput] = useState('')
   const [q, setQ] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showWrite, setShowWrite] = useState(false)
@@ -392,9 +393,9 @@ export function BoardListPage() {
             {/* 검색 */}
             <div className="border-b border-surface-border-soft p-3">
               <SearchField
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                onSearch={() => {}}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onSearch={() => setQ(input)}
                 placeholder="제목 또는 내용 검색"
                 wrapperClassName="h-10"
               />
