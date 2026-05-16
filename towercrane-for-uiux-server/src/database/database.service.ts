@@ -967,7 +967,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
-          name: '공식 연습장',
+          name: 'SQL 연습장(공식)',
           sectionId: 'sql',
           icon: 'Database',
           displayOrder: 0,
@@ -979,10 +979,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
-          name: '내 연습장',
+          name: 'SQL 연습장(유저)',
           sectionId: 'sql_user',
           icon: 'FileUp',
           displayOrder: 1,
+          isVisible: true,
+          requiredRole: null,
+          parentId: sqlGroupMenuId,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          name: 'SQL 연습장(개인)',
+          sectionId: 'sql_personal',
+          icon: 'UserRound',
+          displayOrder: 2,
           isVisible: true,
           requiredRole: null,
           parentId: sqlGroupMenuId,
@@ -1955,7 +1967,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     this.upsertMenuBySectionId({
       sectionId: 'sql',
-      name: '공식 연습장',
+      name: 'SQL 연습장(공식)',
       icon: 'Database',
       displayOrder: 0,
       parentId: sqlGroupMenu.id,
@@ -1965,9 +1977,19 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     this.upsertMenuBySectionId({
       sectionId: 'sql_user',
-      name: '내 연습장',
+      name: 'SQL 연습장(유저)',
       icon: 'FileUp',
       displayOrder: 1,
+      parentId: sqlGroupMenu.id,
+      requiredRole: null,
+      now,
+    });
+
+    this.upsertMenuBySectionId({
+      sectionId: 'sql_personal',
+      name: 'SQL 연습장(개인)',
+      icon: 'UserRound',
+      displayOrder: 2,
       parentId: sqlGroupMenu.id,
       requiredRole: null,
       now,
@@ -2034,11 +2056,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .prepare(
         `
           DELETE FROM menus
-          WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_examples')
+          WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_personal', 'sql_examples')
             AND rowid NOT IN (
               SELECT MIN(rowid)
               FROM menus
-              WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_examples')
+              WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_personal', 'sql_examples')
               GROUP BY section_id
             )
         `,

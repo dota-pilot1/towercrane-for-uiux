@@ -7,25 +7,58 @@ import {
 
 import { Card } from '../../../shared/ui/card'
 
-const plannedItems = [
-  {
-    icon: FileUp,
-    title: 'SQL 파일 업로드',
-    description: '사용자가 직접 seed SQL 파일을 올리고 개인 연습 DB를 구성합니다.',
-  },
-  {
-    icon: PanelRight,
-    title: '파일 설정 사이드바',
-    description: '오른쪽 패널에서 업로드한 SQL 파일을 선택하고 초기화합니다.',
-  },
-  {
-    icon: ListPlus,
-    title: '문제 직접 추가',
-    description: '왼쪽 문제 목록에 사용자 정의 문제와 정답 SQL을 등록합니다.',
-  },
-]
+type SqlUserPracticePageProps = {
+  mode: 'user' | 'personal'
+}
 
-export function SqlUserPracticePage() {
+const pageCopy = {
+  user: {
+    title: 'SQL 연습장(유저)',
+    description: '유저들이 업로드한 SQL 파일과 직접 낸 문제를 함께 풀 수 있는 공간입니다.',
+    plannedItems: [
+      {
+        icon: FileUp,
+        title: '유저 SQL 파일 업로드',
+        description: '유저가 seed SQL 파일을 올리고 공유 가능한 연습 DB를 구성합니다.',
+      },
+      {
+        icon: PanelRight,
+        title: '공유 파일 설정 사이드바',
+        description: '오른쪽 패널에서 유저가 올린 SQL 파일을 선택하고 초기화합니다.',
+      },
+      {
+        icon: ListPlus,
+        title: '유저 문제 출제',
+        description: '왼쪽 문제 목록에 유저가 만든 문제와 정답 SQL을 등록합니다.',
+      },
+    ],
+  },
+  personal: {
+    title: 'SQL 연습장(개인)',
+    description: '본인만 쓰는 SQL 파일과 문제를 따로 관리할 개인 연습 공간입니다.',
+    plannedItems: [
+      {
+        icon: FileUp,
+        title: '개인 SQL 파일 업로드',
+        description: '내 계정에서만 보이는 SQL 파일을 올리고 개인 연습 DB를 구성합니다.',
+      },
+      {
+        icon: PanelRight,
+        title: '개인 파일 설정 사이드바',
+        description: '오른쪽 패널에서 내 SQL 파일을 선택하고 리셋합니다.',
+      },
+      {
+        icon: ListPlus,
+        title: '개인 문제 추가',
+        description: '혼자 풀 문제와 정답 SQL을 직접 추가합니다.',
+      },
+    ],
+  },
+} as const
+
+export function SqlUserPracticePage({ mode }: SqlUserPracticePageProps) {
+  const copy = pageCopy[mode]
+
   return (
     <div className="mx-auto flex min-h-[calc(100dvh-170px)] w-full max-w-[1720px] flex-col gap-4">
       <Card className="flex min-h-[calc(100dvh-220px)] flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised p-0">
@@ -35,11 +68,9 @@ export function SqlUserPracticePage() {
               <ShieldCheck className="size-4" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-black leading-none text-text-primary">
-                내 연습장
-              </h1>
+              <h1 className="text-lg font-black leading-none text-text-primary">{copy.title}</h1>
               <p className="mt-2 text-sm font-medium text-text-muted">
-                사용자 SQL 파일과 직접 만든 문제를 분리해서 운영할 개인 연습 공간입니다.
+                {copy.description}
               </p>
             </div>
           </div>
@@ -62,7 +93,7 @@ export function SqlUserPracticePage() {
 
           <section className="flex items-center justify-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted/40 p-6">
             <div className="w-full max-w-2xl space-y-4">
-              {plannedItems.map((item) => {
+              {copy.plannedItems.map((item) => {
                 const Icon = item.icon
                 return (
                   <div

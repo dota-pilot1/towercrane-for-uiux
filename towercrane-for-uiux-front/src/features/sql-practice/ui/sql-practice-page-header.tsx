@@ -105,7 +105,7 @@ export function SqlPracticePageHeader({
     <div className="flex min-w-0 items-center justify-between gap-3 rounded-md bg-text-primary px-4 py-2">
       <div className="flex min-w-0 items-center gap-2">
         <Database className="size-3.5 shrink-0 text-background/70" />
-        <h1 className="text-sm font-black text-background">공식 연습장</h1>
+        <h1 className="text-sm font-black text-background">SQL 연습장(공식)</h1>
       </div>
 
       <div className="flex items-center gap-1.5">

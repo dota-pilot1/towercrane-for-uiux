@@ -249,7 +249,13 @@ const sqlPracticeRoute = createRoute({
 const sqlUserPracticeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/sql/user',
-  component: SqlUserPracticePage,
+  component: () => <SqlUserPracticePage mode="user" />,
+})
+
+const sqlPersonalPracticeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql/personal',
+  component: () => <SqlUserPracticePage mode="personal" />,
 })
 
 const sqlPracticeExamplesRoute = createRoute({
@@ -525,6 +531,7 @@ export const router = createRouter({
       apiDocRoute,
       sqlPracticeRoute,
       sqlUserPracticeRoute,
+      sqlPersonalPracticeRoute,
       sqlPracticeExamplesRoute,
       sqlNotesRoute,
       sqlNoteDetailRoute,
