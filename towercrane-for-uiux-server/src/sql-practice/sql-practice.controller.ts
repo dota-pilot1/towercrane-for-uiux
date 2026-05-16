@@ -129,7 +129,7 @@ export class SqlPracticeController {
     @Body() body: unknown,
     @Req() req: SessionRequest,
   ) {
-    const input = replacePersonalSchemaVersionSchema.parse(body);
+    const input = replacePersonalSchemaVersionSchema.parse(body ?? {});
     return this.sqlPracticeService.replacePersonalPracticeSchemaVersion(
       workspaceId,
       file,
