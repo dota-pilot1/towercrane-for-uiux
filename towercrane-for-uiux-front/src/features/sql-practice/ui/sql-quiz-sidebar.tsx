@@ -21,9 +21,9 @@ import { sqlExampleLevelLabels } from '../model/sql-practice-examples'
 const LEVEL_ORDER: SqlExampleLevel[] = ['beginner', 'intermediate', 'advanced']
 
 const LEVEL_ACTIVE_BUTTON_CLASS: Record<SqlExampleLevel, string> = {
-  beginner: 'border-brand-border bg-brand-glass text-brand-primary',
-  intermediate: 'border-accent/50 bg-accent text-accent-foreground',
-  advanced: 'border-destructive/30 bg-danger-glass text-destructive',
+  beginner: 'border-primary bg-primary text-primary-foreground',
+  intermediate: 'border-primary bg-primary text-primary-foreground',
+  advanced: 'border-primary bg-primary text-primary-foreground',
 }
 
 type SqlQuizSidebarProps = {
