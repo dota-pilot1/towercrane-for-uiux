@@ -846,6 +846,68 @@ export const sqlPracticeSubmissionLogsTable = sqliteTable(
   },
 );
 
+export type SqlUserPracticeProblemVisibility = 'public' | 'private';
+export type SqlUserPracticeProblemStatus =
+  | 'draft'
+  | 'published'
+  | 'archived';
+
+export const sqlUserPracticeSchemasTable = sqliteTable(
+  'sql_user_practice_schemas',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    schemaSql: text('schema_sql').notNull(),
+    erdMmd: text('erd_mmd'),
+    dbFileHash: text('db_file_hash').notNull(),
+    sourceType: text('source_type').notNull().default('seed'),
+    replacedFromSchemaId: text('replaced_from_schema_id'),
+    version: integer('version').notNull().default(1),
+    createdBy: text('created_by').references(() => usersTable.id, {
+      onDelete: 'set null',
+    }),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const sqlUserPracticeProblemsTable = sqliteTable(
+  'sql_user_practice_problems',
+  {
+    id: text('id').primaryKey(),
+    schemaId: text('schema_id')
+      .notNull()
+      .references(() => sqlUserPracticeSchemasTable.id, {
+        onDelete: 'cascade',
+      }),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    level: integer('level').notNull().default(1),
+    targetTables: text('target_tables', { mode: 'json' })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    starterSql: text('starter_sql'),
+    answerSql: text('answer_sql').notNull(),
+    explanation: text('explanation'),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    visibility: text('visibility')
+      .$type<SqlUserPracticeProblemVisibility>()
+      .notNull()
+      .default('public'),
+    status: text('status')
+      .$type<SqlUserPracticeProblemStatus>()
+      .notNull()
+      .default('published'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
 // ─── Dev Challenge Module Tables ──────────────────────────────────────────
 
 export type DevChallengeAssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -1011,6 +1073,8 @@ export const schema = {
   sqlPracticeNotesTable,
   sqlPracticeSubmissionsTable,
   sqlPracticeSubmissionLogsTable,
+  sqlUserPracticeSchemasTable,
+  sqlUserPracticeProblemsTable,
   devChallengeCategoriesTable,
   devChallengeSectionsTable,
   devChallengeAssignmentsTable,
@@ -1129,6 +1193,14 @@ export type SqlPracticeSubmissionLogRow =
   typeof sqlPracticeSubmissionLogsTable.$inferSelect;
 export type SqlPracticeSubmissionLogInsert =
   typeof sqlPracticeSubmissionLogsTable.$inferInsert;
+export type SqlUserPracticeSchemaRow =
+  typeof sqlUserPracticeSchemasTable.$inferSelect;
+export type SqlUserPracticeSchemaInsert =
+  typeof sqlUserPracticeSchemasTable.$inferInsert;
+export type SqlUserPracticeProblemRow =
+  typeof sqlUserPracticeProblemsTable.$inferSelect;
+export type SqlUserPracticeProblemInsert =
+  typeof sqlUserPracticeProblemsTable.$inferInsert;
 export type DevChallengeCategoryRow =
   typeof devChallengeCategoriesTable.$inferSelect;
 export type DevChallengeCategoryInsert =

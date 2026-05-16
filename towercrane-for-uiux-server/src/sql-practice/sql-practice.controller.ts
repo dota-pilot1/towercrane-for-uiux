@@ -15,8 +15,12 @@ import { AuthGuard } from '../auth/auth.guard';
 import type { SessionRequest } from '../auth/types';
 import { SqlPracticeService } from './sql-practice.service';
 import {
+  createSqlUserPracticeProblemSchema,
   createSqlPracticeNoteSchema,
+  generateSqlUserPracticeAnswerSchema,
   listSqlPracticeNotesQuerySchema,
+  sqlUserPracticeProblemListQuerySchema,
+  updateSqlUserPracticeProblemSchema,
   updateSqlPracticeNoteSchema,
 } from './sql-practice.schemas';
 
@@ -24,6 +28,112 @@ import {
 @UseGuards(AuthGuard)
 export class SqlPracticeController {
   constructor(private readonly sqlPracticeService: SqlPracticeService) {}
+
+  @Get('user/meta')
+  userMeta(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.getUserPracticeMeta(req.user.id);
+  }
+
+  @Get('user/tables')
+  userTables(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.getUserPracticeTables(req.user.id);
+  }
+
+  @Get('user/tables/:tableName')
+  userTable(
+    @Param('tableName') tableName: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getUserPracticeTable(tableName, req.user.id);
+  }
+
+  @Post('user/execute')
+  userExecute(@Body() body: unknown, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.executeUserPractice(body, req.user.id);
+  }
+
+  @Post('user/reset')
+  userReset(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.resetUserPractice(req.user.id);
+  }
+
+  @Get('user/erd')
+  userErd() {
+    return this.sqlPracticeService.getUserPracticeErd();
+  }
+
+  @Get('user/problems')
+  userProblems(@Query() query: unknown, @Req() req: SessionRequest) {
+    const parsed = sqlUserPracticeProblemListQuerySchema.parse(query);
+    return this.sqlPracticeService.listUserPracticeProblems(
+      parsed,
+      req.user.id,
+    );
+  }
+
+  @Get('user/submissions/mine')
+  myUserPracticeSubmissions(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.getMyUserPracticeSubmissions(req.user.id);
+  }
+
+  @Post('user/problems')
+  createUserProblem(@Body() body: unknown, @Req() req: SessionRequest) {
+    const input = createSqlUserPracticeProblemSchema.parse(body);
+    return this.sqlPracticeService.createUserPracticeProblem(
+      input,
+      req.user.id,
+    );
+  }
+
+  @Post('user/problems/generate-answer')
+  generateUserProblemAnswer(
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = generateSqlUserPracticeAnswerSchema.parse(body);
+    return this.sqlPracticeService.generateUserPracticeAnswer(
+      input,
+      req.user.id,
+    );
+  }
+
+  @Post('user/problems/:id/grade')
+  gradeUserProblem(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.gradeUserPracticeProblem(
+      id,
+      body,
+      req.user.id,
+    );
+  }
+
+  @Get('user/problems/:id')
+  userProblem(@Param('id') id: string) {
+    return this.sqlPracticeService.getUserPracticeProblem(id) ?? null;
+  }
+
+  @Patch('user/problems/:id')
+  updateUserProblem(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSqlUserPracticeProblemSchema.parse(body);
+    return this.sqlPracticeService.updateUserPracticeProblem(
+      id,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Delete('user/problems/:id')
+  @HttpCode(204)
+  deleteUserProblem(@Param('id') id: string, @Req() req: SessionRequest) {
+    return this.sqlPracticeService.deleteUserPracticeProblem(id, req.user.id);
+  }
 
   @Get('meta')
   meta(@Req() req: SessionRequest) {

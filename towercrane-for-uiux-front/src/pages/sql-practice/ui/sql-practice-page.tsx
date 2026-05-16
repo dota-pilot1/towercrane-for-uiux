@@ -374,6 +374,7 @@ function ProblemPanel({
 }) {
   const [submittedSql, setSubmittedSql] = useState('')
   const [gradeStatus, setGradeStatus] = useState<SqlGradeStatus>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [gradeBody, setGradeBody] = useState('')
   const [gradeError, setGradeError] = useState('')
   const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null)
@@ -482,6 +483,23 @@ function ProblemPanel({
     }
   }
 
+  const handleInsertKeyword = (keyword: string, newline = false) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const before = submittedSql.slice(0, start)
+    const after = submittedSql.slice(end)
+    const prefix = newline && before.length > 0 && !before.endsWith('\n') ? '\n' : ''
+    const inserted = `${prefix}${keyword} `
+    setSubmittedSql(before + inserted + after)
+    requestAnimationFrame(() => {
+      textarea.focus()
+      const pos = start + inserted.length
+      textarea.setSelectionRange(pos, pos)
+    })
+  }
+
   const handleAnswerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault()
@@ -508,13 +526,13 @@ function ProblemPanel({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {gradeStatus === 'correct' && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2 py-0.5 text-[11px] font-bold text-brand-primary">
+            <span className="inline-flex h-6 items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2 text-[11px] font-bold text-brand-primary">
               <CheckCircle className="size-3" />
               정답
             </span>
           )}
           {gradeStatus === 'incorrect' && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-destructive/40 bg-danger-glass px-2 py-0.5 text-[11px] font-bold text-destructive">
+            <span className="inline-flex h-6 items-center gap-1 rounded-md border border-destructive/40 bg-danger-glass px-2 text-[11px] font-bold text-destructive">
               <XCircle className="size-3" />
               오답
             </span>
@@ -634,16 +652,25 @@ function ProblemPanel({
         </div>
 
         <div className="px-4 py-3">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-black text-text-primary">답안 SQL</p>
-              <p className="mt-0.5 text-xs text-text-muted">Ctrl+Enter로 바로 제출할 수 있습니다.</p>
-            </div>
+          <p className="mb-2 text-sm font-black text-text-primary">답안 SQL</p>
+          <SqlKeywordButtons onInsert={(kw, newline) => handleInsertKeyword(kw, newline)} />
+
+          <textarea
+            ref={textareaRef}
+            value={submittedSql}
+            onChange={(event) => setSubmittedSql(event.target.value)}
+            onKeyDown={handleAnswerKeyDown}
+            className="ui-input mt-2 min-h-36 w-full resize-y font-mono text-sm leading-6"
+            placeholder={'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'}
+            spellCheck={false}
+          />
+
+          <div className="mt-2 flex justify-end">
             <button
               type="button"
               onClick={handleSubmitAnswer}
               disabled={!submittedSql.trim() || isGrading}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-bold text-brand-primary transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-4 text-xs font-bold text-brand-primary transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isGrading ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -653,17 +680,6 @@ function ProblemPanel({
               제출
             </button>
           </div>
-
-          <textarea
-            value={submittedSql}
-            onChange={(event) => setSubmittedSql(event.target.value)}
-            onKeyDown={handleAnswerKeyDown}
-            className="ui-input min-h-40 w-full resize-y font-mono text-sm leading-6"
-            placeholder={
-              'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'
-            }
-            spellCheck={false}
-          />
 
           {(isGrading || gradeError || gradeBody) && (
             <div className="mt-3 rounded-md border border-surface-border bg-surface-raised px-3 py-2">
@@ -1164,6 +1180,33 @@ function EmptyState({
           <p className="mt-3 text-center text-[11px] text-text-muted">Ctrl+Enter 로 실행</p>
         </div>
       </div>
+    </div>
+  )
+}
+
+const SQL_KEYWORDS = [
+  'SELECT', 'FROM', 'JOIN', 'ON', 'WHERE', 'AND', 'OR', 'LIKE',
+  'GROUP BY', 'HAVING', 'COUNT(*)', 'SUM()', 'ORDER BY', 'ASC', 'DESC', 'LIMIT',
+]
+
+function SqlKeywordButtons({ onInsert }: { onInsert: (keyword: string, newline: boolean) => void }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex flex-wrap gap-1">
+        {SQL_KEYWORDS.map((kw) => (
+          <button
+            key={kw}
+            type="button"
+            onClick={(e) => onInsert(kw, e.ctrlKey || e.metaKey)}
+            className="inline-flex h-6 items-center rounded border border-surface-border-soft bg-surface-muted px-2 font-mono text-[10px] font-bold text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
+          >
+            {kw}
+          </button>
+        ))}
+      </div>
+      <p className="shrink-0 text-[10px] leading-5 text-text-muted">
+        클릭: 커서 삽입<br />Ctrl+클릭: 줄바꿈
+      </p>
     </div>
   )
 }

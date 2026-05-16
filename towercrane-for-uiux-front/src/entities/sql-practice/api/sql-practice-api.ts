@@ -16,6 +16,13 @@ import type {
   SqlPracticeSeedListResponse,
   SqlPracticeSeedSource,
   SqlResetResponse,
+  SqlUserPracticeGenerateAnswerPayload,
+  SqlUserPracticeGenerateAnswerResponse,
+  SqlUserPracticeGradePayload,
+  SqlUserPracticeGradeResponse,
+  SqlUserPracticeProblem,
+  SqlUserPracticeProblemListResponse,
+  SqlUserPracticeProblemPayload,
   TableInfo,
   UpdateSqlPracticeNotePayload,
 } from '../model/types'
@@ -118,6 +125,60 @@ export const sqlPracticeApi = {
     }),
   deleteNote: (id: string) =>
     apiRequest<void>(`/sql/notes/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+  getUserMeta: () => apiRequest<SqlPracticeMeta>('/sql/user/meta'),
+  getUserTables: () => apiRequest<TableInfo[]>('/sql/user/tables'),
+  executeUser: (query: string) =>
+    apiRequest<SqlExecuteResponse>('/sql/user/execute', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    }),
+  resetUser: () =>
+    apiRequest<SqlResetResponse>('/sql/user/reset', {
+      method: 'POST',
+    }),
+  getUserErd: () => apiRequest<{ mmd: string | null }>('/sql/user/erd'),
+  getUserSubmissions: () =>
+    apiRequest<SqlPracticeMySubmissionsResponse>('/sql/user/submissions/mine'),
+  getUserProblems: (filter?: { level?: number; mine?: boolean }) => {
+    const params = new URLSearchParams()
+    if (filter?.level) params.set('level', String(filter.level))
+    if (filter?.mine) params.set('mine', 'true')
+    const query = params.toString()
+    return apiRequest<SqlUserPracticeProblemListResponse>(
+      `/sql/user/problems${query ? `?${query}` : ''}`,
+    )
+  },
+  getUserProblem: (id: string) =>
+    apiRequest<SqlUserPracticeProblem | null>(
+      `/sql/user/problems/${encodeURIComponent(id)}`,
+    ),
+  createUserProblem: (payload: SqlUserPracticeProblemPayload) =>
+    apiRequest<SqlUserPracticeProblem>('/sql/user/problems', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  generateUserProblemAnswer: (payload: SqlUserPracticeGenerateAnswerPayload) =>
+    apiRequest<SqlUserPracticeGenerateAnswerResponse>('/sql/user/problems/generate-answer', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  gradeUserProblem: (id: string, payload: SqlUserPracticeGradePayload) =>
+    apiRequest<SqlUserPracticeGradeResponse>(
+      `/sql/user/problems/${encodeURIComponent(id)}/grade`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+  updateUserProblem: (id: string, payload: Partial<SqlUserPracticeProblemPayload>) =>
+    apiRequest<SqlUserPracticeProblem>(`/sql/user/problems/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteUserProblem: (id: string) =>
+    apiRequest<void>(`/sql/user/problems/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     }),
 }

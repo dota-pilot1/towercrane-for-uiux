@@ -8,6 +8,10 @@
       {
         "include": "sql-practice/seeds/**/*",
         "outDir": "dist"
+      },
+      {
+        "include": "sql-practice/user-seeds/**/*",
+        "outDir": "dist"
       }
     ],
     "watchAssets": true

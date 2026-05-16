@@ -24,20 +24,28 @@ import {
   sqlPracticeNotesTable,
   sqlPracticeSubmissionLogsTable,
   sqlPracticeSubmissionsTable,
+  sqlUserPracticeProblemsTable,
+  sqlUserPracticeSchemasTable,
   usersTable,
 } from '../database/schema';
 import {
   activateSeedSchema,
   executeSqlSchema,
   geminiAskSchema,
+  gradeSqlUserPracticeProblemSchema,
   gradeSqlPracticeSubmissionSchema,
   seedFileNameSchema,
   sqlPracticeSubmissionActivityQuerySchema,
   sqlPracticeSubmissionSeedQuerySchema,
   type CreateSqlPracticeNoteInput,
+  type CreateSqlUserPracticeProblemInput,
+  type GenerateSqlUserPracticeAnswerInput,
+  type GradeSqlUserPracticeProblemInput,
   type GradeSqlPracticeSubmissionInput,
   type ListSqlPracticeNotesQuery,
+  type SqlUserPracticeProblemListQuery,
   type UpdateSqlPracticeNoteInput,
+  type UpdateSqlUserPracticeProblemInput,
 } from './sql-practice.schemas';
 import { sanitizeSql } from './sql-safety';
 import type {
@@ -54,13 +62,21 @@ import type {
   SqlPracticeSeedMeta,
   SqlPracticeSeedSource,
   SqlPracticeSubmission,
+  SqlPracticeSubmissionLevel,
   SqlPracticeSubmissionStatus,
+  SqlUserPracticeGenerateAnswerResponse,
+  SqlUserPracticeGradeResponse,
+  SqlUserPracticeProblem,
+  SqlUserPracticeProblemListResponse,
+  SqlUserPracticeSchema,
   SqlQueryType,
   SqlResetResponse,
   TableInfo,
 } from './sql-practice.types';
 
 const DEFAULT_BUILTIN_SEED_FILE = '01_board_basic.sql';
+const USER_PRACTICE_SEED_FILE = 'user_commerce.sql';
+const USER_PRACTICE_RUNTIME_SCOPE = '__user_practice__';
 const LEGACY_SEED_FILE = 'seed.sql';
 const SEED_LEVELS: SqlPracticeSeedLevel[] = [
   'beginner',
@@ -271,6 +287,404 @@ export class SqlPracticeService {
 
     if (!existsSync(mmdFile)) return { mmd: null };
     return { mmd: readFileSync(mmdFile, 'utf8') };
+  }
+
+  getUserPracticeMeta(userId: string): SqlPracticeMeta {
+    const schema = this.ensureUserPracticeSchema();
+    const activeSeed = this.getUserPracticeSeed();
+    const runtimeUserId = this.getUserPracticeRuntimeUserId(userId);
+    const freshness = this.ensureDatabaseFresh(runtimeUserId, activeSeed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      return {
+        seedFile: activeSeed.fileName,
+        seedHash: freshness.seedHash,
+        dbFile: basename(this.getDatabaseFile(runtimeUserId)),
+        lastLoadedAt: freshness.loadedAt,
+        tableCount: this.listTableNames(db).length,
+        activeSeed: this.buildSeedSummary(
+          activeSeed,
+          activeSeed,
+          schema.dbFileHash,
+        ),
+      };
+    } finally {
+      db.close();
+    }
+  }
+
+  getUserPracticeTables(userId: string): TableInfo[] {
+    const activeSeed = this.getUserPracticeSeed();
+    const runtimeUserId = this.getUserPracticeRuntimeUserId(userId);
+    this.ensureDatabaseFresh(runtimeUserId, activeSeed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      return this.listTableNames(db).map((tableName) => ({
+        tableName,
+        columns: this.getColumns(db, tableName),
+        rowCount: this.getRowCount(db, tableName),
+      }));
+    } finally {
+      db.close();
+    }
+  }
+
+  getUserPracticeTable(tableName: string, userId: string): TableInfo {
+    const activeSeed = this.getUserPracticeSeed();
+    const runtimeUserId = this.getUserPracticeRuntimeUserId(userId);
+    this.ensureDatabaseFresh(runtimeUserId, activeSeed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      this.ensureTableExists(db, tableName);
+      return {
+        tableName,
+        columns: this.getColumns(db, tableName),
+        rowCount: this.getRowCount(db, tableName),
+      };
+    } finally {
+      db.close();
+    }
+  }
+
+  executeUserPractice(payload: unknown, userId: string): SqlExecuteResponse {
+    const start = Date.now();
+    const parsed = executeSqlSchema.safeParse(payload);
+    if (!parsed.success) {
+      throw new BadRequestException(
+        parsed.error.issues[0]?.message ?? 'Invalid SQL request.',
+      );
+    }
+
+    const { query, type } = sanitizeSql(
+      parsed.data.query,
+      this.getMaxQueryLength(),
+    );
+    const activeSeed = this.getUserPracticeSeed();
+    const runtimeUserId = this.getUserPracticeRuntimeUserId(userId);
+    const freshness = this.ensureDatabaseFresh(runtimeUserId, activeSeed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      if (this.isReaderType(type)) {
+        return this.executeReader(
+          db,
+          query,
+          type,
+          start,
+          freshness.seedReloaded,
+        );
+      }
+
+      return this.executeWriter(db, query, type, start, freshness.seedReloaded);
+    } catch (error) {
+      return {
+        success: false,
+        type,
+        columns: null,
+        rows: null,
+        affectedRows: 0,
+        message:
+          error instanceof Error ? error.message : 'SQL execution failed.',
+        executionTimeMs: Date.now() - start,
+        schemaChanged: false,
+        seedReloaded: freshness.seedReloaded,
+      };
+    } finally {
+      db.close();
+    }
+  }
+
+  resetUserPractice(userId: string): SqlResetResponse {
+    const activeSeed = this.getUserPracticeSeed();
+    const runtimeUserId = this.getUserPracticeRuntimeUserId(userId);
+    const seedHash = this.rebuildDatabase(runtimeUserId, undefined, activeSeed);
+    return {
+      success: true,
+      message: `SQL 연습 DB를 ${activeSeed.fileName} 기준으로 다시 만들었습니다.`,
+      seedHash,
+    };
+  }
+
+  getUserPracticeErd(): { mmd: string | null } {
+    const mmdFile = join(this.getUserPracticeSeedDir(), 'user_commerce.mmd');
+    if (!existsSync(mmdFile)) return { mmd: null };
+    return { mmd: readFileSync(mmdFile, 'utf8') };
+  }
+
+  listUserPracticeProblems(
+    query: SqlUserPracticeProblemListQuery,
+    userId: string,
+  ): SqlUserPracticeProblemListResponse {
+    const schema = this.ensureUserPracticeSchema();
+    const conditions = [eq(sqlUserPracticeProblemsTable.schemaId, schema.id)];
+
+    if (query.level) {
+      conditions.push(eq(sqlUserPracticeProblemsTable.level, query.level));
+    }
+
+    if (query.mine) {
+      conditions.push(eq(sqlUserPracticeProblemsTable.createdBy, userId));
+    }
+
+    const rows = this.databaseService.db
+      .select({
+        id: sqlUserPracticeProblemsTable.id,
+        schemaId: sqlUserPracticeProblemsTable.schemaId,
+        title: sqlUserPracticeProblemsTable.title,
+        description: sqlUserPracticeProblemsTable.description,
+        level: sqlUserPracticeProblemsTable.level,
+        targetTables: sqlUserPracticeProblemsTable.targetTables,
+        starterSql: sqlUserPracticeProblemsTable.starterSql,
+        answerSql: sqlUserPracticeProblemsTable.answerSql,
+        explanation: sqlUserPracticeProblemsTable.explanation,
+        createdBy: sqlUserPracticeProblemsTable.createdBy,
+        authorName: usersTable.name,
+        visibility: sqlUserPracticeProblemsTable.visibility,
+        status: sqlUserPracticeProblemsTable.status,
+        createdAt: sqlUserPracticeProblemsTable.createdAt,
+        updatedAt: sqlUserPracticeProblemsTable.updatedAt,
+      })
+      .from(sqlUserPracticeProblemsTable)
+      .innerJoin(usersTable, eq(usersTable.id, sqlUserPracticeProblemsTable.createdBy))
+      .where(and(...conditions))
+      .orderBy(
+        sqlUserPracticeProblemsTable.level,
+        desc(sqlUserPracticeProblemsTable.updatedAt),
+      )
+      .all();
+
+    return {
+      schema,
+      problems: rows,
+    };
+  }
+
+  getUserPracticeProblem(id: string) {
+    return this.databaseService.db
+      .select({
+        id: sqlUserPracticeProblemsTable.id,
+        schemaId: sqlUserPracticeProblemsTable.schemaId,
+        title: sqlUserPracticeProblemsTable.title,
+        description: sqlUserPracticeProblemsTable.description,
+        level: sqlUserPracticeProblemsTable.level,
+        targetTables: sqlUserPracticeProblemsTable.targetTables,
+        starterSql: sqlUserPracticeProblemsTable.starterSql,
+        answerSql: sqlUserPracticeProblemsTable.answerSql,
+        explanation: sqlUserPracticeProblemsTable.explanation,
+        createdBy: sqlUserPracticeProblemsTable.createdBy,
+        authorName: usersTable.name,
+        visibility: sqlUserPracticeProblemsTable.visibility,
+        status: sqlUserPracticeProblemsTable.status,
+        createdAt: sqlUserPracticeProblemsTable.createdAt,
+        updatedAt: sqlUserPracticeProblemsTable.updatedAt,
+      })
+      .from(sqlUserPracticeProblemsTable)
+      .innerJoin(usersTable, eq(usersTable.id, sqlUserPracticeProblemsTable.createdBy))
+      .where(eq(sqlUserPracticeProblemsTable.id, id))
+      .get();
+  }
+
+  createUserPracticeProblem(
+    input: CreateSqlUserPracticeProblemInput,
+    userId: string,
+  ): SqlUserPracticeProblem | undefined {
+    const schema = this.ensureUserPracticeSchema();
+    this.validateProblemTables(input.targetTables, userId);
+    this.validateAnswerSql(input.answerSql, userId);
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    this.databaseService.db
+      .insert(sqlUserPracticeProblemsTable)
+      .values({
+        id,
+        schemaId: schema.id,
+        title: input.title,
+        description: input.description,
+        level: input.level,
+        targetTables: input.targetTables,
+        starterSql: input.starterSql,
+        answerSql: input.answerSql,
+        explanation: input.explanation,
+        createdBy: userId,
+        visibility: input.visibility,
+        status: input.status,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.getUserPracticeProblem(id);
+  }
+
+  updateUserPracticeProblem(
+    id: string,
+    input: UpdateSqlUserPracticeProblemInput,
+    userId: string,
+  ): SqlUserPracticeProblem | undefined {
+    const problem = this.getUserPracticeProblem(id);
+    if (!problem) throw new NotFoundException('SQL user problem not found.');
+    if (problem.createdBy !== userId) {
+      throw new ForbiddenException('Not authorized.');
+    }
+
+    if (input.targetTables) {
+      this.validateProblemTables(input.targetTables, userId);
+    }
+    if (input.answerSql) {
+      this.validateAnswerSql(input.answerSql, userId);
+    }
+
+    this.databaseService.db
+      .update(sqlUserPracticeProblemsTable)
+      .set({
+        ...input,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(sqlUserPracticeProblemsTable.id, id))
+      .run();
+
+    return this.getUserPracticeProblem(id);
+  }
+
+  deleteUserPracticeProblem(id: string, userId: string) {
+    const problem = this.getUserPracticeProblem(id);
+    if (!problem) throw new NotFoundException('SQL user problem not found.');
+    if (problem.createdBy !== userId) {
+      throw new ForbiddenException('Not authorized.');
+    }
+
+    this.databaseService.db
+      .delete(sqlUserPracticeProblemsTable)
+      .where(eq(sqlUserPracticeProblemsTable.id, id))
+      .run();
+  }
+
+  async generateUserPracticeAnswer(
+    input: GenerateSqlUserPracticeAnswerInput,
+    userId: string,
+  ): Promise<SqlUserPracticeGenerateAnswerResponse> {
+    this.validateProblemTables(input.targetTables, userId);
+    const prompt = this.buildUserPracticeAnswerPrompt(input, userId);
+    const raw = await this.callGroq(prompt, 'general');
+    const parsed = this.parseGeneratedAnswer(raw);
+
+    if (!parsed.answerSql) {
+      throw new InternalServerErrorException(
+        '정답 SQL을 생성하지 못했습니다.',
+      );
+    }
+
+    this.validateAnswerSql(parsed.answerSql, userId);
+
+    return {
+      answerSql: parsed.answerSql,
+      explanation: parsed.explanation,
+    };
+  }
+
+  gradeUserPracticeProblem(
+    problemId: string,
+    body: unknown,
+    userId: string,
+  ): SqlUserPracticeGradeResponse {
+    const input = gradeSqlUserPracticeProblemSchema.parse(body);
+    const problem = this.getUserPracticeProblem(problemId);
+    if (!problem) throw new NotFoundException('SQL user problem not found.');
+
+    const execution = this.executeUserPracticeSelectForGrade(
+      input.submittedSql,
+      userId,
+    );
+
+    if (!execution.success) {
+      return {
+        problemId,
+        submittedSql: input.submittedSql,
+        answerSql: problem.answerSql,
+        isCorrect: false,
+        feedback: `SQL 실행에 실패했습니다.\n\n${execution.message}`,
+        execution,
+        answerExecution: null,
+      };
+    }
+
+    const answerExecution = this.executeUserPracticeSelectForGrade(
+      problem.answerSql,
+      userId,
+    );
+
+    if (!answerExecution.success) {
+      throw new InternalServerErrorException(
+        `저장된 정답 SQL을 실행할 수 없습니다. ${answerExecution.message}`,
+      );
+    }
+
+    const isCorrect = this.isSameSqlResult(execution, answerExecution);
+    const now = new Date().toISOString();
+    const seedHash = this.getSeedHash(this.getUserPracticeSeed());
+    const exampleLevel = this.toUserPracticeSubmissionLevel(problem.level);
+    const submission: SqlPracticeSubmission = {
+      id: randomUUID(),
+      userId,
+      seedFile: USER_PRACTICE_SEED_FILE,
+      seedHash,
+      exampleId: problem.id,
+      exampleTitle: problem.title,
+      exampleLevel,
+      exampleOrder: problem.level,
+      submittedSql: input.submittedSql,
+      answerSql: problem.answerSql,
+      isCorrect,
+      score: isCorrect ? 1 : 0,
+      maxScore: 1,
+      feedback: isCorrect
+        ? '정답입니다. 제출 SQL과 정답 SQL의 실행 결과가 동일합니다.'
+        : '오답입니다. 제출 SQL과 정답 SQL의 실행 결과가 다릅니다. 조회 컬럼, 행, 정렬 조건을 확인해주세요.',
+      geminiRaw: null,
+      createdAt: now,
+    };
+
+    this.databaseService.db
+      .insert(sqlPracticeSubmissionsTable)
+      .values(submission)
+      .run();
+    this.databaseService.db
+      .insert(sqlPracticeSubmissionLogsTable)
+      .values({
+        id: randomUUID(),
+        submissionId: submission.id,
+        userId,
+        seedFile: USER_PRACTICE_SEED_FILE,
+        seedHash,
+        exampleId: problem.id,
+        exampleTitle: problem.title,
+        exampleLevel,
+        exampleOrder: problem.level,
+        isCorrect,
+        score: submission.score,
+        maxScore: submission.maxScore,
+        createdAt: now,
+      })
+      .run();
+
+    return {
+      problemId,
+      submittedSql: input.submittedSql,
+      answerSql: problem.answerSql,
+      isCorrect,
+      feedback: submission.feedback,
+      execution,
+      answerExecution,
+    };
+  }
+
+  getMyUserPracticeSubmissions(userId: string): SqlPracticeMySubmissionsResponse {
+    return this.getMySubmissionSummary(userId, USER_PRACTICE_SEED_FILE);
   }
 
   getMyNotes(userId: string, filter: ListSqlPracticeNotesQuery) {
@@ -879,8 +1293,10 @@ export class SqlPracticeService {
     };
   }
 
-  private ensureDatabaseFresh(userId: string): Freshness {
-    const activeSeed = this.resolveActiveSeedFile(userId);
+  private ensureDatabaseFresh(
+    userId: string,
+    activeSeed = this.resolveActiveSeedFile(userId),
+  ): Freshness {
     const seedHash = this.getSeedHash(activeSeed);
     const dbFile = this.getDatabaseFile(userId);
     const seedState = this.readSeedState(userId);
@@ -1247,6 +1663,329 @@ export class SqlPracticeService {
       fileName: parsed.data,
       filePath: seedFile,
     };
+  }
+
+  private getUserPracticeSeed(): ResolvedSeed {
+    const seedFile = join(this.getUserPracticeSeedDir(), USER_PRACTICE_SEED_FILE);
+    if (!existsSync(seedFile) || !statSync(seedFile).isFile()) {
+      throw new InternalServerErrorException(
+        `SQL user practice seed file not found: ${seedFile}`,
+      );
+    }
+
+    return {
+      source: 'builtin',
+      fileName: USER_PRACTICE_SEED_FILE,
+      filePath: seedFile,
+    };
+  }
+
+  private getUserPracticeSeedDir() {
+    const candidates = [
+      join(__dirname, 'user-seeds'),
+      join(process.cwd(), 'src/sql-practice/user-seeds'),
+      join(process.cwd(), 'dist/sql-practice/user-seeds'),
+      join(process.cwd(), 'dist/src/sql-practice/user-seeds'),
+    ];
+
+    return (
+      candidates.find((candidate) => existsSync(candidate)) ?? candidates[0]
+    );
+  }
+
+  private ensureUserPracticeSchema(): SqlUserPracticeSchema {
+    const existing = this.databaseService.db
+      .select()
+      .from(sqlUserPracticeSchemasTable)
+      .where(eq(sqlUserPracticeSchemasTable.isActive, true))
+      .orderBy(desc(sqlUserPracticeSchemasTable.version))
+      .get();
+
+    if (existing) {
+      return this.toUserPracticeSchema(existing);
+    }
+
+    const seed = this.getUserPracticeSeed();
+    const schemaSql = readFileSync(seed.filePath, 'utf8');
+    const erdFile = join(this.getUserPracticeSeedDir(), 'user_commerce.mmd');
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    this.databaseService.db
+      .insert(sqlUserPracticeSchemasTable)
+      .values({
+        id,
+        title: '유저 커머스 운영 DB',
+        description:
+          '유저가 직접 SQL 문제를 출제하고 풀기 위한 공용 커머스 운영 DB입니다.',
+        schemaSql,
+        erdMmd: existsSync(erdFile) ? readFileSync(erdFile, 'utf8') : null,
+        dbFileHash: this.hashSql(schemaSql),
+        sourceType: 'seed',
+        replacedFromSchemaId: null,
+        version: 1,
+        createdBy: null,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    const created = this.databaseService.db
+      .select()
+      .from(sqlUserPracticeSchemasTable)
+      .where(eq(sqlUserPracticeSchemasTable.id, id))
+      .get();
+
+    if (!created) {
+      throw new InternalServerErrorException(
+        'Failed to initialize SQL user practice schema.',
+      );
+    }
+
+    return this.toUserPracticeSchema(created);
+  }
+
+  private toUserPracticeSchema(
+    row: typeof sqlUserPracticeSchemasTable.$inferSelect,
+  ): SqlUserPracticeSchema {
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      version: row.version,
+      dbFileHash: row.dbFileHash,
+      sourceType: row.sourceType,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private getUserPracticeRuntimeUserId(userId: string) {
+    return `${USER_PRACTICE_RUNTIME_SCOPE}:${userId}`;
+  }
+
+  private validateProblemTables(tableNames: string[], userId: string) {
+    if (tableNames.length === 0) return;
+
+    const existingTables = new Set(
+      this.getUserPracticeTables(userId).map((table) => table.tableName),
+    );
+    const invalidTable = tableNames.find(
+      (tableName) => !existingTables.has(tableName),
+    );
+
+    if (invalidTable) {
+      throw new BadRequestException(`Unknown target table: ${invalidTable}`);
+    }
+  }
+
+  private validateAnswerSql(answerSql: string, userId: string) {
+    const { query, type } = sanitizeSql(answerSql, this.getMaxQueryLength());
+    if (type !== 'SELECT') {
+      throw new BadRequestException('정답 SQL은 SELECT/WITH 조회 쿼리만 허용됩니다.');
+    }
+
+    const runtimeUserId = this.getUserPracticeRuntimeUserId(userId);
+    const activeSeed = this.getUserPracticeSeed();
+    this.ensureDatabaseFresh(runtimeUserId, activeSeed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      db.prepare(query).all();
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : '정답 SQL을 실행할 수 없습니다.',
+      );
+    } finally {
+      db.close();
+    }
+  }
+
+  private buildUserPracticeAnswerPrompt(
+    input: GenerateSqlUserPracticeAnswerInput,
+    userId: string,
+  ) {
+    const relatedTables =
+      input.targetTables.length > 0
+        ? input.targetTables
+        : this.getUserPracticeTables(userId).map((table) => table.tableName);
+    const tableSummaries = this.getUserPracticeTablePromptContext(
+      userId,
+      relatedTables,
+    );
+
+    return `유저가 만든 SQL 연습 문제에 맞는 정답 SQL을 생성해주세요.
+
+반드시 아래 형식만 출력하세요. 다른 설명, Markdown, code fence는 쓰지 마세요.
+
+[SQL]
+SELECT ...
+
+[EXPLANATION]
+한국어 해설 한 문장
+
+[문제 제목]
+${input.title ?? '(제목 없음)'}
+
+[문제 설명]
+${input.description}
+
+[난이도]
+Level ${input.level}
+
+[관련 테이블]
+${relatedTables.join(', ')}
+
+[테이블 스키마]
+${tableSummaries}
+
+[생성 규칙]
+- SQLite 문법만 사용하세요.
+- SELECT 또는 WITH로 시작하는 조회 쿼리만 생성하세요.
+- 문제 설명을 만족하는 가장 단순하고 명확한 정답 SQL을 생성하세요.
+- INSERT, UPDATE, DELETE, CREATE, DROP, ALTER는 절대 사용하지 마세요.
+- 테이블과 컬럼은 제공된 스키마에 있는 이름만 사용하세요.`;
+  }
+
+  private getUserPracticeTablePromptContext(
+    userId: string,
+    tableNames: string[],
+  ) {
+    const tables = this.getUserPracticeTables(userId);
+    const requested = new Set(tableNames);
+    const selected = tables.filter((table) => requested.has(table.tableName));
+    const contextTables = selected.length > 0 ? selected : tables;
+
+    return contextTables
+      .map((table) => {
+        const columns = table.columns
+          .map((column) => {
+            const flags = [
+              column.primaryKey ? 'PK' : '',
+              column.notNull ? 'NOT NULL' : '',
+            ].filter(Boolean);
+            const flagText = flags.length ? ` (${flags.join(', ')})` : '';
+            return `- ${column.name} ${column.type}${flagText}`;
+          })
+          .join('\n');
+
+        return `table ${table.tableName} (${table.rowCount} rows)\n${columns}`;
+      })
+      .join('\n\n');
+  }
+
+  private parseGeneratedAnswer(raw: string): {
+    answerSql: string;
+    explanation: string | null;
+  } {
+    const sqlBlock =
+      raw.match(/\[SQL\]\s*([\s\S]*?)(?:\[EXPLANATION\]|$)/i)?.[1] ?? raw;
+    const explanation =
+      raw.match(/\[EXPLANATION\]\s*([\s\S]*)/i)?.[1]?.trim() || null;
+
+    return {
+      answerSql: this.stripSqlCodeFence(sqlBlock).trim(),
+      explanation,
+    };
+  }
+
+  private stripSqlCodeFence(value: string) {
+    return value
+      .replace(/^```sql\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/```$/i, '')
+      .trim();
+  }
+
+  private executeUserPracticeSelectForGrade(
+    query: GradeSqlUserPracticeProblemInput['submittedSql'],
+    userId: string,
+  ): SqlExecuteResponse {
+    const start = Date.now();
+
+    try {
+      const { query: sanitizedQuery, type } = sanitizeSql(
+        query,
+        this.getMaxQueryLength(),
+      );
+
+      if (type !== 'SELECT') {
+        return {
+          success: false,
+          type,
+          columns: null,
+          rows: null,
+          affectedRows: 0,
+          message: '답안 제출은 SELECT/WITH 조회 쿼리만 허용됩니다.',
+          executionTimeMs: Date.now() - start,
+          schemaChanged: false,
+        };
+      }
+
+      const activeSeed = this.getUserPracticeSeed();
+      const runtimeUserId = this.getUserPracticeRuntimeUserId(userId);
+      const freshness = this.ensureDatabaseFresh(runtimeUserId, activeSeed);
+      const db = this.openDatabase(runtimeUserId);
+
+      try {
+        return this.executeReader(
+          db,
+          sanitizedQuery,
+          type,
+          start,
+          freshness.seedReloaded,
+        );
+      } catch (error) {
+        return {
+          success: false,
+          type,
+          columns: null,
+          rows: null,
+          affectedRows: 0,
+          message:
+            error instanceof Error ? error.message : 'SQL execution failed.',
+          executionTimeMs: Date.now() - start,
+          schemaChanged: false,
+          seedReloaded: freshness.seedReloaded,
+        };
+      } finally {
+        db.close();
+      }
+    } catch (error) {
+      return {
+        success: false,
+        type: 'OTHER',
+        columns: null,
+        rows: null,
+        affectedRows: 0,
+        message:
+          error instanceof Error ? error.message : 'SQL validation failed.',
+        executionTimeMs: Date.now() - start,
+        schemaChanged: false,
+      };
+    }
+  }
+
+  private isSameSqlResult(
+    submitted: SqlExecuteResponse,
+    answer: SqlExecuteResponse,
+  ) {
+    if (!submitted.success || !answer.success) return false;
+    return (
+      JSON.stringify(submitted.columns ?? []) ===
+        JSON.stringify(answer.columns ?? []) &&
+      JSON.stringify(submitted.rows ?? []) === JSON.stringify(answer.rows ?? [])
+    );
+  }
+
+  private toUserPracticeSubmissionLevel(
+    level: number,
+  ): SqlPracticeSubmissionLevel {
+    if (level >= 5) return 'advanced';
+    if (level >= 3) return 'intermediate';
+    return 'beginner';
   }
 
   private getBuiltinSeedFileNames() {

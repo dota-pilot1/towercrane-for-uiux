@@ -6,6 +6,9 @@ import type {
   SqlPracticeGradePayload,
   SqlPracticeNoteFilter,
   SqlPracticeSeedSource,
+  SqlUserPracticeGenerateAnswerPayload,
+  SqlUserPracticeGradePayload,
+  SqlUserPracticeProblemPayload,
   UpdateSqlPracticeNotePayload,
 } from '../../../entities/sql-practice/model/types'
 
@@ -22,6 +25,12 @@ export const sqlPracticeQueryKeys = {
   ranking: (seedFile: string) => ['sql-practice', 'ranking', seedFile] as const,
   activity: (seedFile: string) => ['sql-practice', 'activity', seedFile] as const,
   myActivity: (seedFile: string) => ['sql-practice', 'my-activity', seedFile] as const,
+  userMeta: ['sql-practice', 'user', 'meta'] as const,
+  userTables: ['sql-practice', 'user', 'tables'] as const,
+  userErd: ['sql-practice', 'user', 'erd'] as const,
+  userSubmissions: ['sql-practice', 'user', 'submissions'] as const,
+  userProblems: (filter?: { level?: number; mine?: boolean }) =>
+    ['sql-practice', 'user', 'problems', filter ?? {}] as const,
 }
 
 function messageFromError(error: unknown, fallback: string) {
@@ -312,5 +321,110 @@ export function useDeleteSqlPracticeNote() {
       toast.success('SQL 노트를 삭제했습니다.')
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 노트 삭제에 실패했습니다.')),
+  })
+}
+
+export function useSqlUserPracticeMeta() {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.userMeta,
+    queryFn: sqlPracticeApi.getUserMeta,
+  })
+}
+
+export function useSqlUserPracticeTables() {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.userTables,
+    queryFn: sqlPracticeApi.getUserTables,
+  })
+}
+
+export function useSqlUserPracticeErd() {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.userErd,
+    queryFn: sqlPracticeApi.getUserErd,
+    staleTime: Infinity,
+  })
+}
+
+export function useSqlUserPracticeProblems(filter?: { level?: number; mine?: boolean }) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.userProblems(filter),
+    queryFn: () => sqlPracticeApi.getUserProblems(filter),
+  })
+}
+
+export function useSqlUserPracticeSubmissions() {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.userSubmissions,
+    queryFn: sqlPracticeApi.getUserSubmissions,
+  })
+}
+
+export function useExecuteSqlUserPracticeQuery() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (query: string) => sqlPracticeApi.executeUser(query),
+    onSuccess: (response) => {
+      if (response.seedReloaded || shouldRefreshTables(response.type, response.schemaChanged)) {
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userMeta })
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userTables })
+      }
+    },
+    onError: (error) => toast.error(messageFromError(error, 'SQL 실행에 실패했습니다.')),
+  })
+}
+
+export function useResetSqlUserPracticeDb() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: sqlPracticeApi.resetUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userMeta })
+      queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userTables })
+      toast.success('유저 SQL 연습 DB를 초기화했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, 'SQL 연습 DB 초기화에 실패했습니다.')),
+  })
+}
+
+export function useCreateSqlUserPracticeProblem() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: SqlUserPracticeProblemPayload) =>
+      sqlPracticeApi.createUserProblem(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sql-practice', 'user', 'problems'] })
+      toast.success('문제를 등록했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '문제 등록에 실패했습니다.')),
+  })
+}
+
+export function useGenerateSqlUserPracticeAnswer() {
+  return useMutation({
+    mutationFn: (payload: SqlUserPracticeGenerateAnswerPayload) =>
+      sqlPracticeApi.generateUserProblemAnswer(payload),
+    onSuccess: () => {
+      toast.success('정답 SQL을 생성했습니다.')
+    },
+    onError: (error) =>
+      toast.error(messageFromError(error, '정답 SQL 생성에 실패했습니다.')),
+  })
+}
+
+export function useGradeSqlUserPracticeProblem() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: SqlUserPracticeGradePayload }) =>
+      sqlPracticeApi.gradeUserProblem(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userSubmissions })
+    },
+    onError: (error) =>
+      toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
   })
 }

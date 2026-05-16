@@ -172,3 +172,59 @@ export type SqlPracticeActivityResponse = {
   seedFile: string;
   activities: SqlPracticeActivityItem[];
 };
+
+export type SqlUserPracticeProblemVisibility = 'public' | 'private';
+export type SqlUserPracticeProblemStatus =
+  | 'draft'
+  | 'published'
+  | 'archived';
+
+export type SqlUserPracticeSchema = {
+  id: string;
+  title: string;
+  description: string;
+  version: number;
+  dbFileHash: string;
+  sourceType: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SqlUserPracticeProblem = {
+  id: string;
+  schemaId: string;
+  title: string;
+  description: string;
+  level: number;
+  targetTables: string[];
+  starterSql: string | null;
+  answerSql: string;
+  explanation: string | null;
+  createdBy: string;
+  authorName: string | null;
+  visibility: SqlUserPracticeProblemVisibility;
+  status: SqlUserPracticeProblemStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SqlUserPracticeProblemListResponse = {
+  schema: SqlUserPracticeSchema;
+  problems: SqlUserPracticeProblem[];
+};
+
+export type SqlUserPracticeGenerateAnswerResponse = {
+  answerSql: string;
+  explanation: string | null;
+};
+
+export type SqlUserPracticeGradeResponse = {
+  problemId: string;
+  submittedSql: string;
+  answerSql: string;
+  isCorrect: boolean;
+  feedback: string;
+  execution: SqlExecuteResponse;
+  answerExecution: SqlExecuteResponse | null;
+};

@@ -1,0 +1,102 @@
+erDiagram
+  customers ||--o{ orders : places
+  orders ||--o{ order_items : contains
+  products ||--o{ order_items : sold_as
+  categories ||--o{ products : groups
+  orders ||--o{ payments : paid_by
+  orders ||--o| shipments : ships
+  products ||--|| inventory : stocked_as
+  customers ||--o{ reviews : writes
+  products ||--o{ reviews : receives
+  coupons ||--o{ coupon_redemptions : used_as
+  orders ||--o{ coupon_redemptions : applies
+
+  customers {
+    integer id PK
+    text name
+    text email
+    text grade
+    text city
+    text joined_at
+  }
+
+  categories {
+    integer id PK
+    text name
+  }
+
+  products {
+    integer id PK
+    integer category_id FK
+    text name
+    integer price
+    text status
+    text launched_at
+  }
+
+  orders {
+    integer id PK
+    integer customer_id FK
+    text status
+    text ordered_at
+  }
+
+  order_items {
+    integer id PK
+    integer order_id FK
+    integer product_id FK
+    integer quantity
+    integer unit_price
+  }
+
+  payments {
+    integer id PK
+    integer order_id FK
+    text method
+    integer amount
+    text status
+    text paid_at
+  }
+
+  shipments {
+    integer id PK
+    integer order_id FK
+    text carrier
+    text status
+    text shipped_at
+    text delivered_at
+  }
+
+  inventory {
+    integer product_id PK
+    integer stock_quantity
+    integer safety_stock
+    text updated_at
+  }
+
+  reviews {
+    integer id PK
+    integer customer_id FK
+    integer product_id FK
+    integer rating
+    text content
+    text created_at
+  }
+
+  coupons {
+    integer id PK
+    text code
+    text discount_type
+    integer discount_value
+    text starts_at
+    text ends_at
+    integer active
+  }
+
+  coupon_redemptions {
+    integer id PK
+    integer coupon_id FK
+    integer order_id FK
+    integer discount_amount
+    text redeemed_at
+  }

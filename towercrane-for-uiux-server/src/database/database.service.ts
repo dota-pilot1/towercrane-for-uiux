@@ -753,6 +753,51 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_sql_practice_submission_logs_seed_created
         ON sql_practice_submission_logs(seed_file, created_at);
 
+      CREATE TABLE IF NOT EXISTS sql_user_practice_schemas (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        schema_sql TEXT NOT NULL,
+        erd_mmd TEXT,
+        db_file_hash TEXT NOT NULL,
+        source_type TEXT NOT NULL DEFAULT 'seed',
+        replaced_from_schema_id TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
+        created_by TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_user_practice_schemas_active
+        ON sql_user_practice_schemas(is_active, version);
+
+      CREATE TABLE IF NOT EXISTS sql_user_practice_problems (
+        id TEXT PRIMARY KEY,
+        schema_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        level INTEGER NOT NULL DEFAULT 1,
+        target_tables TEXT NOT NULL DEFAULT '[]',
+        starter_sql TEXT,
+        answer_sql TEXT NOT NULL,
+        explanation TEXT,
+        created_by TEXT NOT NULL,
+        visibility TEXT NOT NULL DEFAULT 'public',
+        status TEXT NOT NULL DEFAULT 'published',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(schema_id) REFERENCES sql_user_practice_schemas(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_user_practice_problems_schema_level
+        ON sql_user_practice_problems(schema_id, level, status, created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_user_practice_problems_creator
+        ON sql_user_practice_problems(created_by, updated_at);
+
       INSERT OR IGNORE INTO sql_practice_submission_logs (
         id,
         submission_id,

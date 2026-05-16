@@ -78,6 +78,47 @@ export const updateSqlPracticeNoteSchema = z
     message: 'At least one field must be provided',
   });
 
+export const sqlUserPracticeLevelSchema = z.coerce.number().int().min(1).max(5);
+
+export const sqlUserPracticeProblemListQuerySchema = z.object({
+  level: z
+    .union([sqlUserPracticeLevelSchema, z.literal('all')])
+    .optional()
+    .transform((value) => (value === 'all' ? undefined : value)),
+  mine: z.coerce.boolean().optional().default(false),
+});
+
+export const createSqlUserPracticeProblemSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(80),
+  description: z.string().trim().min(1, 'Description is required').max(4000),
+  level: sqlUserPracticeLevelSchema.default(1),
+  targetTables: z.array(z.string().trim().min(1)).max(12).default([]),
+  starterSql: optionalTrimmedString,
+  answerSql: z.string().trim().min(1, 'Answer SQL is required').max(10000),
+  explanation: optionalTrimmedString,
+  visibility: z.enum(['public', 'private']).default('public'),
+  status: z.enum(['draft', 'published']).default('published'),
+});
+
+export const updateSqlUserPracticeProblemSchema =
+  createSqlUserPracticeProblemSchema.partial().refine(
+    (data) => Object.keys(data).length > 0,
+    {
+      message: 'At least one field must be provided',
+    },
+  );
+
+export const generateSqlUserPracticeAnswerSchema = z.object({
+  title: optionalTrimmedString,
+  description: z.string().trim().min(1, 'Description is required').max(4000),
+  level: sqlUserPracticeLevelSchema.default(1),
+  targetTables: z.array(z.string().trim().min(1)).max(12).default([]),
+});
+
+export const gradeSqlUserPracticeProblemSchema = z.object({
+  submittedSql: z.string().trim().min(1, 'Submitted SQL is required').max(10000),
+});
+
 export type ExecuteSqlInput = z.infer<typeof executeSqlSchema>;
 export type ActivateSeedInput = z.infer<typeof activateSeedSchema>;
 export type GeminiAskInput = z.infer<typeof geminiAskSchema>;
@@ -91,3 +132,18 @@ export type SqlPracticeSubmissionActivityQuery = z.infer<
 export type ListSqlPracticeNotesQuery = z.infer<typeof listSqlPracticeNotesQuerySchema>;
 export type CreateSqlPracticeNoteInput = z.infer<typeof createSqlPracticeNoteSchema>;
 export type UpdateSqlPracticeNoteInput = z.infer<typeof updateSqlPracticeNoteSchema>;
+export type SqlUserPracticeProblemListQuery = z.infer<
+  typeof sqlUserPracticeProblemListQuerySchema
+>;
+export type CreateSqlUserPracticeProblemInput = z.infer<
+  typeof createSqlUserPracticeProblemSchema
+>;
+export type UpdateSqlUserPracticeProblemInput = z.infer<
+  typeof updateSqlUserPracticeProblemSchema
+>;
+export type GenerateSqlUserPracticeAnswerInput = z.infer<
+  typeof generateSqlUserPracticeAnswerSchema
+>;
+export type GradeSqlUserPracticeProblemInput = z.infer<
+  typeof gradeSqlUserPracticeProblemSchema
+>;
