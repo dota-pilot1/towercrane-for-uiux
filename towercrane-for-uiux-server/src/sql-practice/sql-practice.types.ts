@@ -288,6 +288,13 @@ export type SqlPersonalPracticeProblemListResponse = {
   problems: SqlPersonalPracticeProblem[];
 };
 
+export type SqlPersonalPracticeSchemaReplaceResponse = {
+  workspace: SqlPersonalPracticeWorkspace;
+  schemaVersion: SqlPersonalPracticeSchemaVersion;
+  tableCount: number;
+  tables: TableInfo[];
+};
+
 export type SqlPersonalPracticeShare = {
   id: string;
   problemId: string;

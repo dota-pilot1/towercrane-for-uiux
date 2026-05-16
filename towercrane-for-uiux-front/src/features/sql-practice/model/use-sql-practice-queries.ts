@@ -565,6 +565,24 @@ export function useDeleteSqlPersonalPracticeProblem(workspaceId: string | undefi
   })
 }
 
+export function useReplaceSqlPersonalPracticeSchemaVersion(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: { file: File; title?: string; description?: string }) =>
+      sqlPracticeApi.replacePersonalSchemaVersion(workspaceId!, payload),
+    onSuccess: () => {
+      if (workspaceId) {
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.personalDefaultWorkspace })
+        invalidatePersonalPractice(queryClient, workspaceId)
+      }
+      toast.success('SQL 파일을 교체했습니다.')
+    },
+    onError: (error) =>
+      toast.error(messageFromError(error, 'SQL 파일 교체에 실패했습니다.')),
+  })
+}
+
 export function usePublicSqlPersonalPracticeProblem(token: string | undefined) {
   return useQuery({
     queryKey: sqlPracticeQueryKeys.publicPersonalProblem(token ?? ''),

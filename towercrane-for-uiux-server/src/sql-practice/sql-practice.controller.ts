@@ -9,8 +9,11 @@ import {
   Post,
   Query,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '../auth/auth.guard';
 import type { SessionRequest } from '../auth/types';
 import { SqlPracticeService } from './sql-practice.service';
@@ -19,11 +22,19 @@ import {
   createSqlPracticeNoteSchema,
   generateSqlUserPracticeAnswerSchema,
   listSqlPracticeNotesQuerySchema,
+  replacePersonalSchemaVersionSchema,
   sqlPersonalPracticeProblemListQuerySchema,
   sqlUserPracticeProblemListQuerySchema,
   updateSqlUserPracticeProblemSchema,
   updateSqlPracticeNoteSchema,
 } from './sql-practice.schemas';
+
+type UploadedSqlFile = {
+  originalname: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+};
 
 @Controller('sql')
 @UseGuards(AuthGuard)
@@ -106,6 +117,23 @@ export class SqlPracticeController {
     return this.sqlPracticeService.getPersonalPracticeTableRows(
       workspaceId,
       tableName,
+      req.user.id,
+    );
+  }
+
+  @Post('personal/workspaces/:workspaceId/schema-versions/replace')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
+  replacePersonalSchemaVersion(
+    @Param('workspaceId') workspaceId: string,
+    @UploadedFile() file: UploadedSqlFile | undefined,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = replacePersonalSchemaVersionSchema.parse(body);
+    return this.sqlPracticeService.replacePersonalPracticeSchemaVersion(
+      workspaceId,
+      file,
+      input,
       req.user.id,
     );
   }

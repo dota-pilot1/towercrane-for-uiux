@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Clipboard,
   Database,
+  FileUp,
   FileText,
   Link2,
   Loader2,
@@ -42,6 +43,7 @@ import {
   useGenerateSqlPersonalPracticeAnswer,
   useGradeSqlPersonalPracticeProblem,
   useGradeSqlUserPracticeProblem,
+  useReplaceSqlPersonalPracticeSchemaVersion,
   useShareSqlPersonalPracticeProblem,
   useSqlPersonalDefaultWorkspace,
   useSqlPersonalPracticeErd,
@@ -59,6 +61,7 @@ import {
 import { SqlErdDialog } from '../../../features/sql-practice/ui/sql-erd-dialog'
 import { SqlResultTable } from '../../../features/sql-practice/ui/sql-result-table'
 import { SqlTableSchemaDialog } from '../../../features/sql-practice/ui/sql-table-schema-dialog'
+import { SqlPersonalSchemaReplaceDialog } from './sql-personal-schema-replace-dialog'
 import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
@@ -961,6 +964,8 @@ function SqlPersonalPracticeWorkspace() {
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState<TableInfo | null>(null)
   const [erdOpen, setErdOpen] = useState(false)
+  const [replaceSqlOpen, setReplaceSqlOpen] = useState(false)
+  const [replaceSqlError, setReplaceSqlError] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState<SqlUserPracticeProblemPayload>({
     ...initialForm,
@@ -984,6 +989,7 @@ function SqlPersonalPracticeWorkspace() {
   const shareProblemMutation = useShareSqlPersonalPracticeProblem(workspaceId)
   const unshareProblemMutation = useUnshareSqlPersonalPracticeProblem(workspaceId)
   const deleteProblemMutation = useDeleteSqlPersonalPracticeProblem(workspaceId)
+  const replaceSchemaMutation = useReplaceSqlPersonalPracticeSchemaVersion(workspaceId)
 
   const tables = tablesQuery.data ?? EMPTY_TABLES
   const problems = problemsQuery.data?.problems ?? []
@@ -1109,6 +1115,27 @@ function SqlPersonalPracticeWorkspace() {
     if (!window.confirm('개인 문제를 삭제할까요?')) return
     await deleteProblemMutation.mutateAsync(selectedProblem.id)
     setSelectedProblemId(null)
+  }
+
+  const handleReplaceSchema = async (input: {
+    file: File
+    title?: string
+    description?: string
+  }) => {
+    setReplaceSqlError(null)
+    try {
+      await replaceSchemaMutation.mutateAsync(input)
+      setReplaceSqlOpen(false)
+      setSelectedProblemId(null)
+      setSelectedTable(null)
+      setLastResult(null)
+      setGradeResult(null)
+      handleRefresh()
+    } catch (error) {
+      setReplaceSqlError(
+        error instanceof Error ? error.message : 'SQL 파일 교체에 실패했습니다.',
+      )
+    }
   }
 
   if (workspaceQuery.isLoading) {
@@ -1415,15 +1442,29 @@ function SqlPersonalPracticeWorkspace() {
                   {metaQuery.data?.dbFile ?? 'personal-practice.sqlite'}
                 </p>
               </div>
-              {erdQuery.data?.mmd && (
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="ui-icon-button-brand h-8 px-3 text-xs font-black"
-                  onClick={() => setErdOpen(true)}
+                  className="ui-icon-button h-8 gap-1.5 px-3 text-xs"
+                  onClick={() => {
+                    setReplaceSqlError(null)
+                    setReplaceSqlOpen(true)
+                  }}
+                  disabled={!workspaceId}
                 >
-                  ERD
+                  <FileUp className="size-3.5" />
+                  SQL 교체
                 </button>
-              )}
+                {erdQuery.data?.mmd && (
+                  <button
+                    type="button"
+                    className="ui-icon-button-brand h-8 px-3 text-xs font-black"
+                    onClick={() => setErdOpen(true)}
+                  >
+                    ERD
+                  </button>
+                )}
+              </div>
             </div>
             <div className="mt-3 rounded-md border border-surface-border-soft bg-surface-muted p-3 text-xs text-text-secondary">
               <p>schema: {schemaVersion ? `v${schemaVersion.version}` : '-'}</p>
@@ -1474,6 +1515,19 @@ function SqlPersonalPracticeWorkspace() {
           onClose={() => setErdOpen(false)}
         />
       )}
+
+      <SqlPersonalSchemaReplaceDialog
+        open={replaceSqlOpen}
+        workspaceTitle={workspaceQuery.data?.title ?? '개인 SQL 연습장'}
+        currentVersion={schemaVersion}
+        isPending={replaceSchemaMutation.isPending}
+        errorMessage={replaceSqlError}
+        onSubmit={handleReplaceSchema}
+        onClose={() => {
+          setReplaceSqlOpen(false)
+          setReplaceSqlError(null)
+        }}
+      />
 
       <SqlUserPracticeGradeDialog
         result={gradeResult}

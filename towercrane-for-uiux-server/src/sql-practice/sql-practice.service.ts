@@ -48,6 +48,7 @@ import {
   type GradeSqlUserPracticeProblemInput,
   type GradeSqlPracticeSubmissionInput,
   type ListSqlPracticeNotesQuery,
+  type ReplacePersonalSchemaVersionInput,
   type SqlPersonalPracticeProblemListQuery,
   type SqlUserPracticeProblemListQuery,
   type UpdateSqlPracticeNoteInput,
@@ -73,6 +74,7 @@ import type {
   SqlPersonalPracticeProblem,
   SqlPersonalPracticeProblemListResponse,
   SqlPersonalPracticePublicProblemResponse,
+  SqlPersonalPracticeSchemaReplaceResponse,
   SqlPersonalPracticeSchemaVersion,
   SqlPersonalPracticeShare,
   SqlPersonalPracticeWorkspace,
@@ -91,6 +93,7 @@ const USER_PRACTICE_SEED_FILE = 'user_commerce.sql';
 const USER_PRACTICE_RUNTIME_SCOPE = '__user_practice__';
 const PERSONAL_PRACTICE_RUNTIME_SCOPE = '__personal_practice__';
 const PUBLIC_PERSONAL_PRACTICE_RUNTIME_SCOPE = '__public_personal_practice__';
+const PERSONAL_SCHEMA_UPLOAD_MAX_BYTES = 2 * 1024 * 1024;
 const LEGACY_SEED_FILE = 'seed.sql';
 const SEED_LEVELS: SqlPracticeSeedLevel[] = [
   'beginner',
@@ -119,6 +122,13 @@ type Freshness = {
   seedHash: string;
   seedReloaded: boolean;
   loadedAt: string | null;
+};
+
+type UploadedSqlFile = {
+  originalname: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
 };
 
 type SqlGradeValidity = 'correct' | 'incorrect';
@@ -498,6 +508,103 @@ export class SqlPracticeService {
       schemaVersion,
       userId,
     );
+  }
+
+  replacePersonalPracticeSchemaVersion(
+    workspaceId: string,
+    file: UploadedSqlFile | undefined,
+    input: ReplacePersonalSchemaVersionInput,
+    userId: string,
+  ): SqlPersonalPracticeSchemaReplaceResponse {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const activeSchemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const schemaSql = this.validateUploadedPersonalSqlFile(file);
+    this.validatePersonalSchemaSql(schemaSql);
+
+    const nextVersion = this.getNextPersonalSchemaVersion(workspace.id);
+    const now = new Date().toISOString();
+    const schemaVersionId = randomUUID();
+    const dbFileHash = this.hashSql(schemaSql);
+    const tempRuntimeUserId = `${PERSONAL_PRACTICE_RUNTIME_SCOPE}:validate:${schemaVersionId}`;
+
+    const previewSchemaVersion: SqlPersonalPracticeSchemaVersion & { schemaSql: string } = {
+      id: schemaVersionId,
+      workspaceId: workspace.id,
+      version: nextVersion,
+      title: input.title?.trim() || file!.originalname.replace(/\.sql$/i, ''),
+      description: input.description?.trim() || '',
+      erdMmd: null,
+      dbFileHash,
+      sourceType: 'uploaded_sql',
+      sourceFileName: file!.originalname,
+      replacedFromSchemaVersionId: activeSchemaVersion.id,
+      createdAt: now,
+      schemaSql,
+    };
+
+    let tables: TableInfo[];
+    let validationPassed = false;
+
+    try {
+      tables = this.getPersonalPracticeTablesForSchema(
+        workspace.id,
+        previewSchemaVersion,
+        tempRuntimeUserId,
+      );
+      if (tables.length === 0) {
+        throw new BadRequestException('SQL 파일에서 생성된 테이블이 없습니다.');
+      }
+      validationPassed = true;
+    } finally {
+      this.removeRuntimeDatabase(tempRuntimeUserId);
+      if (!validationPassed) {
+        this.removePersonalPracticeSeedFile(schemaVersionId);
+      }
+    }
+
+    try {
+      this.databaseService.db.transaction((tx) => {
+        tx.insert(sqlPersonalPracticeSchemaVersionsTable)
+          .values({
+            id: schemaVersionId,
+            workspaceId: workspace.id,
+            version: nextVersion,
+            title: previewSchemaVersion.title,
+            description: previewSchemaVersion.description,
+            schemaSql,
+            erdMmd: null,
+            dbFileHash,
+            sourceType: 'uploaded_sql',
+            sourceFileName: file!.originalname,
+            replacedFromSchemaVersionId: activeSchemaVersion.id,
+            createdBy: userId,
+            createdAt: now,
+          })
+          .run();
+
+        tx.update(sqlPersonalPracticeWorkspacesTable)
+          .set({ activeSchemaVersionId: schemaVersionId, updatedAt: now })
+          .where(eq(sqlPersonalPracticeWorkspacesTable.id, workspace.id))
+          .run();
+      });
+    } catch (error) {
+      this.removePersonalPracticeSeedFile(schemaVersionId);
+      throw error;
+    }
+
+    const schemaVersion = this.getPersonalSchemaVersion(schemaVersionId);
+    const activeTables = this.getPersonalPracticeTablesForSchema(
+      workspace.id,
+      schemaVersion,
+      userId,
+    );
+
+    return {
+      workspace: this.assertPersonalWorkspaceOwner(workspace.id, userId),
+      schemaVersion,
+      tableCount: activeTables.length,
+      tables: activeTables,
+    };
   }
 
   getPersonalPracticeErd(workspaceId: string, userId: string): { mmd: string | null } {
@@ -2341,6 +2448,13 @@ export class SqlPracticeService {
     };
   }
 
+  private removePersonalPracticeSeedFile(schemaVersionId: string) {
+    const filePath = join(this.getPersonalPracticeSeedDir(), `${schemaVersionId}.sql`);
+    if (existsSync(filePath)) {
+      rmSync(filePath, { force: true });
+    }
+  }
+
   private getPersonalPracticeSeedDir() {
     const configured =
       this.configService.get<string>('SQL_PERSONAL_PRACTICE_SCHEMA_DIR') ??
@@ -2695,6 +2809,70 @@ ${tableSummaries}
       );
     } finally {
       db.close();
+    }
+  }
+
+  private validateUploadedPersonalSqlFile(
+    file: UploadedSqlFile | undefined,
+  ): string {
+    if (!file) {
+      throw new BadRequestException('SQL 파일을 선택해주세요.');
+    }
+
+    if (!file.originalname.toLowerCase().endsWith('.sql')) {
+      throw new BadRequestException('.sql 파일만 업로드할 수 있습니다.');
+    }
+
+    if (file.size > PERSONAL_SCHEMA_UPLOAD_MAX_BYTES) {
+      throw new BadRequestException('SQL 파일은 2MB 이하만 업로드할 수 있습니다.');
+    }
+
+    const schemaSql = file.buffer.toString('utf8');
+    if (!schemaSql.trim()) {
+      throw new BadRequestException('SQL 파일이 비어 있습니다.');
+    }
+
+    return schemaSql;
+  }
+
+  private validatePersonalSchemaSql(schemaSql: string) {
+    const upperSql = schemaSql.toUpperCase();
+    const blockedPatterns = [
+      /\bATTACH\b/,
+      /\bDETACH\b/,
+      /\bLOAD_EXTENSION\b/,
+      /\bWRITABLE_SCHEMA\b/,
+      /^\s*\.(READ|SHELL|OPEN|LOAD)\b/m,
+    ];
+
+    if (blockedPatterns.some((pattern) => pattern.test(upperSql))) {
+      throw new BadRequestException('허용되지 않는 SQL 구문이 포함되어 있습니다.');
+    }
+  }
+
+  private getNextPersonalSchemaVersion(workspaceId: string) {
+    const latest = this.databaseService.db
+      .select({ version: sqlPersonalPracticeSchemaVersionsTable.version })
+      .from(sqlPersonalPracticeSchemaVersionsTable)
+      .where(eq(sqlPersonalPracticeSchemaVersionsTable.workspaceId, workspaceId))
+      .orderBy(desc(sqlPersonalPracticeSchemaVersionsTable.version))
+      .limit(1)
+      .get();
+
+    return (latest?.version ?? 0) + 1;
+  }
+
+  private removeRuntimeDatabase(runtimeUserId: string) {
+    const dbFile = this.getDatabaseFile(runtimeUserId);
+    for (const file of [
+      dbFile,
+      `${dbFile}-wal`,
+      `${dbFile}-shm`,
+      this.getSeedStateFile(runtimeUserId),
+    ]) {
+      if (existsSync(file)) {
+        rmSync(file, { force: true });
+      }
     }
   }
 

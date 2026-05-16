@@ -7,6 +7,7 @@ import type {
   SqlPersonalPracticeProblem,
   SqlPersonalPracticeProblemListResponse,
   SqlPersonalPracticePublicProblemResponse,
+  SqlPersonalPracticeSchemaReplaceResponse,
   SqlPersonalPracticeShare,
   SqlPersonalPracticeWorkspace,
   SqlPracticeGradePayload,
@@ -204,6 +205,27 @@ export const sqlPracticeApi = {
         workspaceId,
       )}/tables/${encodeURIComponent(tableName)}/rows`,
     ),
+  replacePersonalSchemaVersion: (
+    workspaceId: string,
+    payload: { file: File; title?: string; description?: string },
+  ) => {
+    const formData = new FormData()
+    formData.append('file', payload.file)
+    if (payload.title?.trim()) formData.append('title', payload.title.trim())
+    if (payload.description?.trim()) {
+      formData.append('description', payload.description.trim())
+    }
+
+    return apiRequest<SqlPersonalPracticeSchemaReplaceResponse>(
+      `/sql/personal/workspaces/${encodeURIComponent(
+        workspaceId,
+      )}/schema-versions/replace`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+    )
+  },
   getPersonalErd: (workspaceId: string) =>
     apiRequest<{ mmd: string | null }>(
       `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/erd`,

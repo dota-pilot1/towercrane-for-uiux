@@ -9,10 +9,11 @@ type RequestOptions = RequestInit & {
 
 export async function apiRequest<T>(input: string, init?: RequestOptions) {
   const token = useSessionStore.getState().token
+  const isFormData = init?.body instanceof FormData
   const response = await fetch(`${API_BASE_URL}${input}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(init?.skipAuth || !token ? {} : { Authorization: `Bearer ${token}` }),
       ...init?.headers,
     },

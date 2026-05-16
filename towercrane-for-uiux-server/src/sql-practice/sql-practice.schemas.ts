@@ -126,6 +126,11 @@ export const sqlPersonalPracticeProblemListQuerySchema = z.object({
     .transform((value) => (value === 'all' ? undefined : value)),
 });
 
+export const replacePersonalSchemaVersionSchema = z.object({
+  title: optionalTrimmedString,
+  description: z.string().trim().max(500).optional().default(''),
+});
+
 export const publicShareTokenSchema = z.string().trim().min(16).max(128);
 
 export type ExecuteSqlInput = z.infer<typeof executeSqlSchema>;
@@ -158,4 +163,7 @@ export type GradeSqlUserPracticeProblemInput = z.infer<
 >;
 export type SqlPersonalPracticeProblemListQuery = z.infer<
   typeof sqlPersonalPracticeProblemListQuerySchema
+>;
+export type ReplacePersonalSchemaVersionInput = z.infer<
+  typeof replacePersonalSchemaVersionSchema
 >;
