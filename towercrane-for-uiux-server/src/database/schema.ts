@@ -847,10 +847,7 @@ export const sqlPracticeSubmissionLogsTable = sqliteTable(
 );
 
 export type SqlUserPracticeProblemVisibility = 'public' | 'private';
-export type SqlUserPracticeProblemStatus =
-  | 'draft'
-  | 'published'
-  | 'archived';
+export type SqlUserPracticeProblemStatus = 'draft' | 'published' | 'archived';
 
 export const sqlUserPracticeSchemasTable = sqliteTable(
   'sql_user_practice_schemas',
@@ -1025,6 +1022,44 @@ export const sqlPersonalPracticeSharesTable = sqliteTable(
   },
 );
 
+export const sqlPersonalPracticeSubmissionsTable = sqliteTable(
+  'sql_personal_practice_submissions',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    problemId: text('problem_id')
+      .notNull()
+      .references(() => sqlPersonalPracticeProblemsTable.id, {
+        onDelete: 'cascade',
+      }),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => sqlPersonalPracticeWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    schemaVersionId: text('schema_version_id')
+      .notNull()
+      .references(() => sqlPersonalPracticeSchemaVersionsTable.id, {
+        onDelete: 'restrict',
+      }),
+    shareId: text('share_id').references(
+      () => sqlPersonalPracticeSharesTable.id,
+      {
+        onDelete: 'set null',
+      },
+    ),
+    submittedSql: text('submitted_sql').notNull(),
+    answerSql: text('answer_sql').notNull(),
+    isCorrect: integer('is_correct', { mode: 'boolean' }).notNull(),
+    score: integer('score').notNull().default(0),
+    maxScore: integer('max_score').notNull().default(1),
+    feedback: text('feedback').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+);
+
 // ─── Dev Challenge Module Tables ──────────────────────────────────────────
 
 export type DevChallengeAssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -1196,6 +1231,7 @@ export const schema = {
   sqlPersonalPracticeSchemaVersionsTable,
   sqlPersonalPracticeProblemsTable,
   sqlPersonalPracticeSharesTable,
+  sqlPersonalPracticeSubmissionsTable,
   devChallengeCategoriesTable,
   devChallengeSectionsTable,
   devChallengeAssignmentsTable,
@@ -1338,6 +1374,10 @@ export type SqlPersonalPracticeShareRow =
   typeof sqlPersonalPracticeSharesTable.$inferSelect;
 export type SqlPersonalPracticeShareInsert =
   typeof sqlPersonalPracticeSharesTable.$inferInsert;
+export type SqlPersonalPracticeSubmissionRow =
+  typeof sqlPersonalPracticeSubmissionsTable.$inferSelect;
+export type SqlPersonalPracticeSubmissionInsert =
+  typeof sqlPersonalPracticeSubmissionsTable.$inferInsert;
 export type DevChallengeCategoryRow =
   typeof devChallengeCategoriesTable.$inferSelect;
 export type DevChallengeCategoryInsert =

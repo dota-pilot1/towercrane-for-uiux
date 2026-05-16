@@ -12,7 +12,11 @@ export type SqlQueryType =
 
 export type SqlPracticeSeedSource = 'builtin' | 'uploaded';
 
-export type SqlPracticeSeedLevel = 'beginner' | 'basic' | 'intermediate' | 'advanced';
+export type SqlPracticeSeedLevel =
+  | 'beginner'
+  | 'basic'
+  | 'intermediate'
+  | 'advanced';
 
 export type SqlPracticeSeedMeta = {
   title: string;
@@ -90,7 +94,10 @@ export type SqlActivateSeedResponse = SqlResetResponse & {
   activeSeed: SqlPracticeSeedSummary;
 };
 
-export type SqlPracticeSubmissionLevel = 'beginner' | 'intermediate' | 'advanced';
+export type SqlPracticeSubmissionLevel =
+  | 'beginner'
+  | 'intermediate'
+  | 'advanced';
 
 export type SqlPracticeSubmission = {
   id: string;
@@ -174,10 +181,7 @@ export type SqlPracticeActivityResponse = {
 };
 
 export type SqlUserPracticeProblemVisibility = 'public' | 'private';
-export type SqlUserPracticeProblemStatus =
-  | 'draft'
-  | 'published'
-  | 'archived';
+export type SqlUserPracticeProblemStatus = 'draft' | 'published' | 'archived';
 
 export type SqlUserPracticeSchema = {
   id: string;
@@ -238,6 +242,14 @@ export type SqlPersonalPracticeProblemStatus =
   | 'published'
   | 'archived';
 
+export type SqlPersonalPracticeSubmissionStatus = {
+  problemId: string;
+  bestScore: number;
+  isCorrect: boolean;
+  lastSubmittedAt: string;
+  lastSubmissionId: string;
+};
+
 export type SqlPersonalPracticeWorkspace = {
   id: string;
   ownerId: string;
@@ -278,6 +290,7 @@ export type SqlPersonalPracticeProblem = {
   authorName: string | null;
   shareToken: string | null;
   shareEnabled: boolean;
+  submissionStatus: SqlPersonalPracticeSubmissionStatus | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -316,6 +329,7 @@ export type SqlPersonalPracticePublicProblemResponse = {
     SqlPersonalPracticeProblem,
     'answerSql' | 'createdBy' | 'shareToken' | 'shareEnabled'
   >;
+  submissionStatus: SqlPersonalPracticeSubmissionStatus | null;
   tables: TableInfo[];
   erdMmd: string | null;
 };

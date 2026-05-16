@@ -99,7 +99,9 @@ export const sqlPracticeApi = {
   deleteMyActivityItem: (id: string) =>
     apiRequest<SqlPracticeDeleteActivityResponse>(
       `/sql/submissions/activity/mine/${encodeURIComponent(id)}`,
-      { method: 'DELETE' },
+      {
+        method: 'DELETE',
+      },
     ),
   clearMyActivity: (seedFile: string) =>
     apiRequest<SqlPracticeDeleteActivityResponse>(
@@ -111,10 +113,9 @@ export const sqlPracticeApi = {
   getNote: (id: string) =>
     apiRequest<SqlPracticeNote | null>(`/sql/notes/${encodeURIComponent(id)}`),
   getPublicNote: (token: string) =>
-    apiRequest<PublicSqlPracticeNote | null>(
-      `/public/sql/notes/${encodeURIComponent(token)}`,
-      { skipAuth: true },
-    ),
+    apiRequest<PublicSqlPracticeNote | null>(`/public/sql/notes/${encodeURIComponent(token)}`, {
+      skipAuth: true,
+    }),
   shareNote: (id: string) =>
     apiRequest<SqlPracticeNote>(`/sql/notes/${encodeURIComponent(id)}/share`, {
       method: 'POST',
@@ -157,9 +158,7 @@ export const sqlPracticeApi = {
     )
   },
   getUserProblem: (id: string) =>
-    apiRequest<SqlUserPracticeProblem | null>(
-      `/sql/user/problems/${encodeURIComponent(id)}`,
-    ),
+    apiRequest<SqlUserPracticeProblem | null>(`/sql/user/problems/${encodeURIComponent(id)}`),
   createUserProblem: (payload: SqlUserPracticeProblemPayload) =>
     apiRequest<SqlUserPracticeProblem>('/sql/user/problems', {
       method: 'POST',
@@ -171,13 +170,10 @@ export const sqlPracticeApi = {
       body: JSON.stringify(payload),
     }),
   gradeUserProblem: (id: string, payload: SqlUserPracticeGradePayload) =>
-    apiRequest<SqlUserPracticeGradeResponse>(
-      `/sql/user/problems/${encodeURIComponent(id)}/grade`,
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      },
-    ),
+    apiRequest<SqlUserPracticeGradeResponse>(`/sql/user/problems/${encodeURIComponent(id)}/grade`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   updateUserProblem: (id: string, payload: Partial<SqlUserPracticeProblemPayload>) =>
     apiRequest<SqlUserPracticeProblem>(`/sql/user/problems/${encodeURIComponent(id)}`, {
       method: 'PATCH',
@@ -192,18 +188,12 @@ export const sqlPracticeApi = {
   getDefaultPersonalWorkspace: () =>
     apiRequest<SqlPersonalPracticeWorkspace>('/sql/personal/workspaces/default'),
   getPersonalMeta: (workspaceId: string) =>
-    apiRequest<SqlPracticeMeta>(
-      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/meta`,
-    ),
+    apiRequest<SqlPracticeMeta>(`/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/meta`),
   getPersonalTables: (workspaceId: string) =>
-    apiRequest<TableInfo[]>(
-      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/tables`,
-    ),
+    apiRequest<TableInfo[]>(`/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/tables`),
   getPersonalTableRows: (workspaceId: string, tableName: string) =>
     apiRequest<SqlExecuteResponse>(
-      `/sql/personal/workspaces/${encodeURIComponent(
-        workspaceId,
-      )}/tables/${encodeURIComponent(tableName)}/rows`,
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/tables/${encodeURIComponent(tableName)}/rows`,
     ),
   replacePersonalSchemaVersion: (
     workspaceId: string,
@@ -217,9 +207,7 @@ export const sqlPracticeApi = {
     }
 
     return apiRequest<SqlPersonalPracticeSchemaReplaceResponse>(
-      `/sql/personal/workspaces/${encodeURIComponent(
-        workspaceId,
-      )}/schema-versions/replace`,
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/schema-versions/replace`,
       {
         method: 'POST',
         body: formData,
@@ -235,9 +223,7 @@ export const sqlPracticeApi = {
     if (filter?.level) params.set('level', String(filter.level))
     const query = params.toString()
     return apiRequest<SqlPersonalPracticeProblemListResponse>(
-      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems${
-        query ? `?${query}` : ''
-      }`,
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems${query ? `?${query}` : ''}`,
     )
   },
   createPersonalProblem: (workspaceId: string, payload: SqlUserPracticeProblemPayload) =>
@@ -253,23 +239,15 @@ export const sqlPracticeApi = {
     payload: SqlUserPracticeGenerateAnswerPayload,
   ) =>
     apiRequest<SqlUserPracticeGenerateAnswerResponse>(
-      `/sql/personal/workspaces/${encodeURIComponent(
-        workspaceId,
-      )}/problems/generate-answer`,
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems/generate-answer`,
       {
         method: 'POST',
         body: JSON.stringify(payload),
       },
     ),
-  gradePersonalProblem: (
-    workspaceId: string,
-    id: string,
-    payload: SqlUserPracticeGradePayload,
-  ) =>
+  gradePersonalProblem: (workspaceId: string, id: string, payload: SqlUserPracticeGradePayload) =>
     apiRequest<SqlUserPracticeGradeResponse>(
-      `/sql/personal/workspaces/${encodeURIComponent(
-        workspaceId,
-      )}/problems/${encodeURIComponent(id)}/grade`,
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems/${encodeURIComponent(id)}/grade`,
       {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -281,9 +259,7 @@ export const sqlPracticeApi = {
     payload: Partial<SqlUserPracticeProblemPayload>,
   ) =>
     apiRequest<SqlPersonalPracticeProblem>(
-      `/sql/personal/workspaces/${encodeURIComponent(
-        workspaceId,
-      )}/problems/${encodeURIComponent(id)}`,
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems/${encodeURIComponent(id)}`,
       {
         method: 'PATCH',
         body: JSON.stringify(payload),
@@ -291,35 +267,28 @@ export const sqlPracticeApi = {
     ),
   deletePersonalProblem: (workspaceId: string, id: string) =>
     apiRequest<void>(
-      `/sql/personal/workspaces/${encodeURIComponent(
-        workspaceId,
-      )}/problems/${encodeURIComponent(id)}`,
-      { method: 'DELETE' },
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems/${encodeURIComponent(id)}`,
+      {
+        method: 'DELETE',
+      },
     ),
   sharePersonalProblem: (workspaceId: string, id: string) =>
     apiRequest<SqlPersonalPracticeShare>(
-      `/sql/personal/workspaces/${encodeURIComponent(
-        workspaceId,
-      )}/problems/${encodeURIComponent(id)}/share`,
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems/${encodeURIComponent(id)}/share`,
       { method: 'POST' },
     ),
   unsharePersonalProblem: (workspaceId: string, id: string) =>
     apiRequest<void>(
-      `/sql/personal/workspaces/${encodeURIComponent(
-        workspaceId,
-      )}/problems/${encodeURIComponent(id)}/unshare`,
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems/${encodeURIComponent(id)}/unshare`,
       { method: 'POST' },
     ),
   getPublicPersonalProblem: (token: string) =>
     apiRequest<SqlPersonalPracticePublicProblemResponse | null>(
       `/public/sql/personal/${encodeURIComponent(token)}`,
-      { skipAuth: true },
     ),
   getPublicPersonalTableRows: (token: string, tableName: string) =>
     apiRequest<SqlExecuteResponse>(
-      `/public/sql/personal/${encodeURIComponent(token)}/tables/${encodeURIComponent(
-        tableName,
-      )}/rows`,
+      `/public/sql/personal/${encodeURIComponent(token)}/tables/${encodeURIComponent(tableName)}/rows`,
       { skipAuth: true },
     ),
   gradePublicPersonalProblem: (token: string, payload: SqlUserPracticeGradePayload) =>
@@ -328,7 +297,6 @@ export const sqlPracticeApi = {
       {
         method: 'POST',
         body: JSON.stringify(payload),
-        skipAuth: true,
       },
     ),
 }

@@ -884,6 +884,36 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_sql_personal_shares_problem_enabled
         ON sql_personal_practice_shares(problem_id, enabled);
 
+      CREATE TABLE IF NOT EXISTS sql_personal_practice_submissions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        problem_id TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
+        schema_version_id TEXT NOT NULL,
+        share_id TEXT,
+        submitted_sql TEXT NOT NULL,
+        answer_sql TEXT NOT NULL,
+        is_correct INTEGER NOT NULL,
+        score INTEGER NOT NULL DEFAULT 0,
+        max_score INTEGER NOT NULL DEFAULT 1,
+        feedback TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(problem_id) REFERENCES sql_personal_practice_problems(id) ON DELETE CASCADE,
+        FOREIGN KEY(workspace_id) REFERENCES sql_personal_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(schema_version_id) REFERENCES sql_personal_practice_schema_versions(id) ON DELETE RESTRICT,
+        FOREIGN KEY(share_id) REFERENCES sql_personal_practice_shares(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_submissions_user_problem_created
+        ON sql_personal_practice_submissions(user_id, problem_id, created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_submissions_problem_created
+        ON sql_personal_practice_submissions(problem_id, created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_submissions_share_user
+        ON sql_personal_practice_submissions(share_id, user_id, created_at);
+
       INSERT OR IGNORE INTO sql_practice_submission_logs (
         id,
         submission_id,

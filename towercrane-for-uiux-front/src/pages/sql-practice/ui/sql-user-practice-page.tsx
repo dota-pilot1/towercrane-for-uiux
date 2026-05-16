@@ -227,9 +227,7 @@ function SqlUserPracticeWorkspace() {
     setForm((current) => ({
       ...current,
       answerSql: response.answerSql,
-      explanation: current.explanation?.trim()
-        ? current.explanation
-        : response.explanation ?? '',
+      explanation: current.explanation?.trim() ? current.explanation : (response.explanation ?? ''),
     }))
   }
 
@@ -300,9 +298,7 @@ function SqlUserPracticeWorkspace() {
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-black text-text-primary">문제 목록</h2>
-                <p className="mt-1 text-xs font-semibold text-text-muted">
-                  {problems.length}문제
-                </p>
+                <p className="mt-1 text-xs font-semibold text-text-muted">{problems.length}문제</p>
               </div>
               <Button size="sm-icon" tone="brand" onClick={() => setFormOpen((value) => !value)}>
                 <Plus className="size-4" />
@@ -367,7 +363,8 @@ function SqlUserPracticeWorkspace() {
                       <SubmissionStatusIcon status={submissionStatusByProblem[problem.id]} />
                     </div>
                     <p className="mt-1 truncate pl-9 text-xs font-medium text-text-muted">
-                      {problem.authorName ?? 'Unknown'} · {problem.targetTables.join(', ') || '테이블 미지정'}
+                      {problem.authorName ?? 'Unknown'} ·{' '}
+                      {problem.targetTables.join(', ') || '테이블 미지정'}
                     </p>
                   </button>
                 ))}
@@ -740,20 +737,10 @@ function SubmissionStatusIcon({ status }: { status?: SqlPracticeSubmissionStatus
   if (!status) return null
 
   if (status.isCorrect) {
-    return (
-      <CheckCircle
-        className="size-3.5 shrink-0 text-brand-primary"
-        aria-label="정답"
-      />
-    )
+    return <CheckCircle className="size-3.5 shrink-0 text-brand-primary" aria-label="정답" />
   }
 
-  return (
-    <XCircle
-      className="size-3.5 shrink-0 text-destructive"
-      aria-label="오답"
-    />
-  )
+  return <XCircle className="size-3.5 shrink-0 text-destructive" aria-label="오답" />
 }
 
 type ProblemFormProps = {
@@ -822,11 +809,17 @@ function ProblemForm({
           />
         </FormRow>
 
-        <FormRow label="관련 테이블" hint="쉼표로 구분합니다. 비워두면 테이블 미지정으로 저장됩니다.">
+        <FormRow
+          label="관련 테이블"
+          hint="쉼표로 구분합니다. 비워두면 테이블 미지정으로 저장됩니다."
+        >
           <Input
             value={targetTablesText}
             onChange={(event) => onTargetTablesTextChange(event.target.value)}
-            placeholder={`예: ${tables.slice(0, 3).map((table) => table.tableName).join(', ')}`}
+            placeholder={`예: ${tables
+              .slice(0, 3)
+              .map((table) => table.tableName)
+              .join(', ')}`}
           />
         </FormRow>
 
@@ -881,7 +874,9 @@ function ProblemForm({
               <AutoGrowTextarea
                 value={form.starterSql}
                 onChange={(event) => onFormChange({ ...form, starterSql: event.target.value })}
-                placeholder={'비워두면 풀이 입력창은 빈 상태로 시작합니다.\n예: SELECT ...\nFROM ...;'}
+                placeholder={
+                  '비워두면 풀이 입력창은 빈 상태로 시작합니다.\n예: SELECT ...\nFROM ...;'
+                }
                 rows={3}
                 className="font-mono text-sm"
               />
@@ -1065,9 +1060,7 @@ function SqlPersonalPracticeWorkspace() {
     setForm((current) => ({
       ...current,
       answerSql: response.answerSql,
-      explanation: current.explanation?.trim()
-        ? current.explanation
-        : response.explanation ?? '',
+      explanation: current.explanation?.trim() ? current.explanation : (response.explanation ?? ''),
     }))
   }
 
@@ -1132,9 +1125,7 @@ function SqlPersonalPracticeWorkspace() {
       setGradeResult(null)
       handleRefresh()
     } catch (error) {
-      setReplaceSqlError(
-        error instanceof Error ? error.message : 'SQL 파일 교체에 실패했습니다.',
-      )
+      setReplaceSqlError(error instanceof Error ? error.message : 'SQL 파일 교체에 실패했습니다.')
     }
   }
 
@@ -1155,9 +1146,7 @@ function SqlPersonalPracticeWorkspace() {
             {workspaceQuery.data?.title ?? '개인 SQL 연습장'}
           </h1>
           <span className="shrink-0 text-xs font-semibold text-text-muted">
-            {schemaVersion
-              ? `v${schemaVersion.version} · ${schemaVersion.title}`
-              : '개인 DB'}
+            {schemaVersion ? `v${schemaVersion.version} · ${schemaVersion.title}` : '개인 DB'}
           </span>
         </div>
         <button
@@ -1183,9 +1172,7 @@ function SqlPersonalPracticeWorkspace() {
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-black text-text-primary">내 문제 목록</h2>
-                <p className="mt-1 text-xs font-semibold text-text-muted">
-                  {problems.length}문제
-                </p>
+                <p className="mt-1 text-xs font-semibold text-text-muted">{problems.length}문제</p>
               </div>
               <Button size="sm-icon" tone="brand" onClick={() => setFormOpen((value) => !value)}>
                 <Plus className="size-4" />
@@ -1238,12 +1225,21 @@ function SqlPersonalPracticeWorkspace() {
                       <span className="min-w-0 flex-1 truncate text-sm font-black text-text-primary">
                         {problem.title}
                       </span>
-                      {problem.shareToken ? (
+                      {problem.submissionStatus?.isCorrect ? (
+                        <CheckCircle className="size-3.5 shrink-0 text-brand-primary" />
+                      ) : problem.submissionStatus ? (
+                        <XCircle className="size-3.5 shrink-0 text-destructive" />
+                      ) : problem.shareToken ? (
                         <Link2 className="size-3.5 shrink-0 text-brand-primary" />
                       ) : null}
                     </div>
                     <p className="mt-1 truncate pl-9 text-xs font-medium text-text-muted">
-                      {problem.shareToken ? '공유됨' : '비공유'} ·{' '}
+                      {problem.submissionStatus
+                        ? problem.submissionStatus.isCorrect
+                          ? '정답'
+                          : '오답'
+                        : '미제출'}{' '}
+                      · {problem.shareToken ? '공유됨' : '비공유'} ·{' '}
                       {problem.targetTables.join(', ') || '테이블 미지정'}
                     </p>
                   </button>

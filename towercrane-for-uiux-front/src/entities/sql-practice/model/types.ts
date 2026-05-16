@@ -324,6 +324,14 @@ export type SqlPersonalPracticeSchemaVersion = {
   createdAt: string
 }
 
+export type SqlPersonalPracticeSubmissionStatus = {
+  problemId: string
+  bestScore: number
+  isCorrect: boolean
+  lastSubmittedAt: string
+  lastSubmissionId: string
+}
+
 export type SqlPersonalPracticeProblem = {
   id: string
   workspaceId: string
@@ -340,6 +348,7 @@ export type SqlPersonalPracticeProblem = {
   authorName: string | null
   shareToken: string | null
   shareEnabled: boolean
+  submissionStatus: SqlPersonalPracticeSubmissionStatus | null
   createdAt: string
   updatedAt: string
 }
@@ -375,11 +384,9 @@ export type SqlPersonalPracticePublicProblem = Omit<
 
 export type SqlPersonalPracticePublicProblemResponse = {
   workspace: Pick<SqlPersonalPracticeWorkspace, 'id' | 'title'>
-  schemaVersion: Pick<
-    SqlPersonalPracticeSchemaVersion,
-    'id' | 'version' | 'title' | 'dbFileHash'
-  >
+  schemaVersion: Pick<SqlPersonalPracticeSchemaVersion, 'id' | 'version' | 'title' | 'dbFileHash'>
   problem: SqlPersonalPracticePublicProblem
   tables: TableInfo[]
   erdMmd: string | null
+  submissionStatus: SqlPersonalPracticeSubmissionStatus | null
 }

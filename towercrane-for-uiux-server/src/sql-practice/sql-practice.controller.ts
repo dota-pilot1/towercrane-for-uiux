@@ -14,7 +14,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
+import { AuthService } from '../auth/auth.service';
 import type { SessionRequest } from '../auth/types';
 import { SqlPracticeService } from './sql-practice.service';
 import {
@@ -52,10 +54,7 @@ export class SqlPracticeController {
   }
 
   @Get('user/tables/:tableName')
-  userTable(
-    @Param('tableName') tableName: string,
-    @Req() req: SessionRequest,
-  ) {
+  userTable(@Param('tableName') tableName: string, @Req() req: SessionRequest) {
     return this.sqlPracticeService.getUserPracticeTable(tableName, req.user.id);
   }
 
@@ -122,7 +121,9 @@ export class SqlPracticeController {
   }
 
   @Post('personal/workspaces/:workspaceId/schema-versions/replace')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }),
+  )
   replacePersonalSchemaVersion(
     @Param('workspaceId') workspaceId: string,
     @UploadedFile() file: UploadedSqlFile | undefined,
@@ -286,10 +287,7 @@ export class SqlPracticeController {
   }
 
   @Post('user/problems/generate-answer')
-  generateUserProblemAnswer(
-    @Body() body: unknown,
-    @Req() req: SessionRequest,
-  ) {
+  generateUserProblemAnswer(@Body() body: unknown, @Req() req: SessionRequest) {
     const input = generateSqlUserPracticeAnswerSchema.parse(body);
     return this.sqlPracticeService.generateUserPracticeAnswer(
       input,
@@ -463,7 +461,10 @@ export class SqlPracticeController {
 
 @Controller('public/sql')
 export class SqlPracticePublicController {
-  constructor(private readonly sqlPracticeService: SqlPracticeService) {}
+  constructor(
+    private readonly sqlPracticeService: SqlPracticeService,
+    private readonly authService: AuthService,
+  ) {}
 
   @Get('notes/:token')
   publicNote(@Param('token') token: string) {
@@ -471,8 +472,11 @@ export class SqlPracticePublicController {
   }
 
   @Get('personal/:token')
-  publicPersonalProblem(@Param('token') token: string) {
-    return this.sqlPracticeService.getPublicPersonalPracticeProblem(token);
+  publicPersonalProblem(@Param('token') token: string, @Req() req: Request) {
+    return this.sqlPracticeService.getPublicPersonalPracticeProblem(
+      token,
+      this.getOptionalUserId(req),
+    );
   }
 
   @Get('personal/:token/tables/:tableName/rows')
@@ -490,10 +494,26 @@ export class SqlPracticePublicController {
   gradePublicPersonalProblem(
     @Param('token') token: string,
     @Body() body: unknown,
+    @Req() req: Request,
   ) {
     return this.sqlPracticeService.gradePublicPersonalPracticeProblem(
       token,
       body,
+      this.getOptionalUserId(req),
     );
+  }
+
+  private getOptionalUserId(req: Request) {
+    const authorization = req.headers.authorization;
+    if (!authorization?.startsWith('Bearer ')) return undefined;
+
+    const token = authorization.slice('Bearer '.length).trim();
+    if (!token) return undefined;
+
+    try {
+      return this.authService.getSessionUser(token).id;
+    } catch {
+      return undefined;
+    }
   }
 }

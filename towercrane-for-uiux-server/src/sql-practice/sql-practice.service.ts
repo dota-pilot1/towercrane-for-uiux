@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 import { createHash, randomUUID } from 'node:crypto';
 import {
@@ -27,6 +27,7 @@ import {
   sqlPersonalPracticeProblemsTable,
   sqlPersonalPracticeSchemaVersionsTable,
   sqlPersonalPracticeSharesTable,
+  sqlPersonalPracticeSubmissionsTable,
   sqlPersonalPracticeWorkspacesTable,
   sqlUserPracticeProblemsTable,
   sqlUserPracticeSchemasTable,
@@ -77,6 +78,7 @@ import type {
   SqlPersonalPracticeSchemaReplaceResponse,
   SqlPersonalPracticeSchemaVersion,
   SqlPersonalPracticeShare,
+  SqlPersonalPracticeSubmissionStatus,
   SqlPersonalPracticeWorkspace,
   SqlUserPracticeGenerateAnswerResponse,
   SqlUserPracticeGradeResponse,
@@ -517,7 +519,9 @@ export class SqlPracticeService {
     userId: string,
   ): SqlPersonalPracticeSchemaReplaceResponse {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
-    const activeSchemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const activeSchemaVersion = this.getActivePersonalSchemaVersion(
+      workspace.id,
+    );
     const schemaSql = this.validateUploadedPersonalSqlFile(file);
     this.validatePersonalSchemaSql(schemaSql);
 
@@ -527,7 +531,9 @@ export class SqlPracticeService {
     const dbFileHash = this.hashSql(schemaSql);
     const tempRuntimeUserId = `${PERSONAL_PRACTICE_RUNTIME_SCOPE}:validate:${schemaVersionId}`;
 
-    const previewSchemaVersion: SqlPersonalPracticeSchemaVersion & { schemaSql: string } = {
+    const previewSchemaVersion: SqlPersonalPracticeSchemaVersion & {
+      schemaSql: string;
+    } = {
       id: schemaVersionId,
       workspaceId: workspace.id,
       version: nextVersion,
@@ -607,7 +613,10 @@ export class SqlPracticeService {
     };
   }
 
-  getPersonalPracticeErd(workspaceId: string, userId: string): { mmd: string | null } {
+  getPersonalPracticeErd(
+    workspaceId: string,
+    userId: string,
+  ): { mmd: string | null } {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
     return { mmd: schemaVersion.erdMmd ?? null };
@@ -656,7 +665,10 @@ export class SqlPracticeService {
       .leftJoin(
         sqlPersonalPracticeSharesTable,
         and(
-          eq(sqlPersonalPracticeSharesTable.problemId, sqlPersonalPracticeProblemsTable.id),
+          eq(
+            sqlPersonalPracticeSharesTable.problemId,
+            sqlPersonalPracticeProblemsTable.id,
+          ),
           eq(sqlPersonalPracticeSharesTable.enabled, true),
         ),
       )
@@ -667,13 +679,18 @@ export class SqlPracticeService {
       )
       .all();
 
+    const submissionStatusByProblem =
+      this.getPersonalSubmissionStatusByProblemIds(
+        userId,
+        rows.map((row) => row.id),
+      );
+
     return {
       workspace,
       schemaVersion,
-      problems: rows.map((row) => ({
-        ...row,
-        shareEnabled: Boolean(row.shareEnabled),
-      })),
+      problems: rows.map((row) =>
+        this.toPersonalProblem(row, submissionStatusByProblem[row.id] ?? null),
+      ),
     };
   }
 
@@ -685,7 +702,10 @@ export class SqlPracticeService {
     this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const problem = this.getPersonalPracticeProblemRow(workspaceId, id);
     if (!problem) return null;
-    return this.toPersonalProblem(problem);
+    return this.toPersonalProblem(
+      problem,
+      this.getPersonalSubmissionStatus(userId, problem.id),
+    );
   }
 
   createPersonalPracticeProblem(
@@ -695,8 +715,18 @@ export class SqlPracticeService {
   ): SqlPersonalPracticeProblem | null {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
-    this.validatePersonalProblemTables(input.targetTables, workspace.id, schemaVersion, userId);
-    this.validatePersonalAnswerSql(input.answerSql, workspace.id, schemaVersion, userId);
+    this.validatePersonalProblemTables(
+      input.targetTables,
+      workspace.id,
+      schemaVersion,
+      userId,
+    );
+    this.validatePersonalAnswerSql(
+      input.answerSql,
+      workspace.id,
+      schemaVersion,
+      userId,
+    );
 
     const id = randomUUID();
     const now = new Date().toISOString();
@@ -731,15 +761,29 @@ export class SqlPracticeService {
   ): SqlPersonalPracticeProblem | null {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const problem = this.getPersonalPracticeProblemRow(workspace.id, id);
-    if (!problem) throw new NotFoundException('SQL personal problem not found.');
-    if (problem.createdBy !== userId) throw new ForbiddenException('Not authorized.');
-    const schemaVersion = this.getPersonalSchemaVersion(problem.schemaVersionId);
+    if (!problem)
+      throw new NotFoundException('SQL personal problem not found.');
+    if (problem.createdBy !== userId)
+      throw new ForbiddenException('Not authorized.');
+    const schemaVersion = this.getPersonalSchemaVersion(
+      problem.schemaVersionId,
+    );
 
     if (input.targetTables) {
-      this.validatePersonalProblemTables(input.targetTables, workspace.id, schemaVersion, userId);
+      this.validatePersonalProblemTables(
+        input.targetTables,
+        workspace.id,
+        schemaVersion,
+        userId,
+      );
     }
     if (input.answerSql) {
-      this.validatePersonalAnswerSql(input.answerSql, workspace.id, schemaVersion, userId);
+      this.validatePersonalAnswerSql(
+        input.answerSql,
+        workspace.id,
+        schemaVersion,
+        userId,
+      );
     }
 
     this.databaseService.db
@@ -761,11 +805,17 @@ export class SqlPracticeService {
     return this.getPersonalPracticeProblem(workspace.id, id, userId);
   }
 
-  deletePersonalPracticeProblem(workspaceId: string, id: string, userId: string) {
+  deletePersonalPracticeProblem(
+    workspaceId: string,
+    id: string,
+    userId: string,
+  ) {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const problem = this.getPersonalPracticeProblemRow(workspace.id, id);
-    if (!problem) throw new NotFoundException('SQL personal problem not found.');
-    if (problem.createdBy !== userId) throw new ForbiddenException('Not authorized.');
+    if (!problem)
+      throw new NotFoundException('SQL personal problem not found.');
+    if (problem.createdBy !== userId)
+      throw new ForbiddenException('Not authorized.');
 
     this.databaseService.db
       .delete(sqlPersonalPracticeProblemsTable)
@@ -780,7 +830,12 @@ export class SqlPracticeService {
   ): Promise<SqlUserPracticeGenerateAnswerResponse> {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
-    this.validatePersonalProblemTables(input.targetTables, workspace.id, schemaVersion, userId);
+    this.validatePersonalProblemTables(
+      input.targetTables,
+      workspace.id,
+      schemaVersion,
+      userId,
+    );
     const prompt = this.buildPersonalPracticeAnswerPrompt(
       workspace.id,
       schemaVersion,
@@ -794,7 +849,12 @@ export class SqlPracticeService {
       throw new InternalServerErrorException('정답 SQL을 생성하지 못했습니다.');
     }
 
-    this.validatePersonalAnswerSql(parsed.answerSql, workspace.id, schemaVersion, userId);
+    this.validatePersonalAnswerSql(
+      parsed.answerSql,
+      workspace.id,
+      schemaVersion,
+      userId,
+    );
     return parsed;
   }
 
@@ -805,8 +865,10 @@ export class SqlPracticeService {
   ): SqlPersonalPracticeShare {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const problem = this.getPersonalPracticeProblemRow(workspace.id, id);
-    if (!problem) throw new NotFoundException('SQL personal problem not found.');
-    if (problem.createdBy !== userId) throw new ForbiddenException('Not authorized.');
+    if (!problem)
+      throw new NotFoundException('SQL personal problem not found.');
+    if (problem.createdBy !== userId)
+      throw new ForbiddenException('Not authorized.');
 
     const existing = this.databaseService.db
       .select()
@@ -842,15 +904,22 @@ export class SqlPracticeService {
       .from(sqlPersonalPracticeSharesTable)
       .where(eq(sqlPersonalPracticeSharesTable.id, shareId))
       .get();
-    if (!share) throw new InternalServerErrorException('Failed to create share.');
+    if (!share)
+      throw new InternalServerErrorException('Failed to create share.');
     return this.toPersonalShare(share);
   }
 
-  unsharePersonalPracticeProblem(workspaceId: string, id: string, userId: string) {
+  unsharePersonalPracticeProblem(
+    workspaceId: string,
+    id: string,
+    userId: string,
+  ) {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const problem = this.getPersonalPracticeProblemRow(workspace.id, id);
-    if (!problem) throw new NotFoundException('SQL personal problem not found.');
-    if (problem.createdBy !== userId) throw new ForbiddenException('Not authorized.');
+    if (!problem)
+      throw new NotFoundException('SQL personal problem not found.');
+    if (problem.createdBy !== userId)
+      throw new ForbiddenException('Not authorized.');
 
     this.databaseService.db
       .update(sqlPersonalPracticeSharesTable)
@@ -867,23 +936,43 @@ export class SqlPracticeService {
   ): SqlUserPracticeGradeResponse {
     this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const problem = this.getPersonalPracticeProblemRow(workspaceId, id);
-    if (!problem) throw new NotFoundException('SQL personal problem not found.');
-    const schemaVersion = this.getPersonalSchemaVersion(problem.schemaVersionId);
+    if (!problem)
+      throw new NotFoundException('SQL personal problem not found.');
+    const schemaVersion = this.getPersonalSchemaVersion(
+      problem.schemaVersionId,
+    );
     const input = gradeSqlUserPracticeProblemSchema.parse(body);
-    return this.gradePersonalProblemWithSchema(
+    const response = this.gradePersonalProblemWithSchema(
       problem,
       schemaVersion,
       input.submittedSql,
-      this.getPersonalPracticeRuntimeUserId(workspaceId, schemaVersion.id, userId),
+      this.getPersonalPracticeRuntimeUserId(
+        workspaceId,
+        schemaVersion.id,
+        userId,
+      ),
     );
+    this.recordPersonalPracticeSubmission({
+      userId,
+      problem,
+      schemaVersion,
+      submittedSql: input.submittedSql,
+      result: response,
+      shareId: null,
+    });
+    return response;
   }
 
   getPublicPersonalPracticeProblem(
     token: string,
+    userId?: string,
   ): SqlPersonalPracticePublicProblemResponse | null {
     const share = this.getEnabledPersonalShareByToken(token);
     if (!share) return null;
-    const problem = this.getPersonalPracticeProblemRow(share.workspaceId, share.problemId);
+    const problem = this.getPersonalPracticeProblemRow(
+      share.workspaceId,
+      share.problemId,
+    );
     if (!problem || problem.status !== 'published') return null;
     const workspace = this.getPersonalWorkspaceById(share.workspaceId);
     if (!workspace) return null;
@@ -893,8 +982,17 @@ export class SqlPracticeService {
       schemaVersion,
       this.getPublicPersonalPracticeRuntimeUserId(token, schemaVersion.id),
     );
-    const publicProblem = this.toPersonalProblem(problem);
-    const { answerSql: _answerSql, createdBy: _createdBy, shareToken: _shareToken, shareEnabled: _shareEnabled, ...safeProblem } = publicProblem;
+    const submissionStatus = userId
+      ? this.getPersonalSubmissionStatus(userId, problem.id)
+      : null;
+    const publicProblem = this.toPersonalProblem(problem, submissionStatus);
+    const {
+      answerSql: _answerSql,
+      createdBy: _createdBy,
+      shareToken: _shareToken,
+      shareEnabled: _shareEnabled,
+      ...safeProblem
+    } = publicProblem;
 
     return {
       workspace: { id: workspace.id, title: workspace.title },
@@ -905,6 +1003,7 @@ export class SqlPracticeService {
         dbFileHash: schemaVersion.dbFileHash,
       },
       problem: safeProblem,
+      submissionStatus,
       tables,
       erdMmd: schemaVersion.erdMmd,
     };
@@ -913,21 +1012,36 @@ export class SqlPracticeService {
   gradePublicPersonalPracticeProblem(
     token: string,
     body: unknown,
+    userId?: string,
   ): SqlUserPracticeGradeResponse {
     const share = this.getEnabledPersonalShareByToken(token);
     if (!share) throw new NotFoundException('SQL personal share not found.');
-    const problem = this.getPersonalPracticeProblemRow(share.workspaceId, share.problemId);
+    const problem = this.getPersonalPracticeProblemRow(
+      share.workspaceId,
+      share.problemId,
+    );
     if (!problem || problem.status !== 'published') {
       throw new NotFoundException('SQL personal problem not found.');
     }
     const schemaVersion = this.getPersonalSchemaVersion(share.schemaVersionId);
     const input = gradeSqlUserPracticeProblemSchema.parse(body);
-    return this.gradePersonalProblemWithSchema(
+    const response = this.gradePersonalProblemWithSchema(
       problem,
       schemaVersion,
       input.submittedSql,
       this.getPublicPersonalPracticeRuntimeUserId(token, schemaVersion.id),
     );
+    if (userId) {
+      this.recordPersonalPracticeSubmission({
+        userId,
+        problem,
+        schemaVersion,
+        submittedSql: input.submittedSql,
+        result: response,
+        shareId: share.id,
+      });
+    }
+    return response;
   }
 
   getPublicPersonalPracticeTableRows(
@@ -936,7 +1050,10 @@ export class SqlPracticeService {
   ): SqlExecuteResponse {
     const share = this.getEnabledPersonalShareByToken(token);
     if (!share) throw new NotFoundException('SQL personal share not found.');
-    const problem = this.getPersonalPracticeProblemRow(share.workspaceId, share.problemId);
+    const problem = this.getPersonalPracticeProblemRow(
+      share.workspaceId,
+      share.problemId,
+    );
     if (!problem || problem.status !== 'published') {
       throw new NotFoundException('SQL personal problem not found.');
     }
@@ -982,7 +1099,10 @@ export class SqlPracticeService {
         updatedAt: sqlUserPracticeProblemsTable.updatedAt,
       })
       .from(sqlUserPracticeProblemsTable)
-      .innerJoin(usersTable, eq(usersTable.id, sqlUserPracticeProblemsTable.createdBy))
+      .innerJoin(
+        usersTable,
+        eq(usersTable.id, sqlUserPracticeProblemsTable.createdBy),
+      )
       .where(and(...conditions))
       .orderBy(
         sqlUserPracticeProblemsTable.level,
@@ -1016,7 +1136,10 @@ export class SqlPracticeService {
         updatedAt: sqlUserPracticeProblemsTable.updatedAt,
       })
       .from(sqlUserPracticeProblemsTable)
-      .innerJoin(usersTable, eq(usersTable.id, sqlUserPracticeProblemsTable.createdBy))
+      .innerJoin(
+        usersTable,
+        eq(usersTable.id, sqlUserPracticeProblemsTable.createdBy),
+      )
       .where(eq(sqlUserPracticeProblemsTable.id, id))
       .get();
   }
@@ -1108,9 +1231,7 @@ export class SqlPracticeService {
     const parsed = this.parseGeneratedAnswer(raw);
 
     if (!parsed.answerSql) {
-      throw new InternalServerErrorException(
-        '정답 SQL을 생성하지 못했습니다.',
-      );
+      throw new InternalServerErrorException('정답 SQL을 생성하지 못했습니다.');
     }
 
     this.validateAnswerSql(parsed.answerSql, userId);
@@ -1217,7 +1338,9 @@ export class SqlPracticeService {
     };
   }
 
-  getMyUserPracticeSubmissions(userId: string): SqlPracticeMySubmissionsResponse {
+  getMyUserPracticeSubmissions(
+    userId: string,
+  ): SqlPracticeMySubmissionsResponse {
     return this.getMySubmissionSummary(userId, USER_PRACTICE_SEED_FILE);
   }
 
@@ -1490,6 +1613,86 @@ export class SqlPracticeService {
       },
       byExample,
     };
+  }
+
+  private getPersonalSubmissionStatusByProblemIds(
+    userId: string,
+    problemIds: string[],
+  ): Record<string, SqlPersonalPracticeSubmissionStatus> {
+    if (problemIds.length === 0) return {};
+
+    const rows = this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeSubmissionsTable)
+      .where(
+        and(
+          eq(sqlPersonalPracticeSubmissionsTable.userId, userId),
+          inArray(sqlPersonalPracticeSubmissionsTable.problemId, problemIds),
+        ),
+      )
+      .orderBy(desc(sqlPersonalPracticeSubmissionsTable.createdAt))
+      .all();
+
+    const byProblem: Record<string, SqlPersonalPracticeSubmissionStatus> = {};
+
+    for (const row of rows) {
+      const previous = byProblem[row.problemId];
+      const bestScore = Math.max(previous?.bestScore ?? 0, row.score);
+
+      byProblem[row.problemId] = {
+        problemId: row.problemId,
+        bestScore,
+        isCorrect: bestScore > 0,
+        lastSubmittedAt: previous?.lastSubmittedAt ?? row.createdAt,
+        lastSubmissionId: previous?.lastSubmissionId ?? row.id,
+      };
+    }
+
+    return byProblem;
+  }
+
+  private getPersonalSubmissionStatus(
+    userId: string,
+    problemId: string,
+  ): SqlPersonalPracticeSubmissionStatus | null {
+    return (
+      this.getPersonalSubmissionStatusByProblemIds(userId, [problemId])[
+        problemId
+      ] ?? null
+    );
+  }
+
+  private recordPersonalPracticeSubmission(input: {
+    userId: string;
+    problem: {
+      id: string;
+      workspaceId: string;
+      schemaVersionId: string;
+      answerSql: string;
+    };
+    schemaVersion: SqlPersonalPracticeSchemaVersion;
+    submittedSql: string;
+    result: SqlUserPracticeGradeResponse;
+    shareId: string | null;
+  }) {
+    this.databaseService.db
+      .insert(sqlPersonalPracticeSubmissionsTable)
+      .values({
+        id: randomUUID(),
+        userId: input.userId,
+        problemId: input.problem.id,
+        workspaceId: input.problem.workspaceId,
+        schemaVersionId: input.schemaVersion.id,
+        shareId: input.shareId,
+        submittedSql: input.submittedSql,
+        answerSql: input.problem.answerSql,
+        isCorrect: input.result.isCorrect,
+        score: input.result.isCorrect ? 1 : 0,
+        maxScore: 1,
+        feedback: input.result.feedback,
+        createdAt: new Date().toISOString(),
+      })
+      .run();
   }
 
   getMySubmissions(
@@ -2200,7 +2403,10 @@ export class SqlPracticeService {
   }
 
   private getUserPracticeSeed(): ResolvedSeed {
-    const seedFile = join(this.getUserPracticeSeedDir(), USER_PRACTICE_SEED_FILE);
+    const seedFile = join(
+      this.getUserPracticeSeedDir(),
+      USER_PRACTICE_SEED_FILE,
+    );
     if (!existsSync(seedFile) || !statSync(seedFile).isFile()) {
       throw new InternalServerErrorException(
         `SQL user practice seed file not found: ${seedFile}`,
@@ -2344,7 +2550,10 @@ export class SqlPracticeService {
     return this.assertPersonalWorkspaceOwner(id, userId);
   }
 
-  private createInitialPersonalSchemaVersion(workspaceId: string, userId: string) {
+  private createInitialPersonalSchemaVersion(
+    workspaceId: string,
+    userId: string,
+  ) {
     const seed = this.getUserPracticeSeed();
     const schemaSql = readFileSync(seed.filePath, 'utf8');
     const erdFile = join(this.getUserPracticeSeedDir(), 'user_commerce.mmd');
@@ -2382,8 +2591,10 @@ export class SqlPracticeService {
     userId: string,
   ): SqlPersonalPracticeWorkspace {
     const workspace = this.getPersonalWorkspaceById(workspaceId);
-    if (!workspace) throw new NotFoundException('SQL personal workspace not found.');
-    if (workspace.ownerId !== userId) throw new ForbiddenException('Not authorized.');
+    if (!workspace)
+      throw new NotFoundException('SQL personal workspace not found.');
+    if (workspace.ownerId !== userId)
+      throw new ForbiddenException('Not authorized.');
     return workspace;
   }
 
@@ -2402,20 +2613,26 @@ export class SqlPracticeService {
     workspaceId: string,
   ): SqlPersonalPracticeSchemaVersion {
     const workspace = this.getPersonalWorkspaceById(workspaceId);
-    if (!workspace) throw new NotFoundException('SQL personal workspace not found.');
+    if (!workspace)
+      throw new NotFoundException('SQL personal workspace not found.');
     if (!workspace.activeSchemaVersionId) {
-      throw new InternalServerErrorException('Active personal schema version is missing.');
+      throw new InternalServerErrorException(
+        'Active personal schema version is missing.',
+      );
     }
     return this.getPersonalSchemaVersion(workspace.activeSchemaVersionId);
   }
 
-  private getPersonalSchemaVersion(id: string): SqlPersonalPracticeSchemaVersion {
+  private getPersonalSchemaVersion(
+    id: string,
+  ): SqlPersonalPracticeSchemaVersion {
     const row = this.databaseService.db
       .select()
       .from(sqlPersonalPracticeSchemaVersionsTable)
       .where(eq(sqlPersonalPracticeSchemaVersionsTable.id, id))
       .get();
-    if (!row) throw new NotFoundException('SQL personal schema version not found.');
+    if (!row)
+      throw new NotFoundException('SQL personal schema version not found.');
     return this.toPersonalSchemaVersion(row);
   }
 
@@ -2449,7 +2666,10 @@ export class SqlPracticeService {
   }
 
   private removePersonalPracticeSeedFile(schemaVersionId: string) {
-    const filePath = join(this.getPersonalPracticeSeedDir(), `${schemaVersionId}.sql`);
+    const filePath = join(
+      this.getPersonalPracticeSeedDir(),
+      `${schemaVersionId}.sql`,
+    );
     if (existsSync(filePath)) {
       rmSync(filePath, { force: true });
     }
@@ -2528,7 +2748,10 @@ export class SqlPracticeService {
       .leftJoin(
         sqlPersonalPracticeSharesTable,
         and(
-          eq(sqlPersonalPracticeSharesTable.problemId, sqlPersonalPracticeProblemsTable.id),
+          eq(
+            sqlPersonalPracticeSharesTable.problemId,
+            sqlPersonalPracticeProblemsTable.id,
+          ),
           eq(sqlPersonalPracticeSharesTable.enabled, true),
         ),
       )
@@ -2567,7 +2790,9 @@ export class SqlPracticeService {
       runtimeUserId,
     );
     const existingTables = new Set(tables.map((table) => table.tableName));
-    const invalidTable = tableNames.find((tableName) => !existingTables.has(tableName));
+    const invalidTable = tableNames.find(
+      (tableName) => !existingTables.has(tableName),
+    );
 
     if (invalidTable) {
       throw new BadRequestException(`Unknown target table: ${invalidTable}`);
@@ -2582,7 +2807,9 @@ export class SqlPracticeService {
   ) {
     const { query, type } = sanitizeSql(answerSql, this.getMaxQueryLength());
     if (type !== 'SELECT') {
-      throw new BadRequestException('정답 SQL은 SELECT/WITH 조회 쿼리만 허용됩니다.');
+      throw new BadRequestException(
+        '정답 SQL은 SELECT/WITH 조회 쿼리만 허용됩니다.',
+      );
     }
 
     const seed = this.buildPersonalPracticeSeed(schemaVersion);
@@ -2593,7 +2820,9 @@ export class SqlPracticeService {
       db.prepare(query).all();
     } catch (error) {
       throw new BadRequestException(
-        error instanceof Error ? error.message : '정답 SQL을 실행할 수 없습니다.',
+        error instanceof Error
+          ? error.message
+          : '정답 SQL을 실행할 수 없습니다.',
       );
     } finally {
       db.close();
@@ -2616,7 +2845,9 @@ export class SqlPracticeService {
         ? input.targetTables
         : tables.map((table) => table.tableName);
     const requested = new Set(relatedTables);
-    const contextTables = tables.filter((table) => requested.has(table.tableName));
+    const contextTables = tables.filter((table) =>
+      requested.has(table.tableName),
+    );
     const tableSummaries = (contextTables.length > 0 ? contextTables : tables)
       .map((table) => {
         const columns = table.columns
@@ -2824,7 +3055,9 @@ ${tableSummaries}
     }
 
     if (file.size > PERSONAL_SCHEMA_UPLOAD_MAX_BYTES) {
-      throw new BadRequestException('SQL 파일은 2MB 이하만 업로드할 수 있습니다.');
+      throw new BadRequestException(
+        'SQL 파일은 2MB 이하만 업로드할 수 있습니다.',
+      );
     }
 
     const schemaSql = file.buffer.toString('utf8');
@@ -2846,7 +3079,9 @@ ${tableSummaries}
     ];
 
     if (blockedPatterns.some((pattern) => pattern.test(upperSql))) {
-      throw new BadRequestException('허용되지 않는 SQL 구문이 포함되어 있습니다.');
+      throw new BadRequestException(
+        '허용되지 않는 SQL 구문이 포함되어 있습니다.',
+      );
     }
   }
 
@@ -2854,7 +3089,9 @@ ${tableSummaries}
     const latest = this.databaseService.db
       .select({ version: sqlPersonalPracticeSchemaVersionsTable.version })
       .from(sqlPersonalPracticeSchemaVersionsTable)
-      .where(eq(sqlPersonalPracticeSchemaVersionsTable.workspaceId, workspaceId))
+      .where(
+        eq(sqlPersonalPracticeSchemaVersionsTable.workspaceId, workspaceId),
+      )
       .orderBy(desc(sqlPersonalPracticeSchemaVersionsTable.version))
       .limit(1)
       .get();
@@ -2928,6 +3165,7 @@ ${tableSummaries}
       createdAt: string;
       updatedAt: string;
     },
+    submissionStatus: SqlPersonalPracticeSubmissionStatus | null = null,
   ): SqlPersonalPracticeProblem {
     return {
       id: row.id,
@@ -2945,6 +3183,7 @@ ${tableSummaries}
       authorName: row.authorName,
       shareToken: row.shareToken,
       shareEnabled: Boolean(row.shareEnabled),
+      submissionStatus,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -2983,7 +3222,9 @@ ${tableSummaries}
   private validateAnswerSql(answerSql: string, userId: string) {
     const { query, type } = sanitizeSql(answerSql, this.getMaxQueryLength());
     if (type !== 'SELECT') {
-      throw new BadRequestException('정답 SQL은 SELECT/WITH 조회 쿼리만 허용됩니다.');
+      throw new BadRequestException(
+        '정답 SQL은 SELECT/WITH 조회 쿼리만 허용됩니다.',
+      );
     }
 
     const runtimeUserId = this.getUserPracticeRuntimeUserId(userId);
@@ -2995,7 +3236,9 @@ ${tableSummaries}
       db.prepare(query).all();
     } catch (error) {
       throw new BadRequestException(
-        error instanceof Error ? error.message : '정답 SQL을 실행할 수 없습니다.',
+        error instanceof Error
+          ? error.message
+          : '정답 SQL을 실행할 수 없습니다.',
       );
     } finally {
       db.close();

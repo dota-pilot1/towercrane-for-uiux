@@ -4,7 +4,11 @@ import { useMemo, useRef, useState } from 'react'
 import { CheckCircle, Database, Loader2, Send, Table2, X, XCircle } from 'lucide-react'
 
 import { sqlPracticeApi } from '../../../entities/sql-practice/api/sql-practice-api'
-import type { SqlExecuteResponse, SqlUserPracticeGradeResponse, TableInfo } from '../../../entities/sql-practice/model/types'
+import type {
+  SqlExecuteResponse,
+  SqlUserPracticeGradeResponse,
+  TableInfo,
+} from '../../../entities/sql-practice/model/types'
 import {
   useGradePublicSqlPersonalPracticeProblem,
   usePublicSqlPersonalPracticeProblem,
@@ -52,8 +56,11 @@ export function SqlPublicPersonalPracticePage() {
     const targets = new Set(data.problem.targetTables)
     return data.tables.filter((table) => targets.has(table.tableName))
   }, [data])
-  const totalScore = gradeResult?.isCorrect ? 1 : 0
-  const scorePercent = data && gradeResult?.isCorrect ? 100 : 0
+  const savedSubmissionStatus = data?.submissionStatus ?? data?.problem.submissionStatus ?? null
+  const hasSubmissionStatus = Boolean(gradeResult ?? savedSubmissionStatus)
+  const isProblemSolved = Boolean(gradeResult?.isCorrect || savedSubmissionStatus?.isCorrect)
+  const totalScore = isProblemSolved ? 1 : 0
+  const scorePercent = data && isProblemSolved ? 100 : 0
 
   const insertQueryKeyword = (keyword: string) => {
     const textarea = queryTextareaRef.current
@@ -155,13 +162,14 @@ export function SqlPublicPersonalPracticePage() {
                     <span className="min-w-0 flex-1 truncate text-sm font-black text-text-primary">
                       {data.problem.title}
                     </span>
-                    {gradeResult?.isCorrect ? (
+                    {isProblemSolved ? (
                       <CheckCircle className="size-3.5 shrink-0 text-brand-primary" />
-                    ) : gradeResult ? (
+                    ) : hasSubmissionStatus ? (
                       <XCircle className="size-3.5 shrink-0 text-destructive" />
                     ) : null}
                   </div>
                   <p className="mt-1 truncate pl-9 text-xs font-medium text-text-muted">
+                    {hasSubmissionStatus ? (isProblemSolved ? '정답' : '오답') : '미제출'} ·{' '}
                     {data.problem.authorName ?? 'Unknown'} ·{' '}
                     {data.problem.targetTables.join(', ') || '테이블 미지정'}
                   </p>
@@ -199,144 +207,144 @@ export function SqlPublicPersonalPracticePage() {
             ) : data ? (
               <div className="flex-1 overflow-y-auto p-5">
                 <div className="flex min-h-full flex-col gap-4">
-                <div className="rounded-md border border-surface-border-soft bg-surface-muted">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2 px-4 py-3">
-                      <span className="flex h-8 min-w-8 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised px-2 text-xs font-black text-text-primary">
-                        L{data.problem.level}
-                      </span>
-                      <h2 className="truncate text-lg font-black text-text-primary">
-                        {data.problem.title}
-                      </h2>
-                    </div>
-                  </div>
-                  <p className="border-t border-surface-border-soft px-4 py-3 text-sm leading-6 text-text-secondary">
-                    {data.problem.description}
-                  </p>
-                </div>
-
-                {selectedTargetTables.length > 0 && (
-                  <div className="rounded-md border border-surface-border-soft bg-surface-raised">
-                    <div className="flex items-center justify-between border-b border-surface-border-soft px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Table2 className="size-4 text-brand-primary" />
-                        <h3 className="text-sm font-black text-text-primary">대상 테이블</h3>
+                  <div className="rounded-md border border-surface-border-soft bg-surface-muted">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2 px-4 py-3">
+                        <span className="flex h-8 min-w-8 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised px-2 text-xs font-black text-text-primary">
+                          L{data.problem.level}
+                        </span>
+                        <h2 className="truncate text-lg font-black text-text-primary">
+                          {data.problem.title}
+                        </h2>
                       </div>
-                      <span className="rounded-sm border border-surface-border-soft px-2 py-1 text-xs font-black text-text-secondary">
-                        {selectedTargetTables.length}개
-                      </span>
                     </div>
-                    <div className="space-y-2 p-3">
-                      {selectedTargetTables.map((table) => (
-                        <button
-                          key={table.tableName}
-                          type="button"
-                          className="w-full rounded-md border border-surface-border-soft bg-surface-muted p-3 text-left hover:bg-surface-raised"
-                          onClick={() => setSelectedTable(table)}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <Database className="size-4 shrink-0 text-brand-primary" />
-                              <span className="truncate text-sm font-black text-text-primary">
-                                {table.tableName}
+                    <p className="border-t border-surface-border-soft px-4 py-3 text-sm leading-6 text-text-secondary">
+                      {data.problem.description}
+                    </p>
+                  </div>
+
+                  {selectedTargetTables.length > 0 && (
+                    <div className="rounded-md border border-surface-border-soft bg-surface-raised">
+                      <div className="flex items-center justify-between border-b border-surface-border-soft px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Table2 className="size-4 text-brand-primary" />
+                          <h3 className="text-sm font-black text-text-primary">대상 테이블</h3>
+                        </div>
+                        <span className="rounded-sm border border-surface-border-soft px-2 py-1 text-xs font-black text-text-secondary">
+                          {selectedTargetTables.length}개
+                        </span>
+                      </div>
+                      <div className="space-y-2 p-3">
+                        {selectedTargetTables.map((table) => (
+                          <button
+                            key={table.tableName}
+                            type="button"
+                            className="w-full rounded-md border border-surface-border-soft bg-surface-muted p-3 text-left hover:bg-surface-raised"
+                            onClick={() => setSelectedTable(table)}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <Database className="size-4 shrink-0 text-brand-primary" />
+                                <span className="truncate text-sm font-black text-text-primary">
+                                  {table.tableName}
+                                </span>
+                              </div>
+                              <span className="shrink-0 text-xs font-semibold text-text-muted">
+                                {table.rowCount}행
                               </span>
                             </div>
-                            <span className="shrink-0 text-xs font-semibold text-text-muted">
-                              {table.rowCount}행
-                            </span>
-                          </div>
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {table.columns.slice(0, 8).map((column) => (
-                              <span
-                                key={column.name}
-                                className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-xs font-semibold text-text-secondary"
-                              >
-                                {column.name}
-                                {column.primaryKey ? ' PK' : ''}
-                              </span>
-                            ))}
-                          </div>
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              {table.columns.slice(0, 8).map((column) => (
+                                <span
+                                  key={column.name}
+                                  className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-xs font-semibold text-text-secondary"
+                                >
+                                  {column.name}
+                                  {column.primaryKey ? ' PK' : ''}
+                                </span>
+                              ))}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {data.problem.targetTables.length > 0 && selectedTargetTables.length === 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {data.problem.targetTables.map((table) => (
+                        <span
+                          key={table}
+                          className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-xs font-bold text-text-secondary"
+                        >
+                          {table}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-black text-text-primary">답안 SQL</h3>
+                      <p className="text-xs font-semibold text-text-muted">
+                        키워드 클릭: 커서 위치에 입력 · Ctrl+Enter: 실행
+                      </p>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {SQL_KEYWORDS.map((keyword) => (
+                        <button
+                          key={keyword}
+                          type="button"
+                          className="rounded-sm border border-surface-border-soft bg-surface-muted px-2.5 py-1 text-xs font-black text-text-secondary hover:border-brand-border hover:text-brand-primary"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => insertQueryKeyword(keyword)}
+                        >
+                          {keyword}
                         </button>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {data.problem.targetTables.length > 0 && selectedTargetTables.length === 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {data.problem.targetTables.map((table) => (
-                      <span
-                        key={table}
-                        className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-xs font-bold text-text-secondary"
+                    <Textarea
+                      ref={queryTextareaRef}
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      onKeyDown={(event) => {
+                        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                          event.preventDefault()
+                          handleExecute()
+                        }
+                      }}
+                      placeholder={'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'}
+                      rows={7}
+                      className="mt-3 min-h-[190px] resize-none font-mono text-sm leading-6"
+                    />
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleExecute}
+                        disabled={!query.trim() || gradeMutation.isPending}
+                        className="gap-1.5"
                       >
-                        {table}
-                      </span>
-                    ))}
+                        {gradeMutation.isPending ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Send className="size-3.5" />
+                        )}
+                        실행
+                      </Button>
+                    </div>
                   </div>
-                )}
 
-                <div className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-black text-text-primary">답안 SQL</h3>
-                    <p className="text-xs font-semibold text-text-muted">
-                      키워드 클릭: 커서 위치에 입력 · Ctrl+Enter: 실행
-                    </p>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {SQL_KEYWORDS.map((keyword) => (
-                      <button
-                        key={keyword}
-                        type="button"
-                        className="rounded-sm border border-surface-border-soft bg-surface-muted px-2.5 py-1 text-xs font-black text-text-secondary hover:border-brand-border hover:text-brand-primary"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => insertQueryKeyword(keyword)}
-                      >
-                        {keyword}
-                      </button>
-                    ))}
-                  </div>
-                  <Textarea
-                    ref={queryTextareaRef}
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-                        event.preventDefault()
-                        handleExecute()
-                      }
-                    }}
-                    placeholder={'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'}
-                    rows={7}
-                    className="mt-3 min-h-[190px] resize-none font-mono text-sm leading-6"
-                  />
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleExecute}
-                      disabled={!query.trim() || gradeMutation.isPending}
-                      className="gap-1.5"
-                    >
-                      {gradeMutation.isPending ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Send className="size-3.5" />
-                      )}
-                      실행
-                    </Button>
-                  </div>
-                </div>
-
-                {lastResult ? (
-                  <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
-                    <h3 className="text-sm font-black text-text-primary">실행 결과</h3>
-                    <SqlResultTable response={lastResult} />
-                  </div>
-                ) : (
-                  <div className="flex min-h-[120px] flex-1 items-center justify-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted text-sm font-semibold text-text-muted">
-                    풀이 SQL을 실행하면 결과가 여기에 표시됩니다.
-                  </div>
-                )}
+                  {lastResult ? (
+                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+                      <h3 className="text-sm font-black text-text-primary">실행 결과</h3>
+                      <SqlResultTable response={lastResult} />
+                    </div>
+                  ) : (
+                    <div className="flex min-h-[120px] flex-1 items-center justify-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted text-sm font-semibold text-text-muted">
+                      풀이 SQL을 실행하면 결과가 여기에 표시됩니다.
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -355,9 +363,7 @@ export function SqlPublicPersonalPracticePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-sm font-black text-text-primary">테이블</h2>
-                  <p className="mt-1 text-xs font-semibold text-text-muted">
-                    practice.sqlite
-                  </p>
+                  <p className="mt-1 text-xs font-semibold text-text-muted">practice.sqlite</p>
                 </div>
                 {data?.erdMmd && (
                   <button

@@ -33,16 +33,13 @@ export const sqlPracticeQueryKeys = {
     ['sql-practice', 'user', 'problems', filter ?? {}] as const,
   personalWorkspaces: ['sql-practice', 'personal', 'workspaces'] as const,
   personalDefaultWorkspace: ['sql-practice', 'personal', 'workspaces', 'default'] as const,
-  personalMeta: (workspaceId: string) =>
-    ['sql-practice', 'personal', workspaceId, 'meta'] as const,
+  personalMeta: (workspaceId: string) => ['sql-practice', 'personal', workspaceId, 'meta'] as const,
   personalTables: (workspaceId: string) =>
     ['sql-practice', 'personal', workspaceId, 'tables'] as const,
-  personalErd: (workspaceId: string) =>
-    ['sql-practice', 'personal', workspaceId, 'erd'] as const,
+  personalErd: (workspaceId: string) => ['sql-practice', 'personal', workspaceId, 'erd'] as const,
   personalProblems: (workspaceId: string, filter?: { level?: number }) =>
     ['sql-practice', 'personal', workspaceId, 'problems', filter ?? {}] as const,
-  publicPersonalProblem: (token: string) =>
-    ['sql-practice', 'public-personal', token] as const,
+  publicPersonalProblem: (token: string) => ['sql-practice', 'public-personal', token] as const,
 }
 
 function messageFromError(error: unknown, fallback: string) {
@@ -50,10 +47,7 @@ function messageFromError(error: unknown, fallback: string) {
 }
 
 function shouldRefreshTables(type: string, schemaChanged?: boolean) {
-  return (
-    schemaChanged ||
-    ['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP', 'ALTER'].includes(type)
-  )
+  return schemaChanged || ['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP', 'ALTER'].includes(type)
 }
 
 export function useSqlPracticeMeta() {
@@ -85,7 +79,9 @@ export function useExecuteSqlPracticeQuery() {
     onSuccess: (response) => {
       if (response.seedReloaded || shouldRefreshTables(response.type, response.schemaChanged)) {
         queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.meta })
-        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.tables })
+        queryClient.invalidateQueries({
+          queryKey: sqlPracticeQueryKeys.tables,
+        })
         queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.seeds })
       }
     },
@@ -106,8 +102,7 @@ export function useActivateSqlPracticeSeed(options?: { onSuccess?: () => void })
       toast.success(`내 연습 파일을 ${response.activeSeed.title}(으)로 변경했습니다.`)
       options?.onSuccess?.()
     },
-    onError: (error) =>
-      toast.error(messageFromError(error, 'SQL 연습 파일 변경에 실패했습니다.')),
+    onError: (error) => toast.error(messageFromError(error, 'SQL 연습 파일 변경에 실패했습니다.')),
   })
 }
 
@@ -146,8 +141,7 @@ export function useReloadSqlPracticeSeed() {
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.seeds })
       toast.success('내 SQL 연습 파일을 다시 적용했습니다.')
     },
-    onError: (error) =>
-      toast.error(messageFromError(error, 'SQL 연습 파일 적용에 실패했습니다.')),
+    onError: (error) => toast.error(messageFromError(error, 'SQL 연습 파일 적용에 실패했습니다.')),
   })
 }
 
@@ -284,7 +278,9 @@ export function useCreateSqlPracticeNote() {
   return useMutation({
     mutationFn: (payload: CreateSqlPracticeNotePayload) => sqlPracticeApi.createNote(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...sqlPracticeQueryKeys.all, 'notes'] })
+      queryClient.invalidateQueries({
+        queryKey: [...sqlPracticeQueryKeys.all, 'notes'],
+      })
       toast.success('SQL 노트를 저장했습니다.')
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 노트 저장에 실패했습니다.')),
@@ -295,15 +291,12 @@ export function useUpdateSqlPracticeNote() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string
-      payload: UpdateSqlPracticeNotePayload
-    }) => sqlPracticeApi.updateNote(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateSqlPracticeNotePayload }) =>
+      sqlPracticeApi.updateNote(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...sqlPracticeQueryKeys.all, 'notes'] })
+      queryClient.invalidateQueries({
+        queryKey: [...sqlPracticeQueryKeys.all, 'notes'],
+      })
       toast.success('SQL 노트를 수정했습니다.')
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 노트 수정에 실패했습니다.')),
@@ -316,7 +309,9 @@ export function useShareSqlPracticeNote() {
   return useMutation({
     mutationFn: (id: string) => sqlPracticeApi.shareNote(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...sqlPracticeQueryKeys.all, 'notes'] })
+      queryClient.invalidateQueries({
+        queryKey: [...sqlPracticeQueryKeys.all, 'notes'],
+      })
       toast.success('공개 공유 링크를 만들었습니다.')
     },
     onError: (error) => toast.error(messageFromError(error, '공유 링크 생성에 실패했습니다.')),
@@ -329,7 +324,9 @@ export function useDeleteSqlPracticeNote() {
   return useMutation({
     mutationFn: (id: string) => sqlPracticeApi.deleteNote(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...sqlPracticeQueryKeys.all, 'notes'] })
+      queryClient.invalidateQueries({
+        queryKey: [...sqlPracticeQueryKeys.all, 'notes'],
+      })
       toast.success('SQL 노트를 삭제했습니다.')
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 노트 삭제에 실패했습니다.')),
@@ -379,8 +376,12 @@ export function useExecuteSqlUserPracticeQuery() {
     mutationFn: (query: string) => sqlPracticeApi.executeUser(query),
     onSuccess: (response) => {
       if (response.seedReloaded || shouldRefreshTables(response.type, response.schemaChanged)) {
-        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userMeta })
-        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userTables })
+        queryClient.invalidateQueries({
+          queryKey: sqlPracticeQueryKeys.userMeta,
+        })
+        queryClient.invalidateQueries({
+          queryKey: sqlPracticeQueryKeys.userTables,
+        })
       }
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 실행에 실패했습니다.')),
@@ -393,8 +394,12 @@ export function useResetSqlUserPracticeDb() {
   return useMutation({
     mutationFn: sqlPracticeApi.resetUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userMeta })
-      queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userTables })
+      queryClient.invalidateQueries({
+        queryKey: sqlPracticeQueryKeys.userMeta,
+      })
+      queryClient.invalidateQueries({
+        queryKey: sqlPracticeQueryKeys.userTables,
+      })
       toast.success('유저 SQL 연습 DB를 초기화했습니다.')
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 연습 DB 초기화에 실패했습니다.')),
@@ -408,7 +413,9 @@ export function useCreateSqlUserPracticeProblem() {
     mutationFn: (payload: SqlUserPracticeProblemPayload) =>
       sqlPracticeApi.createUserProblem(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sql-practice', 'user', 'problems'] })
+      queryClient.invalidateQueries({
+        queryKey: ['sql-practice', 'user', 'problems'],
+      })
       toast.success('문제를 등록했습니다.')
     },
     onError: (error) => toast.error(messageFromError(error, '문제 등록에 실패했습니다.')),
@@ -422,8 +429,7 @@ export function useGenerateSqlUserPracticeAnswer() {
     onSuccess: () => {
       toast.success('정답 SQL을 생성했습니다.')
     },
-    onError: (error) =>
-      toast.error(messageFromError(error, '정답 SQL 생성에 실패했습니다.')),
+    onError: (error) => toast.error(messageFromError(error, '정답 SQL 생성에 실패했습니다.')),
   })
 }
 
@@ -434,10 +440,11 @@ export function useGradeSqlUserPracticeProblem() {
     mutationFn: ({ id, payload }: { id: string; payload: SqlUserPracticeGradePayload }) =>
       sqlPracticeApi.gradeUserProblem(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userSubmissions })
+      queryClient.invalidateQueries({
+        queryKey: sqlPracticeQueryKeys.userSubmissions,
+      })
     },
-    onError: (error) =>
-      toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
+    onError: (error) => toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
   })
 }
 
@@ -512,17 +519,20 @@ export function useGenerateSqlPersonalPracticeAnswer(workspaceId: string | undef
     mutationFn: (payload: SqlUserPracticeGenerateAnswerPayload) =>
       sqlPracticeApi.generatePersonalProblemAnswer(workspaceId!, payload),
     onSuccess: () => toast.success('정답 SQL을 생성했습니다.'),
-    onError: (error) =>
-      toast.error(messageFromError(error, '정답 SQL 생성에 실패했습니다.')),
+    onError: (error) => toast.error(messageFromError(error, '정답 SQL 생성에 실패했습니다.')),
   })
 }
 
 export function useGradeSqlPersonalPracticeProblem(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: SqlUserPracticeGradePayload }) =>
       sqlPracticeApi.gradePersonalProblem(workspaceId!, id, payload),
-    onError: (error) =>
-      toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
+    onSuccess: () => {
+      if (workspaceId) invalidatePersonalPractice(queryClient, workspaceId)
+    },
+    onError: (error) => toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
   })
 }
 
@@ -573,13 +583,14 @@ export function useReplaceSqlPersonalPracticeSchemaVersion(workspaceId: string |
       sqlPracticeApi.replacePersonalSchemaVersion(workspaceId!, payload),
     onSuccess: () => {
       if (workspaceId) {
-        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.personalDefaultWorkspace })
+        queryClient.invalidateQueries({
+          queryKey: sqlPracticeQueryKeys.personalDefaultWorkspace,
+        })
         invalidatePersonalPractice(queryClient, workspaceId)
       }
       toast.success('SQL 파일을 교체했습니다.')
     },
-    onError: (error) =>
-      toast.error(messageFromError(error, 'SQL 파일 교체에 실패했습니다.')),
+    onError: (error) => toast.error(messageFromError(error, 'SQL 파일 교체에 실패했습니다.')),
   })
 }
 
@@ -592,10 +603,16 @@ export function usePublicSqlPersonalPracticeProblem(token: string | undefined) {
 }
 
 export function useGradePublicSqlPersonalPracticeProblem() {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: ({ token, payload }: { token: string; payload: SqlUserPracticeGradePayload }) =>
       sqlPracticeApi.gradePublicPersonalProblem(token, payload),
-    onError: (error) =>
-      toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: sqlPracticeQueryKeys.publicPersonalProblem(variables.token),
+      })
+    },
+    onError: (error) => toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
   })
 }
