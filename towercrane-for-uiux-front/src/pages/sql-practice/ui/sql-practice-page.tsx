@@ -208,6 +208,7 @@ export function SqlPracticePage() {
         key={metaQuery.data?.seedFile ?? 'loading'}
         seedFile={metaQuery.data?.seedFile}
         hasHistory={history.length > 0}
+        onOpenNotes={() => window.open('/sql/notes', '_blank', 'noopener,noreferrer')}
         onClearHistory={() => setHistory([])}
       />
 
@@ -217,7 +218,6 @@ export function SqlPracticePage() {
           exampleSet={exampleSet}
           selectedExample={selectedExample}
           onSelectExample={handleSelectExample}
-          onOpenNotes={() => window.open('/sql/notes', '_blank', 'noopener,noreferrer')}
           isOpen={quizSidebarOpen}
           onToggle={() => setQuizSidebarOpen((v) => !v)}
           submissionStatusByExample={submissionsQuery.data?.byExample ?? {}}

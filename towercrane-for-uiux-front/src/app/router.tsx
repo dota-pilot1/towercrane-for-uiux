@@ -27,6 +27,7 @@ import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
 import { SqlPracticeExamplesPage } from '../pages/sql-practice/ui/sql-practice-examples-page'
 import { SqlNotesPage } from '../pages/sql-practice/ui/sql-notes-page'
 import { SqlPublicNotePage } from '../pages/sql-practice/ui/sql-public-note-page'
+import { SqlUserPracticePage } from '../pages/sql-practice/ui/sql-user-practice-page'
 import { BoardHomePage } from '../pages/board/ui/board-home-page'
 import { BoardListPage } from '../pages/board/ui/board-list-page'
 import { BoardDetailPage } from '../pages/board/ui/board-detail-page'
@@ -243,6 +244,12 @@ const sqlPracticeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/sql',
   component: SqlPracticePage,
+})
+
+const sqlUserPracticeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql/user',
+  component: SqlUserPracticePage,
 })
 
 const sqlPracticeExamplesRoute = createRoute({
@@ -517,6 +524,7 @@ export const router = createRouter({
       aiMethodologyRoute,
       apiDocRoute,
       sqlPracticeRoute,
+      sqlUserPracticeRoute,
       sqlPracticeExamplesRoute,
       sqlNotesRoute,
       sqlNoteDetailRoute,

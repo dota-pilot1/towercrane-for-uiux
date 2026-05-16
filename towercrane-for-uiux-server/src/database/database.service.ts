@@ -891,6 +891,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     if (existingMenus.count === 0) {
       const adminMenuId = randomUUID();
+      const sqlGroupMenuId = randomUUID();
       const initialMenus = [
         {
           id: randomUUID(),
@@ -953,14 +954,38 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           updatedAt: now,
         },
         {
-          id: randomUUID(),
-          name: 'SQL 연습장',
-          sectionId: 'sql',
+          id: sqlGroupMenuId,
+          name: 'SQL Practice',
+          sectionId: 'sql_group',
           icon: 'Database',
           displayOrder: 5,
           isVisible: true,
           requiredRole: null,
           parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          name: '공식 연습장',
+          sectionId: 'sql',
+          icon: 'Database',
+          displayOrder: 0,
+          isVisible: true,
+          requiredRole: null,
+          parentId: sqlGroupMenuId,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: randomUUID(),
+          name: '내 연습장',
+          sectionId: 'sql_user',
+          icon: 'FileUp',
+          displayOrder: 1,
+          isVisible: true,
+          requiredRole: null,
+          parentId: sqlGroupMenuId,
           createdAt: now,
           updatedAt: now,
         },
@@ -1068,6 +1093,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.reconcileTaskMenus(now);
     this.seedBoardConfigs(now);
     this.reconcileBoardMenus(now);
+    this.reconcileSqlPracticeMenus(now);
 
     const existingTaskMenu = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'task' LIMIT 1")
@@ -1132,115 +1158,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         })
         .run();
     }
-
-    const apiDocMenuForSqlPlacement = this.sqlite
-      .prepare(
-        "SELECT id, display_order as displayOrder FROM menus WHERE section_id = 'api_doc' LIMIT 1",
-      )
-      .get() as { id: string; displayOrder: number } | undefined;
-
-    const existingSqlPracticeMenu = this.sqlite
-      .prepare("SELECT id FROM menus WHERE section_id = 'sql' LIMIT 1")
-      .get() as { id: string } | undefined;
-
-    if (!existingSqlPracticeMenu) {
-      const displayOrder = (apiDocMenuForSqlPlacement?.displayOrder ?? 4) + 1;
-
-      this.sqlite
-        .prepare(
-          `
-            UPDATE menus
-            SET display_order = display_order + 1, updated_at = ?
-            WHERE parent_id IS NULL AND display_order >= ?
-          `,
-        )
-        .run(now, displayOrder);
-
-      this.db
-        .insert(menusTable)
-        .values({
-          id: randomUUID(),
-          name: 'SQL 연습장',
-          sectionId: 'sql',
-          icon: 'Database',
-          displayOrder,
-          isVisible: true,
-          requiredRole: null,
-          parentId: null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-    }
-
-    this.sqlite
-      .prepare(
-        `
-          DELETE FROM menus
-          WHERE section_id = 'sql'
-            AND rowid NOT IN (
-              SELECT MIN(rowid)
-              FROM menus
-              WHERE section_id = 'sql'
-            )
-        `,
-      )
-      .run();
-
-    const sqlPracticeMenuForExamplesPlacement = this.sqlite
-      .prepare(
-        "SELECT id, display_order as displayOrder FROM menus WHERE section_id = 'sql' LIMIT 1",
-      )
-      .get() as { id: string; displayOrder: number } | undefined;
-
-    const existingSqlExamplesMenu = this.sqlite
-      .prepare("SELECT id FROM menus WHERE section_id = 'sql_examples' LIMIT 1")
-      .get() as { id: string } | undefined;
-
-    if (!existingSqlExamplesMenu) {
-      const displayOrder =
-        (sqlPracticeMenuForExamplesPlacement?.displayOrder ?? 5) + 1;
-
-      this.sqlite
-        .prepare(
-          `
-            UPDATE menus
-            SET display_order = display_order + 1, updated_at = ?
-            WHERE parent_id IS NULL AND display_order >= ?
-          `,
-        )
-        .run(now, displayOrder);
-
-      this.db
-        .insert(menusTable)
-        .values({
-          id: randomUUID(),
-          name: 'SQL 예제',
-          sectionId: 'sql_examples',
-          icon: 'BookOpenCheck',
-          displayOrder,
-          isVisible: true,
-          requiredRole: null,
-          parentId: null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-    }
-
-    this.sqlite
-      .prepare(
-        `
-          DELETE FROM menus
-          WHERE section_id = 'sql_examples'
-            AND rowid NOT IN (
-              SELECT MIN(rowid)
-              FROM menus
-              WHERE section_id = 'sql_examples'
-            )
-        `,
-      )
-      .run();
 
     this.sqlite
       .prepare(
@@ -1944,6 +1861,189 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         )
         .run(now);
     }
+  }
+
+  private reconcileSqlPracticeMenus(now: string) {
+    const apiDocMenu = this.sqlite
+      .prepare(
+        `
+          SELECT display_order as displayOrder
+          FROM menus
+          WHERE section_id = 'api_doc'
+          ORDER BY display_order ASC
+          LIMIT 1
+        `,
+      )
+      .get() as { displayOrder: number } | undefined;
+
+    const existingOfficialMenu = this.sqlite
+      .prepare(
+        `
+          SELECT id, parent_id as parentId, display_order as displayOrder
+          FROM menus
+          WHERE section_id = 'sql'
+          ORDER BY rowid ASC
+          LIMIT 1
+        `,
+      )
+      .get() as
+      | { id: string; parentId: string | null; displayOrder: number }
+      | undefined;
+
+    let sqlGroupMenu = this.sqlite
+      .prepare(
+        `
+          SELECT id, display_order as displayOrder
+          FROM menus
+          WHERE section_id = 'sql_group'
+          ORDER BY rowid ASC
+          LIMIT 1
+        `,
+      )
+      .get() as { id: string; displayOrder: number } | undefined;
+
+    if (!sqlGroupMenu) {
+      const displayOrder =
+        existingOfficialMenu?.parentId === null
+          ? existingOfficialMenu.displayOrder
+          : (apiDocMenu?.displayOrder ?? 4) + 1;
+      const sqlGroupMenuId = randomUUID();
+
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET display_order = display_order + 1, updated_at = ?
+            WHERE parent_id IS NULL AND display_order >= ?
+          `,
+        )
+        .run(now, displayOrder);
+
+      this.db
+        .insert(menusTable)
+        .values({
+          id: sqlGroupMenuId,
+          name: 'SQL Practice',
+          sectionId: 'sql_group',
+          icon: 'Database',
+          displayOrder,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      sqlGroupMenu = { id: sqlGroupMenuId, displayOrder };
+    } else {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET name = 'SQL Practice',
+                icon = 'Database',
+                parent_id = NULL,
+                is_visible = 1,
+                required_role = NULL,
+                updated_at = ?
+            WHERE id = ?
+          `,
+        )
+        .run(now, sqlGroupMenu.id);
+    }
+
+    this.upsertMenuBySectionId({
+      sectionId: 'sql',
+      name: '공식 연습장',
+      icon: 'Database',
+      displayOrder: 0,
+      parentId: sqlGroupMenu.id,
+      requiredRole: null,
+      now,
+    });
+
+    this.upsertMenuBySectionId({
+      sectionId: 'sql_user',
+      name: '내 연습장',
+      icon: 'FileUp',
+      displayOrder: 1,
+      parentId: sqlGroupMenu.id,
+      requiredRole: null,
+      now,
+    });
+
+    const existingSqlExamplesMenu = this.sqlite
+      .prepare(
+        `
+          SELECT id
+          FROM menus
+          WHERE section_id = 'sql_examples'
+          ORDER BY rowid ASC
+          LIMIT 1
+        `,
+      )
+      .get() as { id: string } | undefined;
+
+    if (existingSqlExamplesMenu) {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET name = 'SQL 예제',
+                icon = 'BookOpenCheck',
+                parent_id = NULL,
+                is_visible = 1,
+                required_role = NULL,
+                updated_at = ?
+            WHERE id = ?
+          `,
+        )
+        .run(now, existingSqlExamplesMenu.id);
+    } else {
+      const displayOrder = sqlGroupMenu.displayOrder + 1;
+
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET display_order = display_order + 1, updated_at = ?
+            WHERE parent_id IS NULL AND display_order >= ?
+          `,
+        )
+        .run(now, displayOrder);
+
+      this.db
+        .insert(menusTable)
+        .values({
+          id: randomUUID(),
+          name: 'SQL 예제',
+          sectionId: 'sql_examples',
+          icon: 'BookOpenCheck',
+          displayOrder,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          DELETE FROM menus
+          WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_examples')
+            AND rowid NOT IN (
+              SELECT MIN(rowid)
+              FROM menus
+              WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_examples')
+              GROUP BY section_id
+            )
+        `,
+      )
+      .run();
   }
 
   private seedBoardConfigs(now: string) {
