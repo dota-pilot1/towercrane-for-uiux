@@ -19,6 +19,7 @@ import {
   createSqlPracticeNoteSchema,
   generateSqlUserPracticeAnswerSchema,
   listSqlPracticeNotesQuerySchema,
+  sqlPersonalPracticeProblemListQuerySchema,
   sqlUserPracticeProblemListQuerySchema,
   updateSqlUserPracticeProblemSchema,
   updateSqlPracticeNoteSchema,
@@ -60,6 +61,177 @@ export class SqlPracticeController {
   @Get('user/erd')
   userErd() {
     return this.sqlPracticeService.getUserPracticeErd();
+  }
+
+  @Get('personal/workspaces')
+  personalWorkspaces(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.listPersonalPracticeWorkspaces(req.user.id);
+  }
+
+  @Get('personal/workspaces/default')
+  defaultPersonalWorkspace(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.getDefaultPersonalPracticeWorkspace(
+      req.user.id,
+    );
+  }
+
+  @Get('personal/workspaces/:workspaceId/meta')
+  personalWorkspaceMeta(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getPersonalPracticeWorkspaceMeta(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Get('personal/workspaces/:workspaceId/tables')
+  personalWorkspaceTables(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getPersonalPracticeTables(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Get('personal/workspaces/:workspaceId/tables/:tableName/rows')
+  personalWorkspaceTableRows(
+    @Param('workspaceId') workspaceId: string,
+    @Param('tableName') tableName: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getPersonalPracticeTableRows(
+      workspaceId,
+      tableName,
+      req.user.id,
+    );
+  }
+
+  @Get('personal/workspaces/:workspaceId/erd')
+  personalWorkspaceErd(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getPersonalPracticeErd(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Get('personal/workspaces/:workspaceId/problems')
+  personalProblems(
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const parsed = sqlPersonalPracticeProblemListQuerySchema.parse(query);
+    return this.sqlPracticeService.listPersonalPracticeProblems(
+      workspaceId,
+      parsed,
+      req.user.id,
+    );
+  }
+
+  @Post('personal/workspaces/:workspaceId/problems')
+  createPersonalProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = createSqlUserPracticeProblemSchema.parse(body);
+    return this.sqlPracticeService.createPersonalPracticeProblem(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Post('personal/workspaces/:workspaceId/problems/generate-answer')
+  generatePersonalProblemAnswer(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = generateSqlUserPracticeAnswerSchema.parse(body);
+    return this.sqlPracticeService.generatePersonalPracticeAnswer(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Post('personal/workspaces/:workspaceId/problems/:id/grade')
+  gradePersonalProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.gradePersonalPracticeProblem(
+      workspaceId,
+      id,
+      body,
+      req.user.id,
+    );
+  }
+
+  @Post('personal/workspaces/:workspaceId/problems/:id/share')
+  sharePersonalProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.sharePersonalPracticeProblem(
+      workspaceId,
+      id,
+      req.user.id,
+    );
+  }
+
+  @Post('personal/workspaces/:workspaceId/problems/:id/unshare')
+  unsharePersonalProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.unsharePersonalPracticeProblem(
+      workspaceId,
+      id,
+      req.user.id,
+    );
+  }
+
+  @Patch('personal/workspaces/:workspaceId/problems/:id')
+  updatePersonalProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSqlUserPracticeProblemSchema.parse(body);
+    return this.sqlPracticeService.updatePersonalPracticeProblem(
+      workspaceId,
+      id,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Delete('personal/workspaces/:workspaceId/problems/:id')
+  @HttpCode(204)
+  deletePersonalProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.deletePersonalPracticeProblem(
+      workspaceId,
+      id,
+      req.user.id,
+    );
   }
 
   @Get('user/problems')
@@ -268,5 +440,32 @@ export class SqlPracticePublicController {
   @Get('notes/:token')
   publicNote(@Param('token') token: string) {
     return this.sqlPracticeService.getPublicNoteByToken(token) ?? null;
+  }
+
+  @Get('personal/:token')
+  publicPersonalProblem(@Param('token') token: string) {
+    return this.sqlPracticeService.getPublicPersonalPracticeProblem(token);
+  }
+
+  @Get('personal/:token/tables/:tableName/rows')
+  publicPersonalTableRows(
+    @Param('token') token: string,
+    @Param('tableName') tableName: string,
+  ) {
+    return this.sqlPracticeService.getPublicPersonalPracticeTableRows(
+      token,
+      tableName,
+    );
+  }
+
+  @Post('personal/:token/grade')
+  gradePublicPersonalProblem(
+    @Param('token') token: string,
+    @Body() body: unknown,
+  ) {
+    return this.sqlPracticeService.gradePublicPersonalPracticeProblem(
+      token,
+      body,
+    );
   }
 }

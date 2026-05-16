@@ -24,6 +24,10 @@ import {
   sqlPracticeNotesTable,
   sqlPracticeSubmissionLogsTable,
   sqlPracticeSubmissionsTable,
+  sqlPersonalPracticeProblemsTable,
+  sqlPersonalPracticeSchemaVersionsTable,
+  sqlPersonalPracticeSharesTable,
+  sqlPersonalPracticeWorkspacesTable,
   sqlUserPracticeProblemsTable,
   sqlUserPracticeSchemasTable,
   usersTable,
@@ -35,6 +39,7 @@ import {
   gradeSqlUserPracticeProblemSchema,
   gradeSqlPracticeSubmissionSchema,
   seedFileNameSchema,
+  sqlPersonalPracticeProblemListQuerySchema,
   sqlPracticeSubmissionActivityQuerySchema,
   sqlPracticeSubmissionSeedQuerySchema,
   type CreateSqlPracticeNoteInput,
@@ -43,6 +48,7 @@ import {
   type GradeSqlUserPracticeProblemInput,
   type GradeSqlPracticeSubmissionInput,
   type ListSqlPracticeNotesQuery,
+  type SqlPersonalPracticeProblemListQuery,
   type SqlUserPracticeProblemListQuery,
   type UpdateSqlPracticeNoteInput,
   type UpdateSqlUserPracticeProblemInput,
@@ -64,6 +70,12 @@ import type {
   SqlPracticeSubmission,
   SqlPracticeSubmissionLevel,
   SqlPracticeSubmissionStatus,
+  SqlPersonalPracticeProblem,
+  SqlPersonalPracticeProblemListResponse,
+  SqlPersonalPracticePublicProblemResponse,
+  SqlPersonalPracticeSchemaVersion,
+  SqlPersonalPracticeShare,
+  SqlPersonalPracticeWorkspace,
   SqlUserPracticeGenerateAnswerResponse,
   SqlUserPracticeGradeResponse,
   SqlUserPracticeProblem,
@@ -77,6 +89,8 @@ import type {
 const DEFAULT_BUILTIN_SEED_FILE = '01_board_basic.sql';
 const USER_PRACTICE_SEED_FILE = 'user_commerce.sql';
 const USER_PRACTICE_RUNTIME_SCOPE = '__user_practice__';
+const PERSONAL_PRACTICE_RUNTIME_SCOPE = '__personal_practice__';
+const PUBLIC_PERSONAL_PRACTICE_RUNTIME_SCOPE = '__public_personal_practice__';
 const LEGACY_SEED_FILE = 'seed.sql';
 const SEED_LEVELS: SqlPracticeSeedLevel[] = [
   'beginner',
@@ -412,6 +426,419 @@ export class SqlPracticeService {
     const mmdFile = join(this.getUserPracticeSeedDir(), 'user_commerce.mmd');
     if (!existsSync(mmdFile)) return { mmd: null };
     return { mmd: readFileSync(mmdFile, 'utf8') };
+  }
+
+  listPersonalPracticeWorkspaces(
+    userId: string,
+  ): SqlPersonalPracticeWorkspace[] {
+    this.ensureDefaultPersonalWorkspace(userId);
+    return this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeWorkspacesTable)
+      .where(eq(sqlPersonalPracticeWorkspacesTable.ownerId, userId))
+      .orderBy(desc(sqlPersonalPracticeWorkspacesTable.updatedAt))
+      .all()
+      .map((row) => this.toPersonalWorkspace(row));
+  }
+
+  getDefaultPersonalPracticeWorkspace(
+    userId: string,
+  ): SqlPersonalPracticeWorkspace {
+    return this.ensureDefaultPersonalWorkspace(userId);
+  }
+
+  getPersonalPracticeWorkspaceMeta(
+    workspaceId: string,
+    userId: string,
+  ): SqlPracticeMeta {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const seed = this.buildPersonalPracticeSeed(schemaVersion);
+    const runtimeUserId = this.getPersonalPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+    const freshness = this.ensureDatabaseFresh(runtimeUserId, seed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      return {
+        seedFile: seed.fileName,
+        seedHash: freshness.seedHash,
+        dbFile: basename(this.getDatabaseFile(runtimeUserId)),
+        lastLoadedAt: freshness.loadedAt,
+        tableCount: this.listTableNames(db).length,
+        activeSeed: this.buildSeedSummary(seed, seed, schemaVersion.dbFileHash),
+      };
+    } finally {
+      db.close();
+    }
+  }
+
+  getPersonalPracticeTables(workspaceId: string, userId: string): TableInfo[] {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    return this.getPersonalPracticeTablesForSchema(
+      workspace.id,
+      schemaVersion,
+      userId,
+    );
+  }
+
+  getPersonalPracticeTableRows(
+    workspaceId: string,
+    tableName: string,
+    userId: string,
+  ): SqlExecuteResponse {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    return this.executePersonalPracticeTablePreview(
+      tableName,
+      schemaVersion,
+      userId,
+    );
+  }
+
+  getPersonalPracticeErd(workspaceId: string, userId: string): { mmd: string | null } {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    return { mmd: schemaVersion.erdMmd ?? null };
+  }
+
+  listPersonalPracticeProblems(
+    workspaceId: string,
+    query: SqlPersonalPracticeProblemListQuery,
+    userId: string,
+  ): SqlPersonalPracticeProblemListResponse {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const conditions = [
+      eq(sqlPersonalPracticeProblemsTable.workspaceId, workspace.id),
+    ];
+
+    if (query.level) {
+      conditions.push(eq(sqlPersonalPracticeProblemsTable.level, query.level));
+    }
+
+    const rows = this.databaseService.db
+      .select({
+        id: sqlPersonalPracticeProblemsTable.id,
+        workspaceId: sqlPersonalPracticeProblemsTable.workspaceId,
+        schemaVersionId: sqlPersonalPracticeProblemsTable.schemaVersionId,
+        title: sqlPersonalPracticeProblemsTable.title,
+        description: sqlPersonalPracticeProblemsTable.description,
+        level: sqlPersonalPracticeProblemsTable.level,
+        targetTables: sqlPersonalPracticeProblemsTable.targetTables,
+        starterSql: sqlPersonalPracticeProblemsTable.starterSql,
+        answerSql: sqlPersonalPracticeProblemsTable.answerSql,
+        explanation: sqlPersonalPracticeProblemsTable.explanation,
+        status: sqlPersonalPracticeProblemsTable.status,
+        createdBy: sqlPersonalPracticeProblemsTable.createdBy,
+        authorName: usersTable.name,
+        shareToken: sqlPersonalPracticeSharesTable.token,
+        shareEnabled: sqlPersonalPracticeSharesTable.enabled,
+        createdAt: sqlPersonalPracticeProblemsTable.createdAt,
+        updatedAt: sqlPersonalPracticeProblemsTable.updatedAt,
+      })
+      .from(sqlPersonalPracticeProblemsTable)
+      .innerJoin(
+        usersTable,
+        eq(usersTable.id, sqlPersonalPracticeProblemsTable.createdBy),
+      )
+      .leftJoin(
+        sqlPersonalPracticeSharesTable,
+        and(
+          eq(sqlPersonalPracticeSharesTable.problemId, sqlPersonalPracticeProblemsTable.id),
+          eq(sqlPersonalPracticeSharesTable.enabled, true),
+        ),
+      )
+      .where(and(...conditions))
+      .orderBy(
+        sqlPersonalPracticeProblemsTable.level,
+        desc(sqlPersonalPracticeProblemsTable.updatedAt),
+      )
+      .all();
+
+    return {
+      workspace,
+      schemaVersion,
+      problems: rows.map((row) => ({
+        ...row,
+        shareEnabled: Boolean(row.shareEnabled),
+      })),
+    };
+  }
+
+  getPersonalPracticeProblem(
+    workspaceId: string,
+    id: string,
+    userId: string,
+  ): SqlPersonalPracticeProblem | null {
+    this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const problem = this.getPersonalPracticeProblemRow(workspaceId, id);
+    if (!problem) return null;
+    return this.toPersonalProblem(problem);
+  }
+
+  createPersonalPracticeProblem(
+    workspaceId: string,
+    input: CreateSqlUserPracticeProblemInput,
+    userId: string,
+  ): SqlPersonalPracticeProblem | null {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    this.validatePersonalProblemTables(input.targetTables, workspace.id, schemaVersion, userId);
+    this.validatePersonalAnswerSql(input.answerSql, workspace.id, schemaVersion, userId);
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    this.databaseService.db
+      .insert(sqlPersonalPracticeProblemsTable)
+      .values({
+        id,
+        workspaceId: workspace.id,
+        schemaVersionId: schemaVersion.id,
+        title: input.title,
+        description: input.description,
+        level: input.level,
+        targetTables: input.targetTables,
+        starterSql: input.starterSql,
+        answerSql: input.answerSql,
+        explanation: input.explanation,
+        status: input.status,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.getPersonalPracticeProblem(workspace.id, id, userId);
+  }
+
+  updatePersonalPracticeProblem(
+    workspaceId: string,
+    id: string,
+    input: UpdateSqlUserPracticeProblemInput,
+    userId: string,
+  ): SqlPersonalPracticeProblem | null {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const problem = this.getPersonalPracticeProblemRow(workspace.id, id);
+    if (!problem) throw new NotFoundException('SQL personal problem not found.');
+    if (problem.createdBy !== userId) throw new ForbiddenException('Not authorized.');
+    const schemaVersion = this.getPersonalSchemaVersion(problem.schemaVersionId);
+
+    if (input.targetTables) {
+      this.validatePersonalProblemTables(input.targetTables, workspace.id, schemaVersion, userId);
+    }
+    if (input.answerSql) {
+      this.validatePersonalAnswerSql(input.answerSql, workspace.id, schemaVersion, userId);
+    }
+
+    this.databaseService.db
+      .update(sqlPersonalPracticeProblemsTable)
+      .set({
+        title: input.title,
+        description: input.description,
+        level: input.level,
+        targetTables: input.targetTables,
+        starterSql: input.starterSql,
+        answerSql: input.answerSql,
+        explanation: input.explanation,
+        status: input.status,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(sqlPersonalPracticeProblemsTable.id, id))
+      .run();
+
+    return this.getPersonalPracticeProblem(workspace.id, id, userId);
+  }
+
+  deletePersonalPracticeProblem(workspaceId: string, id: string, userId: string) {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const problem = this.getPersonalPracticeProblemRow(workspace.id, id);
+    if (!problem) throw new NotFoundException('SQL personal problem not found.');
+    if (problem.createdBy !== userId) throw new ForbiddenException('Not authorized.');
+
+    this.databaseService.db
+      .delete(sqlPersonalPracticeProblemsTable)
+      .where(eq(sqlPersonalPracticeProblemsTable.id, id))
+      .run();
+  }
+
+  async generatePersonalPracticeAnswer(
+    workspaceId: string,
+    input: GenerateSqlUserPracticeAnswerInput,
+    userId: string,
+  ): Promise<SqlUserPracticeGenerateAnswerResponse> {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    this.validatePersonalProblemTables(input.targetTables, workspace.id, schemaVersion, userId);
+    const prompt = this.buildPersonalPracticeAnswerPrompt(
+      workspace.id,
+      schemaVersion,
+      input,
+      userId,
+    );
+    const raw = await this.callGroq(prompt, 'general');
+    const parsed = this.parseGeneratedAnswer(raw);
+
+    if (!parsed.answerSql) {
+      throw new InternalServerErrorException('정답 SQL을 생성하지 못했습니다.');
+    }
+
+    this.validatePersonalAnswerSql(parsed.answerSql, workspace.id, schemaVersion, userId);
+    return parsed;
+  }
+
+  sharePersonalPracticeProblem(
+    workspaceId: string,
+    id: string,
+    userId: string,
+  ): SqlPersonalPracticeShare {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const problem = this.getPersonalPracticeProblemRow(workspace.id, id);
+    if (!problem) throw new NotFoundException('SQL personal problem not found.');
+    if (problem.createdBy !== userId) throw new ForbiddenException('Not authorized.');
+
+    const existing = this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeSharesTable)
+      .where(
+        and(
+          eq(sqlPersonalPracticeSharesTable.problemId, id),
+          eq(sqlPersonalPracticeSharesTable.enabled, true),
+        ),
+      )
+      .get();
+    if (existing) return this.toPersonalShare(existing);
+
+    const shareId = randomUUID();
+    const now = new Date().toISOString();
+    this.databaseService.db
+      .insert(sqlPersonalPracticeSharesTable)
+      .values({
+        id: shareId,
+        problemId: problem.id,
+        workspaceId: workspace.id,
+        schemaVersionId: problem.schemaVersionId,
+        token: randomUUID().replace(/-/g, ''),
+        enabled: true,
+        createdBy: userId,
+        createdAt: now,
+        disabledAt: null,
+      })
+      .run();
+
+    const share = this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeSharesTable)
+      .where(eq(sqlPersonalPracticeSharesTable.id, shareId))
+      .get();
+    if (!share) throw new InternalServerErrorException('Failed to create share.');
+    return this.toPersonalShare(share);
+  }
+
+  unsharePersonalPracticeProblem(workspaceId: string, id: string, userId: string) {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const problem = this.getPersonalPracticeProblemRow(workspace.id, id);
+    if (!problem) throw new NotFoundException('SQL personal problem not found.');
+    if (problem.createdBy !== userId) throw new ForbiddenException('Not authorized.');
+
+    this.databaseService.db
+      .update(sqlPersonalPracticeSharesTable)
+      .set({ enabled: false, disabledAt: new Date().toISOString() })
+      .where(eq(sqlPersonalPracticeSharesTable.problemId, id))
+      .run();
+  }
+
+  gradePersonalPracticeProblem(
+    workspaceId: string,
+    id: string,
+    body: unknown,
+    userId: string,
+  ): SqlUserPracticeGradeResponse {
+    this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const problem = this.getPersonalPracticeProblemRow(workspaceId, id);
+    if (!problem) throw new NotFoundException('SQL personal problem not found.');
+    const schemaVersion = this.getPersonalSchemaVersion(problem.schemaVersionId);
+    const input = gradeSqlUserPracticeProblemSchema.parse(body);
+    return this.gradePersonalProblemWithSchema(
+      problem,
+      schemaVersion,
+      input.submittedSql,
+      this.getPersonalPracticeRuntimeUserId(workspaceId, schemaVersion.id, userId),
+    );
+  }
+
+  getPublicPersonalPracticeProblem(
+    token: string,
+  ): SqlPersonalPracticePublicProblemResponse | null {
+    const share = this.getEnabledPersonalShareByToken(token);
+    if (!share) return null;
+    const problem = this.getPersonalPracticeProblemRow(share.workspaceId, share.problemId);
+    if (!problem || problem.status !== 'published') return null;
+    const workspace = this.getPersonalWorkspaceById(share.workspaceId);
+    if (!workspace) return null;
+    const schemaVersion = this.getPersonalSchemaVersion(share.schemaVersionId);
+    const tables = this.getPersonalPracticeTablesForSchema(
+      share.workspaceId,
+      schemaVersion,
+      this.getPublicPersonalPracticeRuntimeUserId(token, schemaVersion.id),
+    );
+    const publicProblem = this.toPersonalProblem(problem);
+    const { answerSql: _answerSql, createdBy: _createdBy, shareToken: _shareToken, shareEnabled: _shareEnabled, ...safeProblem } = publicProblem;
+
+    return {
+      workspace: { id: workspace.id, title: workspace.title },
+      schemaVersion: {
+        id: schemaVersion.id,
+        version: schemaVersion.version,
+        title: schemaVersion.title,
+        dbFileHash: schemaVersion.dbFileHash,
+      },
+      problem: safeProblem,
+      tables,
+      erdMmd: schemaVersion.erdMmd,
+    };
+  }
+
+  gradePublicPersonalPracticeProblem(
+    token: string,
+    body: unknown,
+  ): SqlUserPracticeGradeResponse {
+    const share = this.getEnabledPersonalShareByToken(token);
+    if (!share) throw new NotFoundException('SQL personal share not found.');
+    const problem = this.getPersonalPracticeProblemRow(share.workspaceId, share.problemId);
+    if (!problem || problem.status !== 'published') {
+      throw new NotFoundException('SQL personal problem not found.');
+    }
+    const schemaVersion = this.getPersonalSchemaVersion(share.schemaVersionId);
+    const input = gradeSqlUserPracticeProblemSchema.parse(body);
+    return this.gradePersonalProblemWithSchema(
+      problem,
+      schemaVersion,
+      input.submittedSql,
+      this.getPublicPersonalPracticeRuntimeUserId(token, schemaVersion.id),
+    );
+  }
+
+  getPublicPersonalPracticeTableRows(
+    token: string,
+    tableName: string,
+  ): SqlExecuteResponse {
+    const share = this.getEnabledPersonalShareByToken(token);
+    if (!share) throw new NotFoundException('SQL personal share not found.');
+    const problem = this.getPersonalPracticeProblemRow(share.workspaceId, share.problemId);
+    if (!problem || problem.status !== 'published') {
+      throw new NotFoundException('SQL personal problem not found.');
+    }
+    const schemaVersion = this.getPersonalSchemaVersion(share.schemaVersionId);
+    return this.executePersonalPracticeTablePreview(
+      tableName,
+      schemaVersion,
+      this.getPublicPersonalPracticeRuntimeUserId(token, schemaVersion.id),
+    );
   }
 
   listUserPracticeProblems(
@@ -1764,6 +2191,600 @@ export class SqlPracticeService {
 
   private getUserPracticeRuntimeUserId(userId: string) {
     return `${USER_PRACTICE_RUNTIME_SCOPE}:${userId}`;
+  }
+
+  private ensureDefaultPersonalWorkspace(
+    userId: string,
+  ): SqlPersonalPracticeWorkspace {
+    const existing = this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeWorkspacesTable)
+      .where(eq(sqlPersonalPracticeWorkspacesTable.ownerId, userId))
+      .orderBy(desc(sqlPersonalPracticeWorkspacesTable.updatedAt))
+      .get();
+
+    if (existing) {
+      const workspace = this.toPersonalWorkspace(existing);
+      if (!workspace.activeSchemaVersionId) {
+        this.createInitialPersonalSchemaVersion(workspace.id, userId);
+        return this.assertPersonalWorkspaceOwner(workspace.id, userId);
+      }
+      return workspace;
+    }
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const ownerName =
+      this.databaseService.db
+        .select({ name: usersTable.name })
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .get()?.name ?? '나';
+    this.databaseService.db
+      .insert(sqlPersonalPracticeWorkspacesTable)
+      .values({
+        id,
+        ownerId: userId,
+        title: `${ownerName}의 SQL 연습장`,
+        description: '개인 SQL 문제를 만들고 공유하는 연습장입니다.',
+        activeSchemaVersionId: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    this.createInitialPersonalSchemaVersion(id, userId);
+    return this.assertPersonalWorkspaceOwner(id, userId);
+  }
+
+  private createInitialPersonalSchemaVersion(workspaceId: string, userId: string) {
+    const seed = this.getUserPracticeSeed();
+    const schemaSql = readFileSync(seed.filePath, 'utf8');
+    const erdFile = join(this.getUserPracticeSeedDir(), 'user_commerce.mmd');
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    this.databaseService.db
+      .insert(sqlPersonalPracticeSchemaVersionsTable)
+      .values({
+        id,
+        workspaceId,
+        version: 1,
+        title: '개인 커머스 운영 DB',
+        description: '개인 SQL 문제 출제를 위한 기본 커머스 DB입니다.',
+        schemaSql,
+        erdMmd: existsSync(erdFile) ? readFileSync(erdFile, 'utf8') : null,
+        dbFileHash: this.hashSql(schemaSql),
+        sourceType: 'seed',
+        sourceFileName: seed.fileName,
+        replacedFromSchemaVersionId: null,
+        createdBy: userId,
+        createdAt: now,
+      })
+      .run();
+
+    this.databaseService.db
+      .update(sqlPersonalPracticeWorkspacesTable)
+      .set({ activeSchemaVersionId: id, updatedAt: now })
+      .where(eq(sqlPersonalPracticeWorkspacesTable.id, workspaceId))
+      .run();
+  }
+
+  private assertPersonalWorkspaceOwner(
+    workspaceId: string,
+    userId: string,
+  ): SqlPersonalPracticeWorkspace {
+    const workspace = this.getPersonalWorkspaceById(workspaceId);
+    if (!workspace) throw new NotFoundException('SQL personal workspace not found.');
+    if (workspace.ownerId !== userId) throw new ForbiddenException('Not authorized.');
+    return workspace;
+  }
+
+  private getPersonalWorkspaceById(
+    workspaceId: string,
+  ): SqlPersonalPracticeWorkspace | null {
+    const workspace = this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeWorkspacesTable)
+      .where(eq(sqlPersonalPracticeWorkspacesTable.id, workspaceId))
+      .get();
+    return workspace ? this.toPersonalWorkspace(workspace) : null;
+  }
+
+  private getActivePersonalSchemaVersion(
+    workspaceId: string,
+  ): SqlPersonalPracticeSchemaVersion {
+    const workspace = this.getPersonalWorkspaceById(workspaceId);
+    if (!workspace) throw new NotFoundException('SQL personal workspace not found.');
+    if (!workspace.activeSchemaVersionId) {
+      throw new InternalServerErrorException('Active personal schema version is missing.');
+    }
+    return this.getPersonalSchemaVersion(workspace.activeSchemaVersionId);
+  }
+
+  private getPersonalSchemaVersion(id: string): SqlPersonalPracticeSchemaVersion {
+    const row = this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeSchemaVersionsTable)
+      .where(eq(sqlPersonalPracticeSchemaVersionsTable.id, id))
+      .get();
+    if (!row) throw new NotFoundException('SQL personal schema version not found.');
+    return this.toPersonalSchemaVersion(row);
+  }
+
+  private buildPersonalPracticeSeed(
+    schemaVersion: SqlPersonalPracticeSchemaVersion & { schemaSql?: string },
+  ): ResolvedSeed {
+    const schemaSql =
+      schemaVersion.schemaSql ??
+      this.databaseService.db
+        .select({ schemaSql: sqlPersonalPracticeSchemaVersionsTable.schemaSql })
+        .from(sqlPersonalPracticeSchemaVersionsTable)
+        .where(eq(sqlPersonalPracticeSchemaVersionsTable.id, schemaVersion.id))
+        .get()?.schemaSql;
+    if (!schemaSql) {
+      throw new InternalServerErrorException('Personal schema SQL is missing.');
+    }
+
+    const seedDir = this.getPersonalPracticeSeedDir();
+    mkdirSync(seedDir, { recursive: true });
+    const fileName = `${schemaVersion.id}.sql`;
+    const filePath = join(seedDir, fileName);
+    if (!existsSync(filePath)) {
+      writeFileSync(filePath, schemaSql);
+    }
+
+    return {
+      source: 'uploaded',
+      fileName,
+      filePath,
+    };
+  }
+
+  private getPersonalPracticeSeedDir() {
+    const configured =
+      this.configService.get<string>('SQL_PERSONAL_PRACTICE_SCHEMA_DIR') ??
+      './data/sql-practice/personal-schema-versions';
+    return isAbsolute(configured)
+      ? configured
+      : join(process.cwd(), configured);
+  }
+
+  private getPersonalPracticeRuntimeUserId(
+    workspaceId: string,
+    schemaVersionId: string,
+    userId: string,
+  ) {
+    return `${PERSONAL_PRACTICE_RUNTIME_SCOPE}:${workspaceId}:${schemaVersionId}:${userId}`;
+  }
+
+  private getPublicPersonalPracticeRuntimeUserId(
+    token: string,
+    schemaVersionId: string,
+  ) {
+    return `${PUBLIC_PERSONAL_PRACTICE_RUNTIME_SCOPE}:${schemaVersionId}:${token}`;
+  }
+
+  private getPersonalPracticeTablesForSchema(
+    workspaceId: string,
+    schemaVersion: SqlPersonalPracticeSchemaVersion,
+    runtimeUserId: string,
+  ): TableInfo[] {
+    const seed = this.buildPersonalPracticeSeed(schemaVersion);
+    this.ensureDatabaseFresh(runtimeUserId, seed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      return this.listTableNames(db).map((tableName) => ({
+        tableName,
+        columns: this.getColumns(db, tableName),
+        rowCount: this.getRowCount(db, tableName),
+      }));
+    } finally {
+      db.close();
+    }
+  }
+
+  private getPersonalPracticeProblemRow(workspaceId: string, id: string) {
+    return this.databaseService.db
+      .select({
+        id: sqlPersonalPracticeProblemsTable.id,
+        workspaceId: sqlPersonalPracticeProblemsTable.workspaceId,
+        schemaVersionId: sqlPersonalPracticeProblemsTable.schemaVersionId,
+        title: sqlPersonalPracticeProblemsTable.title,
+        description: sqlPersonalPracticeProblemsTable.description,
+        level: sqlPersonalPracticeProblemsTable.level,
+        targetTables: sqlPersonalPracticeProblemsTable.targetTables,
+        starterSql: sqlPersonalPracticeProblemsTable.starterSql,
+        answerSql: sqlPersonalPracticeProblemsTable.answerSql,
+        explanation: sqlPersonalPracticeProblemsTable.explanation,
+        status: sqlPersonalPracticeProblemsTable.status,
+        createdBy: sqlPersonalPracticeProblemsTable.createdBy,
+        authorName: usersTable.name,
+        shareToken: sqlPersonalPracticeSharesTable.token,
+        shareEnabled: sqlPersonalPracticeSharesTable.enabled,
+        createdAt: sqlPersonalPracticeProblemsTable.createdAt,
+        updatedAt: sqlPersonalPracticeProblemsTable.updatedAt,
+      })
+      .from(sqlPersonalPracticeProblemsTable)
+      .innerJoin(
+        usersTable,
+        eq(usersTable.id, sqlPersonalPracticeProblemsTable.createdBy),
+      )
+      .leftJoin(
+        sqlPersonalPracticeSharesTable,
+        and(
+          eq(sqlPersonalPracticeSharesTable.problemId, sqlPersonalPracticeProblemsTable.id),
+          eq(sqlPersonalPracticeSharesTable.enabled, true),
+        ),
+      )
+      .where(
+        and(
+          eq(sqlPersonalPracticeProblemsTable.workspaceId, workspaceId),
+          eq(sqlPersonalPracticeProblemsTable.id, id),
+        ),
+      )
+      .get();
+  }
+
+  private getEnabledPersonalShareByToken(token: string) {
+    return this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeSharesTable)
+      .where(
+        and(
+          eq(sqlPersonalPracticeSharesTable.token, token),
+          eq(sqlPersonalPracticeSharesTable.enabled, true),
+        ),
+      )
+      .get();
+  }
+
+  private validatePersonalProblemTables(
+    tableNames: string[],
+    workspaceId: string,
+    schemaVersion: SqlPersonalPracticeSchemaVersion,
+    runtimeUserId: string,
+  ) {
+    if (tableNames.length === 0) return;
+    const tables = this.getPersonalPracticeTablesForSchema(
+      workspaceId,
+      schemaVersion,
+      runtimeUserId,
+    );
+    const existingTables = new Set(tables.map((table) => table.tableName));
+    const invalidTable = tableNames.find((tableName) => !existingTables.has(tableName));
+
+    if (invalidTable) {
+      throw new BadRequestException(`Unknown target table: ${invalidTable}`);
+    }
+  }
+
+  private validatePersonalAnswerSql(
+    answerSql: string,
+    workspaceId: string,
+    schemaVersion: SqlPersonalPracticeSchemaVersion,
+    runtimeUserId: string,
+  ) {
+    const { query, type } = sanitizeSql(answerSql, this.getMaxQueryLength());
+    if (type !== 'SELECT') {
+      throw new BadRequestException('정답 SQL은 SELECT/WITH 조회 쿼리만 허용됩니다.');
+    }
+
+    const seed = this.buildPersonalPracticeSeed(schemaVersion);
+    this.ensureDatabaseFresh(runtimeUserId, seed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      db.prepare(query).all();
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : '정답 SQL을 실행할 수 없습니다.',
+      );
+    } finally {
+      db.close();
+    }
+  }
+
+  private buildPersonalPracticeAnswerPrompt(
+    workspaceId: string,
+    schemaVersion: SqlPersonalPracticeSchemaVersion,
+    input: GenerateSqlUserPracticeAnswerInput,
+    runtimeUserId: string,
+  ) {
+    const tables = this.getPersonalPracticeTablesForSchema(
+      workspaceId,
+      schemaVersion,
+      runtimeUserId,
+    );
+    const relatedTables =
+      input.targetTables.length > 0
+        ? input.targetTables
+        : tables.map((table) => table.tableName);
+    const requested = new Set(relatedTables);
+    const contextTables = tables.filter((table) => requested.has(table.tableName));
+    const tableSummaries = (contextTables.length > 0 ? contextTables : tables)
+      .map((table) => {
+        const columns = table.columns
+          .map((column) => {
+            const flags = [
+              column.primaryKey ? 'PK' : '',
+              column.notNull ? 'NOT NULL' : '',
+            ].filter(Boolean);
+            const flagText = flags.length ? ` (${flags.join(', ')})` : '';
+            return `- ${column.name} ${column.type}${flagText}`;
+          })
+          .join('\n');
+        return `table ${table.tableName} (${table.rowCount} rows)\n${columns}`;
+      })
+      .join('\n\n');
+
+    return `개인 SQL 연습 문제에 맞는 정답 SQL을 생성해주세요.
+
+반드시 아래 형식만 출력하세요. 다른 설명, Markdown, code fence는 쓰지 마세요.
+
+[SQL]
+SELECT ...
+
+[EXPLANATION]
+한국어 해설 한 문장
+
+[문제 제목]
+${input.title ?? '(제목 없음)'}
+
+[문제 설명]
+${input.description}
+
+[난이도]
+Level ${input.level}
+
+[관련 테이블]
+${relatedTables.join(', ')}
+
+[테이블 스키마]
+${tableSummaries}
+
+[생성 규칙]
+- SQLite 문법만 사용하세요.
+- SELECT 또는 WITH로 시작하는 조회 쿼리만 생성하세요.
+- 문제 설명을 만족하는 가장 단순하고 명확한 정답 SQL을 생성하세요.
+- INSERT, UPDATE, DELETE, CREATE, DROP, ALTER는 절대 사용하지 마세요.
+- 테이블과 컬럼은 제공된 스키마에 있는 이름만 사용하세요.`;
+  }
+
+  private gradePersonalProblemWithSchema(
+    problem: {
+      id: string;
+      answerSql: string;
+    },
+    schemaVersion: SqlPersonalPracticeSchemaVersion,
+    submittedSql: string,
+    runtimeUserId: string,
+  ): SqlUserPracticeGradeResponse {
+    const execution = this.executePersonalPracticeSelectForGrade(
+      submittedSql,
+      schemaVersion,
+      runtimeUserId,
+    );
+
+    if (!execution.success) {
+      return {
+        problemId: problem.id,
+        submittedSql,
+        answerSql: problem.answerSql,
+        isCorrect: false,
+        feedback: `SQL 실행에 실패했습니다.\n\n${execution.message}`,
+        execution,
+        answerExecution: null,
+      };
+    }
+
+    const answerExecution = this.executePersonalPracticeSelectForGrade(
+      problem.answerSql,
+      schemaVersion,
+      runtimeUserId,
+    );
+
+    if (!answerExecution.success) {
+      throw new InternalServerErrorException(
+        `저장된 정답 SQL을 실행할 수 없습니다. ${answerExecution.message}`,
+      );
+    }
+
+    const isCorrect = this.isSameSqlResult(execution, answerExecution);
+    return {
+      problemId: problem.id,
+      submittedSql,
+      answerSql: problem.answerSql,
+      isCorrect,
+      feedback: isCorrect
+        ? '정답입니다. 제출 SQL과 정답 SQL의 실행 결과가 동일합니다.'
+        : '오답입니다. 제출 SQL과 정답 SQL의 실행 결과가 다릅니다. 조회 컬럼, 행, 정렬 조건을 확인해주세요.',
+      execution,
+      answerExecution,
+    };
+  }
+
+  private executePersonalPracticeSelectForGrade(
+    query: string,
+    schemaVersion: SqlPersonalPracticeSchemaVersion,
+    runtimeUserId: string,
+  ): SqlExecuteResponse {
+    const start = Date.now();
+
+    try {
+      const { query: sanitizedQuery, type } = sanitizeSql(
+        query,
+        this.getMaxQueryLength(),
+      );
+
+      if (type !== 'SELECT') {
+        return {
+          success: false,
+          type,
+          columns: null,
+          rows: null,
+          affectedRows: 0,
+          message: '답안 제출은 SELECT/WITH 조회 쿼리만 허용됩니다.',
+          executionTimeMs: Date.now() - start,
+          schemaChanged: false,
+        };
+      }
+
+      const seed = this.buildPersonalPracticeSeed(schemaVersion);
+      const freshness = this.ensureDatabaseFresh(runtimeUserId, seed);
+      const db = this.openDatabase(runtimeUserId);
+
+      try {
+        return this.executeReader(
+          db,
+          sanitizedQuery,
+          type,
+          start,
+          freshness.seedReloaded,
+        );
+      } catch (error) {
+        return {
+          success: false,
+          type,
+          columns: null,
+          rows: null,
+          affectedRows: 0,
+          message:
+            error instanceof Error ? error.message : 'SQL execution failed.',
+          executionTimeMs: Date.now() - start,
+          schemaChanged: false,
+          seedReloaded: freshness.seedReloaded,
+        };
+      } finally {
+        db.close();
+      }
+    } catch (error) {
+      return {
+        success: false,
+        type: 'OTHER',
+        columns: null,
+        rows: null,
+        affectedRows: 0,
+        message:
+          error instanceof Error ? error.message : 'SQL validation failed.',
+        executionTimeMs: Date.now() - start,
+        schemaChanged: false,
+      };
+    }
+  }
+
+  private executePersonalPracticeTablePreview(
+    tableName: string,
+    schemaVersion: SqlPersonalPracticeSchemaVersion,
+    runtimeUserId: string,
+  ): SqlExecuteResponse {
+    const start = Date.now();
+    const seed = this.buildPersonalPracticeSeed(schemaVersion);
+    const freshness = this.ensureDatabaseFresh(runtimeUserId, seed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      this.ensureTableExists(db, tableName);
+      return this.executeReader(
+        db,
+        `SELECT * FROM ${quoteIdentifier(tableName)} LIMIT 50`,
+        'SELECT',
+        start,
+        freshness.seedReloaded,
+      );
+    } finally {
+      db.close();
+    }
+  }
+
+  private toPersonalWorkspace(
+    row: typeof sqlPersonalPracticeWorkspacesTable.$inferSelect,
+  ): SqlPersonalPracticeWorkspace {
+    return {
+      id: row.id,
+      ownerId: row.ownerId,
+      title: row.title,
+      description: row.description,
+      activeSchemaVersionId: row.activeSchemaVersionId,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private toPersonalSchemaVersion(
+    row: typeof sqlPersonalPracticeSchemaVersionsTable.$inferSelect,
+  ): SqlPersonalPracticeSchemaVersion {
+    return {
+      id: row.id,
+      workspaceId: row.workspaceId,
+      version: row.version,
+      title: row.title,
+      description: row.description,
+      erdMmd: row.erdMmd,
+      dbFileHash: row.dbFileHash,
+      sourceType: row.sourceType,
+      sourceFileName: row.sourceFileName,
+      replacedFromSchemaVersionId: row.replacedFromSchemaVersionId,
+      createdAt: row.createdAt,
+    };
+  }
+
+  private toPersonalProblem(
+    row: {
+      id: string;
+      workspaceId: string;
+      schemaVersionId: string;
+      title: string;
+      description: string;
+      level: number;
+      targetTables: string[];
+      starterSql: string | null;
+      answerSql: string;
+      explanation: string | null;
+      status: 'draft' | 'published' | 'archived';
+      createdBy: string;
+      authorName: string | null;
+      shareToken: string | null;
+      shareEnabled: boolean | null;
+      createdAt: string;
+      updatedAt: string;
+    },
+  ): SqlPersonalPracticeProblem {
+    return {
+      id: row.id,
+      workspaceId: row.workspaceId,
+      schemaVersionId: row.schemaVersionId,
+      title: row.title,
+      description: row.description,
+      level: row.level,
+      targetTables: row.targetTables,
+      starterSql: row.starterSql,
+      answerSql: row.answerSql,
+      explanation: row.explanation,
+      status: row.status,
+      createdBy: row.createdBy,
+      authorName: row.authorName,
+      shareToken: row.shareToken,
+      shareEnabled: Boolean(row.shareEnabled),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private toPersonalShare(
+    row: typeof sqlPersonalPracticeSharesTable.$inferSelect,
+  ): SqlPersonalPracticeShare {
+    return {
+      id: row.id,
+      problemId: row.problemId,
+      workspaceId: row.workspaceId,
+      schemaVersionId: row.schemaVersionId,
+      token: row.token,
+      enabled: row.enabled,
+      createdAt: row.createdAt,
+      disabledAt: row.disabledAt,
+    };
   }
 
   private validateProblemTables(tableNames: string[], userId: string) {

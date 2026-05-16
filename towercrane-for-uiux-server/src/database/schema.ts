@@ -908,6 +908,123 @@ export const sqlUserPracticeProblemsTable = sqliteTable(
   },
 );
 
+export type SqlPersonalPracticeSchemaSourceType =
+  | 'seed'
+  | 'uploaded_sql'
+  | 'uploaded_sqlite';
+export type SqlPersonalPracticeProblemStatus =
+  | 'draft'
+  | 'published'
+  | 'archived';
+
+export const sqlPersonalPracticeWorkspacesTable = sqliteTable(
+  'sql_personal_practice_workspaces',
+  {
+    id: text('id').primaryKey(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    activeSchemaVersionId: text('active_schema_version_id'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const sqlPersonalPracticeSchemaVersionsTable = sqliteTable(
+  'sql_personal_practice_schema_versions',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => sqlPersonalPracticeWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    version: integer('version').notNull(),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    schemaSql: text('schema_sql').notNull(),
+    erdMmd: text('erd_mmd'),
+    dbFileHash: text('db_file_hash').notNull(),
+    sourceType: text('source_type')
+      .$type<SqlPersonalPracticeSchemaSourceType>()
+      .notNull()
+      .default('seed'),
+    sourceFileName: text('source_file_name'),
+    replacedFromSchemaVersionId: text('replaced_from_schema_version_id'),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+  },
+);
+
+export const sqlPersonalPracticeProblemsTable = sqliteTable(
+  'sql_personal_practice_problems',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => sqlPersonalPracticeWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    schemaVersionId: text('schema_version_id')
+      .notNull()
+      .references(() => sqlPersonalPracticeSchemaVersionsTable.id, {
+        onDelete: 'restrict',
+      }),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    level: integer('level').notNull().default(1),
+    targetTables: text('target_tables', { mode: 'json' })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    starterSql: text('starter_sql'),
+    answerSql: text('answer_sql').notNull(),
+    explanation: text('explanation'),
+    status: text('status')
+      .$type<SqlPersonalPracticeProblemStatus>()
+      .notNull()
+      .default('published'),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const sqlPersonalPracticeSharesTable = sqliteTable(
+  'sql_personal_practice_shares',
+  {
+    id: text('id').primaryKey(),
+    problemId: text('problem_id')
+      .notNull()
+      .references(() => sqlPersonalPracticeProblemsTable.id, {
+        onDelete: 'cascade',
+      }),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => sqlPersonalPracticeWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    schemaVersionId: text('schema_version_id')
+      .notNull()
+      .references(() => sqlPersonalPracticeSchemaVersionsTable.id, {
+        onDelete: 'restrict',
+      }),
+    token: text('token').notNull().unique(),
+    enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+    disabledAt: text('disabled_at'),
+  },
+);
+
 // ─── Dev Challenge Module Tables ──────────────────────────────────────────
 
 export type DevChallengeAssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -1075,6 +1192,10 @@ export const schema = {
   sqlPracticeSubmissionLogsTable,
   sqlUserPracticeSchemasTable,
   sqlUserPracticeProblemsTable,
+  sqlPersonalPracticeWorkspacesTable,
+  sqlPersonalPracticeSchemaVersionsTable,
+  sqlPersonalPracticeProblemsTable,
+  sqlPersonalPracticeSharesTable,
   devChallengeCategoriesTable,
   devChallengeSectionsTable,
   devChallengeAssignmentsTable,
@@ -1201,6 +1322,22 @@ export type SqlUserPracticeProblemRow =
   typeof sqlUserPracticeProblemsTable.$inferSelect;
 export type SqlUserPracticeProblemInsert =
   typeof sqlUserPracticeProblemsTable.$inferInsert;
+export type SqlPersonalPracticeWorkspaceRow =
+  typeof sqlPersonalPracticeWorkspacesTable.$inferSelect;
+export type SqlPersonalPracticeWorkspaceInsert =
+  typeof sqlPersonalPracticeWorkspacesTable.$inferInsert;
+export type SqlPersonalPracticeSchemaVersionRow =
+  typeof sqlPersonalPracticeSchemaVersionsTable.$inferSelect;
+export type SqlPersonalPracticeSchemaVersionInsert =
+  typeof sqlPersonalPracticeSchemaVersionsTable.$inferInsert;
+export type SqlPersonalPracticeProblemRow =
+  typeof sqlPersonalPracticeProblemsTable.$inferSelect;
+export type SqlPersonalPracticeProblemInsert =
+  typeof sqlPersonalPracticeProblemsTable.$inferInsert;
+export type SqlPersonalPracticeShareRow =
+  typeof sqlPersonalPracticeSharesTable.$inferSelect;
+export type SqlPersonalPracticeShareInsert =
+  typeof sqlPersonalPracticeSharesTable.$inferInsert;
 export type DevChallengeCategoryRow =
   typeof devChallengeCategoriesTable.$inferSelect;
 export type DevChallengeCategoryInsert =

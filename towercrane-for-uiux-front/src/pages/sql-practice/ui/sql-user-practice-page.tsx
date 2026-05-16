@@ -10,16 +10,18 @@ import {
 } from 'react'
 import {
   CheckCircle,
+  Clipboard,
   Database,
   FileText,
+  Link2,
   Loader2,
   Plus,
   RefreshCw,
   RotateCcw,
   Send,
-  ShieldCheck,
   Sparkles,
   Table2,
+  Trash2,
   X,
   XCircle,
 } from 'lucide-react'
@@ -31,16 +33,28 @@ import type {
   SqlUserPracticeProblemPayload,
   TableInfo,
 } from '../../../entities/sql-practice/model/types'
+import { sqlPracticeApi } from '../../../entities/sql-practice/api/sql-practice-api'
 import {
   useCreateSqlUserPracticeProblem,
+  useCreateSqlPersonalPracticeProblem,
+  useDeleteSqlPersonalPracticeProblem,
   useGenerateSqlUserPracticeAnswer,
+  useGenerateSqlPersonalPracticeAnswer,
+  useGradeSqlPersonalPracticeProblem,
   useGradeSqlUserPracticeProblem,
+  useShareSqlPersonalPracticeProblem,
+  useSqlPersonalDefaultWorkspace,
+  useSqlPersonalPracticeErd,
+  useSqlPersonalPracticeMeta,
+  useSqlPersonalPracticeProblems,
+  useSqlPersonalPracticeTables,
   useResetSqlUserPracticeDb,
   useSqlUserPracticeErd,
   useSqlUserPracticeMeta,
   useSqlUserPracticeProblems,
   useSqlUserPracticeSubmissions,
   useSqlUserPracticeTables,
+  useUnshareSqlPersonalPracticeProblem,
 } from '../../../features/sql-practice/model/use-sql-practice-queries'
 import { SqlErdDialog } from '../../../features/sql-practice/ui/sql-erd-dialog'
 import { SqlResultTable } from '../../../features/sql-practice/ui/sql-result-table'
@@ -91,7 +105,7 @@ const initialForm: SqlUserPracticeProblemPayload = {
 }
 
 export function SqlUserPracticePage({ mode }: SqlUserPracticePageProps) {
-  if (mode === 'personal') return <SqlPersonalPracticePlaceholder />
+  if (mode === 'personal') return <SqlPersonalPracticeWorkspace />
 
   return <SqlUserPracticeWorkspace />
 }
@@ -594,6 +608,9 @@ function SqlUserPracticeWorkspace() {
         <SqlTableSchemaDialog
           table={selectedTable}
           tables={tables}
+          loadRows={(tableName) =>
+            sqlPracticeApi.executeUser(`SELECT * FROM "${tableName.replace(/"/g, '""')}" LIMIT 50`)
+          }
           onClose={() => setSelectedTable(null)}
         />
       )}
@@ -766,7 +783,7 @@ function ProblemForm({
     >
       <div className="flex items-center gap-2">
         <FileText className="size-4 text-brand-primary" />
-        <h2 className="text-sm font-black text-text-primary">문제 등록</h2>
+        <h2 className="text-sm font-black text-text-primary">문제 출제</h2>
       </div>
 
       <div className="mt-4 space-y-3">
@@ -936,20 +953,534 @@ function FormRow({ label, hint, action, children }: FormRowProps) {
   )
 }
 
-function SqlPersonalPracticePlaceholder() {
-  return (
-    <div className="mx-auto flex min-h-[calc(100dvh-170px)] w-full max-w-[1720px] flex-col gap-4">
-      <Card className="flex min-h-[calc(100dvh-220px)] items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised p-8">
-        <div className="max-w-xl text-center">
-          <div className="mx-auto flex size-11 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
-            <ShieldCheck className="size-5" />
-          </div>
-          <h1 className="mt-4 text-lg font-black text-text-primary">SQL 연습장(개인)</h1>
-          <p className="mt-2 text-sm leading-6 text-text-muted">
-            개인용 파일과 개인 문제 관리는 유저 연습장 안정화 이후 별도 구현합니다.
-          </p>
-        </div>
+function SqlPersonalPracticeWorkspace() {
+  const userId = useSessionStore((state) => state.userId)
+  const workspaceQuery = useSqlPersonalDefaultWorkspace()
+  const workspaceId = workspaceQuery.data?.id
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>(1)
+  const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null)
+  const [selectedTable, setSelectedTable] = useState<TableInfo | null>(null)
+  const [erdOpen, setErdOpen] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  const [form, setForm] = useState<SqlUserPracticeProblemPayload>({
+    ...initialForm,
+    visibility: 'private',
+  })
+  const [targetTablesText, setTargetTablesText] = useState('')
+  const [query, setQuery] = useState('')
+  const [lastResult, setLastResult] = useState<SqlExecuteResponse | null>(null)
+  const [gradeResult, setGradeResult] = useState<SqlUserPracticeGradeResponse | null>(null)
+  const queryTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  const metaQuery = useSqlPersonalPracticeMeta(workspaceId)
+  const tablesQuery = useSqlPersonalPracticeTables(workspaceId)
+  const erdQuery = useSqlPersonalPracticeErd(workspaceId)
+  const problemsQuery = useSqlPersonalPracticeProblems(workspaceId, {
+    level: levelFilter === 'all' ? undefined : levelFilter,
+  })
+  const createProblemMutation = useCreateSqlPersonalPracticeProblem(workspaceId)
+  const generateAnswerMutation = useGenerateSqlPersonalPracticeAnswer(workspaceId)
+  const gradeProblemMutation = useGradeSqlPersonalPracticeProblem(workspaceId)
+  const shareProblemMutation = useShareSqlPersonalPracticeProblem(workspaceId)
+  const unshareProblemMutation = useUnshareSqlPersonalPracticeProblem(workspaceId)
+  const deleteProblemMutation = useDeleteSqlPersonalPracticeProblem(workspaceId)
+
+  const tables = tablesQuery.data ?? EMPTY_TABLES
+  const problems = problemsQuery.data?.problems ?? []
+  const schemaVersion = problemsQuery.data?.schemaVersion
+  const selectedProblem = useMemo(
+    () => problems.find((problem) => problem.id === selectedProblemId) ?? problems[0] ?? null,
+    [problems, selectedProblemId],
+  )
+  const selectedTargetTables = useMemo(() => {
+    if (!selectedProblem) return []
+    const targets = new Set(selectedProblem.targetTables)
+    return tables.filter((table) => targets.has(table.tableName))
+  }, [selectedProblem, tables])
+
+  useEffect(() => {
+    if (!selectedProblem) return
+    setSelectedProblemId(selectedProblem.id)
+    setQuery(selectedProblem.starterSql || '')
+    setLastResult(null)
+    setGradeResult(null)
+  }, [selectedProblem?.id])
+
+  const handleRefresh = () => {
+    workspaceQuery.refetch()
+    metaQuery.refetch()
+    tablesQuery.refetch()
+    problemsQuery.refetch()
+  }
+
+  const handleExecute = async () => {
+    const trimmed = query.trim()
+    if (!trimmed || !selectedProblem) return
+    const response = await gradeProblemMutation.mutateAsync({
+      id: selectedProblem.id,
+      payload: { submittedSql: trimmed },
+    })
+    setLastResult(response.execution)
+    setGradeResult(response)
+  }
+
+  const handleCreateProblem = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const targetTables = targetTablesText
+      .split(',')
+      .map((table) => table.trim())
+      .filter(Boolean)
+
+    await createProblemMutation.mutateAsync({
+      ...form,
+      targetTables,
+      starterSql: form.starterSql?.trim() || undefined,
+      explanation: form.explanation?.trim() || undefined,
+      visibility: 'private',
+    })
+
+    setForm({ ...initialForm, visibility: 'private' })
+    setTargetTablesText('')
+    setFormOpen(false)
+  }
+
+  const handleGenerateAnswer = async () => {
+    const targetTables = targetTablesText
+      .split(',')
+      .map((table) => table.trim())
+      .filter(Boolean)
+    const response = await generateAnswerMutation.mutateAsync({
+      title: form.title.trim() || undefined,
+      description: form.description,
+      level: form.level,
+      targetTables,
+    })
+
+    setForm((current) => ({
+      ...current,
+      answerSql: response.answerSql,
+      explanation: current.explanation?.trim()
+        ? current.explanation
+        : response.explanation ?? '',
+    }))
+  }
+
+  const insertQueryKeyword = (keyword: string) => {
+    const textarea = queryTextareaRef.current
+    if (!textarea) {
+      setQuery((current) => `${current}${current.endsWith(' ') || !current ? '' : ' '}${keyword} `)
+      return
+    }
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const prefix = query.slice(0, start)
+    const suffix = query.slice(end)
+    const needsLeadingSpace = prefix.length > 0 && !/\s$/.test(prefix)
+    const insertion = `${needsLeadingSpace ? ' ' : ''}${keyword} `
+    const nextQuery = `${prefix}${insertion}${suffix}`
+
+    setQuery(nextQuery)
+    window.requestAnimationFrame(() => {
+      textarea.focus()
+      const cursor = start + insertion.length
+      textarea.setSelectionRange(cursor, cursor)
+    })
+  }
+
+  const getShareUrl = (token: string) => `${window.location.origin}/share/sql/personal/${token}`
+
+  const handleCopyShareLink = async () => {
+    if (!selectedProblem) return
+    const share = selectedProblem.shareToken
+      ? { token: selectedProblem.shareToken }
+      : await shareProblemMutation.mutateAsync(selectedProblem.id)
+    await navigator.clipboard.writeText(getShareUrl(share.token))
+  }
+
+  const handleUnshare = async () => {
+    if (!selectedProblem) return
+    if (!window.confirm('공유 링크를 해제할까요? 기존 링크로는 더 이상 접근할 수 없습니다.')) return
+    await unshareProblemMutation.mutateAsync(selectedProblem.id)
+  }
+
+  const handleDelete = async () => {
+    if (!selectedProblem) return
+    if (!window.confirm('개인 문제를 삭제할까요?')) return
+    await deleteProblemMutation.mutateAsync(selectedProblem.id)
+    setSelectedProblemId(null)
+  }
+
+  if (workspaceQuery.isLoading) {
+    return (
+      <Card className="flex min-h-[calc(100dvh-220px)] items-center justify-center rounded-md p-8 text-sm font-semibold text-text-muted">
+        개인 SQL 연습장을 준비하는 중입니다.
       </Card>
-    </div>
+    )
+  }
+
+  return (
+    <section className="space-y-4 pb-16">
+      <div className="flex items-center justify-between rounded-md border border-surface-border bg-surface-strong px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Database className="size-4 shrink-0 text-brand-primary" />
+          <h1 className="truncate text-sm font-black">
+            {workspaceQuery.data?.title ?? '개인 SQL 연습장'}
+          </h1>
+          <span className="shrink-0 text-xs font-semibold text-text-muted">
+            {schemaVersion
+              ? `v${schemaVersion.version} · ${schemaVersion.title}`
+              : '개인 DB'}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="ui-icon-button h-8 gap-1.5 px-3 text-xs"
+          onClick={handleRefresh}
+          disabled={workspaceQuery.isFetching || metaQuery.isFetching || problemsQuery.isFetching}
+        >
+          <RefreshCw
+            className={`size-3.5 ${
+              workspaceQuery.isFetching || metaQuery.isFetching || problemsQuery.isFetching
+                ? 'animate-spin'
+                : ''
+            }`}
+          />
+          새로고침
+        </button>
+      </div>
+
+      <div className="grid h-[calc(100dvh-220px)] min-h-0 gap-4 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)_320px]">
+        <Card className="flex min-h-0 flex-col overflow-hidden rounded-md p-0">
+          <div className="border-b border-surface-border px-4 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-black text-text-primary">내 문제 목록</h2>
+                <p className="mt-1 text-xs font-semibold text-text-muted">
+                  {problems.length}문제
+                </p>
+              </div>
+              <Button size="sm-icon" tone="brand" onClick={() => setFormOpen((value) => !value)}>
+                <Plus className="size-4" />
+              </Button>
+            </div>
+            <div className="mt-3 grid grid-cols-6 gap-1">
+              {([1, 2, 3, 4, 5, 'all'] as LevelFilter[]).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  className={`h-8 rounded-sm border text-xs font-black ${
+                    levelFilter === level
+                      ? 'border-brand-border bg-brand-primary text-text-on-brand'
+                      : 'border-surface-border-soft bg-surface-muted text-text-secondary'
+                  }`}
+                  onClick={() => setLevelFilter(level)}
+                >
+                  {level === 'all' ? 'All' : level}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2">
+            {problemsQuery.isLoading ? (
+              <div className="flex h-40 items-center justify-center text-text-muted">
+                <Loader2 className="size-5 animate-spin" />
+              </div>
+            ) : problems.length === 0 ? (
+              <div className="rounded-md border border-dashed border-surface-border-soft p-4 text-sm text-text-muted">
+                등록된 개인 문제가 없습니다.
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {problems.map((problem) => (
+                  <button
+                    key={problem.id}
+                    type="button"
+                    className={`w-full rounded-md border px-3 py-2 text-left transition ${
+                      selectedProblem?.id === problem.id
+                        ? 'border-brand-border bg-brand-glass'
+                        : 'border-surface-border-soft bg-surface-raised hover:bg-surface-muted'
+                    }`}
+                    onClick={() => setSelectedProblemId(problem.id)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-sm border border-surface-border-soft text-xs font-black text-text-secondary">
+                        L{problem.level}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-black text-text-primary">
+                        {problem.title}
+                      </span>
+                      {problem.shareToken ? (
+                        <Link2 className="size-3.5 shrink-0 text-brand-primary" />
+                      ) : null}
+                    </div>
+                    <p className="mt-1 truncate pl-9 text-xs font-medium text-text-muted">
+                      {problem.shareToken ? '공유됨' : '비공유'} ·{' '}
+                      {problem.targetTables.join(', ') || '테이블 미지정'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <Card className="flex min-h-0 flex-col overflow-hidden rounded-md p-0">
+          <div className="flex-1 overflow-y-auto p-5">
+            {formOpen && (
+              <ProblemForm
+                form={form}
+                targetTablesText={targetTablesText}
+                tables={tables}
+                isSaving={createProblemMutation.isPending}
+                isGeneratingAnswer={generateAnswerMutation.isPending}
+                onFormChange={setForm}
+                onTargetTablesTextChange={setTargetTablesText}
+                onGenerateAnswer={handleGenerateAnswer}
+                onSubmit={handleCreateProblem}
+              />
+            )}
+
+            {selectedProblem ? (
+              <div className="flex min-h-full flex-col gap-4">
+                <div className="rounded-md border border-surface-border-soft bg-surface-muted">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2 px-4 py-3">
+                      <span className="flex h-8 min-w-8 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised px-2 text-xs font-black text-text-primary">
+                        L{selectedProblem.level}
+                      </span>
+                      <h2 className="truncate text-lg font-black text-text-primary">
+                        {selectedProblem.title}
+                      </h2>
+                    </div>
+                    {selectedProblem.createdBy === userId && (
+                      <div className="mr-4 mt-3 flex shrink-0 items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="gap-1.5 text-xs"
+                          onClick={handleCopyShareLink}
+                          disabled={shareProblemMutation.isPending}
+                        >
+                          <Clipboard className="size-3.5" />
+                          링크 복사
+                        </Button>
+                        {selectedProblem.shareToken && (
+                          <Button
+                            size="sm-icon"
+                            tone="danger"
+                            onClick={handleUnshare}
+                            disabled={unshareProblemMutation.isPending}
+                            aria-label="공유 해제"
+                          >
+                            <X className="size-3.5" />
+                          </Button>
+                        )}
+                        <Button
+                          size="sm-icon"
+                          tone="danger"
+                          onClick={handleDelete}
+                          disabled={deleteProblemMutation.isPending}
+                          aria-label="삭제"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="border-t border-surface-border-soft px-4 py-3 text-sm leading-6 text-text-secondary">
+                    {selectedProblem.description}
+                  </p>
+                  {selectedProblem.shareToken && (
+                    <p className="border-t border-surface-border-soft px-4 py-2 text-xs font-semibold text-text-muted">
+                      {getShareUrl(selectedProblem.shareToken)}
+                    </p>
+                  )}
+                </div>
+
+                {selectedTargetTables.length > 0 && (
+                  <div className="rounded-md border border-surface-border-soft bg-surface-raised">
+                    <div className="flex items-center justify-between border-b border-surface-border-soft px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Table2 className="size-4 text-brand-primary" />
+                        <h3 className="text-sm font-black text-text-primary">대상 테이블</h3>
+                      </div>
+                      <span className="rounded-sm border border-surface-border-soft px-2 py-1 text-xs font-black text-text-secondary">
+                        {selectedTargetTables.length}개
+                      </span>
+                    </div>
+                    <div className="space-y-2 p-3">
+                      {selectedTargetTables.map((table) => (
+                        <button
+                          key={table.tableName}
+                          type="button"
+                          className="w-full rounded-md border border-surface-border-soft bg-surface-muted p-3 text-left hover:bg-surface-raised"
+                          onClick={() => setSelectedTable(table)}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <Database className="size-4 shrink-0 text-brand-primary" />
+                              <span className="truncate text-sm font-black text-text-primary">
+                                {table.tableName}
+                              </span>
+                            </div>
+                            <span className="shrink-0 text-xs font-semibold text-text-muted">
+                              {table.rowCount}행
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-black text-text-primary">답안 SQL</h3>
+                    <p className="text-xs font-semibold text-text-muted">
+                      키워드 클릭: 커서 위치에 입력 · Ctrl+Enter: 실행
+                    </p>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {SQL_KEYWORDS.map((keyword) => (
+                      <button
+                        key={keyword}
+                        type="button"
+                        className="rounded-sm border border-surface-border-soft bg-surface-muted px-2.5 py-1 text-xs font-black text-text-secondary hover:border-brand-border hover:text-brand-primary"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => insertQueryKeyword(keyword)}
+                      >
+                        {keyword}
+                      </button>
+                    ))}
+                  </div>
+                  <Textarea
+                    ref={queryTextareaRef}
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                        event.preventDefault()
+                        handleExecute()
+                      }
+                    }}
+                    placeholder={'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'}
+                    rows={7}
+                    className="mt-3 min-h-[170px] resize-none font-mono text-sm leading-6"
+                  />
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleExecute}
+                      disabled={!query.trim() || gradeProblemMutation.isPending}
+                      className="gap-1.5"
+                    >
+                      {gradeProblemMutation.isPending ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Send className="size-3.5" />
+                      )}
+                      실행
+                    </Button>
+                  </div>
+                </div>
+
+                {lastResult ? (
+                  <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+                    <h3 className="text-sm font-black text-text-primary">실행 결과</h3>
+                    <SqlResultTable response={lastResult} />
+                  </div>
+                ) : (
+                  <div className="flex min-h-[120px] flex-1 items-center justify-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted text-sm font-semibold text-text-muted">
+                    풀이 SQL을 실행하면 결과가 여기에 표시됩니다.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex min-h-[420px] items-center justify-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted text-sm font-semibold text-text-muted">
+                문제를 선택하거나 새 개인 문제를 등록하세요.
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <Card className="flex min-h-0 flex-col overflow-hidden rounded-md p-0">
+          <div className="border-b border-surface-border px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-black text-text-primary">테이블</h2>
+                <p className="mt-1 text-xs font-semibold text-text-muted">
+                  {metaQuery.data?.dbFile ?? 'personal-practice.sqlite'}
+                </p>
+              </div>
+              {erdQuery.data?.mmd && (
+                <button
+                  type="button"
+                  className="ui-icon-button-brand h-8 px-3 text-xs font-black"
+                  onClick={() => setErdOpen(true)}
+                >
+                  ERD
+                </button>
+              )}
+            </div>
+            <div className="mt-3 rounded-md border border-surface-border-soft bg-surface-muted p-3 text-xs text-text-secondary">
+              <p>schema: {schemaVersion ? `v${schemaVersion.version}` : '-'}</p>
+              <p>tables: {metaQuery.data?.tableCount ?? tables.length}</p>
+              <p>hash: {schemaVersion?.dbFileHash.slice(0, 10) ?? 'loading'}</p>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2">
+            {tables.map((table) => (
+              <button
+                key={table.tableName}
+                type="button"
+                className="mb-1.5 flex w-full items-center gap-2 rounded-md border border-surface-border-soft bg-surface-raised px-3 py-2 text-left hover:bg-surface-muted"
+                onClick={() => setSelectedTable(table)}
+              >
+                <Table2 className="size-3.5 text-brand-primary" />
+                <span className="min-w-0 flex-1 truncate text-sm font-black text-text-primary">
+                  {table.tableName}
+                </span>
+                <span className="text-xs font-semibold text-text-muted">{table.rowCount}행</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {selectedTable && (
+        <SqlTableSchemaDialog
+          table={selectedTable}
+          tables={tables}
+          loadRows={(tableName) =>
+            workspaceId
+              ? sqlPracticeApi.getPersonalTableRows(workspaceId, tableName)
+              : sqlPracticeApi.executeUser(
+                  `SELECT * FROM "${tableName.replace(/"/g, '""')}" LIMIT 50`,
+                )
+          }
+          onClose={() => setSelectedTable(null)}
+        />
+      )}
+
+      {erdQuery.data?.mmd && (
+        <SqlErdDialog
+          open={erdOpen}
+          seedFileName={schemaVersion?.title ?? 'personal-practice.sql'}
+          mmd={erdQuery.data.mmd}
+          onClose={() => setErdOpen(false)}
+        />
+      )}
+
+      <SqlUserPracticeGradeDialog
+        result={gradeResult}
+        problemTitle={selectedProblem?.title ?? ''}
+        problemDescription={selectedProblem?.description ?? ''}
+        onClose={() => setGradeResult(null)}
+      />
+    </section>
   )
 }

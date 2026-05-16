@@ -228,3 +228,87 @@ export type SqlUserPracticeGradeResponse = {
   execution: SqlExecuteResponse;
   answerExecution: SqlExecuteResponse | null;
 };
+
+export type SqlPersonalPracticeSchemaSourceType =
+  | 'seed'
+  | 'uploaded_sql'
+  | 'uploaded_sqlite';
+export type SqlPersonalPracticeProblemStatus =
+  | 'draft'
+  | 'published'
+  | 'archived';
+
+export type SqlPersonalPracticeWorkspace = {
+  id: string;
+  ownerId: string;
+  title: string;
+  description: string;
+  activeSchemaVersionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SqlPersonalPracticeSchemaVersion = {
+  id: string;
+  workspaceId: string;
+  version: number;
+  title: string;
+  description: string;
+  erdMmd: string | null;
+  dbFileHash: string;
+  sourceType: SqlPersonalPracticeSchemaSourceType;
+  sourceFileName: string | null;
+  replacedFromSchemaVersionId: string | null;
+  createdAt: string;
+};
+
+export type SqlPersonalPracticeProblem = {
+  id: string;
+  workspaceId: string;
+  schemaVersionId: string;
+  title: string;
+  description: string;
+  level: number;
+  targetTables: string[];
+  starterSql: string | null;
+  answerSql: string;
+  explanation: string | null;
+  status: SqlPersonalPracticeProblemStatus;
+  createdBy: string;
+  authorName: string | null;
+  shareToken: string | null;
+  shareEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SqlPersonalPracticeProblemListResponse = {
+  workspace: SqlPersonalPracticeWorkspace;
+  schemaVersion: SqlPersonalPracticeSchemaVersion;
+  problems: SqlPersonalPracticeProblem[];
+};
+
+export type SqlPersonalPracticeShare = {
+  id: string;
+  problemId: string;
+  workspaceId: string;
+  schemaVersionId: string;
+  token: string;
+  enabled: boolean;
+  createdAt: string;
+  disabledAt: string | null;
+};
+
+export type SqlPersonalPracticePublicProblemResponse = {
+  workspace: Pick<SqlPersonalPracticeWorkspace, 'id' | 'title'>;
+  schemaVersion: Pick<
+    SqlPersonalPracticeSchemaVersion,
+    'id' | 'version' | 'title' | 'dbFileHash'
+  >;
+  problem: Omit<
+    SqlPersonalPracticeProblem,
+    'answerSql' | 'createdBy' | 'shareToken' | 'shareEnabled'
+  >;
+  tables: TableInfo[];
+  erdMmd: string | null;
+};

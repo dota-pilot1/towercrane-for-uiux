@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, KeyRound, Loader2, Table2, X } from 'lucide-react'
-import type { TableInfo } from '../../../entities/sql-practice/model/types'
+import type { SqlExecuteResponse, TableInfo } from '../../../entities/sql-practice/model/types'
 import { sqlPracticeApi } from '../../../entities/sql-practice/api/sql-practice-api'
 
 type SqlTableSchemaDialogProps = {
   table: TableInfo
   tables: TableInfo[]
+  loadRows?: (tableName: string) => Promise<SqlExecuteResponse>
   onClose: () => void
 }
 
@@ -16,7 +17,12 @@ function CellValue({ value }: { value: unknown }) {
   return <span>{String(value)}</span>
 }
 
-export function SqlTableSchemaDialog({ table, tables, onClose }: SqlTableSchemaDialogProps) {
+export function SqlTableSchemaDialog({
+  table,
+  tables,
+  loadRows,
+  onClose,
+}: SqlTableSchemaDialogProps) {
   const [currentIndex, setCurrentIndex] = useState(
     () => tables.findIndex((t) => t.tableName === table.tableName)
   )
@@ -30,8 +36,10 @@ export function SqlTableSchemaDialog({ table, tables, onClose }: SqlTableSchemaD
     setRows(null)
     setDataColumns([])
     setIsLoading(true)
-    sqlPracticeApi
-      .execute(`SELECT * FROM "${currentTable.tableName}" LIMIT 50`)
+    const fetchRows =
+      loadRows ?? ((tableName: string) => sqlPracticeApi.execute(`SELECT * FROM "${tableName.replace(/"/g, '""')}" LIMIT 50`))
+
+    fetchRows(currentTable.tableName)
       .then((res) => {
         setDataColumns(res.columns ?? [])
         setRows(res.rows ?? [])
@@ -51,37 +59,44 @@ export function SqlTableSchemaDialog({ table, tables, onClose }: SqlTableSchemaD
       <section className="glass-panel relative z-10 flex max-h-[86vh] w-full max-w-[92vw] flex-col overflow-hidden rounded-md xl:max-w-6xl">
         {/* 헤더 */}
         <div className="flex items-center justify-between border-b border-surface-border px-3 py-2.5">
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
-              className="ui-icon-button size-7"
+              className="ui-icon-button size-8 shrink-0"
               onClick={() => setCurrentIndex((i) => i - 1)}
               disabled={currentIndex === 0}
               aria-label="이전 테이블"
             >
               <ChevronLeft className="size-3.5" />
             </button>
-            <div className="flex items-center gap-2 px-1">
+            <div className="flex min-w-0 items-center gap-2 px-1">
               <Table2 className="size-4 shrink-0 text-brand-primary" />
-              <h2 className="font-mono text-sm font-bold text-text-primary">{currentTable.tableName}</h2>
-              <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[11px] text-text-secondary">
+              <h2 className="truncate font-mono text-sm font-bold text-text-primary">
+                {currentTable.tableName}
+              </h2>
+              <span className="flex h-8 shrink-0 items-center rounded-sm border border-surface-border-soft bg-surface-muted px-2 text-[11px] text-text-secondary">
                 {currentTable.rowCount}행 · {currentTable.columns.length}열
               </span>
             </div>
             <button
               type="button"
-              className="ui-icon-button size-7"
+              className="ui-icon-button size-8 shrink-0"
               onClick={() => setCurrentIndex((i) => i + 1)}
               disabled={currentIndex === tables.length - 1}
               aria-label="다음 테이블"
             >
               <ChevronRight className="size-3.5" />
             </button>
-            <span className="ml-1 text-[11px] text-text-muted">
+            <span className="ml-1 w-10 shrink-0 text-[11px] text-text-muted">
               {currentIndex + 1} / {tables.length}
             </span>
           </div>
-          <button type="button" className="ui-icon-button size-8" onClick={onClose} aria-label="닫기">
+          <button
+            type="button"
+            className="ui-icon-button size-8 shrink-0"
+            onClick={onClose}
+            aria-label="닫기"
+          >
             <X className="size-4" />
           </button>
         </div>

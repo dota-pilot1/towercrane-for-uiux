@@ -798,6 +798,92 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_sql_user_practice_problems_creator
         ON sql_user_practice_problems(created_by, updated_at);
 
+      CREATE TABLE IF NOT EXISTS sql_personal_practice_workspaces (
+        id TEXT PRIMARY KEY,
+        owner_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        active_schema_version_id TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_workspaces_owner
+        ON sql_personal_practice_workspaces(owner_id, updated_at);
+
+      CREATE TABLE IF NOT EXISTS sql_personal_practice_schema_versions (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        schema_sql TEXT NOT NULL,
+        erd_mmd TEXT,
+        db_file_hash TEXT NOT NULL,
+        source_type TEXT NOT NULL DEFAULT 'seed',
+        source_file_name TEXT,
+        replaced_from_schema_version_id TEXT,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES sql_personal_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sql_personal_schema_versions_workspace_version
+        ON sql_personal_practice_schema_versions(workspace_id, version);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_schema_versions_workspace_created
+        ON sql_personal_practice_schema_versions(workspace_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS sql_personal_practice_problems (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        schema_version_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        level INTEGER NOT NULL DEFAULT 1,
+        target_tables TEXT NOT NULL DEFAULT '[]',
+        starter_sql TEXT,
+        answer_sql TEXT NOT NULL,
+        explanation TEXT,
+        status TEXT NOT NULL DEFAULT 'published',
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES sql_personal_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(schema_version_id) REFERENCES sql_personal_practice_schema_versions(id) ON DELETE RESTRICT,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_problems_workspace_level
+        ON sql_personal_practice_problems(workspace_id, level, status, updated_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_problems_schema
+        ON sql_personal_practice_problems(schema_version_id, updated_at);
+
+      CREATE TABLE IF NOT EXISTS sql_personal_practice_shares (
+        id TEXT PRIMARY KEY,
+        problem_id TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
+        schema_version_id TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        disabled_at TEXT,
+        FOREIGN KEY(problem_id) REFERENCES sql_personal_practice_problems(id) ON DELETE CASCADE,
+        FOREIGN KEY(workspace_id) REFERENCES sql_personal_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(schema_version_id) REFERENCES sql_personal_practice_schema_versions(id) ON DELETE RESTRICT,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sql_personal_shares_token
+        ON sql_personal_practice_shares(token);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_shares_problem_enabled
+        ON sql_personal_practice_shares(problem_id, enabled);
+
       INSERT OR IGNORE INTO sql_practice_submission_logs (
         id,
         submission_id,

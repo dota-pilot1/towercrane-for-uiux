@@ -4,6 +4,11 @@ import type {
   PublicSqlPracticeNote,
   SqlActivateSeedResponse,
   SqlExecuteResponse,
+  SqlPersonalPracticeProblem,
+  SqlPersonalPracticeProblemListResponse,
+  SqlPersonalPracticePublicProblemResponse,
+  SqlPersonalPracticeShare,
+  SqlPersonalPracticeWorkspace,
   SqlPracticeGradePayload,
   SqlPracticeGradeResponse,
   SqlPracticeActivityResponse,
@@ -181,4 +186,127 @@ export const sqlPracticeApi = {
     apiRequest<void>(`/sql/user/problems/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     }),
+  getPersonalWorkspaces: () =>
+    apiRequest<SqlPersonalPracticeWorkspace[]>('/sql/personal/workspaces'),
+  getDefaultPersonalWorkspace: () =>
+    apiRequest<SqlPersonalPracticeWorkspace>('/sql/personal/workspaces/default'),
+  getPersonalMeta: (workspaceId: string) =>
+    apiRequest<SqlPracticeMeta>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/meta`,
+    ),
+  getPersonalTables: (workspaceId: string) =>
+    apiRequest<TableInfo[]>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/tables`,
+    ),
+  getPersonalTableRows: (workspaceId: string, tableName: string) =>
+    apiRequest<SqlExecuteResponse>(
+      `/sql/personal/workspaces/${encodeURIComponent(
+        workspaceId,
+      )}/tables/${encodeURIComponent(tableName)}/rows`,
+    ),
+  getPersonalErd: (workspaceId: string) =>
+    apiRequest<{ mmd: string | null }>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/erd`,
+    ),
+  getPersonalProblems: (workspaceId: string, filter?: { level?: number }) => {
+    const params = new URLSearchParams()
+    if (filter?.level) params.set('level', String(filter.level))
+    const query = params.toString()
+    return apiRequest<SqlPersonalPracticeProblemListResponse>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems${
+        query ? `?${query}` : ''
+      }`,
+    )
+  },
+  createPersonalProblem: (workspaceId: string, payload: SqlUserPracticeProblemPayload) =>
+    apiRequest<SqlPersonalPracticeProblem>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+  generatePersonalProblemAnswer: (
+    workspaceId: string,
+    payload: SqlUserPracticeGenerateAnswerPayload,
+  ) =>
+    apiRequest<SqlUserPracticeGenerateAnswerResponse>(
+      `/sql/personal/workspaces/${encodeURIComponent(
+        workspaceId,
+      )}/problems/generate-answer`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+  gradePersonalProblem: (
+    workspaceId: string,
+    id: string,
+    payload: SqlUserPracticeGradePayload,
+  ) =>
+    apiRequest<SqlUserPracticeGradeResponse>(
+      `/sql/personal/workspaces/${encodeURIComponent(
+        workspaceId,
+      )}/problems/${encodeURIComponent(id)}/grade`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+  updatePersonalProblem: (
+    workspaceId: string,
+    id: string,
+    payload: Partial<SqlUserPracticeProblemPayload>,
+  ) =>
+    apiRequest<SqlPersonalPracticeProblem>(
+      `/sql/personal/workspaces/${encodeURIComponent(
+        workspaceId,
+      )}/problems/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+    ),
+  deletePersonalProblem: (workspaceId: string, id: string) =>
+    apiRequest<void>(
+      `/sql/personal/workspaces/${encodeURIComponent(
+        workspaceId,
+      )}/problems/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    ),
+  sharePersonalProblem: (workspaceId: string, id: string) =>
+    apiRequest<SqlPersonalPracticeShare>(
+      `/sql/personal/workspaces/${encodeURIComponent(
+        workspaceId,
+      )}/problems/${encodeURIComponent(id)}/share`,
+      { method: 'POST' },
+    ),
+  unsharePersonalProblem: (workspaceId: string, id: string) =>
+    apiRequest<void>(
+      `/sql/personal/workspaces/${encodeURIComponent(
+        workspaceId,
+      )}/problems/${encodeURIComponent(id)}/unshare`,
+      { method: 'POST' },
+    ),
+  getPublicPersonalProblem: (token: string) =>
+    apiRequest<SqlPersonalPracticePublicProblemResponse | null>(
+      `/public/sql/personal/${encodeURIComponent(token)}`,
+      { skipAuth: true },
+    ),
+  getPublicPersonalTableRows: (token: string, tableName: string) =>
+    apiRequest<SqlExecuteResponse>(
+      `/public/sql/personal/${encodeURIComponent(token)}/tables/${encodeURIComponent(
+        tableName,
+      )}/rows`,
+      { skipAuth: true },
+    ),
+  gradePublicPersonalProblem: (token: string, payload: SqlUserPracticeGradePayload) =>
+    apiRequest<SqlUserPracticeGradeResponse>(
+      `/public/sql/personal/${encodeURIComponent(token)}/grade`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        skipAuth: true,
+      },
+    ),
 }

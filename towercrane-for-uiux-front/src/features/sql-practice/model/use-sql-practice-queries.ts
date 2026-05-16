@@ -31,6 +31,18 @@ export const sqlPracticeQueryKeys = {
   userSubmissions: ['sql-practice', 'user', 'submissions'] as const,
   userProblems: (filter?: { level?: number; mine?: boolean }) =>
     ['sql-practice', 'user', 'problems', filter ?? {}] as const,
+  personalWorkspaces: ['sql-practice', 'personal', 'workspaces'] as const,
+  personalDefaultWorkspace: ['sql-practice', 'personal', 'workspaces', 'default'] as const,
+  personalMeta: (workspaceId: string) =>
+    ['sql-practice', 'personal', workspaceId, 'meta'] as const,
+  personalTables: (workspaceId: string) =>
+    ['sql-practice', 'personal', workspaceId, 'tables'] as const,
+  personalErd: (workspaceId: string) =>
+    ['sql-practice', 'personal', workspaceId, 'erd'] as const,
+  personalProblems: (workspaceId: string, filter?: { level?: number }) =>
+    ['sql-practice', 'personal', workspaceId, 'problems', filter ?? {}] as const,
+  publicPersonalProblem: (token: string) =>
+    ['sql-practice', 'public-personal', token] as const,
 }
 
 function messageFromError(error: unknown, fallback: string) {
@@ -424,6 +436,147 @@ export function useGradeSqlUserPracticeProblem() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.userSubmissions })
     },
+    onError: (error) =>
+      toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
+  })
+}
+
+export function useSqlPersonalDefaultWorkspace() {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.personalDefaultWorkspace,
+    queryFn: sqlPracticeApi.getDefaultPersonalWorkspace,
+  })
+}
+
+export function useSqlPersonalPracticeMeta(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.personalMeta(workspaceId ?? ''),
+    queryFn: () => sqlPracticeApi.getPersonalMeta(workspaceId!),
+    enabled: Boolean(workspaceId),
+  })
+}
+
+export function useSqlPersonalPracticeTables(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.personalTables(workspaceId ?? ''),
+    queryFn: () => sqlPracticeApi.getPersonalTables(workspaceId!),
+    enabled: Boolean(workspaceId),
+  })
+}
+
+export function useSqlPersonalPracticeErd(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.personalErd(workspaceId ?? ''),
+    queryFn: () => sqlPracticeApi.getPersonalErd(workspaceId!),
+    enabled: Boolean(workspaceId),
+    staleTime: Infinity,
+  })
+}
+
+export function useSqlPersonalPracticeProblems(
+  workspaceId: string | undefined,
+  filter?: { level?: number },
+) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.personalProblems(workspaceId ?? '', filter),
+    queryFn: () => sqlPracticeApi.getPersonalProblems(workspaceId!, filter),
+    enabled: Boolean(workspaceId),
+  })
+}
+
+function invalidatePersonalPractice(
+  queryClient: ReturnType<typeof useQueryClient>,
+  workspaceId: string,
+) {
+  queryClient.invalidateQueries({
+    queryKey: ['sql-practice', 'personal', workspaceId],
+  })
+}
+
+export function useCreateSqlPersonalPracticeProblem(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: SqlUserPracticeProblemPayload) =>
+      sqlPracticeApi.createPersonalProblem(workspaceId!, payload),
+    onSuccess: () => {
+      if (workspaceId) invalidatePersonalPractice(queryClient, workspaceId)
+      toast.success('개인 문제를 등록했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '개인 문제 등록에 실패했습니다.')),
+  })
+}
+
+export function useGenerateSqlPersonalPracticeAnswer(workspaceId: string | undefined) {
+  return useMutation({
+    mutationFn: (payload: SqlUserPracticeGenerateAnswerPayload) =>
+      sqlPracticeApi.generatePersonalProblemAnswer(workspaceId!, payload),
+    onSuccess: () => toast.success('정답 SQL을 생성했습니다.'),
+    onError: (error) =>
+      toast.error(messageFromError(error, '정답 SQL 생성에 실패했습니다.')),
+  })
+}
+
+export function useGradeSqlPersonalPracticeProblem(workspaceId: string | undefined) {
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: SqlUserPracticeGradePayload }) =>
+      sqlPracticeApi.gradePersonalProblem(workspaceId!, id, payload),
+    onError: (error) =>
+      toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
+  })
+}
+
+export function useShareSqlPersonalPracticeProblem(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => sqlPracticeApi.sharePersonalProblem(workspaceId!, id),
+    onSuccess: () => {
+      if (workspaceId) invalidatePersonalPractice(queryClient, workspaceId)
+      toast.success('공유 링크를 만들었습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '공유 링크 생성에 실패했습니다.')),
+  })
+}
+
+export function useUnshareSqlPersonalPracticeProblem(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => sqlPracticeApi.unsharePersonalProblem(workspaceId!, id),
+    onSuccess: () => {
+      if (workspaceId) invalidatePersonalPractice(queryClient, workspaceId)
+      toast.success('공유 링크를 해제했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '공유 링크 해제에 실패했습니다.')),
+  })
+}
+
+export function useDeleteSqlPersonalPracticeProblem(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => sqlPracticeApi.deletePersonalProblem(workspaceId!, id),
+    onSuccess: () => {
+      if (workspaceId) invalidatePersonalPractice(queryClient, workspaceId)
+      toast.success('개인 문제를 삭제했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '개인 문제 삭제에 실패했습니다.')),
+  })
+}
+
+export function usePublicSqlPersonalPracticeProblem(token: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.publicPersonalProblem(token ?? ''),
+    queryFn: () => sqlPracticeApi.getPublicPersonalProblem(token!),
+    enabled: Boolean(token),
+  })
+}
+
+export function useGradePublicSqlPersonalPracticeProblem() {
+  return useMutation({
+    mutationFn: ({ token, payload }: { token: string; payload: SqlUserPracticeGradePayload }) =>
+      sqlPracticeApi.gradePublicPersonalProblem(token, payload),
     onError: (error) =>
       toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
   })

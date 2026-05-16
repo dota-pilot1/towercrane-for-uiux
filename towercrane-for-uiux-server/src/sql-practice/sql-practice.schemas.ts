@@ -119,6 +119,15 @@ export const gradeSqlUserPracticeProblemSchema = z.object({
   submittedSql: z.string().trim().min(1, 'Submitted SQL is required').max(10000),
 });
 
+export const sqlPersonalPracticeProblemListQuerySchema = z.object({
+  level: z
+    .union([sqlUserPracticeLevelSchema, z.literal('all')])
+    .optional()
+    .transform((value) => (value === 'all' ? undefined : value)),
+});
+
+export const publicShareTokenSchema = z.string().trim().min(16).max(128);
+
 export type ExecuteSqlInput = z.infer<typeof executeSqlSchema>;
 export type ActivateSeedInput = z.infer<typeof activateSeedSchema>;
 export type GeminiAskInput = z.infer<typeof geminiAskSchema>;
@@ -146,4 +155,7 @@ export type GenerateSqlUserPracticeAnswerInput = z.infer<
 >;
 export type GradeSqlUserPracticeProblemInput = z.infer<
   typeof gradeSqlUserPracticeProblemSchema
+>;
+export type SqlPersonalPracticeProblemListQuery = z.infer<
+  typeof sqlPersonalPracticeProblemListQuerySchema
 >;

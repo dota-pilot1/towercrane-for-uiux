@@ -27,6 +27,7 @@ import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
 import { SqlPracticeExamplesPage } from '../pages/sql-practice/ui/sql-practice-examples-page'
 import { SqlNotesPage } from '../pages/sql-practice/ui/sql-notes-page'
 import { SqlPublicNotePage } from '../pages/sql-practice/ui/sql-public-note-page'
+import { SqlPublicPersonalPracticePage } from '../pages/sql-practice/ui/sql-public-personal-practice-page'
 import { SqlUserPracticePage } from '../pages/sql-practice/ui/sql-user-practice-page'
 import { BoardHomePage } from '../pages/board/ui/board-home-page'
 import { BoardListPage } from '../pages/board/ui/board-list-page'
@@ -80,6 +81,12 @@ const publicSqlNoteRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/share/sql-notes/$token',
   component: SqlPublicNotePage,
+})
+
+const publicSqlPersonalPracticeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/share/sql/personal/$token',
+  component: SqlPublicPersonalPracticePage,
 })
 
 // ─── App layout (auth guard) ─────────────────────────────────────────────────
@@ -517,6 +524,7 @@ export const router = createRouter({
   routeTree: rootRoute.addChildren([
     loginRoute,
     publicSqlNoteRoute,
+    publicSqlPersonalPracticeRoute,
     appLayoutRoute.addChildren([
       indexRoute,
       prototypeIndexRoute,
