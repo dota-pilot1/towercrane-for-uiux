@@ -117,11 +117,7 @@ export class ProjectIssuesService {
     return this.toCategoryDto(this.ensureCategory(row.id), 0);
   }
 
-  updateCategory(
-    user: ProjectIssueUser,
-    categoryId: string,
-    payload: unknown,
-  ) {
+  updateCategory(user: ProjectIssueUser, categoryId: string, payload: unknown) {
     const category = this.ensureCategory(categoryId);
     this.ensureCanManageCategory(user, category);
     const input = updateProjectIssueCategorySchema.parse(payload);
@@ -926,7 +922,9 @@ export class ProjectIssuesService {
       return;
     }
 
-    throw new ForbiddenException('You cannot modify this project issue category');
+    throw new ForbiddenException(
+      'You cannot modify this project issue category',
+    );
   }
 
   private ensureCanEditComment(
@@ -958,10 +956,7 @@ export class ProjectIssuesService {
     };
   }
 
-  private toCategoryDto(
-    category: ProjectIssueCategoryRow,
-    issueCount: number,
-  ) {
+  private toCategoryDto(category: ProjectIssueCategoryRow, issueCount: number) {
     return {
       ...category,
       issueCount,

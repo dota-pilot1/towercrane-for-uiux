@@ -35,10 +35,7 @@ export class ProjectIssuesController {
   }
 
   @Post('categories')
-  createCategory(
-    @CurrentUser() user: ProjectIssueUser,
-    @Body() body: unknown,
-  ) {
+  createCategory(@CurrentUser() user: ProjectIssueUser, @Body() body: unknown) {
     return this.projectIssuesService.createCategory(user, body);
   }
 

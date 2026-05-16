@@ -2557,7 +2557,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const foreignKeys = this.sqlite
       .prepare('PRAGMA foreign_key_list(project_issues)')
       .all() as Array<{ from: string; table: string }>;
-    const projectIdForeignKey = foreignKeys.find((key) => key.from === 'project_id');
+    const projectIdForeignKey = foreignKeys.find(
+      (key) => key.from === 'project_id',
+    );
 
     if (projectIdForeignKey?.table !== 'categories') return;
 
@@ -2607,49 +2609,52 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .run();
 
     this.sqlite.pragma('foreign_keys = OFF');
-    this.sqlite.exec(`
-      DROP TABLE IF EXISTS project_issues_next;
+    try {
+      this.sqlite.exec(`
+        DROP TABLE IF EXISTS project_issues_next;
 
-      CREATE TABLE IF NOT EXISTS project_issues_next (
-        id TEXT PRIMARY KEY,
-        project_id TEXT NOT NULL,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL DEFAULT '',
-        issue_type TEXT NOT NULL DEFAULT 'BUG',
-        status TEXT NOT NULL DEFAULT 'OPEN',
-        priority TEXT NOT NULL DEFAULT 'MEDIUM',
-        reporter_id TEXT NOT NULL,
-        assignee_id TEXT,
-        due_date TEXT,
-        order_idx INTEGER NOT NULL DEFAULT 0,
-        archived INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(project_id) REFERENCES project_issue_categories(id) ON DELETE CASCADE,
-        FOREIGN KEY(reporter_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL
-      );
+        CREATE TABLE IF NOT EXISTS project_issues_next (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          content TEXT NOT NULL DEFAULT '',
+          issue_type TEXT NOT NULL DEFAULT 'BUG',
+          status TEXT NOT NULL DEFAULT 'OPEN',
+          priority TEXT NOT NULL DEFAULT 'MEDIUM',
+          reporter_id TEXT NOT NULL,
+          assignee_id TEXT,
+          due_date TEXT,
+          order_idx INTEGER NOT NULL DEFAULT 0,
+          archived INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY(project_id) REFERENCES project_issue_categories(id) ON DELETE CASCADE,
+          FOREIGN KEY(reporter_id) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL
+        );
 
-      INSERT INTO project_issues_next (
-        id, project_id, title, content, issue_type, status, priority, reporter_id,
-        assignee_id, due_date, order_idx, archived, created_at, updated_at
-      )
-      SELECT
-        id, project_id, title, content, issue_type, status, priority, reporter_id,
-        assignee_id, due_date, order_idx, archived, created_at, updated_at
-      FROM project_issues;
+        INSERT INTO project_issues_next (
+          id, project_id, title, content, issue_type, status, priority, reporter_id,
+          assignee_id, due_date, order_idx, archived, created_at, updated_at
+        )
+        SELECT
+          id, project_id, title, content, issue_type, status, priority, reporter_id,
+          assignee_id, due_date, order_idx, archived, created_at, updated_at
+        FROM project_issues;
 
-      DROP TABLE project_issues;
-      ALTER TABLE project_issues_next RENAME TO project_issues;
+        DROP TABLE project_issues;
+        ALTER TABLE project_issues_next RENAME TO project_issues;
 
-      CREATE INDEX IF NOT EXISTS idx_project_issues_project_order
-        ON project_issues(project_id, archived, status, order_idx);
-      CREATE INDEX IF NOT EXISTS idx_project_issues_assignee
-        ON project_issues(assignee_id, archived, status);
-      CREATE INDEX IF NOT EXISTS idx_project_issues_reporter
-        ON project_issues(reporter_id, created_at);
-    `);
-    this.sqlite.pragma('foreign_keys = ON');
+        CREATE INDEX IF NOT EXISTS idx_project_issues_project_order
+          ON project_issues(project_id, archived, status, order_idx);
+        CREATE INDEX IF NOT EXISTS idx_project_issues_assignee
+          ON project_issues(assignee_id, archived, status);
+        CREATE INDEX IF NOT EXISTS idx_project_issues_reporter
+          ON project_issues(reporter_id, created_at);
+      `);
+    } finally {
+      this.sqlite.pragma('foreign_keys = ON');
+    }
   }
 
   private ensureStudyDiariesForUsers(now: string) {

@@ -3,6 +3,8 @@ import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import {
   BookOpenText,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   Code2,
   Copy,
   Database,
@@ -118,10 +120,26 @@ export function SqlPracticePage() {
     [metaQuery.data?.seedFile],
   )
   const totalProblemCount = useMemo(() => getExampleSetTotalCount(exampleSet), [exampleSet])
+  const flatExamples = useMemo(
+    () => [...exampleSet.beginner, ...exampleSet.intermediate, ...exampleSet.advanced],
+    [exampleSet],
+  )
 
   const handleSelectExample = (example: SqlPracticeExample) => {
     setSelectedExample(example)
     setAnswerOpen(false)
+  }
+
+  const handlePrevExample = () => {
+    if (!selectedExample) return
+    const idx = flatExamples.findIndex((e) => e.id === selectedExample.id)
+    if (idx > 0) handleSelectExample(flatExamples[idx - 1])
+  }
+
+  const handleNextExample = () => {
+    if (!selectedExample) return
+    const idx = flatExamples.findIndex((e) => e.id === selectedExample.id)
+    if (idx < flatExamples.length - 1) handleSelectExample(flatExamples[idx + 1])
   }
 
   const handleCloseExample = () => {
@@ -228,7 +246,7 @@ export function SqlPracticePage() {
 
         {/* 메인 SQL 영역 */}
         <Card className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md p-0">
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto">
             {/* 선택된 문제 패널 */}
             {selectedExample && (
               <ProblemPanel
@@ -237,10 +255,13 @@ export function SqlPracticePage() {
                 answerOpen={answerOpen}
                 onToggleAnswer={() => setAnswerOpen((v) => !v)}
                 onClose={handleCloseExample}
+                onPrev={handlePrevExample}
+                onNext={handleNextExample}
+                hasPrev={flatExamples.findIndex((e) => e.id === selectedExample.id) > 0}
+                hasNext={flatExamples.findIndex((e) => e.id === selectedExample.id) < flatExamples.length - 1}
                 seedFile={metaQuery.data?.seedFile ?? selectedExample.seedFile}
                 seedHash={metaQuery.data?.seedHash}
                 tables={tables}
-                className="mb-4"
               />
             )}
 
@@ -253,7 +274,7 @@ export function SqlPracticePage() {
                 recommendedQuery={metaQuery.data?.activeSeed.recommendedQueries[0]}
               />
             ) : history.length > 0 ? (
-              <div className="space-y-6">
+              <div className="space-y-6 p-4">
                 {history.map((item) => (
                   <SqlHistoryItemView key={item.id} item={item} />
                 ))}
@@ -329,6 +350,10 @@ function ProblemPanel({
   answerOpen,
   onToggleAnswer,
   onClose,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
   seedFile,
   seedHash,
   tables,
@@ -338,6 +363,10 @@ function ProblemPanel({
   answerOpen: boolean
   onToggleAnswer: () => void
   onClose: () => void
+  onPrev: () => void
+  onNext: () => void
+  hasPrev: boolean
+  hasNext: boolean
   seedFile: string
   seedHash?: string
   tables: TableInfo[]
@@ -462,62 +491,75 @@ function ProblemPanel({
 
   return (
     <>
-      <div
-        className={`overflow-hidden rounded-md border border-surface-border bg-surface-raised shadow-sm ${className ?? ''}`}
-      >
-      <div className="flex items-center justify-between gap-3 border-b border-surface-border bg-surface-muted px-5 py-3">
+      <div className={`border-l-[3px] border-brand-border ${className ?? ''}`}>
+      <div className="flex items-center justify-between gap-3 border-b border-surface-border bg-brand-glass/30 px-4 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-surface-border bg-surface-raised text-xs font-black tabular-nums text-text-primary">
+          <span className="inline-flex h-6 shrink-0 items-center justify-center rounded-md border border-surface-border bg-surface-raised px-2 text-xs font-black tabular-nums text-text-primary">
             {String(example.order).padStart(2, '0')}
           </span>
           <span
-            className={`rounded-md border px-2 py-1 text-[11px] font-black ${LEVEL_BADGE_CLASS[example.level]}`}
+            className={`inline-flex h-6 items-center rounded-md border px-2 text-[11px] font-black ${LEVEL_BADGE_CLASS[example.level]}`}
           >
             {sqlExampleLevelLabels[example.level]}
           </span>
-          <span className="min-w-0 truncate text-xs font-semibold text-text-muted">
-            {seedFile}
+          <span className="min-w-0 truncate text-sm font-bold text-text-primary">
+            {example.title}
           </span>
         </div>
-        <button
-          type="button"
-          className="ui-icon-button size-7 shrink-0"
-          onClick={onClose}
-          title="문제 닫기"
-        >
-          <X className="size-3.5" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {gradeStatus === 'correct' && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2 py-0.5 text-[11px] font-bold text-brand-primary">
+              <CheckCircle className="size-3" />
+              정답
+            </span>
+          )}
+          {gradeStatus === 'incorrect' && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-destructive/40 bg-danger-glass px-2 py-0.5 text-[11px] font-bold text-destructive">
+              <XCircle className="size-3" />
+              오답
+            </span>
+          )}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="ui-icon-button size-7 shrink-0 disabled:opacity-30"
+              onClick={onPrev}
+              disabled={!hasPrev}
+              title="이전 문제"
+            >
+              <ChevronLeft className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              className="ui-icon-button size-7 shrink-0 disabled:opacity-30"
+              onClick={onNext}
+              disabled={!hasNext}
+              title="다음 문제"
+            >
+              <ChevronRight className="size-3.5" />
+            </button>
+          </div>
+          <div className="mx-1 h-4 w-px bg-surface-border" />
+          <button
+            type="button"
+            className="ui-icon-button size-7 shrink-0"
+            onClick={onClose}
+            title="문제 닫기"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-4 px-5 py-5">
-        <div className="rounded-md border border-surface-border-soft bg-surface-muted px-4 py-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-black uppercase text-text-muted">문제</p>
-              <h2 className="mt-1 text-xl font-black leading-tight text-text-primary">
-                {example.title}
-              </h2>
-              <p className="mt-3 max-w-4xl text-sm leading-7 text-text-secondary">
-                {example.description}
-              </p>
-            </div>
-            {gradeStatus === 'correct' && (
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 py-1.5 text-xs font-bold text-brand-primary">
-                <CheckCircle className="size-3.5" />
-                정답
-              </span>
-            )}
-            {gradeStatus === 'incorrect' && (
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-destructive/40 bg-danger-glass px-3 py-1.5 text-xs font-bold text-destructive">
-                <XCircle className="size-3.5" />
-                오답
-              </span>
-            )}
-          </div>
+      <div className="divide-y divide-surface-border">
+        <div className="bg-surface-muted/50 px-4 py-3">
+          <p className="max-w-4xl text-sm leading-6 text-text-secondary">
+            {example.description}
+          </p>
         </div>
 
-        <div className="rounded-md border border-surface-border-soft bg-surface-raised">
-          <div className="flex items-center justify-between gap-3 border-b border-surface-border-soft px-4 py-3">
+        <div className="bg-surface-muted/40">
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5">
             <div className="flex items-center gap-2">
               <Table2 className="size-4 text-brand-primary" />
               <p className="text-sm font-black text-text-primary">대상 테이블</p>
@@ -527,7 +569,7 @@ function ProblemPanel({
             </span>
           </div>
 
-          <div className={`grid gap-2 p-3 ${targetTables.length > 1 ? 'md:grid-cols-2' : ''}`}>
+          <div className={`grid gap-2 px-4 pb-3 ${targetTables.length > 1 ? 'md:grid-cols-2' : ''}`}>
             {targetTables.map(({ tableName, info }) => (
               <div
                 key={tableName}
@@ -586,16 +628,16 @@ function ProblemPanel({
           </div>
         </div>
 
-        <div className="flex items-start gap-2 rounded-md border border-brand-border bg-brand-glass px-3 py-2.5">
+        <div className="flex items-start gap-2 bg-brand-glass px-4 py-2.5">
           <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-brand-primary" />
           <p className="text-xs leading-5 text-text-secondary">{example.hint}</p>
         </div>
 
-        <div className="rounded-md border border-surface-border bg-surface-muted p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="px-4 py-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-black text-text-primary">답안 SQL</p>
-              <p className="mt-1 text-xs text-text-muted">Ctrl+Enter로 바로 제출할 수 있습니다.</p>
+              <p className="mt-0.5 text-xs text-text-muted">Ctrl+Enter로 바로 제출할 수 있습니다.</p>
             </div>
             <button
               type="button"
@@ -658,7 +700,7 @@ function ProblemPanel({
           )}
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-end px-4 py-2.5">
           <button
             type="button"
             onClick={onToggleAnswer}
@@ -674,15 +716,15 @@ function ProblemPanel({
         </div>
 
         {answerOpen && (
-          <div className="space-y-2">
-            <pre className="max-h-56 overflow-auto rounded-md border border-surface-border bg-surface-muted px-4 py-3 font-mono text-xs leading-5 text-text-secondary">
+          <>
+            <pre className="max-h-56 overflow-auto bg-surface-muted px-4 py-3 font-mono text-xs leading-5 text-text-secondary">
               {example.answerSql}
             </pre>
-            <div className="rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
+            <div className="bg-surface-muted/40 px-4 py-3">
               <p className="text-[11px] font-black text-text-muted">해설</p>
               <p className="mt-1 text-[11px] leading-5 text-text-secondary">{example.explanation}</p>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
