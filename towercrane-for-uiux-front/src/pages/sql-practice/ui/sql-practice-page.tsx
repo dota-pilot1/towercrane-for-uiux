@@ -494,7 +494,9 @@ function ProblemPanel({
           executeError: submissionResult?.executeError ?? '',
         }),
       )
-      setMistakeAnalysis(parseSqlMistakeAnalysis(response.answer, targetSubmission))
+      setMistakeAnalysis(
+        parseSqlMistakeAnalysis(response.answer, targetSubmission, example.answerSql),
+      )
     } catch (error) {
       setMistakeError(
         error instanceof Error ? error.message : '오답 분석을 생성하는 중 오류가 발생했습니다.',
@@ -1113,21 +1115,24 @@ ${gradeFeedback || '없음'}
 ${executeError || '없음'}`
 }
 
-function parseSqlMistakeAnalysis(rawAnswer: string, submittedSql: string): SqlMistakeAnalysisState {
+function parseSqlMistakeAnalysis(
+  rawAnswer: string,
+  submittedSql: string,
+  answerSql: string,
+): SqlMistakeAnalysisState {
   const raw = rawAnswer.trim()
-  const lineCount = Math.max(1, submittedSql.trim().split('\n').length)
   const jsonText = raw.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1]?.trim() ?? raw
 
   try {
     const parsed = JSON.parse(jsonText) as Partial<SqlMistakeAnalysisState>
-    const wrongLines = Array.isArray(parsed.wrongLines)
-      ? parsed.wrongLines
-          .map((line) => Number(line))
-          .filter((line) => Number.isInteger(line) && line >= 1 && line <= lineCount)
-      : []
+    const wrongLines = deriveWrongSqlLines({
+      answerSql,
+      submittedSql,
+      aiWrongLines: Array.isArray(parsed.wrongLines) ? parsed.wrongLines : [],
+    })
 
     return {
-      wrongLines: Array.from(new Set(wrongLines)),
+      wrongLines,
       analysis: typeof parsed.analysis === 'string' && parsed.analysis.trim()
         ? parsed.analysis.trim()
         : raw,
@@ -1135,11 +1140,82 @@ function parseSqlMistakeAnalysis(rawAnswer: string, submittedSql: string): SqlMi
     }
   } catch {
     return {
-      wrongLines: [],
+      wrongLines: deriveWrongSqlLines({ answerSql, submittedSql, aiWrongLines: [] }),
       analysis: raw || '오답 분석 결과가 없습니다.',
       raw,
     }
   }
+}
+
+function deriveWrongSqlLines({
+  answerSql,
+  submittedSql,
+  aiWrongLines,
+}: {
+  answerSql: string
+  submittedSql: string
+  aiWrongLines: unknown[]
+}): number[] {
+  const answerLines = splitSqlLines(answerSql)
+  const submittedLines = splitSqlLines(submittedSql)
+  const answerLineSet = new Set(answerLines.map(normalizeSqlLine))
+  const answerByClause = new Map<string, string>()
+
+  answerLines.forEach((line) => {
+    const clause = getSqlLineClause(line)
+    if (clause && !answerByClause.has(clause)) {
+      answerByClause.set(clause, normalizeSqlLine(line))
+    }
+  })
+
+  const wrongLineSet = new Set<number>()
+
+  aiWrongLines
+    .map((line) => Number(line))
+    .filter((line) => Number.isInteger(line) && line >= 1 && line <= submittedLines.length)
+    .forEach((lineNumber) => {
+      const submittedLine = submittedLines[lineNumber - 1]
+      if (!answerLineSet.has(normalizeSqlLine(submittedLine))) {
+        wrongLineSet.add(lineNumber)
+      }
+    })
+
+  submittedLines.forEach((line, index) => {
+    const clause = getSqlLineClause(line)
+    const answerLine = clause ? answerByClause.get(clause) : undefined
+    if (answerLine && normalizeSqlLine(line) !== answerLine) {
+      wrongLineSet.add(index + 1)
+    }
+  })
+
+  return Array.from(wrongLineSet).sort((a, b) => a - b)
+}
+
+function splitSqlLines(sql: string): string[] {
+  return sql
+    .trim()
+    .split('\n')
+    .map((line) => line.trim())
+}
+
+function normalizeSqlLine(line: string): string {
+  return line
+    .trim()
+    .replace(/;+\s*$/, '')
+    .replace(/\s+/g, ' ')
+    .toUpperCase()
+}
+
+function getSqlLineClause(line: string): string {
+  const normalized = normalizeSqlLine(line)
+  if (normalized.startsWith('GROUP BY')) return 'GROUP BY'
+  if (normalized.startsWith('ORDER BY')) return 'ORDER BY'
+  if (normalized.startsWith('LEFT JOIN')) return 'LEFT JOIN'
+  if (normalized.startsWith('RIGHT JOIN')) return 'RIGHT JOIN'
+  if (normalized.startsWith('INNER JOIN')) return 'INNER JOIN'
+  if (normalized.startsWith('FULL JOIN')) return 'FULL JOIN'
+  if (normalized.startsWith('JOIN')) return 'JOIN'
+  return normalized.split(' ')[0] ?? ''
 }
 
 function SqlSupplementExplanationDialog({
