@@ -73,11 +73,18 @@ type SqlGradeStatus = 'correct' | 'incorrect' | null
 
 type SqlSubmissionResultState = {
   submittedSql: string
+  answerSql: string
   executeResponse: SqlExecuteResponse | null
   executeError: string
   gradeStatus: SqlGradeStatus
   gradeBody: string
   gradeError: string
+}
+
+type SqlMistakeAnalysisState = {
+  wrongLines: number[]
+  analysis: string
+  raw: string
 }
 
 export function SqlPracticePage() {
@@ -384,6 +391,9 @@ function ProblemPanel({
   const [supplementOpen, setSupplementOpen] = useState(false)
   const [supplementBody, setSupplementBody] = useState('')
   const [supplementError, setSupplementError] = useState('')
+  const [mistakeOpen, setMistakeOpen] = useState(false)
+  const [mistakeAnalysis, setMistakeAnalysis] = useState<SqlMistakeAnalysisState | null>(null)
+  const [mistakeError, setMistakeError] = useState('')
   const gradeMutation = useGradeSqlPracticeSubmission()
   const executeAnswerMutation = useExecuteSqlPracticeQuery()
   const supplementMutation = useSqlPracticeSupplementExplanation()
@@ -408,6 +418,8 @@ function ProblemPanel({
     setGradeError('')
     setSupplementBody('')
     setSupplementError('')
+    setMistakeAnalysis(null)
+    setMistakeError('')
 
     const gradePayload = {
       seedFile,
@@ -452,6 +464,7 @@ function ProblemPanel({
     setGradeError(nextGradeError)
     setSubmissionResult({
       submittedSql: trimmed,
+      answerSql: example.answerSql,
       executeResponse: nextExecuteResponse,
       executeError: nextExecuteError,
       gradeStatus: nextGradeStatus,
@@ -461,6 +474,31 @@ function ProblemPanel({
 
     if (nextExecuteError) {
       setGradeError(nextGradeError || nextExecuteError)
+    }
+  }
+
+  const handleOpenMistakeAnalysis = async () => {
+    const targetSubmission = submissionResult?.submittedSql ?? submittedSql.trim()
+    const targetFeedback = submissionResult?.gradeBody ?? gradeBody
+    setMistakeOpen(true)
+    setMistakeError('')
+    if (mistakeAnalysis || isSupplementLoading) return
+
+    try {
+      const response = await supplementMutation.mutateAsync(
+        buildSqlMistakeAnalysisPrompt({
+          example,
+          submittedSql: targetSubmission,
+          answerSql: example.answerSql,
+          gradeFeedback: targetFeedback,
+          executeError: submissionResult?.executeError ?? '',
+        }),
+      )
+      setMistakeAnalysis(parseSqlMistakeAnalysis(response.answer, targetSubmission))
+    } catch (error) {
+      setMistakeError(
+        error instanceof Error ? error.message : '오답 분석을 생성하는 중 오류가 발생했습니다.',
+      )
     }
   }
 
@@ -734,16 +772,22 @@ function ProblemPanel({
                   </pre>
                   <button
                     type="button"
-                    onClick={handleOpenSupplement}
-                    className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-[11px] font-bold text-brand-primary transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={gradeStatus === 'incorrect' ? handleOpenMistakeAnalysis : handleOpenSupplement}
+                    className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-3 text-[11px] font-bold transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 ${
+                      gradeStatus === 'incorrect'
+                        ? 'border-destructive/40 bg-danger-glass text-destructive'
+                        : 'border-brand-border bg-brand-glass text-brand-primary'
+                    }`}
                     disabled={isSupplementLoading}
                   >
                     {isSupplementLoading ? (
                       <Loader2 className="size-3.5 animate-spin" />
+                    ) : gradeStatus === 'incorrect' ? (
+                      <XCircle className="size-3.5" />
                     ) : (
                       <BookOpenText className="size-3.5" />
                     )}
-                    보충 설명
+                    {gradeStatus === 'incorrect' ? '오답 분석' : '보충 설명'}
                   </button>
                 </div>
               )}
@@ -797,6 +841,17 @@ function ProblemPanel({
         isLoading={isSupplementLoading}
       />
 
+      <SqlMistakeAnalysisDialog
+        open={mistakeOpen}
+        onOpenChange={setMistakeOpen}
+        title={`${example.title}의 오답 분석`}
+        submittedSql={submissionResult?.submittedSql ?? submittedSql.trim()}
+        answerSql={example.answerSql}
+        analysis={mistakeAnalysis}
+        error={mistakeError}
+        isLoading={isSupplementLoading}
+      />
+
       <SqlSubmissionResultDialog
         open={submissionResult !== null}
         onOpenChange={(open) => {
@@ -806,6 +861,7 @@ function ProblemPanel({
         title={example.title}
         description={example.description}
         onOpenSupplement={handleOpenSupplement}
+        onOpenMistakeAnalysis={handleOpenMistakeAnalysis}
         isSupplementLoading={isSupplementLoading}
       />
     </>
@@ -823,6 +879,7 @@ function SqlSubmissionResultDialog({
   title,
   description,
   onOpenSupplement,
+  onOpenMistakeAnalysis,
   isSupplementLoading,
 }: {
   open: boolean
@@ -831,6 +888,7 @@ function SqlSubmissionResultDialog({
   title: string
   description: string
   onOpenSupplement: () => void
+  onOpenMistakeAnalysis: () => void
   isSupplementLoading: boolean
 }) {
   if (!result) return null
@@ -930,16 +988,22 @@ function SqlSubmissionResultDialog({
               <div className="mt-3 flex justify-end">
                 <button
                   type="button"
-                  onClick={onOpenSupplement}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-bold text-brand-primary transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={isIncorrect ? onOpenMistakeAnalysis : onOpenSupplement}
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-xs font-bold transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 ${
+                    isIncorrect
+                      ? 'border-destructive/40 bg-danger-glass text-destructive'
+                      : 'border-brand-border bg-brand-glass text-brand-primary'
+                  }`}
                   disabled={isSupplementLoading || !result.gradeBody}
                 >
                   {isSupplementLoading ? (
                     <Loader2 className="size-3.5 animate-spin" />
+                  ) : isIncorrect ? (
+                    <XCircle className="size-3.5" />
                   ) : (
                     <BookOpenText className="size-3.5" />
                   )}
-                  보충 설명
+                  {isIncorrect ? '오답 분석' : '보충 설명'}
                 </button>
               </div>
             </aside>
@@ -997,6 +1061,85 @@ ${submittedSql}
 
 [채점 피드백]
 ${gradeFeedback}`
+}
+
+function buildSqlMistakeAnalysisPrompt({
+  example,
+  submittedSql,
+  answerSql,
+  gradeFeedback,
+  executeError,
+}: {
+  example: SqlPracticeExample
+  submittedSql: string
+  answerSql: string
+  gradeFeedback: string
+  executeError: string
+}) {
+  return `다음 SQL 연습 문제에서 사용자가 왜 틀렸는지 분석해주세요.
+
+반드시 아래 JSON 형식으로만 응답해주세요. Markdown 코드블록은 쓰지 마세요.
+wrongLines는 [사용자 제출 SQL] 기준 1부터 시작하는 줄 번호 배열입니다.
+확실히 틀린 줄만 넣고, 확신이 없으면 빈 배열로 두세요.
+analysis는 한국어로 2~4문장만 작성하세요.
+
+{
+  "wrongLines": [1],
+  "analysis": "틀린 이유를 여기에 작성"
+}
+
+[문제 제목]
+${example.title}
+
+[문제 설명]
+${example.description}
+
+[힌트]
+${example.hint}
+
+[관련 테이블]
+${example.relatedTables.join(', ') || '없음'}
+
+[정답 SQL]
+${answerSql}
+
+[사용자 제출 SQL]
+${submittedSql}
+
+[채점 피드백]
+${gradeFeedback || '없음'}
+
+[실행 오류]
+${executeError || '없음'}`
+}
+
+function parseSqlMistakeAnalysis(rawAnswer: string, submittedSql: string): SqlMistakeAnalysisState {
+  const raw = rawAnswer.trim()
+  const lineCount = Math.max(1, submittedSql.trim().split('\n').length)
+  const jsonText = raw.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1]?.trim() ?? raw
+
+  try {
+    const parsed = JSON.parse(jsonText) as Partial<SqlMistakeAnalysisState>
+    const wrongLines = Array.isArray(parsed.wrongLines)
+      ? parsed.wrongLines
+          .map((line) => Number(line))
+          .filter((line) => Number.isInteger(line) && line >= 1 && line <= lineCount)
+      : []
+
+    return {
+      wrongLines: Array.from(new Set(wrongLines)),
+      analysis: typeof parsed.analysis === 'string' && parsed.analysis.trim()
+        ? parsed.analysis.trim()
+        : raw,
+      raw,
+    }
+  } catch {
+    return {
+      wrongLines: [],
+      analysis: raw || '오답 분석 결과가 없습니다.',
+      raw,
+    }
+  }
 }
 
 function SqlSupplementExplanationDialog({
@@ -1069,6 +1212,106 @@ function SqlSupplementExplanationDialog({
                 <MarkdownPreview markdown={body || '보충 설명이 아직 없습니다.'} />
               )}
             </div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
+function SqlMistakeAnalysisDialog({
+  open,
+  onOpenChange,
+  title,
+  submittedSql,
+  answerSql,
+  analysis,
+  error,
+  isLoading,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  submittedSql: string
+  answerSql: string
+  analysis: SqlMistakeAnalysisState | null
+  error: string
+  isLoading: boolean
+}) {
+  const submittedLines = submittedSql.trim() ? submittedSql.trim().split('\n') : ['']
+  const wrongLines = new Set(analysis?.wrongLines ?? [])
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[220] ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[221] flex max-h-[min(820px,calc(100vh-2rem))] w-[min(980px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-md border border-surface-border shadow-2xl">
+          <div className="flex items-center justify-between gap-4 border-b border-surface-border px-5 py-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-destructive/40 bg-danger-glass text-destructive">
+                <XCircle className="size-4" />
+              </div>
+              <Dialog.Title className="truncate text-base font-black text-text-primary">
+                {title}
+              </Dialog.Title>
+            </div>
+            <Dialog.Close asChild>
+              <button type="button" className="ui-icon-button size-8 shrink-0" aria-label="닫기">
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto bg-surface-muted/50 p-5">
+            {isLoading ? (
+              <div className="flex min-h-60 items-center justify-center gap-2 rounded-md border border-surface-border-soft bg-surface-raised text-sm font-semibold text-text-muted">
+                <Loader2 className="size-4 animate-spin" />
+                오답 분석을 생성하는 중입니다.
+              </div>
+            ) : error ? (
+              <div className="rounded-md border border-destructive/40 bg-danger-glass px-4 py-3 text-sm font-semibold text-destructive">
+                {error}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <section className="rounded-md border border-surface-border bg-surface-raised p-4">
+                  <h3 className="mb-2 text-sm font-black text-text-primary">정답 SQL</h3>
+                  <pre className="max-h-48 overflow-auto rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2 font-mono text-xs leading-5 text-text-secondary">
+                    {answerSql}
+                  </pre>
+                </section>
+
+                <section className="rounded-md border border-surface-border bg-surface-raised p-4">
+                  <h3 className="mb-2 text-sm font-black text-text-primary">내 제출 SQL</h3>
+                  <div className="overflow-auto rounded-md border border-surface-border-soft bg-surface-muted py-2 font-mono text-xs leading-5">
+                    {submittedLines.map((line, index) => {
+                      const lineNumber = index + 1
+                      const isWrong = wrongLines.has(lineNumber)
+                      return (
+                        <div
+                          key={`${lineNumber}-${line}`}
+                          className={`grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 px-3 py-0.5 ${
+                            isWrong
+                              ? 'border-y border-destructive/40 bg-danger-glass text-destructive'
+                              : 'text-text-secondary'
+                          }`}
+                        >
+                          <span className="select-none text-right text-text-muted">{lineNumber}</span>
+                          <code className="whitespace-pre-wrap break-words">{line || ' '}</code>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+
+                <section className="rounded-md border border-surface-border bg-surface-raised p-4">
+                  <h3 className="mb-2 text-sm font-black text-text-primary">틀린 이유 분석:</h3>
+                  <p className="whitespace-pre-wrap text-sm leading-6 text-text-secondary">
+                    {analysis?.analysis || '오답 분석 결과가 없습니다.'}
+                  </p>
+                </section>
+              </div>
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>
