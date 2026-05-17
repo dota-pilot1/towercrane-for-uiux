@@ -2,6 +2,7 @@ import { apiRequest } from '../../../shared/api/http'
 import type {
   CreateSqlPracticeNotePayload,
   PublicSqlPracticeNote,
+  SharedSqlPracticeNote,
   SqlActivateSeedResponse,
   SqlExecuteResponse,
   SqlPersonalPracticeProblem,
@@ -114,6 +115,10 @@ export const sqlPracticeApi = {
     apiRequest<SqlPracticeNote | null>(`/sql/notes/${encodeURIComponent(id)}`),
   getPublicNote: (token: string) =>
     apiRequest<PublicSqlPracticeNote | null>(`/public/sql/notes/${encodeURIComponent(token)}`, {
+      skipAuth: true,
+    }),
+  getNoteByIdPublic: (id: string) =>
+    apiRequest<SharedSqlPracticeNote | null>(`/public/sql/notes/by-id/${encodeURIComponent(id)}`, {
       skipAuth: true,
     }),
   shareNote: (id: string) =>

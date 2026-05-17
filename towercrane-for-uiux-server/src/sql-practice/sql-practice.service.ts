@@ -1378,6 +1378,32 @@ export class SqlPracticeService {
       .get();
   }
 
+  getPublicNoteById(id: string) {
+    return this.databaseService.db
+      .select({
+        id: sqlPracticeNotesTable.id,
+        userId: sqlPracticeNotesTable.userId,
+        authorName: usersTable.name,
+        seedFile: sqlPracticeNotesTable.seedFile,
+        exampleId: sqlPracticeNotesTable.exampleId,
+        exampleTitle: sqlPracticeNotesTable.exampleTitle,
+        tableName: sqlPracticeNotesTable.tableName,
+        title: sqlPracticeNotesTable.title,
+        content: sqlPracticeNotesTable.content,
+        pinned: sqlPracticeNotesTable.pinned,
+        isPublic: sqlPracticeNotesTable.isPublic,
+        publicToken: sqlPracticeNotesTable.publicToken,
+        publicSharedAt: sqlPracticeNotesTable.publicSharedAt,
+        orderIdx: sqlPracticeNotesTable.orderIdx,
+        createdAt: sqlPracticeNotesTable.createdAt,
+        updatedAt: sqlPracticeNotesTable.updatedAt,
+      })
+      .from(sqlPracticeNotesTable)
+      .innerJoin(usersTable, eq(usersTable.id, sqlPracticeNotesTable.userId))
+      .where(eq(sqlPracticeNotesTable.id, id))
+      .get();
+  }
+
   getPublicNoteByToken(token: string) {
     return this.databaseService.db
       .select({

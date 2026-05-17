@@ -169,6 +169,14 @@ export function usePublicSqlPracticeNote(token: string | undefined) {
   })
 }
 
+export function useSharedSqlPracticeNoteById(id: string | undefined) {
+  return useQuery({
+    queryKey: ['sql-practice', 'shared-by-id', id ?? ''],
+    queryFn: () => sqlPracticeApi.getNoteByIdPublic(id!),
+    enabled: Boolean(id),
+  })
+}
+
 export function useSqlPracticeMySubmissions(seedFile: string | undefined) {
   return useQuery({
     queryKey: sqlPracticeQueryKeys.submissions(seedFile ?? ''),

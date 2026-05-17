@@ -466,6 +466,11 @@ export class SqlPracticePublicController {
     private readonly authService: AuthService,
   ) {}
 
+  @Get('notes/by-id/:id')
+  publicNoteById(@Param('id') id: string) {
+    return this.sqlPracticeService.getPublicNoteById(id) ?? null;
+  }
+
   @Get('notes/:token')
   publicNote(@Param('token') token: string) {
     return this.sqlPracticeService.getPublicNoteByToken(token) ?? null;

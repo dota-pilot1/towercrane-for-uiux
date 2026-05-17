@@ -104,6 +104,10 @@ export type PublicSqlPracticeNote = Omit<SqlPracticeNote, 'userId'> & {
   authorName: string
 }
 
+export type SharedSqlPracticeNote = SqlPracticeNote & {
+  authorName: string
+}
+
 export type SqlPracticeNoteFilter = {
   seedFile?: string
   exampleId?: string

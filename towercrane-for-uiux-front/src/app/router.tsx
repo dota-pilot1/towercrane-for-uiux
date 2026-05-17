@@ -26,6 +26,7 @@ import { DevChallengePage } from '../pages/dev-challenge/ui/dev-challenge-page'
 import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
 import { SqlPracticeExamplesPage } from '../pages/sql-practice/ui/sql-practice-examples-page'
 import { SqlNotesPage } from '../pages/sql-practice/ui/sql-notes-page'
+import { SqlNoteDetailPage } from '../pages/sql-practice/ui/sql-note-detail-page'
 import { SqlPublicNotePage } from '../pages/sql-practice/ui/sql-public-note-page'
 import { SqlPublicPersonalPracticePage } from '../pages/sql-practice/ui/sql-public-personal-practice-page'
 import { SqlUserPracticePage } from '../pages/sql-practice/ui/sql-user-practice-page'
@@ -88,6 +89,50 @@ const publicSqlPersonalPracticeRoute = createRoute({
   path: '/share/sql/personal/$token',
   component: SqlPublicPersonalPracticePage,
 })
+
+// ─── Semi-public layout (no auth redirect, shows header when logged in) ─────
+
+const semiPublicLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_semi-public',
+  component: SemiPublicLayout,
+})
+
+function SemiPublicLayout() {
+  const hasHydrated = useSessionStore((s) => s.hasHydrated)
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated)
+  const token = useSessionStore((s) => s.token)
+  const syncUser = useSessionStore((s) => s.syncUser)
+  const clearSession = useSessionStore((s) => s.clearSession)
+  const themeColor = useUiStore((s) => s.themeColor)
+  const currentUserQuery = useCurrentUser(hasHydrated && token.length > 0)
+
+  useEffect(() => {
+    document.documentElement.setAttribute(
+      'data-theme',
+      themeColor === 'light' ? 'default' : themeColor,
+    )
+  }, [themeColor])
+
+  useEffect(() => {
+    if (currentUserQuery.data) syncUser(currentUserQuery.data)
+  }, [currentUserQuery.data, syncUser])
+
+  useEffect(() => {
+    if (currentUserQuery.error) clearSession()
+  }, [currentUserQuery.error, clearSession])
+
+  if (!hasHydrated) return null
+
+  return (
+    <div className="min-h-screen bg-background">
+      {isAuthenticated && <AppHeader />}
+      <main className="w-full min-w-0 px-4 pb-10 pt-5 sm:px-5 lg:px-6">
+        <Outlet />
+      </main>
+    </div>
+  )
+}
 
 // ─── App layout (auth guard) ─────────────────────────────────────────────────
 
@@ -278,9 +323,9 @@ const sqlNotesRoute = createRoute({
 })
 
 const sqlNoteDetailRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
+  getParentRoute: () => semiPublicLayoutRoute,
   path: '/sql/notes/$noteId',
-  component: SqlNotesPage,
+  component: SqlNoteDetailPage,
 })
 
 // ─── /boards ────────────────────────────────────────────────────────────────
@@ -525,6 +570,9 @@ export const router = createRouter({
     loginRoute,
     publicSqlNoteRoute,
     publicSqlPersonalPracticeRoute,
+    semiPublicLayoutRoute.addChildren([
+      sqlNoteDetailRoute,
+    ]),
     appLayoutRoute.addChildren([
       indexRoute,
       prototypeIndexRoute,
@@ -542,7 +590,6 @@ export const router = createRouter({
       sqlPersonalPracticeRoute,
       sqlPracticeExamplesRoute,
       sqlNotesRoute,
-      sqlNoteDetailRoute,
       boardsHomeRoute,
       boardListRoute,
       boardDetailRoute,
