@@ -1084,6 +1084,9 @@ function buildSqlMistakeAnalysisPrompt({
 wrongLines는 [사용자 제출 SQL] 기준 1부터 시작하는 줄 번호 배열입니다.
 확실히 틀린 줄만 넣고, 확신이 없으면 빈 배열로 두세요.
 analysis는 한국어로 2~4문장만 작성하세요.
+analysis는 반드시 자연스러운 한국어만 사용하세요.
+중국어, 일본어, 한자식 표현, 번역투 표현은 쓰지 마세요.
+예: "拼寫" 대신 "철자", "누락" 같은 한국어 표현을 사용하세요.
 
 {
   "wrongLines": [1],
