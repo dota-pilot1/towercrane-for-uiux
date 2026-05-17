@@ -1,6 +1,8 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { Bot, Loader2, Send } from 'lucide-react'
+import { Bot, Loader2, Send, WandSparkles } from 'lucide-react'
+import { toast } from 'sonner'
 import { SqlGeminiDialog } from './sql-gemini-dialog'
+import { formatSqlQuery } from '../lib/format-sql'
 
 type SqlInputBarProps = {
   onExecute: (query: string) => void
@@ -23,6 +25,21 @@ export function SqlInputBar({ onExecute, onClear, isLoading }: SqlInputBarProps)
     }
     onExecute(trimmed)
     setQuery('')
+  }
+
+  const handleFormat = () => {
+    const trimmed = query.trim()
+    if (!trimmed) return
+
+    try {
+      const formatted = formatSqlQuery(trimmed)
+      setQuery(formatted)
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus()
+      })
+    } catch {
+      toast.error('SQL을 정리할 수 없습니다. 문법을 확인해 주세요.')
+    }
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -60,6 +77,16 @@ export function SqlInputBar({ onExecute, onClear, isLoading }: SqlInputBarProps)
             placeholder={'SQL 쿼리를 입력하세요 (Ctrl+Enter 실행)\n예: SELECT * FROM users LIMIT 10;'}
           />
           <div className="flex flex-col gap-2 shrink-0">
+            <button
+              type="button"
+              className="ui-icon-button size-12"
+              onClick={handleFormat}
+              disabled={!query.trim() || isLoading}
+              aria-label="SQL 정리"
+              title="SQL 정리"
+            >
+              <WandSparkles className="size-5" />
+            </button>
             <button
               type="button"
               className="ui-icon-button-brand size-12"

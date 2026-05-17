@@ -15,9 +15,11 @@ import {
   Loader2,
   Send,
   Table2,
+  WandSparkles,
   X,
   XCircle,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Card } from '../../../shared/ui/card'
 import type {
@@ -56,6 +58,7 @@ import { SqlQuizSidebar } from '../../../features/sql-practice/ui/sql-quiz-sideb
 import { SqlResultTable } from '../../../features/sql-practice/ui/sql-result-table'
 import { SqlSchemaSidebar } from '../../../features/sql-practice/ui/sql-schema-sidebar'
 import { SqlTableSchemaDialog } from '../../../features/sql-practice/ui/sql-table-schema-dialog'
+import { formatSqlQuery } from '../../../features/sql-practice/lib/format-sql'
 import { useSessionStore } from '../../../shared/store/session-store'
 
 const EMPTY_TABLES: TableInfo[] = []
@@ -500,6 +503,21 @@ function ProblemPanel({
     })
   }
 
+  const handleFormatAnswer = () => {
+    const trimmed = submittedSql.trim()
+    if (!trimmed) return
+
+    try {
+      const formatted = formatSqlQuery(trimmed)
+      setSubmittedSql(formatted)
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus()
+      })
+    } catch {
+      toast.error('SQL을 정리할 수 없습니다. 문법을 확인해 주세요.')
+    }
+  }
+
   const handleAnswerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault()
@@ -652,8 +670,25 @@ function ProblemPanel({
         </div>
 
         <div className="px-4 py-3">
-          <p className="mb-2 text-sm font-black text-text-primary">답안 SQL</p>
-          <SqlKeywordButtons onInsert={(kw, newline) => handleInsertKeyword(kw, newline)} />
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="text-sm font-black text-text-primary">답안 SQL</p>
+            <p className="text-[10px] font-medium text-text-muted">
+              클릭: 커서 삽입 · Ctrl+클릭: 줄바꿈
+            </p>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <SqlKeywordButtons onInsert={(kw, newline) => handleInsertKeyword(kw, newline)} />
+            <button
+              type="button"
+              onClick={handleFormatAnswer}
+              disabled={!submittedSql.trim() || isGrading}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-surface-border bg-surface-muted px-3 text-xs font-bold text-text-secondary transition-colors hover:border-brand-border hover:text-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
+              title="줄바꿈과 SQL 키워드 대문자를 정리합니다"
+            >
+              <WandSparkles className="size-3.5" />
+              SQL 정리
+            </button>
+          </div>
 
           <textarea
             ref={textareaRef}
@@ -1191,22 +1226,17 @@ const SQL_KEYWORDS = [
 
 function SqlKeywordButtons({ onInsert }: { onInsert: (keyword: string, newline: boolean) => void }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="flex flex-wrap gap-1">
-        {SQL_KEYWORDS.map((kw) => (
-          <button
-            key={kw}
-            type="button"
-            onClick={(e) => onInsert(kw, e.ctrlKey || e.metaKey)}
-            className="inline-flex h-6 items-center rounded border border-surface-border-soft bg-surface-muted px-2 font-mono text-[10px] font-bold text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
-          >
-            {kw}
-          </button>
-        ))}
-      </div>
-      <p className="shrink-0 text-[10px] leading-5 text-text-muted">
-        클릭: 커서 삽입<br />Ctrl+클릭: 줄바꿈
-      </p>
+    <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+      {SQL_KEYWORDS.map((kw) => (
+        <button
+          key={kw}
+          type="button"
+          onClick={(e) => onInsert(kw, e.ctrlKey || e.metaKey)}
+          className="inline-flex h-6 items-center rounded border border-surface-border-soft bg-surface-muted px-2 font-mono text-[10px] font-bold text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
+        >
+          {kw}
+        </button>
+      ))}
     </div>
   )
 }
