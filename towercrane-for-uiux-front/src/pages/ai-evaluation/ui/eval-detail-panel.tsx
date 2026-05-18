@@ -28,15 +28,11 @@ function AddItemDialog({
   onClose: () => void
 }) {
   const create = useCreateEvalItem(evaluateeId)
-  const [form, setForm] = useState({ title: '', description: '' })
+  const [title, setTitle] = useState('')
 
   const handleSubmit = async () => {
-    if (!form.title.trim()) return
-    await create.mutateAsync({
-      categoryId,
-      title: form.title.trim(),
-      description: form.description.trim() || undefined,
-    })
+    if (!title.trim()) return
+    await create.mutateAsync({ categoryId, title: title.trim() })
     onClose()
   }
 
@@ -59,25 +55,17 @@ function AddItemDialog({
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-text-secondary">항목명 *</label>
             <Input
-              value={form.title}
-              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="예: 아키텍처 설계 능력"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-text-secondary">설명 (선택)</label>
-            <Input
-              value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-              placeholder="항목에 대한 간단한 설명"
-            />
-          </div>
           <div className="flex justify-end pt-1">
             <Button
               onClick={handleSubmit}
-              disabled={create.isPending || !form.title.trim()}
+              disabled={create.isPending || !title.trim()}
             >
               {create.isPending ? '추가 중…' : '추가'}
             </Button>
@@ -134,16 +122,13 @@ function EvalItemRow({
         <button
           type="button"
           onClick={() => deleteItem.mutate(item.id)}
-          className="ml-2 shrink-0 rounded-md p-1.5 text-text-muted opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
+          className="ml-2 shrink-0 rounded-md p-1.5 text-text-muted transition-colors hover:text-red-500"
         >
           <Trash2 className="size-3.5" />
         </button>
       </div>
 
       {/* 하단: 설명 + 메모 */}
-      {item.description && (
-        <p className="mt-1 pl-8 text-[11px] text-text-muted">{item.description}</p>
-      )}
       <div className="mt-2 pl-8">
         <input
           type="text"
