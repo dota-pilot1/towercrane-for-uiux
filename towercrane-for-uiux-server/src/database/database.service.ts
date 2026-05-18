@@ -1899,6 +1899,33 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `UPDATE menus SET parent_id = ?, display_order = 0, updated_at = ? WHERE section_id = 'ai_methodology'`,
       )
       .run(aiNativeGroup.id, now);
+
+    // ai_evaluation — AI Native 2번째 자식
+    const existingAiEval = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'ai_evaluation' LIMIT 1`)
+      .get() as { id: string } | undefined;
+
+    if (!existingAiEval) {
+      this.db
+        .insert(menusTable)
+        .values({
+          id: randomUUID(),
+          name: 'AI 활용 능력 평가',
+          sectionId: 'ai_evaluation',
+          icon: 'ClipboardCheck',
+          displayOrder: 1,
+          isVisible: true,
+          requiredRole: null,
+          parentId: aiNativeGroup.id,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    } else {
+      this.sqlite
+        .prepare(`UPDATE menus SET name = 'AI 활용 능력 평가', icon = 'ClipboardCheck', parent_id = ?, display_order = 1, is_visible = 1, updated_at = ? WHERE id = ?`)
+        .run(aiNativeGroup.id, now, existingAiEval.id);
+    }
   }
 
   private reconcileStudyDiaryAndDevChallengeMenus(now: string) {

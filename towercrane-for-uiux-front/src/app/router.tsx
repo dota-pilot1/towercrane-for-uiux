@@ -15,6 +15,7 @@ import { WorkbenchPage } from '../pages/workbench/ui/workbench-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
+import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
 import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
 import { TaskPage } from '../pages/task/ui/task-page'
 import { PrototypeIssuesPage } from '../pages/prototype-issues/ui/prototype-issues-page'
@@ -280,6 +281,14 @@ const aiMethodologyRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/ai-methodology',
   component: AiMethodologyPage,
+})
+
+// ─── /ai-evaluation ──────────────────────────────────────────────────────────
+
+const aiEvaluationRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/ai-evaluation',
+  component: AiEvaluationPage,
 })
 
 // ─── /api-doc ────────────────────────────────────────────────────────────────
@@ -584,6 +593,7 @@ export const router = createRouter({
       meetingRoute,
       docuRoute,
       aiMethodologyRoute,
+      aiEvaluationRoute,
       apiDocRoute,
       sqlPracticeRoute,
       sqlUserPracticeRoute,
