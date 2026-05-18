@@ -100,7 +100,7 @@ function EvalItemRow({
     <div className="group rounded-lg border border-surface-border-soft bg-surface-raised px-4 py-3 transition-colors hover:border-brand-border/40">
       {/* 상단: 순번 + 제목 + 점수 + 삭제 */}
       <div className="flex items-center gap-3">
-        <span className="flex size-5 shrink-0 items-center justify-center rounded text-[11px] font-black text-text-muted">
+        <span className="flex size-[30px] shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-[11px] font-black text-text-muted">
           {item.displayOrder + 1}
         </span>
         <p className="min-w-0 flex-1 text-sm font-bold text-text-primary leading-snug truncate">
