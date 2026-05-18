@@ -1053,7 +1053,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (existingMenus.count === 0) {
       const adminMenuId = randomUUID();
       const sqlGroupMenuId = randomUUID();
+      const aiNativeGroupMenuId = randomUUID();
       const initialMenus = [
+        {
+          id: aiNativeGroupMenuId,
+          name: 'AI Native',
+          sectionId: 'ai_native_group',
+          icon: 'Bot',
+          displayOrder: 0,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        },
         {
           id: randomUUID(),
           name: 'AI 개발 방법론',
@@ -1062,7 +1075,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           displayOrder: 0,
           isVisible: true,
           requiredRole: null,
-          parentId: null,
+          parentId: aiNativeGroupMenuId,
           createdAt: now,
           updatedAt: now,
         },
@@ -1262,6 +1275,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.db.insert(menusTable).values(initialMenus).run();
     }
 
+    this.reconcileAiNativeMenus(now);
     this.reconcileStudyDiaryAndDevChallengeMenus(now);
     this.reconcileTaskMenus(now);
     this.seedBoardConfigs(now);
@@ -1840,6 +1854,51 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `,
       )
       .run();
+  }
+
+  private reconcileAiNativeMenus(now: string) {
+    let aiNativeGroup = this.sqlite
+      .prepare(
+        `SELECT id, display_order as displayOrder FROM menus WHERE section_id = 'ai_native_group' AND parent_id IS NULL LIMIT 1`,
+      )
+      .get() as { id: string; displayOrder: number } | undefined;
+
+    const aiNativeGroupMenuId = randomUUID();
+
+    if (!aiNativeGroup) {
+      this.sqlite
+        .prepare(`UPDATE menus SET display_order = display_order + 1, updated_at = ? WHERE parent_id IS NULL AND display_order >= 0`)
+        .run(now);
+
+      this.db
+        .insert(menusTable)
+        .values({
+          id: aiNativeGroupMenuId,
+          name: 'AI Native',
+          sectionId: 'ai_native_group',
+          icon: 'Bot',
+          displayOrder: 0,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      aiNativeGroup = { id: aiNativeGroupMenuId, displayOrder: 0 };
+    } else {
+      this.sqlite
+        .prepare(`UPDATE menus SET name = 'AI Native', icon = 'Bot', is_visible = 1, updated_at = ? WHERE id = ?`)
+        .run(now, aiNativeGroup.id);
+    }
+
+    // ai_methodology를 ai_native_group의 자식으로 이동
+    this.sqlite
+      .prepare(
+        `UPDATE menus SET parent_id = ?, display_order = 0, updated_at = ? WHERE section_id = 'ai_methodology'`,
+      )
+      .run(aiNativeGroup.id, now);
   }
 
   private reconcileStudyDiaryAndDevChallengeMenus(now: string) {

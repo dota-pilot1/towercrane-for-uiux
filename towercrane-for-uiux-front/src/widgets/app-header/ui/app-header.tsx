@@ -19,6 +19,7 @@ function sectionIdToPath(sectionId: string): string {
     dev_challenge: '/dev-challenge',
     meeting: '/meeting',
     docu: '/docu',
+    ai_native_group: '/ai-methodology',
     ai_methodology: '/ai-methodology',
     api_doc: '/api-doc',
     sql: '/sql',
