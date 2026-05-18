@@ -90,6 +90,16 @@ export function SqlInputBar({ onExecute, onClear, isLoading }: SqlInputBarProps)
             </button>
             <button
               type="button"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-bold text-brand-primary transition-colors hover:brightness-110"
+              onClick={() => setGeminiOpen(true)}
+              aria-label="Gemini AI 도우미"
+              title="Gemini AI 도우미"
+            >
+              <Bot className="size-3.5" />
+              AI 도우미
+            </button>
+            <button
+              type="button"
               className="inline-flex h-9 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-bold text-brand-primary transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleExecute}
               disabled={!query.trim() || isLoading}
@@ -98,16 +108,6 @@ export function SqlInputBar({ onExecute, onClear, isLoading }: SqlInputBarProps)
             >
               {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
               실행
-            </button>
-            <button
-              type="button"
-              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-bold text-brand-primary transition-colors hover:brightness-110"
-              onClick={() => setGeminiOpen(true)}
-              aria-label="Gemini AI 도우미"
-              title="Gemini AI 도우미"
-            >
-              <Bot className="size-3.5" />
-              AI 도우미
             </button>
           </div>
         </div>
