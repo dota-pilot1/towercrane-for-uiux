@@ -20,6 +20,7 @@ import { SqlPracticeModule } from './sql-practice/sql-practice.module';
 import { DevChallengeModule } from './dev-challenge/dev-challenge.module';
 import { StudyDiaryModule } from './study-diary/study-diary.module';
 import { BoardsModule } from './boards/boards.module';
+import { AiEvaluationModule } from './ai-evaluation/ai-evaluation.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { BoardsModule } from './boards/boards.module';
     DevChallengeModule,
     SqlPracticeModule,
     BoardsModule,
+    AiEvaluationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

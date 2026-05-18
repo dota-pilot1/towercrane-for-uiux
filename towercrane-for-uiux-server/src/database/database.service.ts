@@ -24,6 +24,7 @@ import {
   prototypesTable,
   schema,
   usersTable,
+  evalCategoriesTable,
   type PrototypeInsert,
   type UserInsert,
 } from './schema';
@@ -1026,11 +1027,45 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_dev_challenge_submissions_assignment_user
         ON dev_challenge_submissions(assignment_id, user_id);
+
+      CREATE TABLE IF NOT EXISTS eval_categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        display_order INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS evaluatees (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        role TEXT,
+        description TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS eval_items (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL REFERENCES eval_categories(id) ON DELETE CASCADE,
+        evaluatee_id TEXT NOT NULL REFERENCES evaluatees(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        display_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS eval_scores (
+        id TEXT PRIMARY KEY,
+        item_id TEXT NOT NULL REFERENCES eval_items(id) ON DELETE CASCADE,
+        score INTEGER NOT NULL DEFAULT 0,
+        note TEXT,
+        updated_at TEXT NOT NULL
+      );
     `);
 
     this.migrateLegacySchema();
     this.migrateProjectIssueSchema();
     this.seedDefaults();
+    this.seedEvalCategories();
     this.ensureTestUsers();
   }
 
@@ -1925,6 +1960,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.sqlite
         .prepare(`UPDATE menus SET name = 'AI 활용 능력 평가', icon = 'ClipboardCheck', parent_id = ?, display_order = 1, is_visible = 1, updated_at = ? WHERE id = ?`)
         .run(aiNativeGroup.id, now, existingAiEval.id);
+    }
+  }
+
+  private seedEvalCategories() {
+    const categories = [
+      { id: 'cat_tech',   name: '기술 역량',   displayOrder: 0 },
+      { id: 'cat_collab', name: '협업 역량',   displayOrder: 1 },
+      { id: 'cat_prod',   name: '업무 생산성', displayOrder: 2 },
+    ];
+    for (const cat of categories) {
+      const existing = this.sqlite
+        .prepare(`SELECT id FROM eval_categories WHERE id = ?`)
+        .get(cat.id);
+      if (!existing) {
+        this.db.insert(evalCategoriesTable).values(cat).run();
+      }
     }
   }
 

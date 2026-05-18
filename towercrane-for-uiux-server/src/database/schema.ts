@@ -1398,3 +1398,51 @@ export type DevChallengeSubmissionRow =
   typeof devChallengeSubmissionsTable.$inferSelect;
 export type DevChallengeSubmissionInsert =
   typeof devChallengeSubmissionsTable.$inferInsert;
+
+// ─── AI 활용 능력 평가 ────────────────────────────────────────────────────────
+
+export const evalCategoriesTable = sqliteTable('eval_categories', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  displayOrder: integer('display_order').notNull().default(0),
+});
+
+export const evaluateesTable = sqliteTable('evaluatees', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  role: text('role'),
+  description: text('description'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const evalItemsTable = sqliteTable('eval_items', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id')
+    .notNull()
+    .references(() => evalCategoriesTable.id, { onDelete: 'cascade' }),
+  evaluateeId: text('evaluatee_id')
+    .notNull()
+    .references(() => evaluateesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  displayOrder: integer('display_order').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});
+
+export const evalScoresTable = sqliteTable('eval_scores', {
+  id: text('id').primaryKey(),
+  itemId: text('item_id')
+    .notNull()
+    .references(() => evalItemsTable.id, { onDelete: 'cascade' }),
+  score: integer('score').notNull().default(0),
+  note: text('note'),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type EvaluateeRow = typeof evaluateesTable.$inferSelect;
+export type EvaluateeInsert = typeof evaluateesTable.$inferInsert;
+export type EvalCategoryRow = typeof evalCategoriesTable.$inferSelect;
+export type EvalItemRow = typeof evalItemsTable.$inferSelect;
+export type EvalItemInsert = typeof evalItemsTable.$inferInsert;
+export type EvalScoreRow = typeof evalScoresTable.$inferSelect;
