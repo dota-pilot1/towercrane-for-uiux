@@ -135,7 +135,7 @@ function NavDropdown({
                   if (child.sectionId) handleNavigation(child.sectionId)
                   setIsOpen(false)
                 }}
-                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-[13px] transition-all ui-text-secondary hover:bg-surface-muted hover:ui-text-primary hover:scale-[1.02] active:scale-[0.98]"
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-[13px] transition-all ui-text-secondary hover:bg-brand-glass hover:text-brand-primary hover:scale-[1.02] active:scale-[0.98]"
               >
                 <ChildIcon className="size-3.5" />
                 {child.name}

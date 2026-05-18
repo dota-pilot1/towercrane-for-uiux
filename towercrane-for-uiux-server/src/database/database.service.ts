@@ -1167,10 +1167,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'SQL 예제',
           sectionId: 'sql_examples',
           icon: 'BookOpenCheck',
-          displayOrder: 6,
+          displayOrder: 3,
           isVisible: true,
           requiredRole: null,
-          parentId: null,
+          parentId: sqlGroupMenuId,
           createdAt: now,
           updatedAt: now,
         },
@@ -2175,27 +2175,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             UPDATE menus
             SET name = 'SQL 예제',
                 icon = 'BookOpenCheck',
-                parent_id = NULL,
+                display_order = 3,
+                parent_id = ?,
                 is_visible = 1,
                 required_role = NULL,
                 updated_at = ?
             WHERE id = ?
           `,
         )
-        .run(now, existingSqlExamplesMenu.id);
+        .run(sqlGroupMenu.id, now, existingSqlExamplesMenu.id);
     } else {
-      const displayOrder = sqlGroupMenu.displayOrder + 1;
-
-      this.sqlite
-        .prepare(
-          `
-            UPDATE menus
-            SET display_order = display_order + 1, updated_at = ?
-            WHERE parent_id IS NULL AND display_order >= ?
-          `,
-        )
-        .run(now, displayOrder);
-
       this.db
         .insert(menusTable)
         .values({
@@ -2203,10 +2192,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'SQL 예제',
           sectionId: 'sql_examples',
           icon: 'BookOpenCheck',
-          displayOrder,
+          displayOrder: 3,
           isVisible: true,
           requiredRole: null,
-          parentId: null,
+          parentId: sqlGroupMenu.id,
           createdAt: now,
           updatedAt: now,
         })
