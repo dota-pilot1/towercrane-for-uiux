@@ -44,10 +44,28 @@ const LEVEL_BADGE_CLASS: Record<SqlExampleLevel, string> = {
   advanced: 'border-surface-border bg-surface-strong text-text-primary',
 }
 
-const SQL_KEYWORDS = [
-  'SELECT', 'FROM', 'JOIN', 'ON', 'WHERE', 'AND', 'OR', 'LIKE',
-  'GROUP BY', 'HAVING', 'COUNT(*)', 'SUM()', 'ORDER BY', 'ASC', 'DESC', 'LIMIT',
-]
+type SqlKeywordMode = 'all' | 'answer-only'
+
+const SQL_KEYWORD_OPTIONS = [
+  { label: 'SELECT', pattern: /\bSELECT\b/i, alwaysShow: true },
+  { label: 'FROM', pattern: /\bFROM\b/i, alwaysShow: true },
+  { label: 'JOIN', pattern: /\b(?:LEFT|RIGHT|INNER|FULL|CROSS)?\s*JOIN\b/i },
+  { label: 'ON', pattern: /\bON\b/i },
+  { label: 'WHERE', pattern: /\bWHERE\b/i },
+  { label: 'AND', pattern: /\bAND\b/i },
+  { label: 'OR', pattern: /\bOR\b/i },
+  { label: 'LIKE', pattern: /\bLIKE\b/i },
+  { label: 'GROUP BY', pattern: /\bGROUP\s+BY\b/i },
+  { label: 'HAVING', pattern: /\bHAVING\b/i },
+  { label: 'COUNT(*)', pattern: /\bCOUNT\s*\(/i },
+  { label: 'SUM()', pattern: /\bSUM\s*\(/i },
+  { label: 'ORDER BY', pattern: /\bORDER\s+BY\b/i },
+  { label: 'ASC', pattern: /\bASC\b/i },
+  { label: 'DESC', pattern: /\bDESC\b/i },
+  { label: 'LIMIT', pattern: /\bLIMIT\b/i },
+] as const
+
+const SQL_KEYWORDS = SQL_KEYWORD_OPTIONS.map((option) => option.label)
 
 export function SqlProblemPanel({
   example,
@@ -62,6 +80,7 @@ export function SqlProblemPanel({
   seedHash,
   tables,
   className,
+  keywordMode = 'all',
 }: {
   example: SqlPracticeExample
   answerOpen: boolean
@@ -75,6 +94,7 @@ export function SqlProblemPanel({
   seedHash?: string
   tables: TableInfo[]
   className?: string
+  keywordMode?: SqlKeywordMode
 }) {
   const [submittedSql, setSubmittedSql] = useState('')
   const [gradeStatus, setGradeStatus] = useState<SqlGradeStatus>(null)
@@ -102,6 +122,13 @@ export function SqlProblemPanel({
       })),
     [example.relatedTables, tables],
   )
+  const visibleKeywords = useMemo(() => {
+    if (keywordMode === 'all') return SQL_KEYWORDS
+
+    return SQL_KEYWORD_OPTIONS
+      .filter((option) => option.alwaysShow || option.pattern.test(example.answerSql))
+      .map((option) => option.label)
+  }, [example.answerSql, keywordMode])
 
   const handleSubmitAnswer = async () => {
     const trimmed = submittedSql.trim()
@@ -411,7 +438,10 @@ export function SqlProblemPanel({
             </p>
           </div>
           <div className="flex items-start justify-between gap-3">
-            <SqlKeywordButtons onInsert={(kw, newline) => handleInsertKeyword(kw, newline)} />
+            <SqlKeywordButtons
+              keywords={visibleKeywords}
+              onInsert={(kw, newline) => handleInsertKeyword(kw, newline)}
+            />
             <button
               type="button"
               onClick={handleFormatAnswer}
@@ -568,10 +598,16 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
-function SqlKeywordButtons({ onInsert }: { onInsert: (keyword: string, newline: boolean) => void }) {
+function SqlKeywordButtons({
+  keywords,
+  onInsert,
+}: {
+  keywords: readonly string[]
+  onInsert: (keyword: string, newline: boolean) => void
+}) {
   return (
     <div className="flex min-w-0 flex-1 flex-wrap gap-1">
-      {SQL_KEYWORDS.map((kw) => (
+      {keywords.map((kw) => (
         <button
           key={kw}
           type="button"

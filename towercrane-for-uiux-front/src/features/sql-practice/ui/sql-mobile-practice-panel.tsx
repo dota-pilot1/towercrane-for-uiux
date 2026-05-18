@@ -70,6 +70,7 @@ export function SqlMobilePracticePanel({
           seedHash={seedHash}
           tables={tables}
           className="min-w-0"
+          keywordMode="answer-only"
         />
       ) : (
         <>
