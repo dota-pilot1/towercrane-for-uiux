@@ -26,39 +26,65 @@ export function SqlTableSchemaDialog({
   const [currentIndex, setCurrentIndex] = useState(
     () => tables.findIndex((t) => t.tableName === table.tableName)
   )
-  const [rows, setRows] = useState<Record<string, unknown>[] | null>(null)
-  const [dataColumns, setDataColumns] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [rowState, setRowState] = useState<{
+    tableName: string
+    rows: Record<string, unknown>[] | null
+    dataColumns: string[]
+    isLoading: boolean
+  }>({
+    tableName: '',
+    rows: null,
+    dataColumns: [],
+    isLoading: true,
+  })
 
   const currentTable = tables[currentIndex] ?? table
+  const isCurrentRows = rowState.tableName === currentTable.tableName
+  const rows = isCurrentRows ? rowState.rows : null
+  const dataColumns = isCurrentRows ? rowState.dataColumns : []
+  const isLoading = !isCurrentRows || rowState.isLoading
 
   useEffect(() => {
-    setRows(null)
-    setDataColumns([])
-    setIsLoading(true)
+    let ignore = false
     const fetchRows =
       loadRows ?? ((tableName: string) => sqlPracticeApi.execute(`SELECT * FROM "${tableName.replace(/"/g, '""')}" LIMIT 50`))
 
     fetchRows(currentTable.tableName)
       .then((res) => {
-        setDataColumns(res.columns ?? [])
-        setRows(res.rows ?? [])
+        if (ignore) return
+        setRowState({
+          tableName: currentTable.tableName,
+          dataColumns: res.columns ?? [],
+          rows: res.rows ?? [],
+          isLoading: false,
+        })
       })
-      .catch(() => setRows([]))
-      .finally(() => setIsLoading(false))
-  }, [currentTable.tableName])
+      .catch(() => {
+        if (ignore) return
+        setRowState({
+          tableName: currentTable.tableName,
+          dataColumns: [],
+          rows: [],
+          isLoading: false,
+        })
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [currentTable.tableName, loadRows])
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4">
       <button
         type="button"
         className="ui-overlay absolute inset-0"
         onClick={onClose}
         aria-label="닫기"
       />
-      <section className="glass-panel relative z-10 flex max-h-[86vh] w-full max-w-[92vw] flex-col overflow-hidden rounded-md xl:max-w-6xl">
+      <section className="glass-panel relative z-10 flex max-h-[calc(100dvh-1rem)] w-full max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-md sm:max-h-[86vh] sm:max-w-[92vw] xl:max-w-6xl">
         {/* 헤더 */}
-        <div className="flex items-center justify-between border-b border-surface-border px-3 py-2.5">
+        <div className="flex items-center justify-between border-b border-surface-border px-2 py-2.5 sm:px-3">
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
@@ -74,7 +100,7 @@ export function SqlTableSchemaDialog({
               <h2 className="truncate font-mono text-sm font-bold text-text-primary">
                 {currentTable.tableName}
               </h2>
-              <span className="flex h-8 shrink-0 items-center rounded-sm border border-surface-border-soft bg-surface-muted px-2 text-[11px] text-text-secondary">
+              <span className="hidden h-8 shrink-0 items-center rounded-sm border border-surface-border-soft bg-surface-muted px-2 text-[11px] text-text-secondary min-[420px]:flex">
                 {currentTable.rowCount}행 · {currentTable.columns.length}열
               </span>
             </div>
@@ -101,12 +127,12 @@ export function SqlTableSchemaDialog({
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 divide-x divide-surface-border overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col divide-y divide-surface-border overflow-y-auto md:flex-row md:divide-x md:divide-y-0 md:overflow-hidden">
           {/* 왼쪽: 스키마 */}
-          <div className="w-[38%] shrink-0 overflow-y-auto p-3">
+          <div className="w-full shrink-0 p-3 md:w-[38%] md:overflow-y-auto">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">스키마</p>
-            <div className="overflow-hidden rounded-md border border-surface-border">
-              <table className="w-full border-collapse text-left text-xs">
+            <div className="overflow-x-auto rounded-md border border-surface-border">
+              <table className="min-w-[520px] w-full border-collapse text-left text-xs md:min-w-0">
                 <thead>
                   <tr className="border-b border-surface-border-soft bg-surface-muted">
                     <th className="w-10 px-3 py-2.5 text-text-muted" />
@@ -161,7 +187,7 @@ export function SqlTableSchemaDialog({
           </div>
 
           {/* 오른쪽: 데이터 */}
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-3">
+          <div className="flex min-h-[280px] min-w-0 flex-1 flex-col p-3 md:overflow-hidden">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-text-muted">
               데이터{rows !== null ? ` (${rows.length}행)` : ''}
             </p>
