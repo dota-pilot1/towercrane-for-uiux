@@ -40,7 +40,7 @@ export function ThemeSwitcher() {
         onClick={() => setIsOpen(!isOpen)}
         variant={isOpen ? 'active' : 'default'}
         className={clsx(
-          'gap-2.5',
+          'gap-0 px-2 sm:gap-2.5 sm:px-3',
           isOpen && 'shadow-[0_0_20px_rgba(15,23,42,0.06)]',
         )}
       >
@@ -50,7 +50,7 @@ export function ThemeSwitcher() {
             style={{ backgroundColor: activeTheme.color }}
           />
         </div>
-        <Palette className="size-3.5" />
+        <Palette className="hidden size-3.5 sm:block" />
       </HeaderPill>
 
       {isOpen && (

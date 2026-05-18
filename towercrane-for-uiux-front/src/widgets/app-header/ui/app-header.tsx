@@ -185,8 +185,8 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-[100] w-full border-b border-surface-border bg-surface-muted/95 px-4 py-3 shadow-sm backdrop-blur-md">
-      <div className="flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-[100] w-full border-b border-surface-border bg-surface-muted/95 px-2 py-2 shadow-sm backdrop-blur-md sm:px-4 sm:py-3">
+      <div className="flex items-center justify-between gap-2 sm:gap-4">
         <button
           type="button"
           className="shrink-0 text-left transition-transform hover:scale-[1.02] active:scale-[0.98]"
@@ -196,7 +196,7 @@ export function AppHeader() {
             <div className="flex size-8 items-center justify-center rounded-sm bg-primary text-primary-foreground shadow-md shadow-primary/10">
               <span className="text-[13px] font-black tracking-tighter">TC</span>
             </div>
-            <div>
+            <div className="hidden sm:block">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary mb-0.5">
                 Towercrane
               </p>
