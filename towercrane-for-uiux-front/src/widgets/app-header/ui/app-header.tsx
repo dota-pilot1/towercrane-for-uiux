@@ -249,7 +249,7 @@ export function AppHeader() {
                 icon={LucideIcons.UserRound}
                 variant={activeSection === 'profile' ? 'active' : 'static'}
                 onClick={() => handleNavigation('profile')}
-                labelClassName="hidden sm:inline"
+                labelClassName="max-w-12 truncate text-[12px] sm:max-w-none sm:text-[13px]"
                 title="프로필"
               >
                 {userName || userEmail}
