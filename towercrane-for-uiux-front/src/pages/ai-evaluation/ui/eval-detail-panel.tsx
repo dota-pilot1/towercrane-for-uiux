@@ -121,7 +121,7 @@ function EvalItemRow({
           <button
             type="button"
             onClick={() => deleteItem.mutate(item.id)}
-            className="flex size-6 items-center justify-center rounded text-text-muted transition-colors hover:text-red-500"
+            className="flex size-[30px] items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-muted transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-500"
           >
             <Trash2 className="size-3.5" />
           </button>
