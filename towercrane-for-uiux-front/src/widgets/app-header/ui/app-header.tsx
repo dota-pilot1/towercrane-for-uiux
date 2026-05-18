@@ -249,6 +249,7 @@ export function AppHeader() {
                 icon={LucideIcons.UserRound}
                 variant={activeSection === 'profile' ? 'active' : 'static'}
                 onClick={() => handleNavigation('profile')}
+                labelClassName="hidden sm:inline"
                 title="프로필"
               >
                 {userName || userEmail}
