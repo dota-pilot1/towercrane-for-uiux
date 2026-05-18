@@ -106,8 +106,8 @@ function EvalItemRow({
         <p className="min-w-0 flex-1 text-sm font-bold text-text-primary leading-snug truncate">
           {item.title}
         </p>
-        {/* 점수 */}
-        <div className="flex shrink-0 items-center">
+        {/* 점수 + 삭제 — 고정 너비로 모든 행 정렬 통일 */}
+        <div className="flex w-24 shrink-0 items-center justify-end gap-1.5">
           <input
             type="number"
             min={0}
@@ -115,17 +115,17 @@ function EvalItemRow({
             value={score}
             onChange={(e) => setScore(e.target.value)}
             onBlur={save}
-            className="w-12 rounded-md border border-surface-border-soft bg-surface-muted px-1 py-1 text-center text-sm font-black text-text-primary outline-none transition focus:border-brand-border focus:ring-1 focus:ring-brand-border"
+            className="w-10 rounded-md border border-surface-border-soft bg-surface-muted py-1 text-center text-sm font-black text-text-primary outline-none transition focus:border-brand-border focus:ring-1 focus:ring-brand-border"
           />
-          <span className="ml-1 text-xs text-text-muted">/10</span>
+          <span className="w-6 text-xs text-text-muted">/10</span>
+          <button
+            type="button"
+            onClick={() => deleteItem.mutate(item.id)}
+            className="flex size-6 items-center justify-center rounded text-text-muted transition-colors hover:text-red-500"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => deleteItem.mutate(item.id)}
-          className="ml-2 shrink-0 rounded-md p-1.5 text-text-muted transition-colors hover:text-red-500"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
       </div>
 
       {/* 하단: 설명 + 메모 */}
