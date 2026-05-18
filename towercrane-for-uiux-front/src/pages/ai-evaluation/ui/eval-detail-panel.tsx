@@ -134,7 +134,7 @@ function EvalItemRow({
         <button
           type="button"
           onClick={() => deleteItem.mutate(item.id)}
-          className="shrink-0 rounded-md p-1.5 text-text-muted opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
+          className="ml-2 shrink-0 rounded-md p-1.5 text-text-muted opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
         >
           <Trash2 className="size-3.5" />
         </button>
