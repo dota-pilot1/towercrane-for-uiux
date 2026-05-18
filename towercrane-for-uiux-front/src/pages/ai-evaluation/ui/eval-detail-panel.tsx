@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
+import { EvalRadarChart } from './eval-radar-chart'
 import {
   useCreateEvalItem,
   useDeleteEvalItem,
@@ -236,42 +237,67 @@ export function EvalDetailPanel({ evaluatee }: { evaluatee: Evaluatee }) {
     <div className="flex h-full flex-col overflow-y-auto">
       {/* 대상자 헤더 */}
       <div className="border-b border-brand-border bg-brand-glass px-6 py-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-black text-text-primary">{evaluatee.name}</h2>
-            {evaluatee.role && (
-              <p className="mt-0.5 text-sm text-text-secondary">{evaluatee.role}</p>
-            )}
-            {evaluatee.description && (
-              <p className="mt-1 text-xs text-text-muted">{evaluatee.description}</p>
-            )}
-          </div>
-          {summary && (
-            <div className="shrink-0 rounded-lg border border-brand-border bg-surface-raised px-4 py-2 text-right shadow-sm">
-              <p className="text-[11px] font-bold text-text-muted">총점</p>
-              <p className="text-2xl font-black text-brand-primary leading-none">
-                {summary.totalScore}
-                <span className="text-sm font-normal text-text-muted"> / {summary.maxScore}</span>
-              </p>
-            </div>
+        {/* 이름 + 역할 */}
+        <div className="mb-4">
+          <h2 className="text-xl font-black text-text-primary">{evaluatee.name}</h2>
+          {evaluatee.role && (
+            <p className="mt-0.5 text-sm text-text-secondary">{evaluatee.role}</p>
+          )}
+          {evaluatee.description && (
+            <p className="mt-1 text-xs text-text-muted">{evaluatee.description}</p>
           )}
         </div>
 
-        {/* 카테고리별 요약 칩 */}
         {summary && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {summary.categories.map((cat) => (
-              <div
-                key={cat.id}
-                className="rounded-md border border-surface-border-soft bg-surface-muted px-3 py-1.5"
-              >
-                <p className="text-[10px] font-bold text-text-muted">{cat.name}</p>
-                <p className="text-sm font-black text-text-primary">
-                  {cat.score}
-                  <span className="text-xs font-normal text-text-muted"> / {cat.maxScore}</span>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
+            {/* 레이더차트 */}
+            <div className="w-full lg:w-56 shrink-0">
+              <EvalRadarChart summary={summary} />
+            </div>
+
+            {/* 총점 + 카테고리 카드 */}
+            <div className="flex flex-1 flex-col gap-3">
+              {/* 총점 */}
+              <div className="rounded-xl border border-brand-border bg-surface-raised px-5 py-3 shadow-sm">
+                <p className="text-xs font-bold text-text-muted">총점</p>
+                <p className="mt-0.5 text-3xl font-black text-brand-primary leading-none">
+                  {summary.totalScore}
+                  <span className="text-base font-normal text-text-muted"> / {summary.maxScore}</span>
                 </p>
+                {/* 진행 바 */}
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
+                  <div
+                    className="h-full rounded-full bg-brand-primary transition-all duration-500"
+                    style={{ width: `${Math.round((summary.totalScore / (summary.maxScore || 1)) * 100)}%` }}
+                  />
+                </div>
               </div>
-            ))}
+
+              {/* 카테고리별 카드 */}
+              <div className="grid grid-cols-3 gap-2">
+                {summary.categories.map((cat) => {
+                  const pct = Math.round((cat.score / (cat.maxScore || 1)) * 100)
+                  return (
+                    <div
+                      key={cat.id}
+                      className="rounded-lg border border-surface-border-soft bg-surface-muted px-3 py-2.5"
+                    >
+                      <p className="text-[10px] font-bold text-text-muted truncate">{cat.name}</p>
+                      <p className="mt-0.5 text-lg font-black text-text-primary leading-none">
+                        {cat.score}
+                        <span className="text-xs font-normal text-text-muted"> / {cat.maxScore}</span>
+                      </p>
+                      <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-surface-raised">
+                        <div
+                          className="h-full rounded-full bg-brand-primary transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         )}
       </div>
