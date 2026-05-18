@@ -107,7 +107,7 @@ function EvalItemRow({
           {item.title}
         </p>
         {/* 점수 + 삭제 — 고정 너비로 모든 행 정렬 통일 */}
-        <div className="flex w-24 shrink-0 items-center justify-end gap-1.5">
+        <div className="flex w-20 shrink-0 items-center justify-end gap-1">
           <input
             type="number"
             min={0}
