@@ -3,7 +3,6 @@ import { SqlMobileProblemCarousel } from '../../../features/sql-practice/ui/sql-
 import { SqlMobileSchemaActions } from '../../../features/sql-practice/ui/sql-mobile-schema-actions'
 import { SqlMobileSeedSelector } from '../../../features/sql-practice/ui/sql-mobile-seed-selector'
 import { SqlMyActivityDialog } from '../../../features/sql-practice/ui/sql-my-activity-dialog'
-import { SqlPracticePageHeader } from '../../../features/sql-practice/ui/sql-practice-page-header'
 import type { SqlPracticeOfficialWorkbench } from '../model/use-sql-practice-official-workbench'
 
 type SqlPracticeMobileViewProps = {
@@ -44,14 +43,6 @@ export function SqlPracticeMobileView({ workbench }: SqlPracticeMobileViewProps)
 
   return (
     <section className="min-w-0 space-y-3 pb-8">
-      <SqlPracticePageHeader
-        key={metaQuery.data?.seedFile ?? 'loading'}
-        seedFile={metaQuery.data?.seedFile}
-        hasHistory={history.length > 0}
-        onOpenNotes={() => window.open('/sql/notes', '_blank', 'noopener,noreferrer')}
-        onClearHistory={() => setHistory([])}
-      />
-
       <SqlMobileSeedSelector
         meta={metaQuery.data}
         onSeedActivated={handleSeedChange}
