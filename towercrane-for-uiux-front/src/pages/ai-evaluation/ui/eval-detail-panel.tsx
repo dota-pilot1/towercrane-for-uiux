@@ -158,19 +158,29 @@ function EvalTabPanel({
 
   return (
     <div className="flex flex-col gap-3 p-5">
-      {/* 소계 바 */}
+      {/* 소계 + 항목 추가 버튼 */}
       <div className="flex items-center justify-between rounded-lg border border-surface-border-soft bg-surface-muted px-4 py-2.5">
         <span className="text-xs font-bold text-text-secondary">소계</span>
-        <span className="text-sm font-black text-brand-primary">
-          {subtotal}
-          <span className="text-text-muted font-normal"> / {maxScore}점</span>
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-black text-brand-primary">
+            {subtotal}
+            <span className="text-text-muted font-normal"> / {maxScore}점</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2.5 py-1 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-glass/80"
+          >
+            <Plus className="size-3" />
+            항목 추가
+          </button>
+        </div>
       </div>
 
       {/* 항목 목록 */}
       {category.items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-surface-border py-8 text-center text-sm text-text-muted">
-          아직 항목이 없습니다. 아래 버튼으로 추가하세요.
+          아직 항목이 없습니다.
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -179,16 +189,6 @@ function EvalTabPanel({
           ))}
         </div>
       )}
-
-      {/* 추가 버튼 */}
-      <button
-        type="button"
-        onClick={() => setShowAdd(true)}
-        className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-brand-border bg-brand-glass py-2.5 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-glass/80"
-      >
-        <Plus className="size-3.5" />
-        항목 추가
-      </button>
 
       {showAdd && (
         <AddItemDialog
