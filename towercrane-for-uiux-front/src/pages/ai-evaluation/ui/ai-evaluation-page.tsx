@@ -213,7 +213,7 @@ export function AiEvaluationPage() {
             <span className="text-xs font-black uppercase tracking-widest text-text-muted">
               대상자 목록
             </span>
-            <span className="ml-auto rounded-md bg-brand-glass px-2 py-0.5 text-xs font-bold text-brand-primary">
+            <span className="ml-auto flex size-5 items-center justify-center rounded-full bg-brand-primary text-[11px] font-black text-surface-raised">
               {evaluatees.length}
             </span>
           </div>

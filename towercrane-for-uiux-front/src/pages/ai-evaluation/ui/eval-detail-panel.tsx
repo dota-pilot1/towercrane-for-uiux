@@ -119,7 +119,7 @@ function EvalItemRow({
           {item.title}
         </p>
         {/* 점수 */}
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center">
           <input
             type="number"
             min={0}
@@ -127,9 +127,9 @@ function EvalItemRow({
             value={score}
             onChange={(e) => setScore(e.target.value)}
             onBlur={save}
-            className="w-14 rounded-md border border-surface-border-soft bg-surface-muted px-2 py-1 text-center text-sm font-black text-text-primary outline-none transition focus:border-brand-border focus:ring-1 focus:ring-brand-border"
+            className="w-12 rounded-md border border-surface-border-soft bg-surface-muted px-1 py-1 text-center text-sm font-black text-text-primary outline-none transition focus:border-brand-border focus:ring-1 focus:ring-brand-border"
           />
-          <span className="text-xs text-text-muted">/ 10</span>
+          <span className="ml-1 text-xs text-text-muted">/10</span>
         </div>
         <button
           type="button"
