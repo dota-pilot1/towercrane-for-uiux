@@ -20,29 +20,30 @@ export function EvalRadarChart({ summary }: Props) {
   }))
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
-        <PolarGrid stroke="var(--surface-border-soft)" />
+    <ResponsiveContainer width="100%" height={240}>
+      <RadarChart cx="50%" cy="50%" outerRadius="65%" data={data}>
+        <PolarGrid stroke="var(--color-surface-border)" />
         <PolarAngleAxis
           dataKey="subject"
-          tick={{ fill: 'var(--text-secondary)', fontSize: 12, fontWeight: 700 }}
+          tick={{ fill: 'var(--color-text-secondary)', fontSize: 11, fontWeight: 700 }}
         />
         <Radar
           name="점수"
           dataKey="score"
-          stroke="var(--brand-primary)"
-          fill="var(--brand-primary)"
-          fillOpacity={0.2}
+          stroke="var(--color-brand-primary)"
+          fill="var(--color-brand-primary)"
+          fillOpacity={0.25}
           strokeWidth={2}
+          dot={{ fill: 'var(--color-brand-primary)', r: 3 }}
         />
         <Tooltip
           formatter={(value: number) => [`${value}점`, '점수']}
           contentStyle={{
-            background: 'var(--surface-raised)',
-            border: '1px solid var(--surface-border-soft)',
+            background: 'var(--color-surface-raised)',
+            border: '1px solid var(--color-surface-border)',
             borderRadius: '8px',
             fontSize: '12px',
-            color: 'var(--text-primary)',
+            color: 'var(--color-text-primary)',
           }}
         />
       </RadarChart>

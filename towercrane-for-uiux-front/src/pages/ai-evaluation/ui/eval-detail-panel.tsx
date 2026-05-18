@@ -109,51 +109,51 @@ function EvalItemRow({
   }
 
   return (
-    <div className="group flex items-start gap-3 rounded-lg border border-surface-border-soft bg-surface-raised px-4 py-3 transition-colors hover:border-brand-border/40">
-      {/* 순번 */}
-      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded text-[11px] font-black text-text-muted">
-        {item.displayOrder + 1}
-      </span>
+    <div className="group rounded-lg border border-surface-border-soft bg-surface-raised px-4 py-3 transition-colors hover:border-brand-border/40">
+      {/* 상단: 순번 + 제목 + 점수 + 삭제 */}
+      <div className="flex items-center gap-3">
+        <span className="flex size-5 shrink-0 items-center justify-center rounded text-[11px] font-black text-text-muted">
+          {item.displayOrder + 1}
+        </span>
+        <p className="min-w-0 flex-1 text-sm font-bold text-text-primary leading-snug truncate">
+          {item.title}
+        </p>
+        {/* 점수 */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <input
+            type="number"
+            min={0}
+            max={10}
+            value={score}
+            onChange={(e) => setScore(e.target.value)}
+            onBlur={save}
+            className="w-14 rounded-md border border-surface-border-soft bg-surface-muted px-2 py-1 text-center text-sm font-black text-text-primary outline-none transition focus:border-brand-border focus:ring-1 focus:ring-brand-border"
+          />
+          <span className="text-xs text-text-muted">/ 10</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => deleteItem.mutate(item.id)}
+          className="shrink-0 rounded-md p-1.5 text-text-muted opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </div>
 
-      {/* 제목 + 설명 */}
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-text-primary leading-snug">{item.title}</p>
-        {item.description && (
-          <p className="mt-0.5 text-[11px] text-text-muted">{item.description}</p>
-        )}
-        {/* 메모 */}
+      {/* 하단: 설명 + 메모 */}
+      {item.description && (
+        <p className="mt-1 pl-8 text-[11px] text-text-muted">{item.description}</p>
+      )}
+      <div className="mt-2 pl-8">
         <input
           type="text"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           onBlur={save}
           placeholder="자기 평가 메모…"
-          className="mt-2 w-full rounded border border-surface-border-soft bg-surface-muted px-2.5 py-1.5 text-xs text-text-secondary outline-none transition placeholder:text-text-muted focus:border-brand-border focus:ring-1 focus:ring-brand-border"
+          className="w-full rounded border border-surface-border-soft bg-surface-muted px-2.5 py-1.5 text-xs text-text-secondary outline-none transition placeholder:text-text-muted focus:border-brand-border focus:ring-1 focus:ring-brand-border"
         />
       </div>
-
-      {/* 점수 입력 */}
-      <div className="flex shrink-0 flex-col items-center gap-1">
-        <input
-          type="number"
-          min={0}
-          max={10}
-          value={score}
-          onChange={(e) => setScore(e.target.value)}
-          onBlur={save}
-          className="w-16 rounded-md border border-surface-border-soft bg-surface-muted px-2 py-1.5 text-center text-sm font-black text-text-primary outline-none transition focus:border-brand-border focus:ring-1 focus:ring-brand-border"
-        />
-        <span className="text-[10px] text-text-muted">/ 10</span>
-      </div>
-
-      {/* 삭제 */}
-      <button
-        type="button"
-        onClick={() => deleteItem.mutate(item.id)}
-        className="mt-0.5 shrink-0 rounded-md p-1.5 text-text-muted opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
-      >
-        <Trash2 className="size-3.5" />
-      </button>
     </div>
   )
 }
