@@ -152,31 +152,8 @@ function EvalTabPanel({
   category: EvalCategory
   evaluateeId: string
 }) {
-  const [showAdd, setShowAdd] = useState(false)
-  const subtotal = category.items.reduce((s, i) => s + (i.score ?? 0), 0)
-  const maxScore = category.items.length * 10
-
   return (
     <div className="flex flex-col gap-3 p-5">
-      {/* 소계 + 항목 추가 버튼 */}
-      <div className="flex items-center justify-between rounded-lg border border-surface-border-soft bg-surface-muted px-4 py-2.5">
-        <span className="text-xs font-bold text-text-secondary">소계</span>
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-black text-brand-primary">
-            {subtotal}
-            <span className="text-text-muted font-normal"> / {maxScore}점</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2.5 py-1 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-glass/80"
-          >
-            <Plus className="size-3" />
-            항목 추가
-          </button>
-        </div>
-      </div>
-
       {/* 항목 목록 */}
       {category.items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-surface-border py-8 text-center text-sm text-text-muted">
@@ -189,15 +166,6 @@ function EvalTabPanel({
           ))}
         </div>
       )}
-
-      {showAdd && (
-        <AddItemDialog
-          evaluateeId={evaluateeId}
-          categoryId={category.id}
-          categoryName={category.name}
-          onClose={() => setShowAdd(false)}
-        />
-      )}
     </div>
   )
 }
@@ -208,15 +176,11 @@ export function EvalDetailPanel({ evaluatee }: { evaluatee: Evaluatee }) {
   const itemsQuery = useEvalItems(evaluatee.id)
   const summaryQuery = useEvalSummary(evaluatee.id)
   const [activeTab, setActiveTab] = useState(CATEGORY_IDS[0])
+  const [showAdd, setShowAdd] = useState(false)
 
   const categories: EvalCategory[] = itemsQuery.data ?? []
   const summary = summaryQuery.data
-
-  const tabLabel = (catId: string, name: string) => {
-    const catSummary = summary?.categories.find((c) => c.id === catId)
-    if (catSummary) return `${name} (${catSummary.score}/${catSummary.maxScore})`
-    return name
-  }
+  const activeCategory = categories.find((c) => c.id === activeTab)
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
@@ -262,7 +226,7 @@ export function EvalDetailPanel({ evaluatee }: { evaluatee: Evaluatee }) {
       ) : (
         <div className="flex flex-col flex-1">
           {/* 탭 헤더 */}
-          <div className="flex border-b border-surface-border-soft px-5 pt-4">
+          <div className="flex items-end border-b border-surface-border-soft px-5 pt-4">
             {categories.map((cat) => {
               const active = activeTab === cat.id
               return (
@@ -278,10 +242,18 @@ export function EvalDetailPanel({ evaluatee }: { evaluatee: Evaluatee }) {
                       : 'text-text-muted hover:text-text-primary after:bg-transparent',
                   ].join(' ')}
                 >
-                  {tabLabel(cat.id, cat.name)}
+                  {cat.name}
                 </button>
               )
             })}
+            <button
+              type="button"
+              onClick={() => setShowAdd(true)}
+              className="ml-auto mb-1.5 flex items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2.5 py-1 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-glass/80"
+            >
+              <Plus className="size-3" />
+              항목 추가
+            </button>
           </div>
 
           {/* 탭 콘텐츠 */}
@@ -293,6 +265,15 @@ export function EvalDetailPanel({ evaluatee }: { evaluatee: Evaluatee }) {
             ) : null,
           )}
         </div>
+      )}
+
+      {showAdd && activeCategory && (
+        <AddItemDialog
+          evaluateeId={evaluatee.id}
+          categoryId={activeCategory.id}
+          categoryName={activeCategory.name}
+          onClose={() => setShowAdd(false)}
+        />
       )}
     </div>
   )
