@@ -8,6 +8,7 @@ import {
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 import type { Evaluatee } from '../../../entities/ai-evaluation/model/types'
+import { EvalDetailPanel } from './eval-detail-panel'
 
 // ── 대상자 등록 다이얼로그 ────────────────────────────────────────────────────
 
@@ -255,9 +256,16 @@ export function AiEvaluationPage() {
           </div>
         </section>
 
-        {/* 우측: 상세 (3차에서 구현) */}
+        {/* 우측: 평가 상세 */}
         <section className="overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised shadow-sm">
-          <EmptyDetail />
+          {selectedId ? (
+            <EvalDetailPanel
+              key={selectedId}
+              evaluatee={evaluatees.find((e) => e.id === selectedId)!}
+            />
+          ) : (
+            <EmptyDetail />
+          )}
         </section>
       </div>
 
