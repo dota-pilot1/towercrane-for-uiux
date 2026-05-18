@@ -1,52 +1,33 @@
-import {
-  PolarAngleAxis,
-  PolarGrid,
-  Radar,
-  RadarChart,
-  ResponsiveContainer,
-  Tooltip,
-} from 'recharts'
 import type { EvalSummary } from '../../../entities/ai-evaluation/model/types'
 
 interface Props {
   summary: EvalSummary
 }
 
-export function EvalRadarChart({ summary }: Props) {
-  const data = summary.categories.map((cat) => ({
-    subject: cat.name,
-    score: cat.score,
-    max: cat.maxScore,
-  }))
-
+export function EvalScoreChart({ summary }: Props) {
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <RadarChart cx="50%" cy="50%" outerRadius="65%" data={data}>
-        <PolarGrid stroke="var(--color-surface-border)" />
-        <PolarAngleAxis
-          dataKey="subject"
-          tick={{ fill: 'var(--color-text-secondary)', fontSize: 11, fontWeight: 700 }}
-        />
-        <Radar
-          name="점수"
-          dataKey="score"
-          stroke="var(--color-brand-primary)"
-          fill="var(--color-brand-primary)"
-          fillOpacity={0.25}
-          strokeWidth={2}
-          dot={{ fill: 'var(--color-brand-primary)', r: 3 }}
-        />
-        <Tooltip
-          formatter={(value: number) => [`${value}점`, '점수']}
-          contentStyle={{
-            background: 'var(--color-surface-raised)',
-            border: '1px solid var(--color-surface-border)',
-            borderRadius: '8px',
-            fontSize: '12px',
-            color: 'var(--color-text-primary)',
-          }}
-        />
-      </RadarChart>
-    </ResponsiveContainer>
+    <div className="flex flex-col gap-3">
+      {summary.categories.map((cat) => {
+        const pct = cat.maxScore > 0 ? Math.round((cat.score / cat.maxScore) * 100) : 0
+        return (
+          <div key={cat.id} className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-text-secondary">{cat.name}</span>
+              <span className="text-xs font-black text-text-primary tabular-nums">
+                {cat.score}
+                <span className="font-normal text-text-muted"> / {cat.maxScore}</span>
+              </span>
+            </div>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-surface-muted">
+              <div
+                className="h-full rounded-full bg-brand-primary transition-all duration-700 ease-out"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-right text-[10px] text-text-muted">{pct}%</span>
+          </div>
+        )
+      })}
+    </div>
   )
 }
