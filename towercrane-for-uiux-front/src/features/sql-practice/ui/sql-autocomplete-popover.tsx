@@ -18,7 +18,7 @@ export function SqlAutocompletePopover({ candidates, activeIndex, onSelect, onCl
   return (
     <div
       ref={listRef}
-      className="absolute bottom-full left-0 z-50 mb-1 max-h-52 min-w-[180px] overflow-y-auto rounded-md border border-surface-border bg-surface-raised shadow-lg"
+      className="max-h-52 min-w-[180px] overflow-y-auto rounded-md border border-surface-border bg-surface-raised shadow-lg"
     >
       {candidates.map((c, i) => (
         <button
