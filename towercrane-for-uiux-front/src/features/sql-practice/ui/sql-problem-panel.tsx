@@ -21,7 +21,6 @@ import { toast } from 'sonner'
 
 import type { SqlExampleLevel, SqlPracticeExample } from '../../../entities/sql-practice/model/example-types'
 import type { TableInfo } from '../../../entities/sql-practice/model/types'
-import { applyCompletion, autocompleteSql, getAllMatches } from '../lib/autocomplete-sql'
 import { formatSqlQuery } from '../lib/format-sql'
 import {
   buildSqlMistakeAnalysisPrompt,
@@ -35,7 +34,7 @@ import {
   useGradeSqlPracticeSubmission,
   useSqlPracticeSupplementExplanation,
 } from '../model/use-sql-practice-queries'
-import { SqlAutocompletePopover } from './sql-autocomplete-popover'
+import { SqlAutocompleteTextarea } from './sql-autocomplete-textarea'
 import { SqlMistakeAnalysisDialog } from './sql-mistake-analysis-dialog'
 import { SqlSubmissionResultDialog, type SqlGradeStatus, type SqlSubmissionResultState } from './sql-submission-result-dialog'
 import { SqlSupplementExplanationDialog } from './sql-supplement-explanation-dialog'
@@ -114,8 +113,6 @@ export function SqlProblemPanel({
   const [submittedSql, setSubmittedSql] = useState('')
   const [gradeStatus, setGradeStatus] = useState<SqlGradeStatus>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const [acCandidates, setAcCandidates] = useState<string[]>([])
-  const [acIndex, setAcIndex] = useState(0)
   const [gradeBody, setGradeBody] = useState('')
   const [gradeError, setGradeError] = useState('')
   const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null)
@@ -299,68 +296,6 @@ export function SqlProblemPanel({
     }
   }
 
-  const applyAcCandidate = (candidate: string) => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-    const { newText, newPos } = applyCompletion(submittedSql, textarea.selectionStart, candidate)
-    setSubmittedSql(newText)
-    setAcCandidates([])
-    requestAnimationFrame(() => {
-      textarea.focus()
-      textarea.setSelectionRange(newPos, newPos)
-    })
-  }
-
-  const handleAnswerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-      event.preventDefault()
-      setAcCandidates([])
-      handleSubmitAnswer()
-      return
-    }
-
-    if (acCandidates.length > 0) {
-      if (event.key === 'Escape') { event.preventDefault(); setAcCandidates([]); return }
-      if (event.key === 'ArrowDown' || event.key === 'Tab') {
-        event.preventDefault()
-        setAcIndex((i) => (i + 1) % acCandidates.length)
-        return
-      }
-      if (event.key === 'ArrowUp') {
-        event.preventDefault()
-        setAcIndex((i) => (i - 1 + acCandidates.length) % acCandidates.length)
-        return
-      }
-      if (event.key === 'Enter') {
-        event.preventDefault()
-        applyAcCandidate(acCandidates[acIndex])
-        return
-      }
-      setAcCandidates([])
-    }
-
-    if (event.key === 'Tab') {
-      event.preventDefault()
-      const textarea = event.currentTarget
-      const tableNames = targetTables.map((t) => t.tableName)
-      const columnNames = targetTables.flatMap((t) => t.info?.columns.map((c) => c.name) ?? [])
-      const matches = getAllMatches(submittedSql, textarea.selectionStart, SQL_KEYWORDS, tableNames, columnNames)
-      if (matches.length === 1) {
-        const result = applyCompletion(submittedSql, textarea.selectionStart, matches[0])
-        setSubmittedSql(result.newText)
-        requestAnimationFrame(() => textarea.setSelectionRange(result.newPos, result.newPos))
-      } else if (matches.length > 1) {
-        setAcCandidates(matches)
-        setAcIndex(0)
-      } else {
-        const start = textarea.selectionStart
-        const next = submittedSql.slice(0, start) + '  ' + submittedSql.slice(textarea.selectionEnd)
-        setSubmittedSql(next)
-        requestAnimationFrame(() => textarea.setSelectionRange(start + 2, start + 2))
-      }
-    }
-  }
-
   return (
     <>
       <div className={`border-l-[3px] border-brand-border ${className ?? ''}`}>
@@ -536,25 +471,18 @@ export function SqlProblemPanel({
             </button>
           </div>
 
-          <div className="relative mt-2">
-            <textarea
-              ref={textareaRef}
-              value={submittedSql}
-              onChange={(event) => setSubmittedSql(event.target.value)}
-              onKeyDown={handleAnswerKeyDown}
-              className="ui-input min-h-36 w-full resize-y font-mono text-sm leading-6"
-              placeholder={'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'}
-              spellCheck={false}
-            />
-            {acCandidates.length > 0 && (
-              <SqlAutocompletePopover
-                candidates={acCandidates}
-                activeIndex={acIndex}
-                onSelect={applyAcCandidate}
-                onClose={() => setAcCandidates([])}
-              />
-            )}
-          </div>
+          <SqlAutocompleteTextarea
+            ref={textareaRef}
+            value={submittedSql}
+            onChange={setSubmittedSql}
+            onSubmit={handleSubmitAnswer}
+            keywords={visibleKeywords}
+            tableNames={targetTables.map((t) => t.tableName)}
+            columnNames={targetTables.flatMap((t) => t.info?.columns.map((c) => c.name) ?? [])}
+            className="ui-input mt-2 min-h-36 w-full resize-y font-mono text-sm leading-6"
+            placeholder={'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'}
+            spellCheck={false}
+          />
 
           <div className="mt-2 flex justify-end">
             <button
