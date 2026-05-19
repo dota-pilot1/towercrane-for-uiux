@@ -2,12 +2,24 @@ import { forwardRef, useImperativeHandle, useRef, useState, type KeyboardEvent }
 import { Bot, Loader2, Send, WandSparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { SqlGeminiDialog } from './sql-gemini-dialog'
+import { autocompleteSql } from '../lib/autocomplete-sql'
 import { formatSqlQuery } from '../lib/format-sql'
+import type { TableInfo } from '../../../entities/sql-practice/model/types'
+
+const SQL_KEYWORDS = [
+  'SELECT', 'FROM', 'WITH', 'AS', 'JOIN', 'LEFT JOIN', 'INNER JOIN', 'ON',
+  'WHERE', 'AND', 'OR', 'LIKE', 'IN', 'NOT IN', 'IS NULL', 'IS NOT NULL',
+  'GROUP BY', 'HAVING', 'COUNT(*)', 'SUM()', 'AVG()', 'MAX()', 'MIN()',
+  'COALESCE()', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
+  'ORDER BY', 'ASC', 'DESC', 'LIMIT', 'OFFSET', 'DISTINCT', 'UNION', 'UNION ALL',
+  'INSERT INTO', 'UPDATE', 'SET', 'DELETE FROM', 'CREATE TABLE', 'DROP TABLE',
+] as const
 
 type SqlInputBarProps = {
   onExecute: (query: string) => void
   onClear: () => void
   isLoading: boolean
+  tables?: TableInfo[]
 }
 
 export type SqlInputBarHandle = {
@@ -15,7 +27,7 @@ export type SqlInputBarHandle = {
 }
 
 export const SqlInputBar = forwardRef<SqlInputBarHandle, SqlInputBarProps>(
-function SqlInputBar({ onExecute, onClear, isLoading }, ref) {
+function SqlInputBar({ onExecute, onClear, isLoading, tables = [] }, ref) {
   const [query, setQuery] = useState('')
   const [geminiOpen, setGeminiOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -78,15 +90,26 @@ function SqlInputBar({ onExecute, onClear, isLoading }, ref) {
 
     if (event.key === 'Tab') {
       event.preventDefault()
-      const start = event.currentTarget.selectionStart
-      const end = event.currentTarget.selectionEnd
-      const next = `${query.slice(0, start)}  ${query.slice(end)}`
-      setQuery(next)
-      window.setTimeout(() => {
-        if (!textareaRef.current) return
-        textareaRef.current.selectionStart = start + 2
-        textareaRef.current.selectionEnd = start + 2
-      }, 0)
+      const textarea = event.currentTarget
+      const start = textarea.selectionStart
+      const tableNames = tables.map((t) => t.tableName)
+      const columnNames = tables.flatMap((t) => t.columns.map((c) => c.name))
+      const result = autocompleteSql(query, start, SQL_KEYWORDS, tableNames, columnNames)
+      if (result) {
+        setQuery(result.newText)
+        requestAnimationFrame(() => {
+          if (!textareaRef.current) return
+          textareaRef.current.setSelectionRange(result.newPos, result.newPos)
+        })
+      } else {
+        const end = textarea.selectionEnd
+        const next = `${query.slice(0, start)}  ${query.slice(end)}`
+        setQuery(next)
+        requestAnimationFrame(() => {
+          if (!textareaRef.current) return
+          textareaRef.current.setSelectionRange(start + 2, start + 2)
+        })
+      }
     }
   }
 
@@ -138,7 +161,7 @@ function SqlInputBar({ onExecute, onClear, isLoading }, ref) {
             </button>
           </div>
         </div>
-        <p className="mt-2 text-xs text-text-muted">Ctrl+Enter로 실행 · Tab으로 들여쓰기 · <code className="rounded bg-surface-muted px-1 py-0.5 font-mono text-[11px] text-text-secondary">/clear</code> 입력 후 실행하면 결과 화면을 지울 수 있습니다</p>
+        <p className="mt-2 text-xs text-text-muted">Ctrl+Enter로 실행 · Tab으로 자동완성/들여쓰기 · <code className="rounded bg-surface-muted px-1 py-0.5 font-mono text-[11px] text-text-secondary">/clear</code> 입력 후 실행하면 결과 화면을 지울 수 있습니다</p>
       </div>
 
       <SqlGeminiDialog
