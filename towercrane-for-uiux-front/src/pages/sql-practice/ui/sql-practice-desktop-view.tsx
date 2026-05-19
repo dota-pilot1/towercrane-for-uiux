@@ -1,6 +1,6 @@
+import { useRef } from 'react'
 import { Card } from '../../../shared/ui/card'
-import { SqlHistoryItem as SqlHistoryItemView } from '../../../features/sql-practice/ui/sql-history-item'
-import { SqlInputBar } from '../../../features/sql-practice/ui/sql-input-bar'
+import { SqlInputBar, type SqlInputBarHandle } from '../../../features/sql-practice/ui/sql-input-bar'
 import { SqlMyActivityDialog } from '../../../features/sql-practice/ui/sql-my-activity-dialog'
 import { SqlPracticeEmptyState } from '../../../features/sql-practice/ui/sql-practice-empty-state'
 import { SqlPracticeFooterDrawer } from '../../../features/sql-practice/ui/sql-practice-footer-drawer'
@@ -58,6 +58,8 @@ export function SqlPracticeDesktopView({ workbench }: SqlPracticeDesktopViewProp
     userId,
     exampleSet,
   } = workbench
+
+  const inputBarRef = useRef<SqlInputBarHandle>(null)
 
   return (
     <section className={footerOpen ? 'space-y-4 pb-[400px]' : 'space-y-4 pb-16'}>
@@ -120,6 +122,7 @@ export function SqlPracticeDesktopView({ workbench }: SqlPracticeDesktopViewProp
 
           {!selectedExample && (
             <SqlInputBar
+              ref={inputBarRef}
               onExecute={handleExecute}
               onClear={() => setHistory([])}
               isLoading={executeMutation.isPending}
@@ -139,6 +142,7 @@ export function SqlPracticeDesktopView({ workbench }: SqlPracticeDesktopViewProp
           onReset={handleReset}
           onReloadSeed={handleReloadSeed}
           onSeedActivated={handleSeedChange}
+          onInsert={(text) => inputBarRef.current?.insert(text)}
         />
       </div>
 

@@ -3,6 +3,7 @@ import {
   ChevronRight,
   Database,
   Info,
+  Plus,
   RefreshCw,
   RotateCcw,
   Settings,
@@ -37,6 +38,7 @@ type SqlSchemaSidebarProps = {
   onReset: () => void;
   onReloadSeed: () => void;
   onSeedActivated: () => void;
+  onInsert?: (text: string) => void;
 };
 
 export function SqlSchemaSidebar({
@@ -51,6 +53,7 @@ export function SqlSchemaSidebar({
   onReset,
   onReloadSeed,
   onSeedActivated,
+  onInsert,
 }: SqlSchemaSidebarProps) {
   const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null);
   const [seedDialogOpen, setSeedDialogOpen] = useState(false);
@@ -218,41 +221,77 @@ export function SqlSchemaSidebar({
               {tables.map((table) => {
                 const isSelected = selectedTable === table.tableName;
                 return (
-                  <button
-                    key={table.tableName}
-                    type="button"
-                    onClick={() => onSelectTable(table.tableName)}
-                    className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${
-                      isSelected
-                        ? "border-brand-border bg-brand-glass text-brand-primary"
-                        : "border-transparent text-text-primary hover:border-surface-border-soft hover:bg-surface-muted"
-                    }`}
-                  >
-                    <Table2 className="size-3.5 shrink-0" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold">
-                        {table.tableName}
-                      </span>
-                    </span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      className="rounded-sm border border-surface-border-soft p-1.5 text-text-secondary transition-colors hover:border-brand-border hover:text-brand-primary"
-                      title="스키마 보기"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSchemaDialog(table);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setSchemaDialog(table);
-                      }}
+                  <div key={table.tableName}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectTable(table.tableName)}
+                      className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${
+                        isSelected
+                          ? "border-brand-border bg-brand-glass text-brand-primary"
+                          : "border-transparent text-text-primary hover:border-surface-border-soft hover:bg-surface-muted"
+                      }`}
                     >
-                      <Info className="size-3.5" />
-                    </span>
-                  </button>
+                      <Table2 className="size-3.5 shrink-0" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-bold">
+                          {table.tableName}
+                        </span>
+                      </span>
+                      {onInsert && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          className="inline-flex h-5 items-center gap-0.5 rounded border border-brand-border bg-brand-glass px-1.5 text-[10px] font-bold text-brand-primary transition-colors hover:brightness-110"
+                          title={`"${table.tableName}" 삽입`}
+                          onClick={(e) => { e.stopPropagation(); onInsert(table.tableName); }}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter' && e.key !== ' ') return;
+                            e.preventDefault(); e.stopPropagation();
+                            onInsert(table.tableName);
+                          }}
+                        >
+                          <Plus className="size-2.5" />
+                          삽입
+                        </span>
+                      )}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="rounded-sm border border-surface-border-soft p-1.5 text-text-secondary transition-colors hover:border-brand-border hover:text-brand-primary"
+                        title="스키마 보기"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSchemaDialog(table);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setSchemaDialog(table);
+                        }}
+                      >
+                        <Info className="size-3.5" />
+                      </span>
+                    </button>
+                    {isSelected && onInsert && table.columns.length > 0 && (
+                      <div className="mx-2 mb-1 flex flex-wrap gap-1 rounded-b-md border border-t-0 border-brand-border/40 bg-brand-glass/30 px-2 py-2">
+                        {table.columns.map((col) => (
+                          <button
+                            key={col.name}
+                            type="button"
+                            onClick={() => onInsert(`${col.name},`)}
+                            title={`"${col.name}," 삽입`}
+                            className="inline-flex items-center gap-1 rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary active:scale-95"
+                          >
+                            <span>{col.name}</span>
+                            {col.primaryKey && (
+                              <span className="text-[9px] font-black text-brand-primary">PK</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
