@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, List } from 'lucide-react'
+import { ScoreStepper } from '../../../shared/ui/score-stepper'
 import { EvalScoreChart } from './eval-radar-chart'
 import {
   useCreateEvalItem,
@@ -14,7 +15,7 @@ import type { EvalCategory, EvalItem, Evaluatee } from '../../../entities/ai-eva
 
 const CATEGORY_IDS = ['cat_tech', 'cat_collab', 'cat_prod']
 
-// ── 항목 추가 다이얼로그 ──────────────────────────────────────────────────────
+// ── 단건 추가 다이얼로그 ──────────────────────────────────────────────────────
 
 function AddItemDialog({
   evaluateeId,
@@ -40,9 +41,7 @@ function AddItemDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised shadow-xl">
         <div className="flex items-center justify-between border-b border-surface-border-soft px-6 py-4">
-          <p className="text-base font-black text-text-primary">
-            항목 추가 — {categoryName}
-          </p>
+          <p className="text-base font-black text-text-primary">항목 추가 — {categoryName}</p>
           <button
             type="button"
             onClick={onClose}
@@ -63,11 +62,75 @@ function AddItemDialog({
             />
           </div>
           <div className="flex justify-end pt-1">
-            <Button
-              onClick={handleSubmit}
-              disabled={create.isPending || !title.trim()}
-            >
+            <Button onClick={handleSubmit} disabled={create.isPending || !title.trim()}>
               {create.isPending ? '추가 중…' : '추가'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── 대량 추가 다이얼로그 ──────────────────────────────────────────────────────
+
+function BulkAddDialog({
+  evaluateeId,
+  categoryId,
+  categoryName,
+  onClose,
+}: {
+  evaluateeId: string
+  categoryId: string
+  categoryName: string
+  onClose: () => void
+}) {
+  const create = useCreateEvalItem(evaluateeId)
+  const [text, setText] = useState('')
+
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+
+  const handleSubmit = async () => {
+    if (lines.length === 0) return
+    for (const title of lines) {
+      await create.mutateAsync({ categoryId, title })
+    }
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised shadow-xl">
+        <div className="flex items-center justify-between border-b border-surface-border-soft px-6 py-4">
+          <p className="text-base font-black text-text-primary">대량 추가 — {categoryName}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-surface-border px-4 py-1.5 text-sm font-bold text-text-muted transition-colors hover:bg-surface-muted"
+          >
+            취소
+          </button>
+        </div>
+        <div className="flex flex-col gap-4 p-6">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-text-secondary">
+              항목명 (한 줄에 하나씩) *
+            </label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={'스프링 시큐리티로 인증 인가 구현 능력\n웹소켓 활용 능력\nCI/CD 파이프라인 구성'}
+              autoFocus
+              rows={6}
+              className="w-full resize-none rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-brand-border focus:ring-1 focus:ring-brand-border"
+            />
+            {lines.length > 0 && (
+              <p className="text-xs text-text-muted">{lines.length}개 항목 입력됨</p>
+            )}
+          </div>
+          <div className="flex justify-end pt-1">
+            <Button onClick={handleSubmit} disabled={create.isPending || lines.length === 0}>
+              {create.isPending ? '추가 중…' : `${lines.length}개 추가`}
             </Button>
           </div>
         </div>
@@ -87,20 +150,22 @@ function EvalItemRow({
 }) {
   const upsertScore = useUpsertScore(evaluateeId)
   const deleteItem = useDeleteEvalItem(evaluateeId)
-  const [score, setScore] = useState(String(item.score ?? 0))
+  const [score, setScore] = useState(item.score ?? 0)
   const [note, setNote] = useState(item.note ?? '')
 
-  const save = () => {
-    const n = Math.min(10, Math.max(0, Number(score) || 0))
-    setScore(String(n))
-    upsertScore.mutate({ itemId: item.id, body: { score: n, note: note || undefined } })
+  const save = (nextScore = score) => {
+    upsertScore.mutate({ itemId: item.id, body: { score: nextScore, note: note || undefined } })
+  }
+
+  const saveNote = () => {
+    upsertScore.mutate({ itemId: item.id, body: { score, note: note || undefined } })
   }
 
   return (
-    <div className="group rounded-lg border border-surface-border-soft bg-surface-raised px-4 py-3 transition-colors hover:border-brand-border/40">
+    <div className="group rounded-lg border border-surface-border-soft bg-surface-raised px-3 py-2 transition-colors hover:border-brand-border/40">
       {/* 상단: 순번 + 제목 + 점수 + 삭제 */}
-      <div className="flex items-center gap-3">
-        <span className="flex size-[30px] shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-[11px] font-black text-text-muted">
+      <div className="flex items-center gap-2">
+        <span className="flex size-[26px] shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-[11px] font-black text-text-muted">
           {item.displayOrder + 1}
         </span>
         <p className="min-w-0 flex-1 text-sm font-bold text-text-primary leading-snug truncate">
@@ -108,16 +173,12 @@ function EvalItemRow({
         </p>
         {/* 점수 + 삭제 — 고정 너비로 모든 행 정렬 통일 */}
         <div className="flex shrink-0 items-center gap-2">
-          <input
-            type="number"
+          <ScoreStepper
+            value={score}
             min={0}
             max={10}
-            value={score}
-            onChange={(e) => setScore(e.target.value)}
-            onBlur={save}
-            className="w-12 rounded-md border border-surface-border-soft bg-surface-muted px-1 py-1.5 text-center text-sm font-black text-text-primary outline-none transition focus:border-brand-border focus:ring-1 focus:ring-brand-border"
+            onChange={(v) => { setScore(v); save(v) }}
           />
-          <span className="text-xs text-text-muted">/10</span>
           <button
             type="button"
             onClick={() => deleteItem.mutate(item.id)}
@@ -129,12 +190,12 @@ function EvalItemRow({
       </div>
 
       {/* 하단: 설명 + 메모 */}
-      <div className="mt-2 pl-8">
+      <div className="mt-1.5 pl-7">
         <input
           type="text"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          onBlur={save}
+          onBlur={saveNote}
           placeholder="자기 평가 메모…"
           className="w-full rounded border border-surface-border-soft bg-surface-muted px-2.5 py-1.5 text-xs text-text-secondary outline-none transition placeholder:text-text-muted focus:border-brand-border focus:ring-1 focus:ring-brand-border"
         />
@@ -153,7 +214,7 @@ function EvalTabPanel({
   evaluateeId: string
 }) {
   return (
-    <div className="flex flex-col gap-3 p-5">
+    <div className="flex flex-col gap-2 p-3">
       {/* 항목 목록 */}
       {category.items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-surface-border py-8 text-center text-sm text-text-muted">
@@ -177,6 +238,7 @@ export function EvalDetailPanel({ evaluatee }: { evaluatee: Evaluatee }) {
   const summaryQuery = useEvalSummary(evaluatee.id)
   const [activeTab, setActiveTab] = useState(CATEGORY_IDS[0])
   const [showAdd, setShowAdd] = useState(false)
+  const [showBulk, setShowBulk] = useState(false)
 
   const categories: EvalCategory[] = itemsQuery.data ?? []
   const summary = summaryQuery.data
@@ -226,7 +288,7 @@ export function EvalDetailPanel({ evaluatee }: { evaluatee: Evaluatee }) {
       ) : (
         <div className="flex flex-col flex-1">
           {/* 탭 헤더 */}
-          <div className="flex items-end border-b border-surface-border-soft px-5 pt-4">
+          <div className="flex items-center border-b border-surface-border-soft px-5 py-2">
             {categories.map((cat) => {
               const active = activeTab === cat.id
               return (
@@ -246,14 +308,24 @@ export function EvalDetailPanel({ evaluatee }: { evaluatee: Evaluatee }) {
                 </button>
               )
             })}
-            <button
-              type="button"
-              onClick={() => setShowAdd(true)}
-              className="ml-auto mb-1.5 flex items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2.5 py-1 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-glass/80"
-            >
-              <Plus className="size-3" />
-              항목 추가
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBulk(true)}
+                className="flex items-center gap-1.5 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-1.5 text-xs font-bold text-text-muted transition-colors hover:border-brand-border hover:text-brand-primary"
+              >
+                <List className="size-3.5" />
+                대량 추가
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAdd(true)}
+                className="flex items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 py-1.5 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-glass/80"
+              >
+                <Plus className="size-3.5" />
+                항목 추가
+              </button>
+            </div>
           </div>
 
           {/* 탭 콘텐츠 */}
@@ -273,6 +345,14 @@ export function EvalDetailPanel({ evaluatee }: { evaluatee: Evaluatee }) {
           categoryId={activeCategory.id}
           categoryName={activeCategory.name}
           onClose={() => setShowAdd(false)}
+        />
+      )}
+      {showBulk && activeCategory && (
+        <BulkAddDialog
+          evaluateeId={evaluatee.id}
+          categoryId={activeCategory.id}
+          categoryName={activeCategory.name}
+          onClose={() => setShowBulk(false)}
         />
       )}
     </div>
