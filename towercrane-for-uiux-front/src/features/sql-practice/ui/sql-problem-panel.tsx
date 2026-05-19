@@ -315,14 +315,14 @@ export function SqlProblemPanel({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {gradeStatus === 'correct' && (
-            <span className="inline-flex h-6 items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2 text-[11px] font-bold text-brand-primary">
-              <CheckCircle className="size-3" />
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 text-xs font-bold text-brand-primary">
+              <CheckCircle className="size-3.5" />
               정답
             </span>
           )}
           {gradeStatus === 'incorrect' && (
-            <span className="inline-flex h-6 items-center gap-1 rounded-md border border-destructive/40 bg-danger-glass px-2 text-[11px] font-bold text-destructive">
-              <XCircle className="size-3" />
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-destructive/40 bg-danger-glass px-3 text-xs font-bold text-destructive">
+              <XCircle className="size-3.5" />
               오답
             </span>
           )}
