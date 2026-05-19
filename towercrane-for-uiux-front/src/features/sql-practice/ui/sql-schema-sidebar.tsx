@@ -273,24 +273,6 @@ export function SqlSchemaSidebar({
                         <Info className="size-3.5" />
                       </span>
                     </button>
-                    {isSelected && onInsert && table.columns.length > 0 && (
-                      <div className="mx-2 mb-1 flex flex-wrap gap-1 rounded-b-md border border-t-0 border-brand-border/40 bg-brand-glass/30 px-2 py-2">
-                        {table.columns.map((col) => (
-                          <button
-                            key={col.name}
-                            type="button"
-                            onClick={() => onInsert(`${col.name},`)}
-                            title={`"${col.name}," 삽입`}
-                            className="inline-flex items-center gap-1 rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary active:scale-95"
-                          >
-                            <span>{col.name}</span>
-                            {col.primaryKey && (
-                              <span className="text-[9px] font-black text-brand-primary">PK</span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 );
               })}
