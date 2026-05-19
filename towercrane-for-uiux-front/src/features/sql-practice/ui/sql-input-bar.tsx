@@ -2,7 +2,8 @@ import { forwardRef, useImperativeHandle, useRef, useState, type KeyboardEvent }
 import { Bot, Loader2, Send, WandSparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { SqlGeminiDialog } from './sql-gemini-dialog'
-import { autocompleteSql } from '../lib/autocomplete-sql'
+import { SqlAutocompletePopover } from './sql-autocomplete-popover'
+import { applyCompletion, getAllMatches } from '../lib/autocomplete-sql'
 import { formatSqlQuery } from '../lib/format-sql'
 import type { TableInfo } from '../../../entities/sql-practice/model/types'
 
@@ -30,6 +31,8 @@ export const SqlInputBar = forwardRef<SqlInputBarHandle, SqlInputBarProps>(
 function SqlInputBar({ onExecute, onClear, isLoading, tables = [] }, ref) {
   const [query, setQuery] = useState('')
   const [geminiOpen, setGeminiOpen] = useState(false)
+  const [acCandidates, setAcCandidates] = useState<string[]>([])
+  const [acIndex, setAcIndex] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useImperativeHandle(ref, () => ({
@@ -81,11 +84,44 @@ function SqlInputBar({ onExecute, onClear, isLoading, tables = [] }, ref) {
     }
   }
 
+  const applyAcCandidate = (candidate: string) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+    const { newText, newPos } = applyCompletion(query, textarea.selectionStart, candidate)
+    setQuery(newText)
+    setAcCandidates([])
+    requestAnimationFrame(() => {
+      textarea.focus()
+      textarea.setSelectionRange(newPos, newPos)
+    })
+  }
+
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault()
+      setAcCandidates([])
       handleExecute()
       return
+    }
+
+    if (acCandidates.length > 0) {
+      if (event.key === 'Escape') { event.preventDefault(); setAcCandidates([]); return }
+      if (event.key === 'ArrowDown' || event.key === 'Tab') {
+        event.preventDefault()
+        setAcIndex((i) => (i + 1) % acCandidates.length)
+        return
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setAcIndex((i) => (i - 1 + acCandidates.length) % acCandidates.length)
+        return
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        applyAcCandidate(acCandidates[acIndex])
+        return
+      }
+      setAcCandidates([])
     }
 
     if (event.key === 'Tab') {
@@ -94,13 +130,17 @@ function SqlInputBar({ onExecute, onClear, isLoading, tables = [] }, ref) {
       const start = textarea.selectionStart
       const tableNames = tables.map((t) => t.tableName)
       const columnNames = tables.flatMap((t) => t.columns.map((c) => c.name))
-      const result = autocompleteSql(query, start, SQL_KEYWORDS, tableNames, columnNames)
-      if (result) {
+      const matches = getAllMatches(query, start, SQL_KEYWORDS, tableNames, columnNames)
+      if (matches.length === 1) {
+        const result = applyCompletion(query, start, matches[0])
         setQuery(result.newText)
         requestAnimationFrame(() => {
           if (!textareaRef.current) return
           textareaRef.current.setSelectionRange(result.newPos, result.newPos)
         })
+      } else if (matches.length > 1) {
+        setAcCandidates(matches)
+        setAcIndex(0)
       } else {
         const end = textarea.selectionEnd
         const next = `${query.slice(0, start)}  ${query.slice(end)}`
@@ -117,15 +157,25 @@ function SqlInputBar({ onExecute, onClear, isLoading, tables = [] }, ref) {
     <>
       <div className="border-t border-surface-border bg-surface-raised p-4">
         <div className="flex flex-col gap-2">
-          <textarea
-            ref={textareaRef}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={5}
-            className="ui-input !h-32 min-h-32 max-h-64 flex-1 resize-y py-3 font-mono text-sm leading-6"
-            placeholder={'SQL 쿼리를 입력하세요 (Ctrl+Enter 실행)\n예: SELECT * FROM users LIMIT 10;'}
-          />
+          <div className="relative">
+            <textarea
+              ref={textareaRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={5}
+              className="ui-input !h-32 min-h-32 max-h-64 w-full resize-y py-3 font-mono text-sm leading-6"
+              placeholder={'SQL 쿼리를 입력하세요 (Ctrl+Enter 실행)\n예: SELECT * FROM users LIMIT 10;'}
+            />
+            {acCandidates.length > 0 && (
+              <SqlAutocompletePopover
+                candidates={acCandidates}
+                activeIndex={acIndex}
+                onSelect={applyAcCandidate}
+                onClose={() => setAcCandidates([])}
+              />
+            )}
+          </div>
           <div className="flex flex-wrap justify-end gap-2">
             <button
               type="button"
