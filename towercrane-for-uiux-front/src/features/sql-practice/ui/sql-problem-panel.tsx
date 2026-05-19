@@ -4,6 +4,7 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Database,
   Eye,
   EyeOff,
@@ -531,7 +532,20 @@ export function SqlProblemPanel({
           )}
         </div>
 
-        <div className="flex justify-end px-4 py-2.5">
+        <div className="flex justify-end gap-2 px-4 py-2.5">
+          {answerOpen && (
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(example.answerSql)
+                toast.success('정답 SQL이 복사되었습니다.')
+              }}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-surface-border bg-surface-muted px-3 text-xs font-bold text-text-secondary transition-colors hover:border-brand-border hover:text-brand-primary"
+            >
+              <Copy className="size-3.5" />
+              정답 복사
+            </button>
+          )}
           <button
             type="button"
             onClick={onToggleAnswer}
