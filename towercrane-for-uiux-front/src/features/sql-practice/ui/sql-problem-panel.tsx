@@ -414,8 +414,8 @@ export function SqlProblemPanel({
                         key={column.name}
                         type="button"
                         className="inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary active:scale-95"
-                        onClick={() => handleInsertKeyword(column.name)}
-                        title={`"${column.name}" 삽입`}
+                        onClick={() => handleInsertKeyword(`${column.name},`)}
+                        title={`"${column.name}," 삽입`}
                       >
                         <span className="truncate">{column.name}</span>
                         {column.primaryKey && (
