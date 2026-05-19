@@ -257,8 +257,11 @@ export function SqlProblemPanel({
     const prefix = newline && before.length > 0 && !before.endsWith('\n') ? '\n' : ''
     const inserted = `${prefix}${keyword} `
     setSubmittedSql(before + inserted + after)
+    const isTouchDevice = navigator.maxTouchPoints > 0
     requestAnimationFrame(() => {
-      textarea.focus()
+      if (!isTouchDevice) {
+        textarea.focus()
+      }
       const pos = start + inserted.length
       textarea.setSelectionRange(pos, pos)
     })
