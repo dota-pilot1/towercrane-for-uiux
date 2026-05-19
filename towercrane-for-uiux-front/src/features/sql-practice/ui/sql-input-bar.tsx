@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { forwardRef, useImperativeHandle, useRef, useState, type KeyboardEvent } from 'react'
 import { Bot, Loader2, Send, WandSparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { SqlGeminiDialog } from './sql-gemini-dialog'
@@ -10,10 +10,37 @@ type SqlInputBarProps = {
   isLoading: boolean
 }
 
-export function SqlInputBar({ onExecute, onClear, isLoading }: SqlInputBarProps) {
+export type SqlInputBarHandle = {
+  insert: (text: string) => void
+}
+
+export const SqlInputBar = forwardRef<SqlInputBarHandle, SqlInputBarProps>(
+function SqlInputBar({ onExecute, onClear, isLoading }, ref) {
   const [query, setQuery] = useState('')
   const [geminiOpen, setGeminiOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useImperativeHandle(ref, () => ({
+    insert(text: string) {
+      const textarea = textareaRef.current
+      if (!textarea) {
+        setQuery((prev) => prev + (prev ? ' ' : '') + text + ' ')
+        return
+      }
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      setQuery((prev) => {
+        const before = prev.slice(0, start)
+        const after = prev.slice(end)
+        return before + text + ' ' + after
+      })
+      requestAnimationFrame(() => {
+        textarea.focus()
+        const pos = start + text.length + 1
+        textarea.setSelectionRange(pos, pos)
+      })
+    },
+  }))
 
   const handleExecute = () => {
     const trimmed = query.trim()
@@ -122,4 +149,4 @@ export function SqlInputBar({ onExecute, onClear, isLoading }: SqlInputBarProps)
       />
     </>
   )
-}
+})
