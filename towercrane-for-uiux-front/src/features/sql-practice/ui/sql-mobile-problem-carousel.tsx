@@ -1,5 +1,4 @@
 import { CheckCircle, History, XCircle } from 'lucide-react'
-import { useState } from 'react'
 
 import type { SqlPracticeSubmissionStatus } from '../../../entities/sql-practice/model/types'
 import type {
@@ -8,6 +7,7 @@ import type {
   SqlPracticeExampleSet,
 } from '../../../entities/sql-practice/model/example-types'
 import { cn } from '../../../shared/lib/utils'
+import { useSqlPracticeSelectionStore } from '../model/sql-practice-selection-store'
 import { sqlExampleLevelLabels } from '../model/sql-practice-examples'
 
 const LEVEL_ORDER: SqlExampleLevel[] = ['beginner', 'intermediate', 'advanced']
@@ -31,8 +31,8 @@ export function SqlMobileProblemCarousel({
   onSelectExample,
   onOpenHistory,
 }: SqlMobileProblemCarouselProps) {
-  const [activeLevel, setActiveLevel] = useState<SqlExampleLevel>('beginner')
-  const visibleExamples = exampleSet[activeLevel]
+  const { activeLevel, setActiveLevel } = useSqlPracticeSelectionStore()
+  const visibleExamples = exampleSet[activeLevel] ?? exampleSet['beginner']
   const totalCount = LEVEL_ORDER.reduce((sum, level) => sum + exampleSet[level].length, 0)
 
   return (

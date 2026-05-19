@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type {
   SqlHistoryItem,
@@ -23,6 +23,7 @@ import {
   useSqlPracticeTables,
 } from '../../../features/sql-practice/model/use-sql-practice-queries'
 import { getSqlPracticeExampleSet } from '../../../features/sql-practice/model/sql-practice-examples'
+import { useSqlPracticeSelectionStore } from '../../../features/sql-practice/model/sql-practice-selection-store'
 import { useSessionStore } from '../../../shared/store/session-store'
 
 const EMPTY_TABLES: TableInfo[] = []
@@ -35,6 +36,7 @@ export function useSqlPracticeOfficialWorkbench() {
   const [footerOpen, setFooterOpen] = useState(false)
   const [selectedExample, setSelectedExample] = useState<SqlPracticeExample | null>(null)
   const [answerOpen, setAnswerOpen] = useState(false)
+  const { selectedExampleId, setSelectedExampleId } = useSqlPracticeSelectionStore()
   const bottomRef = useRef<HTMLDivElement>(null)
   const userId = useSessionStore((state) => state.userId)
 
@@ -75,8 +77,17 @@ export function useSqlPracticeOfficialWorkbench() {
     [exampleSet],
   )
 
+  useEffect(() => {
+    if (flatExamples.length === 0 || selectedExample) return
+    const found = flatExamples.find((e) => e.id === selectedExampleId)
+    if (found) {
+      setSelectedExample(found)
+    }
+  }, [flatExamples, selectedExampleId, selectedExample])
+
   const handleSelectExample = (example: SqlPracticeExample) => {
     setSelectedExample(example)
+    setSelectedExampleId(example.id)
     setAnswerOpen(false)
   }
 
@@ -101,6 +112,7 @@ export function useSqlPracticeOfficialWorkbench() {
     setHistory([])
     setSelectedTableOverride(null)
     setSelectedExample(null)
+    setSelectedExampleId(null)
     setAnswerOpen(false)
   }
 
