@@ -126,6 +126,7 @@ export function SqlPracticeDesktopView({ workbench }: SqlPracticeDesktopViewProp
               onExecute={handleExecute}
               onClear={() => setHistory([])}
               isLoading={executeMutation.isPending}
+              tables={tables}
             />
           )}
         </Card>

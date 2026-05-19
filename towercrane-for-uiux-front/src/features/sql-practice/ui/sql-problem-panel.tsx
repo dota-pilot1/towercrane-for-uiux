@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 
 import type { SqlExampleLevel, SqlPracticeExample } from '../../../entities/sql-practice/model/example-types'
 import type { TableInfo } from '../../../entities/sql-practice/model/types'
+import { autocompleteSql } from '../lib/autocomplete-sql'
 import { formatSqlQuery } from '../lib/format-sql'
 import {
   buildSqlMistakeAnalysisPrompt,
@@ -299,6 +300,28 @@ export function SqlProblemPanel({
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault()
       handleSubmitAnswer()
+      return
+    }
+
+    if (event.key === 'Tab') {
+      event.preventDefault()
+      const textarea = event.currentTarget
+      const tableNames = targetTables.map((t) => t.tableName)
+      const columnNames = targetTables.flatMap((t) => t.info?.columns.map((c) => c.name) ?? [])
+      const result = autocompleteSql(submittedSql, textarea.selectionStart, SQL_KEYWORDS, tableNames, columnNames)
+      if (result) {
+        setSubmittedSql(result.newText)
+        requestAnimationFrame(() => {
+          textarea.setSelectionRange(result.newPos, result.newPos)
+        })
+      } else {
+        const start = textarea.selectionStart
+        const next = submittedSql.slice(0, start) + '  ' + submittedSql.slice(textarea.selectionEnd)
+        setSubmittedSql(next)
+        requestAnimationFrame(() => {
+          textarea.setSelectionRange(start + 2, start + 2)
+        })
+      }
     }
   }
 
@@ -457,7 +480,7 @@ export function SqlProblemPanel({
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-sm font-black text-text-primary">답안 SQL</p>
             <p className="text-[10px] font-medium text-text-muted">
-              클릭: 커서 삽입 · Ctrl+클릭: 줄바꿈
+              Tab: 자동완성 · 클릭: 커서 삽입 · Ctrl+클릭: 줄바꿈
             </p>
           </div>
           <div className="flex items-start justify-between gap-3">
