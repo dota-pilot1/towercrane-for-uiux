@@ -8,7 +8,6 @@ import {
   Eye,
   EyeOff,
   Info,
-  Lightbulb,
   Loader2,
   Plus,
   Send,
@@ -438,12 +437,7 @@ export function SqlProblemPanel({
           </div>
         </div>
 
-        <div className="flex items-start gap-2 bg-brand-glass px-4 py-2.5">
-          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-brand-primary" />
-          <p className="text-xs leading-5 text-text-secondary">{example.hint}</p>
-        </div>
-
-        <div className="px-4 py-3">
+<div className="px-4 py-3">
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-sm font-black text-text-primary">답안 SQL</p>
             <p className="text-[10px] font-medium text-text-muted">
