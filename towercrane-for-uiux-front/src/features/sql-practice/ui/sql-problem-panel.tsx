@@ -10,6 +10,7 @@ import {
   Info,
   Lightbulb,
   Loader2,
+  Plus,
   Send,
   Table2,
   WandSparkles,
@@ -378,6 +379,15 @@ export function SqlProblemPanel({
                     <span className="truncate text-sm font-black text-text-primary">
                       {tableName}
                     </span>
+                    <button
+                      type="button"
+                      className="inline-flex h-5 items-center gap-0.5 rounded border border-brand-border bg-brand-glass px-1.5 text-[10px] font-bold text-brand-primary transition-colors hover:brightness-110 active:scale-95"
+                      onClick={() => handleInsertKeyword(tableName)}
+                      title={`"${tableName}" 삽입`}
+                    >
+                      <Plus className="size-2.5" />
+                      삽입
+                    </button>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {info && (
@@ -401,15 +411,18 @@ export function SqlProblemPanel({
                 {info ? (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {info.columns.slice(0, 6).map((column) => (
-                      <span
+                      <button
                         key={column.name}
-                        className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary"
+                        type="button"
+                        className="inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary active:scale-95"
+                        onClick={() => handleInsertKeyword(column.name)}
+                        title={`"${column.name}" 삽입`}
                       >
                         <span className="truncate">{column.name}</span>
                         {column.primaryKey && (
                           <span className="text-[9px] font-black text-brand-primary">PK</span>
                         )}
-                      </span>
+                      </button>
                     ))}
                     {info.columns.length > 6 && (
                       <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-semibold text-text-muted">
