@@ -2,7 +2,10 @@ function getCurrentWord(text: string, cursorPos: number) {
   const before = text.slice(0, cursorPos)
   const match = before.match(/(\S+)$/)
   if (!match) return null
-  return { word: match[1], wordStart: cursorPos - match[1].length }
+  const raw = match[1]
+  const dotIdx = raw.lastIndexOf('.')
+  const word = dotIdx >= 0 ? raw.slice(dotIdx + 1) : raw
+  return { word, wordStart: cursorPos - word.length }
 }
 
 export function getAllMatches(
