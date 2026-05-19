@@ -21,7 +21,7 @@ export function autocompleteSql(
   ]
 
   const found = candidates.find(
-    (c) => c.toUpperCase().startsWith(upper) && c.toUpperCase() !== upper,
+    (c) => c.toUpperCase().startsWith(upper) && c !== currentWord,
   )
   if (!found) return null
 
