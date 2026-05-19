@@ -142,7 +142,7 @@ export function SqlPracticeDesktopView({ workbench }: SqlPracticeDesktopViewProp
           onReset={handleReset}
           onReloadSeed={handleReloadSeed}
           onSeedActivated={handleSeedChange}
-          onInsert={(text) => inputBarRef.current?.insert(text)}
+          onInsert={!selectedExample ? (text) => inputBarRef.current?.insert(text) : undefined}
         />
       </div>
 
