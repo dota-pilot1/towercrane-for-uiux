@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, FileText, MoreVertical, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, FileText, MoreVertical, Star } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { EditPrototypeDialog } from '../../../features/prototype-management/ui/edit-prototype-dialog'
@@ -249,9 +249,22 @@ function PrototypeActionsMenu({
   return (
     <div
       ref={actionsRef}
-      className="relative ml-auto shrink-0"
+      className="relative ml-auto flex shrink-0 items-center gap-1.5"
       onClick={(event) => event.stopPropagation()}
     >
+      {prototype.demoUrl && (
+        <a
+          href={prototype.demoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 rounded-sm border border-surface-border bg-surface-muted px-2.5 py-1.5 text-[11px] font-medium ui-text-secondary shadow-sm transition-all hover:border-brand-border hover:bg-surface-strong hover:ui-text-primary"
+          aria-label="데모 사이트 열기"
+          title="데모 사이트 열기"
+        >
+          <ExternalLink className="size-3.5" />
+          <span>데모</span>
+        </a>
+      )}
       <button
         type="button"
         className="flex size-8 items-center justify-center rounded-sm border border-surface-border bg-surface-muted ui-text-secondary shadow-sm transition-all hover:border-brand-border hover:bg-surface-strong hover:ui-text-primary"
