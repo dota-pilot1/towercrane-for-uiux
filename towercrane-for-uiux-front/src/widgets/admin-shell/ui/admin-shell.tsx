@@ -54,7 +54,7 @@ export function AdminShell({ categoryId, prototypeId }: AdminShellProps) {
           카테고리별 프로토타입과 설계 문서를 관리합니다.
         </span>
       </div>
-      <div className="grid h-[calc(100dvh-160px)] min-w-0 gap-3 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="grid h-[calc(100dvh-160px)] min-w-0 gap-3 overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)]">
         <AdminShellSidebar
           activeCategoryId={activeCategoryId}
           categories={categories}

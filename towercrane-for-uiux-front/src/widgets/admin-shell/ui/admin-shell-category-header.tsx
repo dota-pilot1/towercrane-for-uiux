@@ -1,4 +1,4 @@
-import { MoreVertical } from 'lucide-react'
+import { Check, Copy, MoreVertical } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { DeleteCategoryButton } from '../../../features/category-management/ui/delete-category-button'
@@ -46,14 +46,39 @@ export function AdminShellCategoryHeader({
             </div>
           </div>
         </div>
-        {isAuthenticated && (
-          <CategoryHeaderActionsMenu
-            selectedCategory={selectedCategory}
-            fallbackCategoryId={fallbackCategoryId}
-          />
-        )}
+        <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
+          <CopyLinkButton />
+          {isAuthenticated && (
+            <CategoryHeaderActionsMenu
+              selectedCategory={selectedCategory}
+              fallbackCategoryId={fallbackCategoryId}
+            />
+          )}
+        </div>
       </div>
     </div>
+  )
+}
+
+function CopyLinkButton() {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(window.location.href)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="flex size-8 items-center justify-center rounded-sm border border-surface-border bg-surface-muted ui-text-secondary shadow-sm transition-all hover:border-brand-border hover:bg-surface-strong hover:ui-text-primary"
+      aria-label="링크 복사"
+      title="링크 복사"
+    >
+      {copied ? <Check className="size-4 text-brand-primary" /> : <Copy className="size-4" />}
+    </button>
   )
 }
 
