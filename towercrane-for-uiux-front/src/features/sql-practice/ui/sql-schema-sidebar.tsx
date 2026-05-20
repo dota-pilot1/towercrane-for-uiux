@@ -3,7 +3,6 @@ import {
   ChevronRight,
   Database,
   Info,
-  Plus,
   RefreshCw,
   RotateCcw,
   Settings,
@@ -237,23 +236,6 @@ export function SqlSchemaSidebar({
                           {table.tableName}
                         </span>
                       </span>
-                      {onInsert && (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          className="inline-flex h-5 items-center gap-0.5 rounded border border-brand-border bg-brand-glass px-1.5 text-[10px] font-bold text-brand-primary transition-colors hover:brightness-110"
-                          title={`"${table.tableName}" 삽입`}
-                          onClick={(e) => { e.stopPropagation(); onInsert(table.tableName); }}
-                          onKeyDown={(e) => {
-                            if (e.key !== 'Enter' && e.key !== ' ') return;
-                            e.preventDefault(); e.stopPropagation();
-                            onInsert(table.tableName);
-                          }}
-                        >
-                          <Plus className="size-2.5" />
-                          삽입
-                        </span>
-                      )}
                       <span
                         role="button"
                         tabIndex={0}
