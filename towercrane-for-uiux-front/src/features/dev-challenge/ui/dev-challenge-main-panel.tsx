@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { BookOpen, CheckSquare, ClipboardCheck, GripVertical, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { BookOpen, Check, CheckSquare, ClipboardCheck, Copy, GripVertical, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Card } from '../../../shared/ui/card'
 import { Select } from '../../../shared/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../shared/ui/tabs'
@@ -43,6 +43,8 @@ import {
 
 type DevChallengeMainPanelProps = {
   sectionId: string | null
+  selectedAssignmentId: string | null
+  onSelectAssignment: (id: string | null) => void
 }
 
 type AssignmentItemProps = {
@@ -177,6 +179,25 @@ function AssignmentBlockViewer({ block }: { block: DevChallengeAssignmentBlock }
   )
 }
 
+function CopyAssignmentLinkButton() {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = () => {
+    navigator.clipboard.writeText(window.location.href)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      title="이 챌린지 링크 복사"
+      className="flex items-center gap-1 rounded border border-surface-border bg-surface-muted px-2 py-1 text-[10px] font-bold transition-colors hover:bg-surface-raised ui-text-secondary"
+    >
+      {copied ? <Check className="size-3 text-brand-primary" /> : <Copy className="size-3" />}
+      {copied ? '복사됨' : '링크'}
+    </button>
+  )
+}
+
 function AssignmentDetail({ assignmentId }: { assignmentId: string | null }) {
   const { data: assignment, isLoading } = useDevChallengeAssignment(assignmentId ?? '')
 
@@ -214,7 +235,8 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string | null }) {
               <p className="mt-1 text-sm ui-text-secondary">{assignment.summary}</p>
             ) : null}
           </div>
-          <div className="flex shrink-0 gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <CopyAssignmentLinkButton />
             <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-[10px] font-bold ui-text-secondary">
               {assignment.difficulty}
             </span>
@@ -748,8 +770,7 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
   )
 }
 
-export function DevChallengeMainPanel({ sectionId }: DevChallengeMainPanelProps) {
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null)
+export function DevChallengeMainPanel({ sectionId, selectedAssignmentId, onSelectAssignment }: DevChallengeMainPanelProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editAssignmentId, setEditAssignmentId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('assignment')
@@ -764,14 +785,10 @@ export function DevChallengeMainPanel({ sectionId }: DevChallengeMainPanelProps)
   )
 
   useEffect(() => {
-    setSelectedAssignmentId(null)
-  }, [sectionId])
-
-  useEffect(() => {
     if (!selectedAssignmentId && assignments[0]) {
-      setSelectedAssignmentId(assignments[0].id)
+      onSelectAssignment(assignments[0].id)
     }
-  }, [assignments, selectedAssignmentId])
+  }, [assignments])
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
@@ -799,7 +816,7 @@ export function DevChallengeMainPanel({ sectionId }: DevChallengeMainPanelProps)
         sectionId={sectionId}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onCreated={setSelectedAssignmentId}
+        onCreated={onSelectAssignment}
       />
       <EditAssignmentDialog
         assignment={editingAssignment ?? null}
@@ -850,11 +867,11 @@ export function DevChallengeMainPanel({ sectionId }: DevChallengeMainPanelProps)
                           key={assignment.id}
                           assignment={assignment}
                           selected={selectedAssignmentId === assignment.id}
-                          onSelect={() => setSelectedAssignmentId(assignment.id)}
+                          onSelect={() => onSelectAssignment(assignment.id)}
                           onEdit={() => setEditAssignmentId(assignment.id)}
                           onDelete={() => {
                             deleteAssignment.mutate({ id: assignment.id, sectionId })
-                            if (selectedAssignmentId === assignment.id) setSelectedAssignmentId(null)
+                            if (selectedAssignmentId === assignment.id) onSelectAssignment(null)
                           }}
                         />
                       ))}
@@ -897,7 +914,7 @@ export function DevChallengeMainPanel({ sectionId }: DevChallengeMainPanelProps)
                       key={assignment.id}
                       assignment={assignment}
                       selected={selectedAssignmentId === assignment.id}
-                      onSelect={() => setSelectedAssignmentId(assignment.id)}
+                      onSelect={() => onSelectAssignment(assignment.id)}
                     />
                   ))}
                 </div>

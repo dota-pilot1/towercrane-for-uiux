@@ -10,7 +10,7 @@ import type {
 export const studyDiaryApi = {
   getMe: () => apiRequest<StudyDiary>('/study-diary/me'),
 
-  updateMe: (data: { title?: string; description?: string | null }) =>
+  updateMe: (data: { title?: string; description?: string | null; visibility?: StudyDiaryVisibility }) =>
     apiRequest<StudyDiary>('/study-diary/me', {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -87,4 +87,16 @@ export const studyDiaryApi = {
 
   deleteNote: (id: string) =>
     apiRequest<void>(`/study-diary/notes/${id}`, { method: 'DELETE' }),
+
+  getPublicDiary: (userId: string) =>
+    apiRequest<StudyDiary>(`/study-diary/public/${userId}`),
+
+  listPublicCategories: (userId: string) =>
+    apiRequest<StudyDiaryCategory[]>(`/study-diary/public/${userId}/categories`),
+
+  listPublicSections: (userId: string, categoryId: string) =>
+    apiRequest<StudyDiarySection[]>(`/study-diary/public/${userId}/categories/${categoryId}/sections`),
+
+  listPublicNotes: (userId: string, sectionId: string) =>
+    apiRequest<StudyDiaryNote[]>(`/study-diary/public/${userId}/sections/${sectionId}/notes`),
 }

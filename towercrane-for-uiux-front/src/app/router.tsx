@@ -23,6 +23,7 @@ import { ProjectIssuesPage } from '../pages/project-issues/ui/project-issues-pag
 import { ProfilePage } from '../pages/profile/ui/profile-page'
 import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
 import { StudyDiaryPage } from '../pages/study-diary/ui/study-diary-page'
+import { StudyDiaryPublicPage } from '../pages/study-diary/ui/study-diary-public-page'
 import { DevChallengePage } from '../pages/dev-challenge/ui/dev-challenge-page'
 import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
 import { SqlPracticeExamplesPage } from '../pages/sql-practice/ui/sql-practice-examples-page'
@@ -220,7 +221,17 @@ export const prototypeCategoryRoute = createRoute({
 const studyDiaryRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/study-diary',
+  validateSearch: (search: Record<string, unknown>) => ({
+    cat: typeof search.cat === 'string' ? search.cat : undefined,
+    sec: typeof search.sec === 'string' ? search.sec : undefined,
+  }),
   component: StudyDiaryPage,
+})
+
+const studyDiaryPublicRoute = createRoute({
+  getParentRoute: () => semiPublicLayoutRoute,
+  path: '/study-diary/$userId',
+  component: StudyDiaryPublicPage,
 })
 
 // ─── /dev-challenge ──────────────────────────────────────────────────────────
@@ -228,6 +239,11 @@ const studyDiaryRoute = createRoute({
 const devChallengeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/dev-challenge',
+  validateSearch: (search: Record<string, unknown>) => ({
+    cat: typeof search.cat === 'string' ? search.cat : undefined,
+    sec: typeof search.sec === 'string' ? search.sec : undefined,
+    asgn: typeof search.asgn === 'string' ? search.asgn : undefined,
+  }),
   component: DevChallengePage,
 })
 
@@ -581,6 +597,7 @@ export const router = createRouter({
     publicSqlPersonalPracticeRoute,
     semiPublicLayoutRoute.addChildren([
       sqlNoteDetailRoute,
+      studyDiaryPublicRoute,
     ]),
     appLayoutRoute.addChildren([
       indexRoute,

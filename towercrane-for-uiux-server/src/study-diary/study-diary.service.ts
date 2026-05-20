@@ -295,6 +295,87 @@ export class StudyDiaryService {
       .run();
   }
 
+  getPublicDiary(targetUserId: string) {
+    const diary = this.getDiaryByUserId(targetUserId);
+    if (diary.visibility === 'private') {
+      throw new ForbiddenException('This diary is private');
+    }
+    const user = this.getUser(targetUserId);
+    return { ...diary, ownerName: user.name };
+  }
+
+  getPublicCategories(targetUserId: string) {
+    const diary = this.getDiaryByUserId(targetUserId);
+    if (diary.visibility === 'private') {
+      throw new ForbiddenException('This diary is private');
+    }
+    return this.db.db
+      .select()
+      .from(challengeCategoriesTable)
+      .where(eq(challengeCategoriesTable.diaryId, diary.id))
+      .orderBy(challengeCategoriesTable.orderIdx)
+      .all();
+  }
+
+  getPublicSections(targetUserId: string, categoryId: string) {
+    const diary = this.getDiaryByUserId(targetUserId);
+    if (diary.visibility === 'private') {
+      throw new ForbiddenException('This diary is private');
+    }
+    const category = this.db.db
+      .select()
+      .from(challengeCategoriesTable)
+      .where(
+        and(
+          eq(challengeCategoriesTable.id, categoryId),
+          eq(challengeCategoriesTable.diaryId, diary.id),
+        ),
+      )
+      .get();
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+    return this.db.db
+      .select()
+      .from(challengeSectionsTable)
+      .where(eq(challengeSectionsTable.categoryId, categoryId))
+      .orderBy(challengeSectionsTable.orderIdx)
+      .all();
+  }
+
+  getPublicNotes(targetUserId: string, sectionId: string) {
+    const diary = this.getDiaryByUserId(targetUserId);
+    if (diary.visibility === 'private') {
+      throw new ForbiddenException('This diary is private');
+    }
+    return this.db.db
+      .select()
+      .from(challengeUserNotesTable)
+      .where(
+        and(
+          eq(challengeUserNotesTable.userId, targetUserId),
+          eq(challengeUserNotesTable.sectionId, sectionId),
+        ),
+      )
+      .orderBy(
+        desc(challengeUserNotesTable.pinned),
+        desc(challengeUserNotesTable.updatedAt),
+      )
+      .all();
+  }
+
+  private getDiaryByUserId(userId: string): StudyDiaryRow {
+    const diary = this.db.db
+      .select()
+      .from(studyDiariesTable)
+      .where(eq(studyDiariesTable.userId, userId))
+      .get();
+    if (!diary) {
+      throw new NotFoundException('Study diary not found');
+    }
+    return diary;
+  }
+
   private getOrCreateMyDiary(userId: string): StudyDiaryRow {
     const existing = this.db.db
       .select()

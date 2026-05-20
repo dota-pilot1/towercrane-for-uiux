@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Trophy } from 'lucide-react'
 import { PageHeader } from '../../../shared/ui/page-header'
 import { DevChallengeCategoryPanel } from '../../../features/dev-challenge/ui/dev-challenge-category-panel'
@@ -6,8 +6,25 @@ import { DevChallengeSectionPanel } from '../../../features/dev-challenge/ui/dev
 import { DevChallengeMainPanel } from '../../../features/dev-challenge/ui/dev-challenge-main-panel'
 
 export function DevChallengePage() {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+  const search = useSearch({ strict: false }) as { cat?: string; sec?: string; asgn?: string }
+  const navigate = useNavigate()
+
+  const selectedCategoryId = search.cat ?? null
+  const selectedSectionId = search.sec ?? null
+  const selectedAssignmentId = search.asgn ?? null
+
+  // 단일 navigate 호출로 병합 — 두 번 호출 시 두 번째가 첫 번째를 덮어쓰는 문제 방지
+  const setSelectedCategoryId = (id: string | null) => {
+    navigate({ search: { cat: id ?? undefined, sec: undefined, asgn: undefined }, replace: true })
+  }
+
+  const setSelectedSectionId = (id: string | null) => {
+    navigate({ search: { cat: search.cat, sec: id ?? undefined, asgn: undefined }, replace: true })
+  }
+
+  const setSelectedAssignmentId = (id: string | null) => {
+    navigate({ search: { cat: search.cat, sec: search.sec, asgn: id ?? undefined }, replace: true })
+  }
 
   return (
     <section className="space-y-4 ui-page-bg pb-4">
@@ -21,7 +38,7 @@ export function DevChallengePage() {
         <DevChallengeCategoryPanel
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
-          onResetSection={() => setSelectedSectionId(null)}
+          onResetSection={() => {}} // setSelectedCategoryId가 sec·asgn 초기화까지 포함
         />
 
         <DevChallengeSectionPanel
@@ -30,7 +47,11 @@ export function DevChallengePage() {
           onSelectSection={setSelectedSectionId}
         />
 
-        <DevChallengeMainPanel sectionId={selectedSectionId} />
+        <DevChallengeMainPanel
+          sectionId={selectedSectionId}
+          selectedAssignmentId={selectedAssignmentId}
+          onSelectAssignment={setSelectedAssignmentId}
+        />
       </div>
     </section>
   )

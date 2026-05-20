@@ -4,6 +4,7 @@ import type {
   StudyDiaryCategory,
   StudyDiaryNote,
   StudyDiarySection,
+  StudyDiaryVisibility,
 } from '../../../entities/study-diary/model/types'
 import { useSessionStore } from '../../../shared/store/session-store'
 
@@ -33,6 +34,51 @@ export function useStudyDiary() {
     queryKey: STUDY_DIARY_KEYS.me(userId),
     queryFn: studyDiaryApi.getMe,
     enabled,
+  })
+}
+
+export function useUpdateStudyDiary() {
+  const queryClient = useQueryClient()
+  const userId = useStudyDiaryUserId()
+
+  return useMutation({
+    mutationFn: (data: { title?: string; description?: string | null; visibility?: StudyDiaryVisibility }) =>
+      studyDiaryApi.updateMe(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: STUDY_DIARY_KEYS.me(userId) })
+    },
+  })
+}
+
+export function usePublicDiary(targetUserId: string) {
+  return useQuery({
+    queryKey: ['study-diary', 'public', targetUserId, 'me'],
+    queryFn: () => studyDiaryApi.getPublicDiary(targetUserId),
+    enabled: !!targetUserId,
+  })
+}
+
+export function usePublicCategories(targetUserId: string) {
+  return useQuery({
+    queryKey: ['study-diary', 'public', targetUserId, 'categories'],
+    queryFn: () => studyDiaryApi.listPublicCategories(targetUserId),
+    enabled: !!targetUserId,
+  })
+}
+
+export function usePublicSections(targetUserId: string, categoryId: string) {
+  return useQuery({
+    queryKey: ['study-diary', 'public', targetUserId, 'sections', categoryId],
+    queryFn: () => studyDiaryApi.listPublicSections(targetUserId, categoryId),
+    enabled: !!targetUserId && !!categoryId,
+  })
+}
+
+export function usePublicNotes(targetUserId: string, sectionId: string) {
+  return useQuery({
+    queryKey: ['study-diary', 'public', targetUserId, 'notes', sectionId],
+    queryFn: () => studyDiaryApi.listPublicNotes(targetUserId, sectionId),
+    enabled: !!targetUserId && !!sectionId,
   })
 }
 

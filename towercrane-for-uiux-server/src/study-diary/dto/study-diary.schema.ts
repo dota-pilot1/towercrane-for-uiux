@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const updateStudyDiarySchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().max(500).nullable().optional(),
+  visibility: z.enum(['private', 'shared', 'public']).optional(),
 });
 
 export const createStudyDiaryCategorySchema = z.object({
