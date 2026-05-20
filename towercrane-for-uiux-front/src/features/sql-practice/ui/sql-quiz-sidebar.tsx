@@ -85,8 +85,8 @@ export function SqlQuizSidebar({
   }
 
   return (
-    <aside className="ui-panel flex h-full min-h-0 w-64 shrink-0 flex-col overflow-hidden rounded-md p-0">
-      <div className="border-b border-surface-border bg-surface-raised px-3 py-3">
+    <aside className="ui-panel flex h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden rounded-md p-0">
+      <div className="border-b border-surface-border bg-surface-raised px-4 py-3.5">
         <div className="flex h-8 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <h2 className="min-w-0 truncate text-[15px] font-black leading-none text-text-primary">
@@ -134,7 +134,7 @@ export function SqlQuizSidebar({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-surface-strong p-2">
+      <div className="flex-1 overflow-y-auto bg-surface-strong p-2.5">
         {totalCount === 0 ? (
           <div className="flex min-h-[200px] flex-col items-center justify-center p-4 text-center">
             <p className="text-sm font-semibold text-text-primary">문제 준비 중</p>
@@ -145,19 +145,20 @@ export function SqlQuizSidebar({
             <p className="text-xs text-text-muted">이 레벨의 문제가 없습니다</p>
           </div>
         ) : (
-          <div className="space-y-1 pt-1">
+          <div className="space-y-1.5 pt-1">
             {visibleExamples.map((example, idx) => {
               const isActive = selectedExample?.id === example.id
               return (
                 <div
                   key={example.id}
                   className={cn(
-                    'group grid h-[42px] w-full grid-cols-[2rem_minmax(0,1fr)_1.25rem_1.5rem] items-center gap-1.5 rounded-md border px-2 transition-colors',
+                    'group grid h-[46px] w-full grid-cols-[1.5rem_2rem_minmax(0,1fr)_1.25rem] items-center gap-2 rounded-md border px-2.5 transition-colors',
                     isActive
                       ? 'border-brand-border bg-brand-glass text-brand-primary'
                       : 'border-surface-border-soft bg-surface-raised text-text-primary hover:bg-surface-muted',
                   )}
                 >
+                  <CopyLinkButton exampleId={example.id} isActive={isActive} />
                   <button
                     type="button"
                     onClick={() => onSelectExample(example)}
@@ -181,7 +182,6 @@ export function SqlQuizSidebar({
                       <SubmissionStatusIcon status={submissionStatusByExample[example.id]} />
                     </span>
                   </button>
-                  <CopyLinkButton exampleId={example.id} isActive={isActive} />
                 </div>
               )
             })}
