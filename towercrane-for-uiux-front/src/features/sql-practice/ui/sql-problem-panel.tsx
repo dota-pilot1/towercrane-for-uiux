@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   Info,
+  Link,
   Loader2,
   Plus,
   Send,
@@ -327,6 +328,8 @@ export function SqlProblemPanel({
             </span>
           )}
           <div className="flex items-center gap-1">
+            <CopyLinkButton exampleId={example.id} />
+            <div className="mx-0.5 h-4 w-px bg-surface-border" />
             <button
               type="button"
               className="ui-icon-button size-7 shrink-0 disabled:opacity-30"
@@ -651,5 +654,28 @@ function SqlKeywordButtons({
         </button>
       ))}
     </div>
+  )
+}
+
+function CopyLinkButton({ exampleId }: { exampleId: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    const url = `${window.location.origin}/sql?example=${encodeURIComponent(exampleId)}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title="문제 링크 복사"
+      className={`ui-icon-button size-7 shrink-0 transition-colors ${copied ? 'text-brand-primary' : ''}`}
+    >
+      <Link className="size-3.5" />
+    </button>
   )
 }

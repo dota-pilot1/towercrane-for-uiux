@@ -3,10 +3,8 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
-  Link,
   XCircle,
 } from 'lucide-react'
-import { useState } from 'react'
 
 import type { SqlPracticeSubmissionStatus } from '../../../entities/sql-practice/model/types'
 import type {
@@ -149,40 +147,35 @@ export function SqlQuizSidebar({
             {visibleExamples.map((example, idx) => {
               const isActive = selectedExample?.id === example.id
               return (
-                <div
+                <button
                   key={example.id}
+                  type="button"
+                  onClick={() => onSelectExample(example)}
+                  aria-current={isActive ? 'true' : undefined}
                   className={cn(
-                    'group grid h-[46px] w-full grid-cols-[1.5rem_2rem_minmax(0,1fr)_1.25rem] items-center gap-2 rounded-md border px-2.5 transition-colors',
+                    'grid h-[46px] w-full grid-cols-[2rem_minmax(0,1fr)_1.25rem] items-center gap-2 rounded-md border px-2.5 text-left transition-colors',
                     isActive
                       ? 'border-brand-border bg-brand-glass text-brand-primary'
                       : 'border-surface-border-soft bg-surface-raised text-text-primary hover:bg-surface-muted',
                   )}
                 >
-                  <CopyLinkButton exampleId={example.id} isActive={isActive} />
-                  <button
-                    type="button"
-                    onClick={() => onSelectExample(example)}
-                    aria-current={isActive ? 'true' : undefined}
-                    className="col-span-3 grid h-full grid-cols-[2rem_minmax(0,1fr)_1.25rem] items-center gap-1.5 text-left"
+                  <span
+                    className={cn(
+                      'inline-flex h-6 w-8 shrink-0 items-center justify-center rounded-md border text-[10px] font-black leading-none tabular-nums',
+                      isActive
+                        ? 'border-brand-border bg-surface-raised text-brand-primary'
+                        : 'border-surface-border-soft bg-surface-muted text-text-muted',
+                    )}
                   >
-                    <span
-                      className={cn(
-                        'inline-flex h-6 w-8 shrink-0 items-center justify-center rounded-md border text-[10px] font-black leading-none tabular-nums',
-                        isActive
-                          ? 'border-brand-border bg-surface-raised text-brand-primary'
-                          : 'border-surface-border-soft bg-surface-muted text-text-muted',
-                      )}
-                    >
-                      {String(idx + 1).padStart(2, '0')}
-                    </span>
-                    <span className="min-w-0 truncate text-[13px] font-semibold leading-none">
-                      {example.title}
-                    </span>
-                    <span className="flex size-5 shrink-0 items-center justify-center">
-                      <SubmissionStatusIcon status={submissionStatusByExample[example.id]} />
-                    </span>
-                  </button>
-                </div>
+                    {String(idx + 1).padStart(2, '0')}
+                  </span>
+                  <span className="min-w-0 truncate text-[13px] font-semibold leading-none">
+                    {example.title}
+                  </span>
+                  <span className="flex size-5 shrink-0 items-center justify-center">
+                    <SubmissionStatusIcon status={submissionStatusByExample[example.id]} />
+                  </span>
+                </button>
               )
             })}
           </div>
@@ -219,37 +212,6 @@ export function SqlQuizSidebar({
   )
 }
 
-function CopyLinkButton({ exampleId, isActive }: { exampleId: string; isActive: boolean }) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    const url = `${window.location.origin}/sql?example=${encodeURIComponent(exampleId)}`
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      title="문제 링크 복사"
-      className={cn(
-        'flex size-5 shrink-0 items-center justify-center rounded transition-all',
-        'opacity-0 group-hover:opacity-100',
-        copied
-          ? 'text-brand-primary'
-          : isActive
-            ? 'text-brand-primary hover:bg-surface-raised'
-            : 'text-text-muted hover:bg-surface-muted hover:text-text-primary',
-      )}
-    >
-      <Link className="size-3" />
-    </button>
-  )
-}
 
 function SubmissionStatusIcon({ status }: { status?: SqlPracticeSubmissionStatus }) {
   if (!status) return null
