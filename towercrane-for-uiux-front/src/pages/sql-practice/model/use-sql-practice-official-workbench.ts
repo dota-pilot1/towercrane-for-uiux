@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearch } from '@tanstack/react-router'
 
 import type {
   SqlHistoryItem,
@@ -37,6 +38,7 @@ export function useSqlPracticeOfficialWorkbench() {
   const [selectedExample, setSelectedExample] = useState<SqlPracticeExample | null>(null)
   const [answerOpen, setAnswerOpen] = useState(false)
   const { selectedExampleId, setSelectedExampleId } = useSqlPracticeSelectionStore()
+  const { example: exampleIdFromUrl } = useSearch({ strict: false }) as { example?: string }
   const bottomRef = useRef<HTMLDivElement>(null)
   const userId = useSessionStore((state) => state.userId)
 
@@ -79,11 +81,13 @@ export function useSqlPracticeOfficialWorkbench() {
 
   useEffect(() => {
     if (flatExamples.length === 0 || selectedExample) return
-    const found = flatExamples.find((e) => e.id === selectedExampleId)
+    const targetId = exampleIdFromUrl ?? selectedExampleId
+    const found = flatExamples.find((e) => e.id === targetId)
     if (found) {
       setSelectedExample(found)
+      setSelectedExampleId(found.id)
     }
-  }, [flatExamples, selectedExampleId, selectedExample])
+  }, [flatExamples, selectedExampleId, exampleIdFromUrl, selectedExample])
 
   const handleSelectExample = (example: SqlPracticeExample) => {
     setSelectedExample(example)

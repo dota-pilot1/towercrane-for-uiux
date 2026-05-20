@@ -29,9 +29,9 @@ export const sqlPracticeExampleSets: SqlPracticeExampleSet[] = [
 ]
 
 export const sqlExampleLevelLabels: Record<SqlExampleLevel, string> = {
-  beginner: '초보',
-  intermediate: '중수',
-  advanced: '고수',
+  beginner: '초',
+  intermediate: '중',
+  advanced: '고',
 }
 
 const emptyExampleSet = (seedFile: string): SqlPracticeExampleSet => ({

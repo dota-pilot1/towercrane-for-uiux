@@ -320,6 +320,9 @@ const apiDocRoute = createRoute({
 const sqlPracticeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/sql',
+  validateSearch: (search: Record<string, unknown>) => ({
+    example: typeof search.example === 'string' ? search.example : undefined,
+  }),
   component: SqlPracticePage,
 })
 
