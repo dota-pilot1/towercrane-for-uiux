@@ -1395,24 +1395,27 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     // 루트 메뉴 표시 순서 고정:
     // 0:AI Native, 1:회의실, 2:업무관리, 3:Postman, 4:Study Diary,
     // 5:게시판, 6:SQL Practice, 7:Dev Challenge, 8:Prototype, 9:Admin
-    const rootMenuOrder: Array<{ sectionId: string; displayOrder: number }> = [
-      { sectionId: 'ai_native_group', displayOrder: 0 },
-      { sectionId: 'meeting',         displayOrder: 1 },
-      { sectionId: 'task',            displayOrder: 2 },
-      { sectionId: 'api_doc',         displayOrder: 3 },
-      { sectionId: 'study_diary',     displayOrder: 4 },
-      { sectionId: 'boards',          displayOrder: 5 },
-      { sectionId: 'sql_group',       displayOrder: 6 },
-      { sectionId: 'dev_challenge',   displayOrder: 7 },
-      { sectionId: 'prototype',       displayOrder: 8 },
-      { sectionId: 'admin_dropdown',  displayOrder: 9 },
+    const rootMenuOrder: Array<{ sectionId: string | string[]; displayOrder: number }> = [
+      { sectionId: 'ai_native_group',          displayOrder: 0 },
+      { sectionId: 'meeting',                  displayOrder: 1 },
+      { sectionId: ['task_group', 'task'],      displayOrder: 2 },
+      { sectionId: 'api_doc',                  displayOrder: 3 },
+      { sectionId: 'study_diary',              displayOrder: 4 },
+      { sectionId: 'boards',                   displayOrder: 5 },
+      { sectionId: 'sql_group',                displayOrder: 6 },
+      { sectionId: 'dev_challenge',            displayOrder: 7 },
+      { sectionId: 'prototype',                displayOrder: 8 },
+      { sectionId: 'admin_dropdown',           displayOrder: 9 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET display_order = ?, updated_at = ? WHERE section_id = ? AND parent_id IS NULL`,
-        )
-        .run(displayOrder, now, sectionId);
+      const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
+      for (const id of ids) {
+        this.sqlite
+          .prepare(
+            `UPDATE menus SET display_order = ?, updated_at = ? WHERE section_id = ? AND parent_id IS NULL`,
+          )
+          .run(displayOrder, now, id);
+      }
     }
 
     const defaultMeetingRooms = [
