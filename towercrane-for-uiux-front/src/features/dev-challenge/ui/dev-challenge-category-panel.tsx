@@ -198,7 +198,7 @@ export function DevChallengeCategoryPanel({
   }
 
   return (
-    <Card className="w-[220px] overflow-y-auto rounded-md p-0">
+    <Card className="w-[280px] overflow-y-auto rounded-md p-0">
       <div className="sticky top-0 border-b border-surface-border bg-surface-muted p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
