@@ -21,6 +21,7 @@ import { DevChallengeModule } from './dev-challenge/dev-challenge.module';
 import { StudyDiaryModule } from './study-diary/study-diary.module';
 import { BoardsModule } from './boards/boards.module';
 import { AiEvaluationModule } from './ai-evaluation/ai-evaluation.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { AiEvaluationModule } from './ai-evaluation/ai-evaluation.module';
     SqlPracticeModule,
     BoardsModule,
     AiEvaluationModule,
+    ChatbotModule,
   ],
   controllers: [AppController],
   providers: [AppService],

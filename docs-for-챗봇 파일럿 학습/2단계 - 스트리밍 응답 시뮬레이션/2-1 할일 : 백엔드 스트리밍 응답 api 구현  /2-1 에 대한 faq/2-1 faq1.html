@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>2-1 FAQ — 백엔드 스트리밍 응답 API</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      max-width: 760px;
+      margin: 48px auto;
+      padding: 0 24px;
+      background: #0f1117;
+      color: #e2e8f0;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.5rem; color: #a3e635; margin-bottom: 4px; }
+    h2 { font-size: 1.05rem; color: #a3e635; margin-top: 40px; border-left: 3px solid #a3e635; padding-left: 12px; }
+    .sub { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+    pre {
+      background: #1e2230;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+    .comment { color: #6b7280; font-style: italic; }
+    .hl { color: #a3e635; font-weight: bold; }
+    .warn { color: #f87171; font-weight: bold; }
+    .box {
+      background: #1e2230;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.92rem;
+    }
+    .box-warn {
+      background: #2a1a1a;
+      border: 1px solid #5a2d2d;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.92rem;
+    }
+    .qa-q { color: #f59e0b; font-weight: bold; margin-top: 28px; font-size: 1rem; }
+    .qa-a { color: #cbd5e1; margin-top: 8px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+    th { background: #1e2230; color: #a3e635; padding: 8px 14px; text-align: left; border: 1px solid #2d3348; }
+    td { padding: 8px 14px; border: 1px solid #2d3348; color: #cbd5e1; vertical-align: top; }
+    hr { border: none; border-top: 1px solid #2d3348; margin: 40px 0; }
+    code { color: #93c5fd; }
+  </style>
+</head>
+<body>
+
+<h1>2-1 FAQ — 백엔드 스트리밍 응답 API</h1>
+<p class="sub">2단계 노트 · NestJS + OpenAI 스트리밍 Response 구현 질문 정리</p>
+
+<hr>
+
+<p class="qa-q">Q. constructor(private configService: ConfigService)는 왜 필요한가?</p>
+<div class="qa-a">
+  <p>NestJS의 의존성 주입(DI) 때문이다.<br>
+  생성자에 선언하면 NestJS가 <code>ConfigService</code> 인스턴스를 자동으로 주입해준다.</p>
+  <pre><code><span class="comment">// ❌ 직접 쓰면 .env 못 읽음</span>
+process.env.OPENAI_API_KEY
+
+<span class="comment">// ✅ ConfigService를 주입받아야 .env 값 읽기 가능</span>
+this.configService.get('OPENAI_API_KEY')</code></pre>
+  <div class="box">
+    <strong>흐름:</strong><br>
+    app.module.ts → <code>ConfigModule.forRoot()</code> (.env 로드)<br>
+    → ChatbotService 생성 시 NestJS가 ConfigService 자동 주입<br>
+    → <code>this.configService.get('OPENAI_API_KEY')</code> 로 값 읽기
+  </div>
+</div>
+
+<hr>
+
+<p class="qa-q">Q. openai.chat.completions.create()의 stream: true 가 뭔가?</p>
+<div class="qa-a">
+  <table>
+    <tr><th>stream 옵션</th><th>동작</th></tr>
+    <tr><td><code>stream: false</code> (기본)</td><td>GPT가 다 생성할 때까지 기다렸다가 한 번에 반환. 사용자는 3~10초 대기 후 전체 텍스트가 한 번에 뜸</td></tr>
+    <tr><td><code>stream: true</code></td><td>토큰 생성될 때마다 즉시 전달. 타이핑되듯 흘러나옴</td></tr>
+  </table>
+  <p>청크가 한 글자씩이 아니라 불규칙한 이유: GPT는 <strong>토큰(의미 단위)</strong>으로 보내기 때문이다. "안", "녕하세요" 처럼 묶여서 오는 것이 정상이다.</p>
+</div>
+
+<hr>
+
+<p class="qa-q">Q. 처음에 @Sse를 썼다가 왜 @Post + @Res로 바꿨나?</p>
+<div class="qa-a">
+  <div class="box-warn">
+    <span class="warn">SSE는 GET 프로토콜</span>이라 JSON Body를 쓸 수 없다.<br>
+    message를 query param으로 보내야 해서 한글 인코딩 문제 등 불편함이 있었다.
+  </div>
+  <table>
+    <tr><th></th><th>SSE (<code>@Sse</code>)</th><th>스트리밍 Response (<code>@Post + @Res</code>)</th></tr>
+    <tr><td>HTTP 메서드</td><td>GET만 가능</td><td>POST 가능 ✅</td></tr>
+    <tr><td>Body</td><td>못 씀 (query param만)</td><td>JSON body 사용 가능 ✅</td></tr>
+    <tr><td>실무 사용</td><td>알림, 피드</td><td>AI 챗봇 스트리밍 ✅</td></tr>
+  </table>
+  <p>ChatGPT, Claude 공식 API도 이 패턴을 사용한다.</p>
+</div>
+
+<hr>
+
+<p class="qa-q">Q. 스트리밍 Response 방식의 컨트롤러/서비스 구조가 뭔가?</p>
+<div class="qa-a">
+  <pre><code><span class="comment">// controller — @Res()로 응답 객체를 직접 받음</span>
+@Post('stream')
+async stream(@Body() body: { message: string }, @Res() res: Response) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  await this.chatbotService.streamGpt(body.message, res);
+}
+
+<span class="comment">// service — res.write()로 청크를 직접 흘려보냄</span>
+async streamGpt(message: string, res: Response) {
+  const stream = await this.openai.chat.completions.create({
+    stream: true, ...
+  });
+
+  for await (const chunk of stream) {
+    const text = chunk.choices[0]?.delta?.content ?? '';
+    if (text) {
+      <span class="hl">res.write(`data: ${JSON.stringify({ text })}\n\n`);</span>
+    }
+  }
+
+  res.write('data: [DONE]\n\n');
+  res.end();
+}</code></pre>
+  <div class="box">
+    일반 REST: <code>return { data }</code> — NestJS가 JSON으로 변환해서 응답<br><br>
+    스트리밍: <code>res.write()</code> — 응답 객체를 직접 제어해서 청크를 흘려보냄<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<code>res.end()</code> — 응답 종료
+  </div>
+</div>
+
+<hr>
+
+<p class="qa-q">Q. 서버에서 [DONE] 보내고 res.end() 하면 끝인가?</p>
+<div class="qa-a">
+  <pre><code>서버                              프론트
+  │                                 │
+  ├─ data: {"text":"안녕"}  ───────► 텍스트 누적
+  ├─ data: {"text":"하세요"} ──────► 텍스트 누적
+  ├─ <span class="hl">data: [DONE]</span>          ───────► isStreaming = false
+  └─ res.end() → 연결 종료</code></pre>
+  <p>프론트에서 추가로 해야 할 것:</p>
+  <pre><code>if (data === '[DONE]') {
+  setIsStreaming(false)   <span class="comment">// 커서 깜빡임 끄기, 전송버튼 활성화</span>
+  return
+}
+setMessages(prev =>
+  prev.map(m => m.id === msgId
+    ? { ...m, content: m.content + text }  <span class="comment">// 텍스트 누적</span>
+    : m
+  )
+)</code></pre>
+</div>
+
+<hr>
+
+<h2>전체 흐름 정리</h2>
+
+<pre><code>① 프론트: POST /api/chatbot/stream  { "message": "안녕하세요" }
+        ↓
+② Controller: @Body()로 message 추출, @Res()로 res 객체 확보
+        ↓
+③ Service: res 헤더 설정 (Content-Type: text/event-stream)
+        ↓
+④ OpenAI API: stream: true 로 요청
+        ↓
+⑤ GPT 토큰 생성될 때마다
+   for await → res.write(`data: ${JSON.stringify({ text })}\n\n`)
+        ↓
+⑥ 루프 끝 → res.write('data: [DONE]\n\n') → res.end()
+        ↓
+⑦ 프론트: [DONE] 받으면 isStreaming = false → UI 정리</code></pre>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { Bot, Sparkles } from "lucide-react";
+import { Bot } from "lucide-react";
 import { useChatMessages } from "../../../features/chatbot/model/use-chat-messages";
 import { ChatMessage } from "../../../features/chatbot/ui/chat-message";
 import { TypingIndicator } from "../../../features/chatbot/ui/typing-indicator";
