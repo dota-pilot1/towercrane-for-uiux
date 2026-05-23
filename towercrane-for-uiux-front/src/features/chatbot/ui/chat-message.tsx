@@ -3,9 +3,10 @@ import type { Message } from "../model/use-chat-messages";
 
 type Props = {
   message: Message;
+  isStreaming?: boolean;
 };
 
-export function ChatMessage({ message }: Props) {
+export function ChatMessage({ message, isStreaming }: Props) {
   const isAssistant = message.role === "assistant";
 
   return (
@@ -31,6 +32,9 @@ export function ChatMessage({ message }: Props) {
         }`}
       >
         {message.content}
+        {isStreaming && (
+          <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-brand-primary align-middle" />
+        )}
         <div className="mt-1 text-[10px] ui-text-muted">
           {message.timestamp.toLocaleTimeString("ko-KR", {
             hour: "2-digit",
