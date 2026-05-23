@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>채팅 치고 스크롤이 내려가는 이유</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      max-width: 760px;
+      margin: 48px auto;
+      padding: 0 24px;
+      background: #0f1117;
+      color: #e2e8f0;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.5rem; color: #a3e635; margin-bottom: 4px; }
+    h2 { font-size: 1.05rem; color: #a3e635; margin-top: 40px; border-left: 3px solid #a3e635; padding-left: 12px; }
+    .sub { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+    pre {
+      background: #1e2230;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+    .comment { color: #6b7280; font-style: italic; }
+    .hl { color: #a3e635; font-weight: bold; }
+    .box {
+      background: #1e2230;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.92rem;
+    }
+    .qa-q { color: #f59e0b; font-weight: bold; margin-top: 24px; }
+    .qa-a { margin-left: 16px; color: #cbd5e1; margin-top: 4px; }
+    .tag {
+      display: inline-block;
+      background: #1e3a2f;
+      color: #a3e635;
+      border: 1px solid #2d5a3d;
+      border-radius: 4px;
+      padding: 1px 8px;
+      font-size: 0.8rem;
+      margin: 0 2px;
+    }
+    hr { border: none; border-top: 1px solid #2d3348; margin: 40px 0; }
+    code { color: #93c5fd; }
+  </style>
+</head>
+<body>
+
+<h1>채팅 치고 스크롤이 내려가는 이유</h1>
+<p class="sub">1단계 노트 · scrollIntoView + overflow-y-auto 동작 원리</p>
+
+<h2>핵심 요약</h2>
+<div class="box">
+  "스크롤 내려라" 라고 명령하는 게 아니라,<br>
+  <strong>"이 요소를 화면에 보이게 해라"</strong> 고 요청하는 것.<br>
+  해당 요소가 화면 아래에 있으니까 브라우저가 알아서 아래로 스크롤한다.
+</div>
+
+<h2>1. scrollIntoView가 내려가는 이유</h2>
+
+<pre><code><span class="comment">// 메시지 목록 맨 아래에 있는 빈 div</span>
+&lt;div ref={bottomRef} /&gt;
+
+<span class="comment">// 메시지나 타이핑 상태가 바뀔 때마다 실행</span>
+useEffect(() => {
+  <span class="hl">bottomRef.current?.scrollIntoView({ behavior: "smooth" });</span>
+}, [messages, isTyping]);</code></pre>
+
+<p>
+  <code class="hl">bottomRef</code>가 가리키는 빈 div는 메시지 목록 맨 아래에 있다.<br>
+  새 메시지가 추가되면 이 div는 화면 밖 아래로 밀려난다.<br>
+  그 상태에서 <code>scrollIntoView()</code>를 호출하면 브라우저는<br>
+  <strong>"저 div를 보이려면 아래로 스크롤해야겠다"</strong> 고 판단해서 내려간다.
+</p>
+
+<div class="box">
+  만약 bottomRef div가 이미 화면 안에 보이고 있으면 → 아무 일도 안 일어난다.<br>
+  즉, 필요할 때만 스크롤한다.
+</div>
+
+<p class="qa-q">Q. behavior: "smooth" 는 뭐야?</p>
+<p class="qa-a">
+  스크롤 이동 방식 옵션이다.<br>
+  <span class="tag">"smooth"</span> — 부드럽게 애니메이션<br>
+  <span class="tag">"instant"</span> — 즉시 이동 (기본값)
+</p>
+
+<hr>
+
+<h2>2. 의존성 배열에 messages와 isTyping이 둘 다 있는 이유</h2>
+
+<pre><code>}, [<span class="hl">messages</span>, <span class="hl">isTyping</span>]);</code></pre>
+
+<div class="box">
+  <strong>messages</strong> — 새 메시지(내 말 or AI 응답)가 추가될 때 스크롤<br><br>
+  <strong>isTyping</strong> — AI가 타이핑 중일 때 점 3개 인디케이터가 뜨는데,<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;그것도 맨 아래에 있어야 하니까 true가 되는 순간에도 스크롤
+</div>
+
+<p>만약 <code>isTyping</code>을 빼면? → 점 3개가 화면 밖으로 밀려나도 스크롤이 안 내려간다.</p>
+
+<hr>
+
+<h2>3. 스크롤 설정은 어디에 있나</h2>
+
+<pre><code><span class="comment">// chatbot-basic-page.tsx 94번째 줄</span>
+&lt;div className="ui-panel flex-1 <span class="hl">overflow-y-auto</span> rounded-lg p-4"&gt;</code></pre>
+
+<p class="qa-q">Q. overflow-y-auto 가 없으면?</p>
+<p class="qa-a">
+  메시지가 쌓일수록 채팅창이 아니라 <strong>페이지 전체</strong>가 길어진다.<br>
+  scrollIntoView가 페이지 스크롤을 움직이게 되고, 헤더도 같이 스크롤된다.
+</p>
+
+<p class="qa-q">Q. flex-1 이 없으면?</p>
+<p class="qa-a">
+  채팅창 높이가 고정되지 않아서 내용 크기에 따라 늘어난다.<br>
+  overflow-y-auto가 발동하려면 컨테이너 높이가 고정돼 있어야 한다.<br>
+  <strong>flex-1 + overflow-y-auto 이 두 개는 항상 함께 써야 한다.</strong>
+</p>
+
+<hr>
+
+<h2>4. 전체 흐름 정리</h2>
+
+<pre><code>① 사용자가 Enter 입력
+        ↓
+② handleSend() 실행
+   → setMessages([...prev, userMsg])   <span class="comment">// messages 배열 변경</span>
+   → setIsTyping(true)                 <span class="comment">// isTyping 변경</span>
+        ↓
+③ useEffect 감지 (messages 또는 isTyping 바뀜)
+   → bottomRef.current.scrollIntoView() 실행
+        ↓
+④ 브라우저: "bottomRef div가 화면 밖이네 → 아래로 스크롤"
+        ↓
+⑤ 새 메시지 + 타이핑 인디케이터가 화면에 보임</code></pre>
+
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>훅 분리 — useChatMessages 리팩토링</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      max-width: 760px;
+      margin: 48px auto;
+      padding: 0 24px;
+      background: #0f1117;
+      color: #e2e8f0;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.5rem; color: #a3e635; margin-bottom: 4px; }
+    h2 { font-size: 1.05rem; color: #a3e635; margin-top: 40px; border-left: 3px solid #a3e635; padding-left: 12px; }
+    .sub { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+    pre {
+      background: #1e2230;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+    .comment { color: #6b7280; font-style: italic; }
+    .hl { color: #a3e635; font-weight: bold; }
+    .box {
+      background: #1e2230;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.92rem;
+    }
+    .qa-q { color: #f59e0b; font-weight: bold; margin-top: 24px; }
+    .qa-a { margin-left: 16px; color: #cbd5e1; margin-top: 4px; }
+    .tag {
+      display: inline-block;
+      background: #1e3a2f;
+      color: #a3e635;
+      border: 1px solid #2d5a3d;
+      border-radius: 4px;
+      padding: 1px 8px;
+      font-size: 0.8rem;
+      margin: 0 2px;
+    }
+    .file {
+      display: inline-block;
+      background: #1e2a3a;
+      color: #93c5fd;
+      border: 1px solid #2d3f5a;
+      border-radius: 4px;
+      padding: 1px 8px;
+      font-size: 0.82rem;
+      font-family: monospace;
+    }
+    hr { border: none; border-top: 1px solid #2d3348; margin: 40px 0; }
+    code { color: #93c5fd; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+    th { background: #1e2230; color: #a3e635; padding: 8px 14px; text-align: left; border: 1px solid #2d3348; }
+    td { padding: 8px 14px; border: 1px solid #2d3348; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+
+<h1>훅 분리 — useChatMessages 리팩토링</h1>
+<p class="sub">1단계 노트 · FSD model 레이어에 커스텀 훅 분리하기</p>
+
+<h2>왜 분리했나</h2>
+<div class="box">
+  원래 <code>ChatbotBasicPage</code> 컴포넌트 안에<br>
+  <strong>"UI를 어떻게 보여줄까"</strong> 와 <strong>"메시지 상태를 어떻게 관리할까"</strong> 가 한 덩어리였다.<br><br>
+  페이지가 하나일 땐 괜찮지만, 챗봇 페이지가 여러 개가 되면<br>
+  비슷한 상태 로직이 각 파일마다 복붙되기 시작한다.<br>
+  훅으로 뽑아두면 로직은 한 곳에 모이고, 페이지는 JSX만 남는다.
+</div>
+
+<h2>1. 파일 구조 변화</h2>
+
+<pre><code><span class="comment">// 리팩토링 전</span>
+pages/chatbot/ui/chatbot-basic-page.tsx
+  └─ Message 타입
+  └─ MOCK_RESPONSES 상수
+  └─ useState, useRef, useEffect (상태 로직)
+  └─ handleSend, handleKeyDown (이벤트 핸들러)
+  └─ return &lt;JSX&gt;
+
+<span class="comment">// 리팩토링 후</span>
+<span class="hl">features/chatbot/model/use-chat-messages.ts</span>   ← 로직
+  └─ Message 타입
+  └─ MOCK_RESPONSES 상수
+  └─ useChatMessages() 훅
+
+pages/chatbot/ui/chatbot-basic-page.tsx          ← UI만
+  └─ useChatMessages() 호출
+  └─ return &lt;JSX&gt;</code></pre>
+
+<h2>2. 커스텀 훅의 구조</h2>
+
+<pre><code><span class="comment">// features/chatbot/model/use-chat-messages.ts</span>
+export function <span class="hl">useChatMessages</span>() {
+  const [messages, setMessages] = useState&lt;Message[]&gt;([...]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const bottomRef = useRef&lt;HTMLDivElement&gt;(null);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView(...) }, [...]);
+
+  function handleSend() { <span class="comment">/* mock 응답 생성 */</span> }
+  function handleKeyDown() { <span class="comment">/* Enter 키 처리 */</span> }
+
+  <span class="comment">// 페이지가 필요한 것들만 return</span>
+  return { messages, input, setInput, isTyping, bottomRef, handleSend, handleKeyDown };
+}</code></pre>
+
+<div class="box">
+  커스텀 훅은 결국 <strong>return 값이 있는 함수</strong>다.<br>
+  useState · useRef · useEffect 를 안에서 쓸 수 있는 이유는<br>
+  이름이 <code>use</code>로 시작하기 때문이다 (React 훅 규칙).
+</div>
+
+<h2>3. 페이지가 훅을 쓰는 방법</h2>
+
+<pre><code><span class="comment">// pages/chatbot/ui/chatbot-basic-page.tsx</span>
+import { useChatMessages } from "../../../features/chatbot/model/use-chat-messages";
+
+export function ChatbotBasicPage() {
+  const { messages, input, setInput, isTyping, bottomRef, handleSend, handleKeyDown }
+    = <span class="hl">useChatMessages()</span>;
+
+  return (
+    <span class="comment">&lt;!-- JSX만 --&gt;</span>
+  );
+}</code></pre>
+
+<p>페이지 입장에서는 "훅에서 필요한 값들을 꺼내 쓴다" 는 것만 알면 된다.<br>
+내부에서 어떻게 상태를 관리하는지는 훅 파일만 보면 된다.</p>
+
+<h2>4. FSD에서 어느 레이어에 두나</h2>
+
+<table>
+  <tr>
+    <th>레이어</th>
+    <th>역할</th>
+    <th>이번 예시</th>
+  </tr>
+  <tr>
+    <td><span class="tag">pages</span></td>
+    <td>화면 조합 (JSX)</td>
+    <td>chatbot-basic-page.tsx</td>
+  </tr>
+  <tr>
+    <td><span class="tag">features</span></td>
+    <td>사용자 행동 단위 로직</td>
+    <td>useChatMessages 훅</td>
+  </tr>
+  <tr>
+    <td><span class="tag">entities</span></td>
+    <td>도메인 타입 · API</td>
+    <td>(지금은 훅 안에 같이 있음)</td>
+  </tr>
+</table>
+
+<div class="box">
+  <code>features/chatbot/model/</code> 의 <strong>model</strong> 폴더는<br>
+  "이 feature의 상태와 비즈니스 로직"을 담는 곳이다.<br>
+  UI가 없으면 model/, UI가 있으면 ui/ 에 넣는다.
+</div>
+
+<hr>
+
+<h2>5. 한 줄 요약</h2>
+
+<pre><code>훅 분리 = "로직을 페이지 밖으로 꺼내서 재사용 가능하게 만들기"
+
+페이지  →  <span class="hl">어떻게 보여줄까</span>  (JSX)
+훅     →  <span class="hl">상태를 어떻게 관리할까</span>  (useState / useEffect / 핸들러)</code></pre>
+
+<p class="qa-q">Q. 지금 당장 재사용하지 않는데 분리할 필요가 있나?</p>
+<p class="qa-a">
+  당장은 없어도 후회할 일은 아니다.<br>
+  나중에 chatbot-streaming-page 같은 곳에서 비슷한 메시지 상태가 필요해지면<br>
+  이 훅을 가져다 쓰거나 확장하면 된다.<br>
+  지금 분리해두면 그 시점에 리팩토링 비용이 0이다.
+</p>
+
+</body>
+</html>
