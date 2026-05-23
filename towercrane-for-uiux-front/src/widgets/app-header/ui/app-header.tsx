@@ -44,6 +44,12 @@ function sectionIdToPath(sectionId: string): string {
     readme_admin: '/admin/readme',
     admin_board_configs: '/admin/board-configs',
     admin_boards: '/admin/boards',
+    chatbot_pilot: '/chatbot',
+    chatbot_basic: '/chatbot',
+    chatbot_streaming: '/chatbot/streaming',
+    chatbot_history: '/chatbot/history',
+    chatbot_flow: '/chatbot/flow',
+    chatbot_files: '/chatbot/files',
   }
   return map[sectionId] ?? '/prototype'
 }
@@ -78,6 +84,11 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/admin/readme')) return 'readme_admin'
   if (pathname.startsWith('/admin/board-configs')) return 'admin_board_configs'
   if (pathname.startsWith('/admin/boards')) return 'admin_boards'
+  if (pathname.startsWith('/chatbot/streaming')) return 'chatbot_streaming'
+  if (pathname.startsWith('/chatbot/history')) return 'chatbot_history'
+  if (pathname.startsWith('/chatbot/flow')) return 'chatbot_flow'
+  if (pathname.startsWith('/chatbot/files')) return 'chatbot_files'
+  if (pathname.startsWith('/chatbot')) return 'chatbot_basic'
   return 'prototype'
 }
 

@@ -316,6 +316,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         content TEXT NOT NULL DEFAULT '',
+        mmd_content TEXT NOT NULL DEFAULT '',
         task_type TEXT NOT NULL DEFAULT 'FEATURE',
         status TEXT NOT NULL DEFAULT 'TODO',
         priority TEXT NOT NULL DEFAULT 'MEDIUM',
@@ -1392,9 +1393,58 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       )
       .run(now);
 
+    // 챗봇 파일럿 루트 메뉴 + 5개 자식 upsert
+    const existingChatbotPilot = this.sqlite
+      .prepare("SELECT id FROM menus WHERE section_id = 'chatbot_pilot' AND parent_id IS NULL LIMIT 1")
+      .get() as { id: string } | undefined;
+
+    if (!existingChatbotPilot) {
+      const chatbotPilotId = randomUUID();
+      this.db
+        .insert(menusTable)
+        .values({
+          id: chatbotPilotId,
+          name: '챗봇 파일럿',
+          sectionId: 'chatbot_pilot',
+          icon: 'BotMessageSquare',
+          displayOrder: 9,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      const children = [
+        { name: '기본 채팅',    sectionId: 'chatbot_basic',     icon: 'MessageCircle', displayOrder: 0 },
+        { name: '스트리밍 응답', sectionId: 'chatbot_streaming', icon: 'Zap',           displayOrder: 1 },
+        { name: '히스토리 관리', sectionId: 'chatbot_history',   icon: 'History',       displayOrder: 2 },
+        { name: 'React Flow',   sectionId: 'chatbot_flow',      icon: 'GitFork',       displayOrder: 3 },
+        { name: '파일 첨부',    sectionId: 'chatbot_files',     icon: 'Paperclip',     displayOrder: 4 },
+      ];
+      for (const child of children) {
+        this.db
+          .insert(menusTable)
+          .values({
+            id: randomUUID(),
+            name: child.name,
+            sectionId: child.sectionId,
+            icon: child.icon,
+            displayOrder: child.displayOrder,
+            isVisible: true,
+            requiredRole: null,
+            parentId: chatbotPilotId,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+      }
+    }
+
     // 루트 메뉴 표시 순서 고정:
     // 0:AI Native, 1:회의실, 2:업무관리, 3:Postman, 4:Study Diary,
-    // 5:게시판, 6:SQL Practice, 7:Dev Challenge, 8:Prototype, 9:Admin
+    // 5:게시판, 6:SQL Practice, 7:Dev Challenge, 8:Prototype, 9:챗봇 파일럿, 10:Admin
     const rootMenuOrder: Array<{ sectionId: string | string[]; displayOrder: number }> = [
       { sectionId: ['task_group', 'task'],      displayOrder: 0 },
       { sectionId: 'api_doc',                  displayOrder: 1 },
@@ -1405,7 +1455,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { sectionId: 'sql_group',                displayOrder: 6 },
       { sectionId: 'dev_challenge',            displayOrder: 7 },
       { sectionId: 'prototype',                displayOrder: 8 },
-      { sectionId: 'admin_dropdown',           displayOrder: 9 },
+      { sectionId: 'chatbot_pilot',            displayOrder: 9 },
+      { sectionId: 'admin_dropdown',           displayOrder: 10 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
@@ -1869,6 +1920,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'tasks',
       'visibility',
       "ALTER TABLE tasks ADD COLUMN visibility TEXT DEFAULT 'TEAM' NOT NULL",
+    );
+    this.ensureColumn(
+      'tasks',
+      'mmd_content',
+      "ALTER TABLE tasks ADD COLUMN mmd_content TEXT DEFAULT '' NOT NULL",
     );
     this.sqlite.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user

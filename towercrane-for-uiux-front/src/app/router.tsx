@@ -12,12 +12,18 @@ import { Toaster } from 'sonner'
 import { AppHeader } from '../widgets/app-header/ui/app-header'
 import { LoginPage } from '../pages/auth/ui/login-page'
 import { WorkbenchPage } from '../pages/workbench/ui/workbench-page'
+import { ChatbotBasicPage } from '../pages/chatbot/ui/chatbot-basic-page'
+import { ChatbotStreamingPage } from '../pages/chatbot/ui/chatbot-streaming-page'
+import { ChatbotHistoryPage } from '../pages/chatbot/ui/chatbot-history-page'
+import { ChatbotFlowPage } from '../pages/chatbot/ui/chatbot-flow-page'
+import { ChatbotFilesPage } from '../pages/chatbot/ui/chatbot-files-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
 import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
 import { TaskPage } from '../pages/task/ui/task-page'
+import { TaskDetailPage } from '../pages/task/ui/task-detail-page'
 import { PrototypeIssuesPage } from '../pages/prototype-issues/ui/prototype-issues-page'
 import { ProjectIssuesPage } from '../pages/project-issues/ui/project-issues-page'
 import { ProfilePage } from '../pages/profile/ui/profile-page'
@@ -255,10 +261,36 @@ const legacyChallengeRedirectRoute = createRoute({
   component: StudyDiaryRedirect,
 })
 
-const chatbotRedirectRoute = createRoute({
+// ─── /chatbot/* ──────────────────────────────────────────────────────────────
+
+const chatbotRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot',
-  component: StudyDiaryRedirect,
+  component: ChatbotBasicPage,
+})
+
+const chatbotStreamingRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/streaming',
+  component: ChatbotStreamingPage,
+})
+
+const chatbotHistoryRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/history',
+  component: ChatbotHistoryPage,
+})
+
+const chatbotFlowRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/flow',
+  component: ChatbotFlowPage,
+})
+
+const chatbotFilesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/files',
+  component: ChatbotFilesPage,
 })
 
 function StudyDiaryRedirect() {
@@ -388,6 +420,12 @@ const myTaskRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/task/my',
   component: () => <TaskPage scopeMode="my" />,
+})
+
+const taskDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/task/$taskId',
+  component: TaskDetailPage,
 })
 
 const userTaskRoute = createRoute({
@@ -609,7 +647,11 @@ export const router = createRouter({
       studyDiaryRoute,
       devChallengeRoute,
       legacyChallengeRedirectRoute,
-      chatbotRedirectRoute,
+      chatbotRoute,
+      chatbotStreamingRoute,
+      chatbotHistoryRoute,
+      chatbotFlowRoute,
+      chatbotFilesRoute,
       meetingRoute,
       docuRoute,
       aiMethodologyRoute,
@@ -625,6 +667,7 @@ export const router = createRouter({
       boardDetailRoute,
       taskRoute,
       myTaskRoute,
+      taskDetailRoute,
       userTaskRoute,
       prototypeIssuesRoute,
       projectIssuesRoute,
