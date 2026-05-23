@@ -21,7 +21,7 @@ import {
   type Row,
   type RowSelectionState,
 } from '@tanstack/react-table'
-import { Archive, ArchiveRestore, ExternalLink, GripVertical } from 'lucide-react'
+import { FileSearch, GripVertical } from 'lucide-react'
 import { clsx } from 'clsx'
 import {
   TASK_PRIORITY_LABELS,
@@ -34,8 +34,6 @@ import type { AssignableUser } from '../../../shared/api/users'
 import { Button } from '../../../shared/ui/button'
 import { CompactSelect } from '../../../shared/ui/compact-select'
 import {
-  useArchiveTasks,
-  useRestoreTasks,
   useReorderTasks,
   useUpdateTaskAssignee,
   useUpdateTaskPriority,
@@ -114,7 +112,6 @@ function SortableTableRow({
 export function TaskTableView({
   tasks,
   users,
-  archived,
   canReorder,
   isLoading,
   onOpenTask,
@@ -122,7 +119,6 @@ export function TaskTableView({
 }: {
   tasks: Task[]
   users: AssignableUser[]
-  archived: boolean
   canReorder: boolean
   isLoading?: boolean
   onOpenTask: (taskId: string) => void
@@ -138,31 +134,33 @@ export function TaskTableView({
   const updatePriority = useUpdateTaskPriority()
   const updateAssignee = useUpdateTaskAssignee()
   const reorderTasks = useReorderTasks()
-  const archiveTasks = useArchiveTasks()
-  const restoreTasks = useRestoreTasks()
 
   const columns = useMemo<ColumnDef<Task>[]>(
     () => [
       {
         id: 'select',
         header: ({ table }) => (
-          <input
-            type="checkbox"
-            className="size-4 accent-[var(--primary)]"
-            checked={table.getIsAllRowsSelected()}
-            onChange={table.getToggleAllRowsSelectedHandler()}
-            aria-label="전체 선택"
-          />
+          <div className="flex h-full items-center justify-center">
+            <input
+              type="checkbox"
+              className="m-0 size-4 shrink-0 align-middle accent-[var(--primary)]"
+              checked={table.getIsAllRowsSelected()}
+              onChange={table.getToggleAllRowsSelectedHandler()}
+              aria-label="전체 선택"
+            />
+          </div>
         ),
         cell: ({ row }) => (
-          <input
-            type="checkbox"
-            className="size-4 accent-[var(--primary)]"
-            checked={row.getIsSelected()}
-            onChange={row.getToggleSelectedHandler()}
-            onClick={(event) => event.stopPropagation()}
-            aria-label="업무 선택"
-          />
+          <div className="flex h-full items-center justify-center">
+            <input
+              type="checkbox"
+              className="m-0 size-4 shrink-0 align-middle accent-[var(--primary)]"
+              checked={row.getIsSelected()}
+              onChange={row.getToggleSelectedHandler()}
+              onClick={(event) => event.stopPropagation()}
+              aria-label="업무 선택"
+            />
+          </div>
         ),
       },
       {
@@ -198,6 +196,7 @@ export function TaskTableView({
           <div onClick={(event) => event.stopPropagation()}>
             <CompactSelect
               value={row.original.status}
+              className="h-8 min-h-8 pl-2.5 pr-7 text-sm font-medium"
               onChange={(event) =>
                 updateStatus.mutate({
                   id: row.original.id,
@@ -222,6 +221,7 @@ export function TaskTableView({
           <div onClick={(event) => event.stopPropagation()}>
             <CompactSelect
               value={row.original.priority}
+              className="h-8 min-h-8 pl-2.5 pr-7 text-sm font-medium"
               onChange={(event) =>
                 updatePriority.mutate({
                   id: row.original.id,
@@ -246,6 +246,7 @@ export function TaskTableView({
           <div onClick={(event) => event.stopPropagation()}>
             <CompactSelect
               value={row.original.assigneeId ?? ''}
+              className="h-8 min-h-8 pl-2.5 pr-7 text-sm font-medium"
               onChange={(event) =>
                 updateAssignee.mutate({
                   id: row.original.id,
@@ -268,7 +269,7 @@ export function TaskTableView({
         accessorKey: 'dueDate',
         header: '마감일',
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-xs text-text-secondary">
+          <span className="whitespace-nowrap text-sm font-medium text-text-primary">
             {formatDate(row.original.dueDate)}
           </span>
         ),
@@ -277,7 +278,7 @@ export function TaskTableView({
         accessorKey: 'reporterName',
         header: '작성자',
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-xs text-text-secondary">
+          <span className="whitespace-nowrap text-sm font-medium text-text-primary">
             {row.original.reporterName ?? '-'}
           </span>
         ),
@@ -286,7 +287,7 @@ export function TaskTableView({
         accessorKey: 'createdAt',
         header: '작성일',
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-xs text-text-muted">
+          <span className="whitespace-nowrap text-sm font-medium text-text-primary">
             {formatDate(row.original.createdAt)}
           </span>
         ),
@@ -298,15 +299,16 @@ export function TaskTableView({
           <Button
             type="button"
             variant="ghost"
-            size="sm-icon"
-            title="상세 열기"
-            aria-label="상세 열기"
+            size="icon"
+            className="h-9 min-h-9 w-9 rounded-md"
+            title="상세 보기"
+            aria-label="상세 보기"
             onClick={(event) => {
               event.stopPropagation()
               onOpenTask(row.original.id)
             }}
           >
-            <ExternalLink className="size-3.5" />
+            <FileSearch className="size-4" />
           </Button>
         ),
       },
@@ -314,8 +316,6 @@ export function TaskTableView({
     [onOpenTask, updateAssignee, updatePriority, updateStatus, users],
   )
 
-  // TanStack Table intentionally returns non-memoizable helpers.
-  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: tasks,
     columns,
@@ -327,18 +327,14 @@ export function TaskTableView({
   })
 
   const selectedIds = table.getSelectedRowModel().rows.map((row) => row.original.id)
-  const bulkAction = archived ? restoreTasks : archiveTasks
   const rowIds = tasks.map((task) => task.id)
+  const selectedIdKey = selectedIds.join(',')
 
   useEffect(() => {
     onSelectionChange?.(selectedIds)
-  }, [selectedIds.join(',')])
-
-  const handleBulkAction = async () => {
-    if (selectedIds.length === 0) return
-    await bulkAction.mutateAsync(selectedIds)
-    setRowSelection({})
-  }
+    // Only notify the parent when the selected row id set changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onSelectionChange, selectedIdKey])
 
   const handleDragEnd = (event: DragEndEvent) => {
     const activeId = String(event.active.id)
@@ -381,7 +377,7 @@ export function TaskTableView({
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className="px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-text-muted"
+                        className="px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-text-secondary"
                       >
                         {header.isPlaceholder
                           ? null

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import {
   ArrowLeft,
   CalendarDays,
   Eye,
+  FileText,
   MessageSquareReply,
   Pencil,
   Pin,
@@ -20,6 +21,7 @@ import {
 } from '../../../features/board/model/use-board-queries'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
+import { LexicalEditor } from '../../../shared/ui/lexical/lexical-editor'
 import { SearchField } from '../../../shared/ui/search-field'
 import { Textarea } from '../../../shared/ui/textarea'
 
@@ -31,6 +33,90 @@ function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(
     new Date(value),
   )
+}
+
+function isLexicalJson(value: string) {
+  try {
+    const parsed = JSON.parse(value)
+    return Boolean(parsed?.root)
+  } catch {
+    return false
+  }
+}
+
+function hasLexicalContent(value: string) {
+  try {
+    const parsed = JSON.parse(value)
+    const queue = Array.isArray(parsed?.root?.children) ? [...parsed.root.children] : []
+    while (queue.length > 0) {
+      const node = queue.shift()
+      if (typeof node?.text === 'string' && node.text.trim()) return true
+      if (node?.type === 'image' || node?.type === 'youtube') return true
+      if (Array.isArray(node?.children)) queue.push(...node.children)
+    }
+  } catch {
+    return value.trim().length > 0
+  }
+  return false
+}
+
+function createPlainTextLexicalState(value: string) {
+  const paragraphs = value
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => ({
+      children: line
+        ? [
+            {
+              detail: 0,
+              format: 0,
+              mode: 'normal',
+              style: '',
+              text: line,
+              type: 'text',
+              version: 1,
+            },
+          ]
+        : [],
+      direction: null,
+      format: '',
+      indent: 0,
+      type: 'paragraph',
+      version: 1,
+    }))
+
+  return JSON.stringify({
+    root: {
+      children: paragraphs.length > 0 ? paragraphs : [{ children: [], direction: null, format: '', indent: 0, type: 'paragraph', version: 1 }],
+      direction: null,
+      format: '',
+      indent: 0,
+      type: 'root',
+      version: 1,
+    },
+  })
+}
+
+function toLexicalInitialState(value: string) {
+  if (!value.trim()) return ''
+  return isLexicalJson(value) ? value : createPlainTextLexicalState(value)
+}
+
+function BoardContent({ content }: { content: string }) {
+  if (!content) return <span className="text-text-muted">내용이 없습니다.</span>
+  if (isLexicalJson(content)) {
+    return (
+      <div className="overflow-hidden rounded-md border border-surface-border-soft">
+        <LexicalEditor
+          initialState={content}
+          onChange={() => undefined}
+          readOnly
+          minHeight="120px"
+        />
+      </div>
+    )
+  }
+  return <p className="whitespace-pre-wrap text-sm leading-7 text-text-primary">{content}</p>
 }
 
 // ── 댓글 섹션 ─────────────────────────────────────────────────────────────────
@@ -161,62 +247,63 @@ function DetailPanel({
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       {/* 헤더 */}
-      <div className="border-b border-brand-border bg-brand-glass px-6 py-5">
-        <div className="mb-2">
-          {board.pinned ? (
-            <span className="inline-flex items-center gap-1 rounded-md border border-brand-border bg-brand-glass px-2 py-1 text-[11px] font-black text-brand-primary">
-              <Pin className="size-3" /> 공지
-            </span>
-          ) : (
-            <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">
-              POST DETAIL
-            </span>
-          )}
-        </div>
-
-        {editing ? (
-          <Input
-            value={draft.title}
-            onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
-            className="text-lg font-bold"
-          />
-        ) : (
-          <h2 className="text-xl font-black leading-snug text-text-primary">{board.title}</h2>
-        )}
-
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
-            <span className="font-bold text-text-secondary">{board.authorName}</span>
-            <span className="inline-flex items-center gap-1">
-              <CalendarDays className="size-3.5" />
-              {formatDateTime(board.createdAt)}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Eye className="size-3.5" />
-              {board.viewCount}
-            </span>
-            {board.answered && (
-              <span className="font-bold text-brand-primary">답변 완료</span>
+      <div className="border-b border-brand-border bg-brand-glass px-5 py-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {editing ? (
+              <Input
+                value={draft.title}
+                onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
+                className="h-9 text-base font-bold"
+              />
+            ) : (
+              <h2 className="truncate text-base font-black leading-6 text-text-primary">
+                {board.title}
+              </h2>
             )}
+
+            <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-text-muted">
+              {board.pinned && (
+                <span className="inline-flex items-center gap-1 font-bold text-brand-primary">
+                  <Pin className="size-3" />
+                  공지
+                </span>
+              )}
+              <span className="font-bold text-text-secondary">{board.authorName}</span>
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="size-3" />
+                {formatDateTime(board.createdAt)}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Eye className="size-3" />
+                {board.viewCount}
+              </span>
+              {board.answered && (
+                <span className="font-bold text-brand-primary">답변 완료</span>
+              )}
+            </div>
           </div>
+
           {board.canEdit && !editing && (
             <div className="flex shrink-0 gap-1.5">
               <button
                 type="button"
                 onClick={startEdit}
-                className="rounded-md border border-surface-border px-3 py-1.5 text-xs font-bold text-text-muted transition-colors hover:border-brand-border hover:text-brand-primary"
+                className="inline-flex size-8 items-center justify-center rounded-md border border-surface-border bg-background text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
+                title="수정"
+                aria-label="수정"
               >
-                <Pencil className="inline size-3 mr-1" />
-                수정
+                <Pencil className="size-3.5" />
               </button>
               <button
                 type="button"
                 disabled={deleteBoard.isPending}
                 onClick={handleDelete}
-                className="rounded-md border border-surface-border px-3 py-1.5 text-xs font-bold text-text-muted transition-colors hover:border-red-400 hover:text-red-500 disabled:opacity-40"
+                className="inline-flex size-8 items-center justify-center rounded-md border border-surface-border bg-background text-text-secondary transition-colors hover:border-destructive hover:bg-danger-glass hover:text-destructive disabled:opacity-40"
+                title="삭제"
+                aria-label="삭제"
               >
-                <Trash2 className="inline size-3 mr-1" />
-                삭제
+                <Trash2 className="size-3.5" />
               </button>
             </div>
           )}
@@ -227,19 +314,22 @@ function DetailPanel({
       <div className="flex-1 bg-surface-raised px-6 py-6">
         {editing ? (
           <div className="space-y-3">
-            <Textarea
-              value={draft.content}
-              onChange={(e) => setDraft((p) => ({ ...p, content: e.target.value }))}
-              rows={12}
-              className="resize-none"
-            />
+            <div className="overflow-hidden rounded-md border border-surface-border-soft">
+              <LexicalEditor
+                key={`board-edit-${boardId}`}
+                initialState={toLexicalInitialState(draft.content)}
+                onChange={(content) => setDraft((p) => ({ ...p, content }))}
+                minHeight="240px"
+                placeholder="내용을 입력하세요."
+              />
+            </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>
                 취소
               </Button>
               <Button
                 size="sm"
-                disabled={updateBoard.isPending || !draft.title.trim()}
+                disabled={updateBoard.isPending || !draft.title.trim() || !hasLexicalContent(draft.content)}
                 onClick={handleSave}
               >
                 {updateBoard.isPending ? '저장 중…' : '저장'}
@@ -247,9 +337,7 @@ function DetailPanel({
             </div>
           </div>
         ) : (
-          <p className="whitespace-pre-wrap text-sm leading-7 text-text-primary">
-            {board.content || <span className="text-text-muted">내용이 없습니다.</span>}
-          </p>
+          <BoardContent content={board.content} />
         )}
       </div>
 
@@ -263,12 +351,24 @@ function DetailPanel({
 
 function EmptyDetail() {
   return (
-    <div className="flex h-full min-h-96 flex-col items-center justify-center gap-3 bg-surface-muted px-8 py-10 text-center">
-      <div className="flex size-14 items-center justify-center rounded-xl border border-brand-border bg-brand-glass">
-        <MessageSquareReply className="size-6 text-brand-primary" />
+    <div className="flex h-full min-h-96 flex-col items-center justify-center gap-2.5 bg-surface-muted px-8 py-10 text-center">
+      <div className="relative h-20 w-28">
+        <div className="absolute left-3 top-3 h-14 w-16 rounded-lg border border-surface-border-soft bg-surface-raised shadow-sm" />
+        <div className="absolute left-8 top-0 h-16 w-16 rounded-lg border border-surface-border bg-background shadow-sm">
+          <div className="flex h-full flex-col gap-1.5 p-3">
+            <div className="flex items-center gap-1.5">
+              <FileText className="size-3.5 text-brand-primary" />
+              <span className="h-1.5 w-6 rounded-full bg-brand-glass" />
+            </div>
+            <span className="h-1 rounded-full bg-surface-muted" />
+            <span className="h-1 rounded-full bg-surface-muted" />
+            <span className="h-1 w-7 rounded-full bg-surface-muted" />
+          </div>
+        </div>
+        <div className="absolute bottom-3 right-3 size-3 rounded-full border border-brand-border bg-brand-glass" />
       </div>
-      <p className="text-sm font-bold text-text-primary">게시글을 클릭해주세요</p>
-      <p className="text-xs text-text-muted">왼쪽 목록에서 선택하면 오른쪽에 상세 내용이 열립니다.</p>
+      <p className="text-sm font-bold text-text-primary">선택된 게시글이 없습니다</p>
+      <p className="text-xs text-text-muted">목록에서 게시글을 선택하면 내용이 표시됩니다.</p>
     </div>
   )
 }
@@ -281,7 +381,7 @@ function WriteForm({ code, onDone }: { code: string; onDone: () => void }) {
   const [draft, setDraft] = useState({ title: '', content: '' })
 
   const handleSubmit = async () => {
-    if (!draft.title.trim() || !draft.content.trim()) return
+    if (!draft.title.trim() || !hasLexicalContent(draft.content)) return
     const board = await createBoard.mutateAsync({ code, body: draft })
     onDone()
     navigate({ to: `/boards/${code}/${board.id}` })
@@ -306,17 +406,18 @@ function WriteForm({ code, onDone }: { code: string; onDone: () => void }) {
           placeholder="제목을 입력하세요"
           autoFocus
         />
-        <Textarea
-          value={draft.content}
-          onChange={(e) => setDraft((p) => ({ ...p, content: e.target.value }))}
-          placeholder="내용을 입력하세요"
-          rows={8}
-          className="resize-none"
-        />
+        <div className="overflow-hidden rounded-md border border-surface-border-soft">
+          <LexicalEditor
+            initialState={draft.content}
+            onChange={(content) => setDraft((p) => ({ ...p, content }))}
+            placeholder="내용을 입력하세요."
+            minHeight="260px"
+          />
+        </div>
         <div className="flex justify-end">
           <Button
             onClick={handleSubmit}
-            disabled={createBoard.isPending || !draft.title.trim() || !draft.content.trim()}
+            disabled={createBoard.isPending || !draft.title.trim() || !hasLexicalContent(draft.content)}
           >
             {createBoard.isPending ? '등록 중…' : '등록하기'}
           </Button>
@@ -328,28 +429,19 @@ function WriteForm({ code, onDone }: { code: string; onDone: () => void }) {
 
 // ── 메인 ──────────────────────────────────────────────────────────────────────
 
-export function BoardListPage() {
+function BoardListContent({ code }: { code: string }) {
   const navigate = useNavigate()
-  const params = useParams({ strict: false }) as { code?: string }
-  const code = params.code ?? ''
   const [input, setInput] = useState('')
   const [q, setQ] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showWrite, setShowWrite] = useState(false)
   const filters = useMemo(() => ({ page: 1, pageSize: 30, q }), [q])
-
-  useEffect(() => {
-    setSelectedId(null)
-    setShowWrite(false)
-    setInput('')
-    setQ('')
-  }, [code])
   const boardsQuery = useBoards(code, filters)
   const data = boardsQuery.data
   const items = data?.items ?? []
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 lg:px-8">
+    <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-4 py-6 lg:px-8 xl:px-10">
       {/* 헤더 */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -387,29 +479,23 @@ export function BoardListPage() {
         </div>
       </div>
 
-      {/* 글쓰기 폼 */}
-      {showWrite && (
-        <WriteForm code={code} onDone={() => setShowWrite(false)} />
-      )}
-
       {/* 스플릿 뷰 */}
-      {!showWrite && (
-        <div className="grid gap-5 lg:grid-cols-[minmax(360px,0.7fr)_minmax(0,1.3fr)]" style={{ minHeight: 640 }}>
-          {/* 왼쪽: 목록 */}
-          <section className="flex flex-col overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised shadow-sm">
-            {/* 검색 */}
-            <div className="border-b border-surface-border-soft p-3">
-              <SearchField
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onSearch={() => setQ(input)}
-                placeholder="제목 또는 내용 검색"
-                wrapperClassName="h-10"
-              />
-            </div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(360px,0.4fr)_minmax(0,0.6fr)]" style={{ minHeight: 640 }}>
+        {/* 왼쪽: 목록 */}
+        <section className="flex flex-col overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised shadow-sm">
+          {/* 검색 */}
+          <div className="border-b border-surface-border-soft p-3">
+            <SearchField
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onSearch={() => setQ(input)}
+              placeholder="제목 또는 내용 검색"
+              wrapperClassName="h-10"
+            />
+          </div>
 
-            {/* 컬럼 헤더 */}
-            <div className="flex items-center border-b border-surface-border-soft bg-surface-muted px-4 py-3">
+          {/* 컬럼 헤더 */}
+          <div className="flex items-center border-b border-surface-border-soft bg-surface-muted px-4 py-3">
               <span className="w-10 shrink-0 text-center text-[11px] font-black uppercase tracking-widest text-text-muted">
                 NO.
               </span>
@@ -419,10 +505,10 @@ export function BoardListPage() {
               <span className="w-20 shrink-0 text-right text-[11px] font-black uppercase tracking-widest text-text-muted">
                 날짜
               </span>
-            </div>
+          </div>
 
-            {/* 목록 */}
-            <div className="flex-1 overflow-y-auto">
+          {/* 목록 */}
+          <div className="flex-1 overflow-y-auto">
               {boardsQuery.isLoading ? (
                 <div className="space-y-2 p-3">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -442,10 +528,13 @@ export function BoardListPage() {
                       <li key={board.id}>
                         <button
                           type="button"
-                          onClick={() => setSelectedId(board.id)}
+                          onClick={() => {
+                            setShowWrite(false)
+                            setSelectedId(board.id)
+                          }}
                           className={[
-                            'group relative flex w-full items-center overflow-hidden rounded-lg border px-4 py-3.5 text-left shadow-sm transition-all duration-150',
-                            'before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-brand-primary before:transition-opacity',
+                            'group relative flex w-full items-center overflow-hidden rounded-lg border px-3.5 py-2.5 text-left shadow-sm transition-all duration-150',
+                            'before:absolute before:inset-y-2.5 before:left-0 before:w-1 before:rounded-r-full before:bg-brand-primary before:transition-opacity',
                             active
                               ? 'border-brand-border bg-brand-glass before:opacity-100 shadow-md'
                               : 'border-surface-border-soft bg-surface-raised before:opacity-0 hover:-translate-y-0.5 hover:border-brand-border hover:shadow-md hover:before:opacity-60',
@@ -460,7 +549,7 @@ export function BoardListPage() {
                             ) : (
                               <span
                                 className={[
-                                  'inline-flex size-6 items-center justify-center rounded-md text-xs font-black tabular-nums transition-colors',
+                                  'inline-flex size-5 items-center justify-center rounded-md text-[11px] font-black tabular-nums transition-colors',
                                   active
                                     ? 'bg-brand-primary text-surface-raised shadow-sm'
                                     : 'text-text-muted group-hover:bg-brand-glass group-hover:text-brand-primary',
@@ -485,7 +574,7 @@ export function BoardListPage() {
                             </p>
                             <p
                               className={[
-                                'mt-0.5 truncate text-[11px] transition-colors',
+                                'truncate text-[11px] leading-4 transition-colors',
                                 active
                                   ? 'font-bold text-brand-primary/70'
                                   : 'text-text-muted group-hover:text-text-secondary',
@@ -499,7 +588,7 @@ export function BoardListPage() {
                           <span className="w-20 shrink-0 text-right">
                             <span
                               className={[
-                                'inline-flex rounded-md px-2 py-1 text-[11px] tabular-nums transition-colors',
+                                'inline-flex rounded-md px-2 py-0.5 text-[11px] tabular-nums transition-colors',
                                 active
                                   ? 'bg-brand-primary font-black text-surface-raised shadow-sm'
                                   : 'text-text-muted group-hover:bg-brand-glass group-hover:text-brand-primary',
@@ -514,24 +603,32 @@ export function BoardListPage() {
                   })}
                 </ul>
               )}
-            </div>
-          </section>
+          </div>
+        </section>
 
-          {/* 오른쪽: 상세 */}
-          <section className="overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised shadow-sm">
-            {selectedId ? (
-              <DetailPanel
-                key={selectedId}
-                code={code}
-                boardId={selectedId}
-                onDeleted={() => setSelectedId(null)}
-              />
-            ) : (
-              <EmptyDetail />
-            )}
-          </section>
-        </div>
-      )}
+        {/* 오른쪽: 상세 / 글쓰기 */}
+        <section className="overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised shadow-sm">
+          {showWrite ? (
+            <WriteForm code={code} onDone={() => setShowWrite(false)} />
+          ) : selectedId ? (
+            <DetailPanel
+              key={selectedId}
+              code={code}
+              boardId={selectedId}
+              onDeleted={() => setSelectedId(null)}
+            />
+          ) : (
+            <EmptyDetail />
+          )}
+        </section>
+      </div>
     </div>
   )
+}
+
+export function BoardListPage() {
+  const params = useParams({ strict: false }) as { code?: string }
+  const code = params.code ?? ''
+
+  return <BoardListContent key={code} code={code} />
 }

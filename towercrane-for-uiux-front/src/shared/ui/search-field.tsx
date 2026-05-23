@@ -25,16 +25,16 @@ export function SearchField({
   return (
     <label
       className={cn(
-        'flex h-9 w-full items-center gap-2 rounded-md border border-surface-border bg-background px-2.5 transition-all focus-within:border-brand-border focus-within:ring-2 focus-within:ring-brand-border/5',
+        'flex h-9 min-h-9 w-full items-stretch overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-none transition-all hover:border-brand-border/70 focus-within:border-brand-border focus-within:ring-1 focus-within:ring-brand-border/15',
         wrapperClassName,
       )}
     >
-      <span className="flex size-4.5 shrink-0 items-center justify-center rounded-[1px] bg-surface-muted text-brand-primary">
-        <Search strokeWidth={2} className="size-3" />
+      <span className="flex w-10 shrink-0 items-center justify-center border-r border-surface-border-soft bg-surface-muted text-brand-primary">
+        <Search strokeWidth={2} className="size-4" />
       </span>
       <input
         className={cn(
-          'min-w-0 flex-1 border-0 bg-transparent p-0 text-[13px] leading-5 text-text-primary placeholder:text-text-muted outline-none',
+          'min-w-0 flex-1 border-0 bg-transparent px-3 text-sm font-medium leading-5 text-text-primary placeholder:font-medium placeholder:text-text-muted outline-none',
           className,
         )}
         onKeyDown={handleKeyDown}
@@ -44,13 +44,14 @@ export function SearchField({
         <button
           type="button"
           onClick={onSearch}
-          className="shrink-0 rounded-[1px] border border-surface-border bg-surface-muted p-0.5 text-text-muted transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
+          className="flex h-full min-w-12 shrink-0 items-center justify-center border-l border-surface-border-soft bg-surface-muted px-3 text-xs font-bold text-text-primary transition-colors hover:bg-brand-glass hover:text-brand-primary"
           tabIndex={-1}
+          aria-label="검색"
         >
-          <CornerDownLeft className="size-3" />
+          <CornerDownLeft className="size-3.5" />
         </button>
       ) : hint ? (
-        <span className="shrink-0 rounded-[1px] border border-surface-border bg-surface-muted px-1.5 py-0.5 text-[9px] font-bold leading-none text-text-secondary">
+        <span className="flex h-full min-w-12 shrink-0 items-center justify-center border-l border-surface-border-soft bg-surface-muted px-3 text-xs font-bold text-text-primary">
           {hint}
         </span>
       ) : null}

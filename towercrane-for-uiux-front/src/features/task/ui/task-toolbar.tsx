@@ -46,20 +46,26 @@ export function TaskToolbar({
   onRefresh,
   showAssigneeFilter = true,
 }: TaskToolbarProps) {
+  const controlClassName = 'h-9 min-h-9 rounded-md'
+  const controlButtonClassName =
+    'h-9 min-h-9 rounded-md px-4 py-0 text-sm font-bold leading-none'
+
   return (
-    <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+    <div className="rounded-md border border-surface-border bg-surface-muted p-4 shadow-sm">
       <div className="flex items-center justify-between gap-2">
-        <div className="grid flex-1 gap-3 md:grid-cols-[minmax(200px,1fr)_repeat(4,minmax(120px,auto))]">
+        <div className="grid flex-1 gap-2.5 md:grid-cols-[minmax(280px,1fr)_repeat(4,minmax(120px,auto))]">
           <SearchField
+            wrapperClassName={controlClassName}
             value={filters.q ?? ''}
             onChange={(event) =>
               onFiltersChange(updateFilter(filters, 'q', event.target.value))
             }
             placeholder="제목 또는 내용 검색"
-            hint="Search"
+            hint="검색"
           />
 
           <CompactSelect
+            className={controlClassName}
             value={filters.taskType ?? ''}
             onChange={(event) =>
               onFiltersChange(
@@ -77,6 +83,7 @@ export function TaskToolbar({
           </CompactSelect>
 
           <CompactSelect
+            className={controlClassName}
             value={filters.priority ?? ''}
             onChange={(event) =>
               onFiltersChange(
@@ -95,6 +102,7 @@ export function TaskToolbar({
 
           {showAssigneeFilter ? (
             <CompactSelect
+              className={controlClassName}
               value={filters.assigneeId ?? ''}
               onChange={(event) =>
                 onFiltersChange(updateFilter(filters, 'assigneeId', event.target.value))
@@ -109,12 +117,13 @@ export function TaskToolbar({
               ))}
             </CompactSelect>
           ) : (
-            <div className="flex h-10 items-center rounded-md border border-surface-border-soft bg-surface-raised px-3 text-sm font-semibold text-text-secondary">
+            <div className="flex h-9 items-center rounded-md border border-surface-border-soft bg-surface-raised px-3 text-sm font-medium text-text-primary">
               {assigneeLabel ?? '내 업무'}
             </div>
           )}
 
           <CompactSelect
+            className={controlClassName}
             value={filters.sort ?? 'order'}
             onChange={(event) =>
               onFiltersChange(updateFilter(filters, 'sort', event.target.value as TaskFilters['sort']))
@@ -134,6 +143,7 @@ export function TaskToolbar({
             type="button"
             variant="ghost"
             size="icon"
+            className="h-9 min-h-9 w-9 rounded-md border-surface-border-soft bg-surface-raised text-text-primary shadow-none hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
             title="새로고침"
             aria-label="새로고침"
             onClick={onRefresh}
@@ -141,7 +151,7 @@ export function TaskToolbar({
           >
             <RefreshCcw className="size-4" />
           </Button>
-          <Button type="button" className="h-9" onClick={onCreate}>
+          <Button type="button" className={controlButtonClassName} onClick={onCreate}>
             <Plus className="mr-2 size-4" />새 업무
           </Button>
         </div>

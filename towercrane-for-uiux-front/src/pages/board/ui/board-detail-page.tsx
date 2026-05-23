@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
-import { ArrowLeft, MessageSquareReply, Pencil, Trash2 } from 'lucide-react'
+import { MessageSquareReply, Pencil, Trash2 } from 'lucide-react'
 import {
   useBoardComments,
   useBoardDetail,
@@ -9,12 +9,66 @@ import {
   useUpdateBoard,
 } from '../../../features/board/model/use-board-queries'
 import { Button } from '../../../shared/ui/button'
+import { BackLinkButton } from '../../../shared/ui/back-link-button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
+import { LexicalEditor } from '../../../shared/ui/lexical/lexical-editor'
 import { Textarea } from '../../../shared/ui/textarea'
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
+
+function isLexicalJson(value: string) {
+  try {
+    const parsed = JSON.parse(value)
+    return Boolean(parsed?.root)
+  } catch {
+    return false
+  }
+}
+
+function hasLexicalContent(value: string) {
+  try {
+    const parsed = JSON.parse(value)
+    const queue = Array.isArray(parsed?.root?.children) ? [...parsed.root.children] : []
+    while (queue.length > 0) {
+      const node = queue.shift()
+      if (typeof node?.text === 'string' && node.text.trim()) return true
+      if (node?.type === 'image' || node?.type === 'youtube') return true
+      if (Array.isArray(node?.children)) queue.push(...node.children)
+    }
+  } catch {
+    return value.trim().length > 0
+  }
+  return false
+}
+
+function createPlainTextLexicalState(value: string) {
+  return JSON.stringify({
+    root: {
+      children: value.replace(/\r\n?/g, '\n').split('\n').map((line) => ({
+        children: line
+          ? [{ detail: 0, format: 0, mode: 'normal', style: '', text: line, type: 'text', version: 1 }]
+          : [],
+        direction: null,
+        format: '',
+        indent: 0,
+        type: 'paragraph',
+        version: 1,
+      })),
+      direction: null,
+      format: '',
+      indent: 0,
+      type: 'root',
+      version: 1,
+    },
+  })
+}
+
+function toLexicalInitialState(value: string) {
+  if (!value.trim()) return ''
+  return isLexicalJson(value) ? value : createPlainTextLexicalState(value)
 }
 
 export function BoardDetailPage() {
@@ -58,23 +112,24 @@ export function BoardDetailPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-      <button
-        type="button"
-        className="inline-flex w-fit items-center gap-1.5 text-xs font-bold text-text-muted hover:text-text-primary"
-        onClick={() => navigate({ to: `/boards/${code}` })}
-      >
-        <ArrowLeft className="size-3.5" />
-        목록
-      </button>
+      <BackLinkButton onClick={() => navigate({ to: `/boards/${code}` })} />
 
       <Card className="rounded-md border border-surface-border-soft p-6">
         {editing ? (
           <div className="flex flex-col gap-3">
             <Input value={draft.title} onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))} />
-            <Textarea value={draft.content} onChange={(event) => setDraft((prev) => ({ ...prev, content: event.target.value }))} rows={12} />
+            <div className="overflow-hidden rounded-md border border-surface-border-soft">
+              <LexicalEditor
+                key={`board-detail-edit-${boardId}`}
+                initialState={toLexicalInitialState(draft.content)}
+                onChange={(content) => setDraft((prev) => ({ ...prev, content }))}
+                minHeight="260px"
+                placeholder="내용을 입력하세요."
+              />
+            </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setEditing(false)}>취소</Button>
-              <Button onClick={handleSave} disabled={updateBoard.isPending}>저장</Button>
+              <Button onClick={handleSave} disabled={updateBoard.isPending || !draft.title.trim() || !hasLexicalContent(draft.content)}>저장</Button>
             </div>
           </div>
         ) : (
@@ -99,9 +154,20 @@ export function BoardDetailPage() {
                 </div>
               )}
             </div>
-            <div className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-text-primary">
-              {board?.content}
-            </div>
+            {board?.content && isLexicalJson(board.content) ? (
+              <div className="mt-6 overflow-hidden rounded-md border border-surface-border-soft">
+                <LexicalEditor
+                  initialState={board.content}
+                  onChange={() => undefined}
+                  readOnly
+                  minHeight="160px"
+                />
+              </div>
+            ) : (
+              <div className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-text-primary">
+                {board?.content}
+              </div>
+            )}
           </>
         )}
       </Card>
@@ -128,4 +194,3 @@ export function BoardDetailPage() {
     </div>
   )
 }
-

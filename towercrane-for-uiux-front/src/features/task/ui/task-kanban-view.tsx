@@ -9,7 +9,6 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
 import { clsx } from 'clsx'
 import {
   TASK_STATUS_LABELS,
@@ -26,7 +25,7 @@ function DraggableTaskCard({
   task: Task
   onOpenTask: (taskId: string) => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
     data: { task },
   })
@@ -34,7 +33,6 @@ function DraggableTaskCard({
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform) }}
       className={clsx(isDragging && 'opacity-40')}
       {...attributes}
       {...listeners}
@@ -99,6 +97,7 @@ export function TaskKanbanView({
   onOpenTask: (taskId: string) => void
 }) {
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [activeOverlayWidth, setActiveOverlayWidth] = useState<number | null>(null)
   const updateStatus = useUpdateTaskStatus()
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -128,6 +127,7 @@ export function TaskKanbanView({
     const task = event.active.data.current?.task as Task | undefined
     const targetStatus = event.over?.id as TaskStatus | undefined
     setActiveTask(null)
+    setActiveOverlayWidth(null)
 
     if (!task || !targetStatus || task.status === targetStatus) return
     updateStatus.mutate({ id: task.id, status: targetStatus })
@@ -139,8 +139,12 @@ export function TaskKanbanView({
       onDragStart={(event) => {
         const task = event.active.data.current?.task as Task | undefined
         setActiveTask(task ?? null)
+        setActiveOverlayWidth(event.active.rect.current.initial?.width ?? null)
       }}
-      onDragCancel={() => setActiveTask(null)}
+      onDragCancel={() => {
+        setActiveTask(null)
+        setActiveOverlayWidth(null)
+      }}
       onDragEnd={handleDragEnd}
     >
       <div className="grid gap-3 overflow-x-auto pb-2 xl:grid-cols-5">
@@ -156,7 +160,7 @@ export function TaskKanbanView({
 
       <DragOverlay>
         {activeTask ? (
-          <div className="w-[260px]">
+          <div style={activeOverlayWidth ? { width: activeOverlayWidth } : undefined}>
             <TaskCard task={activeTask} onOpen={() => undefined} />
           </div>
         ) : null}

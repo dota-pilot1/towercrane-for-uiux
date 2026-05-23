@@ -10,7 +10,13 @@ import {
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 
-export function TaskChecklistPanel({ taskId }: { taskId: string | null }) {
+export function TaskChecklistPanel({
+  taskId,
+  showHeader = true,
+}: {
+  taskId: string | null
+  showHeader?: boolean
+}) {
   const [content, setContent] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingContent, setEditingContent] = useState('')
@@ -41,12 +47,20 @@ export function TaskChecklistPanel({ taskId }: { taskId: string | null }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-text-primary">체크리스트</p>
-        <span className="text-xs font-bold text-text-muted">
-          {completedCount}/{items.length}
-        </span>
-      </div>
+      {showHeader ? (
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-bold text-text-primary">체크리스트</p>
+          <span className="text-xs font-bold text-text-muted">
+            {completedCount}/{items.length}
+          </span>
+        </div>
+      ) : (
+        <div className="flex justify-end">
+          <span className="text-xs font-bold text-text-muted">
+            {completedCount}/{items.length}
+          </span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="flex gap-2">
         <Input

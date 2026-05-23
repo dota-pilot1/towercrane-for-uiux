@@ -704,6 +704,7 @@ function FontSizeSelect({ value, onChange }: { value: string; onChange: (value: 
       onChange={(event) => onChange(event.target.value)}
       title="글씨 크기"
       wrapperClassName="w-[68px]"
+      className="h-8 min-h-8 [height:32px] [min-height:32px] pl-2.5 pr-7 text-xs font-semibold"
     >
       {FONT_SIZES.map((size) => (
         <option key={size} value={size}>
@@ -722,6 +723,7 @@ function FontFamilySelect({ value, onChange }: { value: string; onChange: (value
       onChange={(event) => onChange(event.target.value)}
       title="글씨체"
       wrapperClassName="w-[100px]"
+      className="h-8 min-h-8 [height:32px] [min-height:32px] pl-2.5 pr-7 text-xs font-semibold"
     >
       {FONT_FAMILIES.map((font) => (
         <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>

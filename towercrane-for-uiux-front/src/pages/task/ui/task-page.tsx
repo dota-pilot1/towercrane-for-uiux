@@ -1,31 +1,43 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import { useQueries } from '@tanstack/react-query'
 import {
+  Activity,
   AlertTriangle,
   Archive,
   ArchiveRestore,
   CheckSquare,
+  ChevronDown,
   ChevronsLeft,
   ChevronsRight,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from 'lucide-react'
 import {
+  TASK_ACTIVITY_LABELS,
   TASK_STATUS_LABELS,
   TASK_STATUS_ORDER,
 } from '../../../entities/task/model/constants'
-import type { TaskFilters, TaskStatus } from '../../../entities/task/model/types'
+import type { Task, TaskActivityLog, TaskFilters, TaskStatus } from '../../../entities/task/model/types'
+import { taskApi } from '../../../entities/task/api/task-api'
 import { useAssignableUsers } from '../../../shared/api/users'
 import { Button } from '../../../shared/ui/button'
-import { CompactSelect } from '../../../shared/ui/compact-select'
 import { Switch } from '../../../shared/ui/switch'
 import { ToggleGroup } from '../../../shared/ui/toggle-group'
 import { TaskCardView } from '../../../features/task/ui/task-card-view'
-import { TaskDetailDialog } from '../../../features/task/ui/task-detail-dialog'
 import { TaskFormDialog } from '../../../features/task/ui/task-form-dialog'
 import { TaskKanbanView } from '../../../features/task/ui/task-kanban-view'
 import { TaskTableView } from '../../../features/task/ui/task-table-view'
 import { TaskToolbar, type TaskViewMode } from '../../../features/task/ui/task-toolbar'
-import { useArchiveTasks, useRestoreTasks, useTasks } from '../../../features/task/model/use-task-queries'
+import {
+  useArchiveTasks,
+  useDeleteTasks,
+  useRestoreTasks,
+  taskQueryKeys,
+  useTasks,
+} from '../../../features/task/model/use-task-queries'
 import { PageHeader } from '../../../shared/ui/page-header'
 import { useSessionStore } from '../../../shared/store/session-store'
 
@@ -52,6 +64,196 @@ function emptyMessage(filters: TaskFilters, scopeMode: TaskScopeMode) {
   return '등록된 업무가 없습니다.'
 }
 
+function formatActivityTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+type ActivityWithTask = TaskActivityLog & {
+  taskTitle: string
+  taskAssigneeId?: string | null
+  taskReporterId: string
+  taskOwnerId?: string | null
+}
+
+type ActivityFilter = 'all' | 'mine'
+
+const ACTIVITY_FILTER_LABELS: Record<ActivityFilter, string> = {
+  all: '전체',
+  mine: '나',
+}
+
+function matchesActivityFilter(
+  activity: ActivityWithTask,
+  filter: ActivityFilter,
+  currentUserId?: string | null,
+) {
+  if (filter === 'all') return true
+  if (!currentUserId) return false
+
+  if (filter === 'mine') {
+    return (
+      activity.actorId === currentUserId ||
+      activity.taskAssigneeId === currentUserId ||
+      activity.taskReporterId === currentUserId ||
+      activity.taskOwnerId === currentUserId
+    )
+  }
+
+  return false
+}
+
+function TaskActivityListFooter({
+  tasks,
+  currentUserId,
+}: {
+  tasks: Task[]
+  currentUserId?: string | null
+}) {
+  const [open, setOpen] = useState(false)
+  const [filter, setFilter] = useState<ActivityFilter>('all')
+  const trackedTasks = useMemo(() => tasks.slice(0, 25), [tasks])
+  const activityQueries = useQueries({
+    queries: trackedTasks.map((task) => ({
+      queryKey: taskQueryKeys.activity(task.id),
+      queryFn: () => taskApi.listActivity(task.id),
+      enabled: Boolean(task.id),
+      refetchInterval: 15_000,
+    })),
+  })
+  const isLoading = activityQueries.some((query) => query.isLoading)
+  const allActivities = useMemo<ActivityWithTask[]>(() => {
+    return activityQueries
+      .flatMap((query, index) =>
+        (query.data ?? []).map((activity) => ({
+          ...activity,
+          taskTitle: trackedTasks[index]?.title ?? '업무',
+          taskAssigneeId: trackedTasks[index]?.assigneeId,
+          taskReporterId: trackedTasks[index]?.reporterId ?? '',
+          taskOwnerId: trackedTasks[index]?.ownerId,
+        })),
+      )
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [activityQueries, trackedTasks])
+  const filterCounts = useMemo<Record<ActivityFilter, number>>(
+    () => ({
+      all: allActivities.length,
+      mine: allActivities.filter((activity) =>
+        matchesActivityFilter(activity, 'mine', currentUserId),
+      ).length,
+    }),
+    [allActivities, currentUserId],
+  )
+  const activities = useMemo(
+    () =>
+      allActivities
+        .filter((activity) => matchesActivityFilter(activity, filter, currentUserId))
+        .slice(0, 12),
+    [allActivities, currentUserId, filter],
+  )
+  if (tasks.length === 0) return null
+
+  return (
+    <div className="fixed inset-x-4 bottom-3 z-40 overflow-hidden rounded-md border border-surface-border bg-surface-muted shadow-lg sm:inset-x-7">
+      <div className="flex min-h-14 w-full items-center justify-between gap-3 border-b border-brand-border bg-brand-glass px-4 py-2.5 sm:px-5">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left outline-none focus:outline-none focus:ring-0 focus-visible:ring-1 focus-visible:ring-surface-border"
+          aria-expanded={open}
+        >
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-brand-border bg-surface-raised text-brand-primary">
+            <Activity className="size-3.5" />
+          </span>
+          <span className="truncate text-sm font-black text-text-primary">
+            업무 활동 {filterCounts[filter]}
+          </span>
+          {open ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+        </button>
+
+        <div className="flex shrink-0 items-center rounded-md border border-brand-border bg-surface-raised p-0.5">
+          {(Object.keys(ACTIVITY_FILTER_LABELS) as ActivityFilter[]).map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setFilter(item)}
+              className={`h-8 rounded-sm px-3 text-xs font-black outline-none transition-colors focus:outline-none focus:ring-0 focus-visible:ring-1 focus-visible:ring-surface-border ${
+                filter === item
+                  ? 'bg-brand-primary text-text-on-brand shadow-sm'
+                  : 'text-text-secondary hover:bg-surface-strong hover:text-text-primary'
+              }`}
+            >
+              {ACTIVITY_FILTER_LABELS[item]} {filterCounts[item]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="bg-surface-muted">
+            <div className="max-h-80 overflow-y-auto p-3 sm:p-4">
+              {activities.length === 0 ? (
+                <div className="rounded-md border border-dashed border-surface-border-soft bg-surface-raised px-4 py-8 text-center text-sm text-text-muted">
+                  {isLoading
+                    ? '활동 로그를 불러오는 중입니다.'
+                    : `${ACTIVITY_FILTER_LABELS[filter]} 알림이 없습니다.`}
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {activities.map((activity) => (
+                    <li
+                      key={`${activity.taskId}-${activity.id}`}
+                      className="rounded-md border border-surface-border-soft bg-surface-raised px-3 py-3 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[11px] font-black text-brand-primary">
+                              {TASK_ACTIVITY_LABELS[activity.activityType]}
+                            </span>
+                            <span className="truncate text-sm font-black text-text-primary">
+                              {activity.message ?? '업무 이력이 기록되었습니다.'}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted">
+                            <span className="truncate font-bold text-text-secondary">
+                              {activity.taskTitle}
+                            </span>
+                            {activity.fromValue || activity.toValue ? (
+                              <span>
+                                {activity.fromValue ?? '-'} → {activity.toValue ?? '-'}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right text-xs text-text-muted">
+                          <div>{activity.actorName ?? '시스템'}</div>
+                          <div className="mt-1">{formatActivityTime(activity.createdAt)}</div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TaskPagination({
   viewMode,
   page,
@@ -65,10 +267,12 @@ function TaskPagination({
   total: number
   onChange: (next: Pick<TaskFilters, 'page' | 'pageSize'>) => void
 }) {
+  const [isPageSizeOpen, setIsPageSizeOpen] = useState(false)
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const safePage = Math.min(Math.max(page, 1), totalPages)
   const start = total === 0 ? 0 : (safePage - 1) * pageSize + 1
   const end = Math.min(safePage * pageSize, total)
+  const pageSizeOptions = [10, 20, 50, 100]
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-surface-border-soft bg-surface-muted px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -83,30 +287,61 @@ function TaskPagination({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <CompactSelect
-          value={String(pageSize)}
-          wrapperClassName="w-28"
-          className="h-9 pl-3 pr-9 text-sm font-bold"
-          onChange={(event) =>
-            onChange({
-              page: 1,
-              pageSize: Number(event.target.value),
-            })
-          }
-          aria-label="페이지 크기"
+        <div
+          className="relative"
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setIsPageSizeOpen(false)
+            }
+          }}
         >
-          {[10, 20, 50, 100].map((size) => (
-            <option key={size} value={size}>
-              {size}개씩
-            </option>
-          ))}
-        </CompactSelect>
+          <button
+            type="button"
+            className="flex h-8 min-w-[78px] items-center justify-between gap-1 rounded-md border border-surface-border-soft bg-surface-raised px-2.5 text-xs font-medium text-text-primary transition-colors hover:border-brand-border hover:bg-brand-glass focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-border"
+            onClick={() => setIsPageSizeOpen((value) => !value)}
+            aria-haspopup="listbox"
+            aria-expanded={isPageSizeOpen}
+            aria-label="페이지 크기"
+          >
+            <span>{pageSize}개씩</span>
+            <ChevronDown className="size-3 text-text-muted" />
+          </button>
+
+          {isPageSizeOpen ? (
+            <div
+              className="absolute bottom-full right-0 z-20 mb-1 w-[78px] overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-lg"
+              role="listbox"
+              aria-label="페이지 크기"
+            >
+              {pageSizeOptions.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  role="option"
+                  aria-selected={pageSize === size}
+                  className={`flex h-8 w-full items-center px-2.5 text-left text-xs transition-colors ${
+                    pageSize === size
+                      ? 'bg-brand-glass font-bold text-brand-primary'
+                      : 'font-medium text-text-primary hover:bg-surface-muted'
+                  }`}
+                  onClick={() => {
+                    setIsPageSizeOpen(false)
+                    onChange({ page: 1, pageSize: size })
+                  }}
+                >
+                  {size}개씩
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
 
         <div className="flex items-center gap-1">
           <Button
             type="button"
             variant="ghost"
             size="icon"
+            className="h-8 min-h-8 w-8 rounded-md"
             onClick={() => onChange({ page: 1, pageSize })}
             disabled={safePage <= 1}
             aria-label="첫 페이지"
@@ -118,6 +353,7 @@ function TaskPagination({
             type="button"
             variant="ghost"
             size="icon"
+            className="h-8 min-h-8 w-8 rounded-md"
             onClick={() => onChange({ page: safePage - 1, pageSize })}
             disabled={safePage <= 1}
             aria-label="이전 페이지"
@@ -125,13 +361,14 @@ function TaskPagination({
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="flex h-9 min-w-20 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised px-3 text-xs font-bold text-text-secondary">
+          <span className="flex h-8 min-w-16 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised px-3 text-xs font-medium text-text-secondary">
             {safePage} / {totalPages}
           </span>
           <Button
             type="button"
             variant="ghost"
             size="icon"
+            className="h-8 min-h-8 w-8 rounded-md"
             onClick={() => onChange({ page: safePage + 1, pageSize })}
             disabled={safePage >= totalPages}
             aria-label="다음 페이지"
@@ -143,6 +380,7 @@ function TaskPagination({
             type="button"
             variant="ghost"
             size="icon"
+            className="h-8 min-h-8 w-8 rounded-md"
             onClick={() => onChange({ page: totalPages, pageSize })}
             disabled={safePage >= totalPages}
             aria-label="마지막 페이지"
@@ -163,16 +401,17 @@ export function TaskPage({
   scopeMode: TaskScopeMode
   targetUserId?: string
 }) {
+  const navigate = useNavigate()
   const [viewMode, setViewMode] = useState<TaskViewMode>('table')
   const [filters, setFilters] = useState<TaskFilters>(() =>
     getInitialFilters(scopeMode, targetUserId),
   )
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const currentUserId = useSessionStore((state) => state.userId)
   const currentUserName = useSessionStore((state) => state.userName)
+  const currentUserRole = useSessionStore((state) => state.userRole)
+  const isAdmin = currentUserRole === 'admin'
 
   const normalizedFilters = useMemo(
     () => ({
@@ -188,6 +427,7 @@ export function TaskPage({
   const assignableUsersQuery = useAssignableUsers()
   const archiveTasks = useArchiveTasks()
   const restoreTasks = useRestoreTasks()
+  const deleteTasks = useDeleteTasks()
   const tasks = tasksQuery.data?.items ?? []
   const users = assignableUsersQuery.data ?? []
   const targetUser = targetUserId
@@ -224,18 +464,23 @@ export function TaskPage({
     setSelectedIds([])
   }
 
-  const handleOpenTask = (taskId: string) => {
-    setSelectedTaskId(taskId)
-    setIsDetailOpen(true)
+  const handleDeleteSelectedTasks = async () => {
+    if (selectedIds.length === 0) return
+    const confirmed = window.confirm(
+      `선택한 업무 ${selectedIds.length}개를 삭제할까요? 삭제 후에는 복원할 수 없습니다.`,
+    )
+    if (!confirmed) return
+
+    await deleteTasks.mutateAsync(selectedIds)
+    setSelectedIds([])
   }
 
-  const handleDetailOpenChange = (open: boolean) => {
-    setIsDetailOpen(open)
-    if (!open) setSelectedTaskId(null)
+  const handleOpenTask = (taskId: string) => {
+    navigate({ to: `/task/${taskId}` })
   }
 
   return (
-    <section className="space-y-4 ui-page-bg pb-8">
+    <section className={`space-y-4 ui-page-bg ${tasks.length > 0 ? 'pb-20' : 'pb-8'}`}>
       <PageHeader
         icon={CheckSquare}
         title={scopeTitle}
@@ -317,22 +562,48 @@ export function TaskPage({
             필터 초기화
           </Button>
           {viewMode === 'table' && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9"
-              disabled={selectedIds.length === 0 || archiveTasks.isPending || restoreTasks.isPending}
-              onClick={handleBulkAction}
-            >
-              {normalizedFilters.archived ? (
-                <ArchiveRestore className="mr-1.5 size-3.5" />
-              ) : (
-                <Archive className="mr-1.5 size-3.5" />
-              )}
-              {selectedIds.length > 0 ? `${selectedIds.length}개 ` : ''}
-              {normalizedFilters.archived ? '선택 복원' : '선택 보관'}
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-9"
+                disabled={
+                  selectedIds.length === 0 ||
+                  archiveTasks.isPending ||
+                  restoreTasks.isPending ||
+                  deleteTasks.isPending
+                }
+                onClick={handleBulkAction}
+              >
+                {normalizedFilters.archived ? (
+                  <ArchiveRestore className="mr-1.5 size-3.5" />
+                ) : (
+                  <Archive className="mr-1.5 size-3.5" />
+                )}
+                {selectedIds.length > 0 ? `${selectedIds.length}개 ` : ''}
+                {normalizedFilters.archived ? '선택 복원' : '선택 보관'}
+              </Button>
+              {isAdmin ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 border-destructive bg-danger-glass text-destructive hover:bg-danger-glass"
+                  disabled={
+                    selectedIds.length === 0 ||
+                    archiveTasks.isPending ||
+                    restoreTasks.isPending ||
+                    deleteTasks.isPending
+                  }
+                  onClick={handleDeleteSelectedTasks}
+                >
+                  <Trash2 className="mr-1.5 size-3.5" />
+                  {selectedIds.length > 0 ? `${selectedIds.length}개 ` : ''}
+                  선택 삭제
+                </Button>
+              ) : null}
+            </>
           )}
           <ToggleGroup<TaskViewMode>
             value={viewMode}
@@ -383,7 +654,6 @@ export function TaskPage({
             <TaskTableView
               tasks={tasks}
               users={users}
-              archived={Boolean(normalizedFilters.archived)}
               onSelectionChange={setSelectedIds}
               canReorder={
                 !normalizedFilters.archived &&
@@ -418,6 +688,8 @@ export function TaskPage({
         />
       ) : null}
 
+      <TaskActivityListFooter tasks={tasks} currentUserId={currentUserId} />
+
       <TaskFormDialog
         open={isFormOpen}
         users={users}
@@ -425,12 +697,6 @@ export function TaskPage({
         currentUserId={currentUserId}
         lockAssigneeToCurrentUser={scopeMode === 'my'}
         onOpenChange={setIsFormOpen}
-      />
-      <TaskDetailDialog
-        taskId={selectedTaskId}
-        open={isDetailOpen}
-        users={users}
-        onOpenChange={handleDetailOpenChange}
       />
     </section>
   )

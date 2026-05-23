@@ -22,6 +22,7 @@ export type Task = {
   id: string
   title: string
   content: string
+  mmdContent: string
   taskType: TaskType
   status: TaskStatus
   priority: TaskPriority
@@ -67,6 +68,7 @@ export type TaskFilters = {
 export type CreateTaskRequest = {
   title: string
   content?: string
+  mmdContent?: string
   taskType?: TaskType
   status?: TaskStatus
   priority?: TaskPriority

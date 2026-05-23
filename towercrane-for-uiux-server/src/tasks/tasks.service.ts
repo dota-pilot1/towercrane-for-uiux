@@ -113,6 +113,7 @@ export class TasksService {
       id: `task-${randomUUID().slice(0, 12)}`,
       title: input.title,
       content: input.content,
+      mmdContent: input.mmdContent,
       taskType: input.taskType,
       status: input.status,
       priority: input.priority,
@@ -154,6 +155,7 @@ export class TasksService {
 
     if (input.title !== undefined) changes.title = input.title;
     if (input.content !== undefined) changes.content = input.content;
+    if (input.mmdContent !== undefined) changes.mmdContent = input.mmdContent;
     if (input.taskType !== undefined) changes.taskType = input.taskType;
     if (input.status !== undefined) changes.status = input.status;
     if (input.priority !== undefined) changes.priority = input.priority;
@@ -623,7 +625,10 @@ export class TasksService {
     before: TaskRow,
     changes: Partial<TaskInsert>,
   ) {
+    let hasSpecificUpdate = false;
+
     if (changes.status && changes.status !== before.status) {
+      hasSpecificUpdate = true;
       this.recordActivity({
         taskId: before.id,
         actorId: user.id,
@@ -635,6 +640,7 @@ export class TasksService {
     }
 
     if (changes.priority && changes.priority !== before.priority) {
+      hasSpecificUpdate = true;
       this.recordActivity({
         taskId: before.id,
         actorId: user.id,
@@ -649,6 +655,7 @@ export class TasksService {
       Object.prototype.hasOwnProperty.call(changes, 'assigneeId') &&
       changes.assigneeId !== before.assigneeId
     ) {
+      hasSpecificUpdate = true;
       this.recordActivity({
         taskId: before.id,
         actorId: user.id,
@@ -671,7 +678,7 @@ export class TasksService {
       (key) => !onlySystemFields.includes(key),
     );
 
-    if (hasGeneralUpdate) {
+    if (hasGeneralUpdate && !hasSpecificUpdate) {
       this.recordActivity({
         taskId: before.id,
         actorId: user.id,

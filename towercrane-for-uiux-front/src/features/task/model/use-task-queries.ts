@@ -77,6 +77,18 @@ export function useDeleteTask() {
   })
 }
 
+export function useDeleteTasks() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (taskIds: string[]) => Promise.all(taskIds.map((taskId) => taskApi.delete(taskId))),
+    onSuccess: (_result, taskIds) => {
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.all })
+      toast.success(`${taskIds.length}개 업무가 삭제되었습니다.`)
+    },
+    onError: (error) => toast.error(messageFromError(error, '업무 삭제에 실패했습니다.')),
+  })
+}
+
 export function useUpdateTaskStatus() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -85,6 +97,7 @@ export function useUpdateTaskStatus() {
     onSuccess: (task) => {
       queryClient.setQueryData(taskQueryKeys.detail(task.id), task)
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.all })
+      toast.success('상태가 변경되었습니다.', { id: `task-status-${task.id}` })
     },
     onError: (error) => toast.error(messageFromError(error, '상태 변경에 실패했습니다.')),
   })
@@ -98,6 +111,7 @@ export function useUpdateTaskPriority() {
     onSuccess: (task) => {
       queryClient.setQueryData(taskQueryKeys.detail(task.id), task)
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.all })
+      toast.success('우선순위가 변경되었습니다.', { id: `task-priority-${task.id}` })
     },
     onError: (error) => toast.error(messageFromError(error, '우선순위 변경에 실패했습니다.')),
   })
@@ -111,6 +125,7 @@ export function useUpdateTaskAssignee() {
     onSuccess: (task) => {
       queryClient.setQueryData(taskQueryKeys.detail(task.id), task)
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.all })
+      toast.success('담당자가 변경되었습니다.', { id: `task-assignee-${task.id}` })
     },
     onError: (error) => toast.error(messageFromError(error, '담당자 변경에 실패했습니다.')),
   })
@@ -273,6 +288,7 @@ export function useTaskActivity(taskId: string | null) {
     queryKey: taskQueryKeys.activity(taskId),
     queryFn: () => taskApi.listActivity(taskId as string),
     enabled: Boolean(taskId),
+    refetchInterval: 15_000,
   })
 }
 
