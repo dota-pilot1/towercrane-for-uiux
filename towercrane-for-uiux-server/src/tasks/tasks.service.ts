@@ -113,6 +113,7 @@ export class TasksService {
       id: `task-${randomUUID().slice(0, 12)}`,
       title: input.title,
       content: input.content,
+      mmdContent: input.mmdContent,
       taskType: input.taskType,
       status: input.status,
       priority: input.priority,
@@ -154,6 +155,7 @@ export class TasksService {
 
     if (input.title !== undefined) changes.title = input.title;
     if (input.content !== undefined) changes.content = input.content;
+    if (input.mmdContent !== undefined) changes.mmdContent = input.mmdContent;
     if (input.taskType !== undefined) changes.taskType = input.taskType;
     if (input.status !== undefined) changes.status = input.status;
     if (input.priority !== undefined) changes.priority = input.priority;

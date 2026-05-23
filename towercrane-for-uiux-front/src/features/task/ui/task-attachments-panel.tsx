@@ -1,12 +1,16 @@
-import { useRef, useState } from 'react'
-import { Download, File, Image as ImageIcon, Paperclip, Trash2, Upload } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Download, Eye, File, Image as ImageIcon, Paperclip, Save, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
+import type { Task } from '../../../entities/task/model/types'
 import { uploadFile } from '../../../shared/api/upload'
 import { Button } from '../../../shared/ui/button'
+import { Mermaid } from '../../../shared/ui/mermaid'
+import { Textarea } from '../../../shared/ui/textarea'
 import {
   useCreateTaskAttachment,
   useDeleteTaskAttachment,
   useTaskAttachments,
+  useUpdateTask,
 } from '../model/use-task-queries'
 
 function formatFileSize(size: number) {
@@ -26,13 +30,22 @@ function formatDateTime(value: string) {
   }).format(date)
 }
 
-export function TaskAttachmentsPanel({ taskId }: { taskId: string | null }) {
+export function TaskAttachmentsPanel({ task }: { task: Task }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [mmdDraft, setMmdDraft] = useState(task.mmdContent ?? '')
+  const [showPreview, setShowPreview] = useState(Boolean(task.mmdContent?.trim()))
+  const taskId = task.id
   const attachmentsQuery = useTaskAttachments(taskId)
   const createAttachment = useCreateTaskAttachment(taskId)
   const deleteAttachment = useDeleteTaskAttachment(taskId)
+  const updateTask = useUpdateTask()
   const attachments = attachmentsQuery.data ?? []
+
+  useEffect(() => {
+    setMmdDraft(task.mmdContent ?? '')
+    setShowPreview(Boolean(task.mmdContent?.trim()))
+  }, [task.id, task.mmdContent])
 
   const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -56,6 +69,15 @@ export function TaskAttachmentsPanel({ taskId }: { taskId: string | null }) {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
+
+  const handleSaveMmd = async () => {
+    await updateTask.mutateAsync({
+      id: task.id,
+      body: { mmdContent: mmdDraft },
+    })
+  }
+
+  const hasMmdChanges = mmdDraft !== (task.mmdContent ?? '')
 
   return (
     <div className="space-y-4">
@@ -163,6 +185,47 @@ export function TaskAttachmentsPanel({ taskId }: { taskId: string | null }) {
           })}
         </div>
       )}
+
+      <section className="space-y-3 border-t border-surface-border-soft pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-text-primary">MMD 내용</p>
+            <p className="mt-1 text-xs text-text-muted">첨부 파일 아래에 Mermaid 형식 문서를 저장합니다.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowPreview((value) => !value)}
+              disabled={!mmdDraft.trim()}
+            >
+              <Eye className="mr-2 size-4" />
+              {showPreview ? '코드 보기' : '미리보기'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveMmd}
+              disabled={!hasMmdChanges || updateTask.isPending}
+            >
+              <Save className="mr-2 size-4" />
+              저장
+            </Button>
+          </div>
+        </div>
+
+        {showPreview && mmdDraft.trim() ? (
+          <div className="overflow-auto rounded-md border border-surface-border-soft bg-surface-raised p-3">
+            <Mermaid chart={mmdDraft} className="min-h-32" />
+          </div>
+        ) : (
+          <Textarea
+            value={mmdDraft}
+            onChange={(event) => setMmdDraft(event.target.value)}
+            placeholder={`flowchart TD\n  A[첨부 확인] --> B[MMD 내용 작성]\n  B --> C[미리보기]`}
+            className="min-h-56 resize-y font-mono text-sm"
+          />
+        )}
+      </section>
     </div>
   )
 }

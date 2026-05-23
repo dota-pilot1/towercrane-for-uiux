@@ -338,7 +338,7 @@ export function TaskDetailDialog({
                   <TaskChecklistPanel taskId={task.id} />
                 </Tabs.Content>
                 <Tabs.Content value="attachments">
-                  <TaskAttachmentsPanel taskId={task.id} />
+                  <TaskAttachmentsPanel task={task} />
                 </Tabs.Content>
                 <Tabs.Content value="comments">
                   <TaskCommentsPanel taskId={task.id} />

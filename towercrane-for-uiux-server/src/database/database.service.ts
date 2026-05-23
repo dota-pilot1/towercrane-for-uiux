@@ -316,6 +316,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         content TEXT NOT NULL DEFAULT '',
+        mmd_content TEXT NOT NULL DEFAULT '',
         task_type TEXT NOT NULL DEFAULT 'FEATURE',
         status TEXT NOT NULL DEFAULT 'TODO',
         priority TEXT NOT NULL DEFAULT 'MEDIUM',
@@ -1869,6 +1870,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'tasks',
       'visibility',
       "ALTER TABLE tasks ADD COLUMN visibility TEXT DEFAULT 'TEAM' NOT NULL",
+    );
+    this.ensureColumn(
+      'tasks',
+      'mmd_content',
+      "ALTER TABLE tasks ADD COLUMN mmd_content TEXT DEFAULT '' NOT NULL",
     );
     this.sqlite.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user

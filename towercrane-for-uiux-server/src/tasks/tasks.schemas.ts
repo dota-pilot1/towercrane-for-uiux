@@ -48,6 +48,7 @@ export const listTasksQuerySchema = z.object({
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1).max(120),
   content: z.string().max(5000).optional().default(''),
+  mmdContent: z.string().max(20000).optional().default(''),
   taskType: taskTypeSchema.default('FEATURE'),
   status: taskStatusSchema.default('TODO'),
   priority: taskPrioritySchema.default('MEDIUM'),

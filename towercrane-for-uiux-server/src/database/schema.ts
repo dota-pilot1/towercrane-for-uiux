@@ -337,6 +337,7 @@ export const tasksTable = sqliteTable('tasks', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   content: text('content').notNull().default(''),
+  mmdContent: text('mmd_content').notNull().default(''),
   taskType: text('task_type').$type<TaskType>().notNull().default('FEATURE'),
   status: text('status').$type<TaskStatus>().notNull().default('TODO'),
   priority: text('priority').$type<TaskPriority>().notNull().default('MEDIUM'),
