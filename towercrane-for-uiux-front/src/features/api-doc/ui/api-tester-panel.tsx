@@ -747,7 +747,6 @@ export function ApiTesterPanel({
                 </div>
               ) : null}
             </div>
-          </div>
         </div>
       </div>
 
