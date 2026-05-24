@@ -1807,7 +1807,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { sectionId: 'api_doc', displayOrder: 1 },
       { sectionId: 'meeting', displayOrder: 2 },
       { sectionId: 'study_diary', displayOrder: 3 },
-      { sectionId: 'ai_native_group', displayOrder: 4 },
+      { sectionId: 'knowledge_channel', displayOrder: 4 },
       { sectionId: 'boards', displayOrder: 5 },
       { sectionId: 'sql_group', displayOrder: 6 },
       { sectionId: 'dev_challenge', displayOrder: 7 },
@@ -2727,29 +2727,26 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
 
   private reconcileAiNativeMenus(now: string) {
-    let aiNativeGroup = this.sqlite
-      .prepare(
-        `SELECT id, display_order as displayOrder FROM menus WHERE section_id = 'ai_native_group' AND parent_id IS NULL LIMIT 1`,
-      )
-      .get() as { id: string; displayOrder: number } | undefined;
+    // ── AI Native 그룹 + 하위 항목 전부 숨김 ─────────────────────────────
+    this.sqlite
+      .prepare(`UPDATE menus SET is_visible = 0, updated_at = ? WHERE section_id IN ('ai_native_group','ai_service_request','ai_methodology','ai_evaluation')`)
+      .run(now);
 
-    const aiNativeGroupMenuId = randomUUID();
+    // ── 지식채널 루트 메뉴 보장 ───────────────────────────────────────────
+    let knowledgeGroup = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'knowledge_channel' AND parent_id IS NULL LIMIT 1`)
+      .get() as { id: string } | undefined;
 
-    if (!aiNativeGroup) {
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET display_order = display_order + 1, updated_at = ? WHERE parent_id IS NULL AND display_order >= 0`,
-        )
-        .run(now);
-
+    if (!knowledgeGroup) {
+      const id = randomUUID();
       this.db
         .insert(menusTable)
         .values({
-          id: aiNativeGroupMenuId,
-          name: 'AI Native',
-          sectionId: 'ai_native_group',
-          icon: 'Bot',
-          displayOrder: 0,
+          id,
+          name: '지식채널',
+          sectionId: 'knowledge_channel',
+          icon: 'BookOpen',
+          displayOrder: 4,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -2757,83 +2754,78 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           updatedAt: now,
         })
         .run();
-
-      aiNativeGroup = { id: aiNativeGroupMenuId, displayOrder: 0 };
+      knowledgeGroup = { id };
     } else {
       this.sqlite
-        .prepare(
-          `UPDATE menus SET name = 'AI Native', icon = 'Bot', is_visible = 1, updated_at = ? WHERE id = ?`,
-        )
-        .run(now, aiNativeGroup.id);
+        .prepare(`UPDATE menus SET name = '지식채널', icon = 'BookOpen', is_visible = 1, updated_at = ? WHERE id = ?`)
+        .run(now, knowledgeGroup.id);
     }
 
-    // ai_service_request — AI Native 1번째 자식
-    const existingAiServiceRequest = this.sqlite
-      .prepare(
-        `SELECT id FROM menus WHERE section_id = 'ai_service_request' LIMIT 1`,
-      )
+    // ── 지식채널 하위 항목 보장 ──────────────────────────────────────────
+    const ensureChild = (name: string, sectionId: string, icon: string, order: number) => {
+      const exists = this.sqlite
+        .prepare(`SELECT id FROM menus WHERE section_id = ?`)
+        .get(sectionId) as { id: string } | undefined;
+      if (!exists) {
+        this.db.insert(menusTable).values({
+          id: randomUUID(), name, sectionId, icon,
+          displayOrder: order, isVisible: true, requiredRole: null,
+          parentId: knowledgeGroup!.id, createdAt: now, updatedAt: now,
+        }).run();
+      } else {
+        this.sqlite
+          .prepare(`UPDATE menus SET name=?, icon=?, parent_id=?, display_order=?, is_visible=1, updated_at=? WHERE section_id=?`)
+          .run(name, icon, knowledgeGroup!.id, order, now, sectionId);
+      }
+    };
+
+    ensureChild('공지사항', 'knowledge_notice', 'Bell', 0);
+    ensureChild('FAQ',    'knowledge_faq',    'HelpCircle', 1);
+    ensureChild('AI 자료', 'knowledge_ai',    'Sparkles',   2);
+    ensureChild('개발 자료','knowledge_dev',  'Code2',      3);
+
+    // ── AI 서비스 신청 → 챗봇 하위 ───────────────────────────────────────
+    const chatbotParent = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'chatbot_pilot' LIMIT 1`)
       .get() as { id: string } | undefined;
 
-    if (!existingAiServiceRequest) {
-      this.db
-        .insert(menusTable)
-        .values({
-          id: randomUUID(),
-          name: 'AI 서비스 신청',
-          sectionId: 'ai_service_request',
-          icon: 'FilePlus2',
-          displayOrder: 0,
-          isVisible: true,
-          requiredRole: null,
-          parentId: aiNativeGroup.id,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-    } else {
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET name = 'AI 서비스 신청', icon = 'FilePlus2', parent_id = ?, display_order = 0, is_visible = 1, updated_at = ? WHERE id = ?`,
-        )
-        .run(aiNativeGroup.id, now, existingAiServiceRequest.id);
+    if (chatbotParent) {
+      const svc = this.sqlite
+        .prepare(`SELECT id FROM menus WHERE section_id = 'ai_service_request' LIMIT 1`)
+        .get() as { id: string } | undefined;
+      if (!svc) {
+        this.db.insert(menusTable).values({
+          id: randomUUID(), name: 'AI 서비스 신청', sectionId: 'ai_service_request',
+          icon: 'FilePlus2', displayOrder: 5, isVisible: true, requiredRole: null,
+          parentId: chatbotParent.id, createdAt: now, updatedAt: now,
+        }).run();
+      } else {
+        this.sqlite
+          .prepare(`UPDATE menus SET name='AI 서비스 신청', icon='FilePlus2', parent_id=?, display_order=5, is_visible=1, updated_at=? WHERE id=?`)
+          .run(chatbotParent.id, now, svc.id);
+      }
     }
 
-    // ai_methodology를 ai_native_group의 자식으로 이동
-    this.sqlite
-      .prepare(
-        `UPDATE menus SET parent_id = ?, display_order = 1, updated_at = ? WHERE section_id = 'ai_methodology'`,
-      )
-      .run(aiNativeGroup.id, now);
-
-    // ai_evaluation — AI Native 3번째 자식
-    const existingAiEval = this.sqlite
-      .prepare(
-        `SELECT id FROM menus WHERE section_id = 'ai_evaluation' LIMIT 1`,
-      )
+    // ── AI 활용 능력 평가 → 업무 관리 하위 ──────────────────────────────
+    const taskParent = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'task_group' AND parent_id IS NULL LIMIT 1`)
       .get() as { id: string } | undefined;
 
-    if (!existingAiEval) {
-      this.db
-        .insert(menusTable)
-        .values({
-          id: randomUUID(),
-          name: 'AI 활용 능력 평가',
-          sectionId: 'ai_evaluation',
-          icon: 'ClipboardCheck',
-          displayOrder: 2,
-          isVisible: true,
-          requiredRole: null,
-          parentId: aiNativeGroup.id,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-    } else {
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET name = 'AI 활용 능력 평가', icon = 'ClipboardCheck', parent_id = ?, display_order = 2, is_visible = 1, updated_at = ? WHERE id = ?`,
-        )
-        .run(aiNativeGroup.id, now, existingAiEval.id);
+    if (taskParent) {
+      const eval_ = this.sqlite
+        .prepare(`SELECT id FROM menus WHERE section_id = 'ai_evaluation' LIMIT 1`)
+        .get() as { id: string } | undefined;
+      if (!eval_) {
+        this.db.insert(menusTable).values({
+          id: randomUUID(), name: 'AI 활용 능력 평가', sectionId: 'ai_evaluation',
+          icon: 'ClipboardCheck', displayOrder: 99, isVisible: true, requiredRole: null,
+          parentId: taskParent.id, createdAt: now, updatedAt: now,
+        }).run();
+      } else {
+        this.sqlite
+          .prepare(`UPDATE menus SET name='AI 활용 능력 평가', icon='ClipboardCheck', parent_id=?, display_order=99, is_visible=1, updated_at=? WHERE id=?`)
+          .run(taskParent.id, now, eval_.id);
+      }
     }
   }
 
