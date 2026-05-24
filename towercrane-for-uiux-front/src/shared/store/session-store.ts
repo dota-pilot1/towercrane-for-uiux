@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type { SessionUser } from '../api/auth'
+import { useChatSessionStore } from '../../features/chatbot/model/chat-session-store'
 
 export type AuthMode = 'login' | 'signup'
 
@@ -55,7 +56,8 @@ export const useSessionStore = create<SessionStoreState>()(
           profileImageUrl: user.profileImageUrl ?? null,
           userRole: user.role,
         }),
-      clearSession: () =>
+      clearSession: () => {
+        useChatSessionStore.getState().resetStore()
         set({
           token: '',
           isAuthenticated: false,
@@ -65,7 +67,8 @@ export const useSessionStore = create<SessionStoreState>()(
           profileImageUrl: null,
           userRole: '',
           authMode: 'login',
-        }),
+        })
+      },
     }),
     {
       name: 'towercrane-session-store',

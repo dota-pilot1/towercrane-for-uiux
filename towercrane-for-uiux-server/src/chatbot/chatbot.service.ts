@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
@@ -30,18 +31,31 @@ export class ChatbotService {
     return this.databaseService.db;
   }
 
-  listSessions() {
+  private assertOwnership(sessionId: string, userId: string) {
+    const session = this.db
+      .select()
+      .from(chatSessionsTable)
+      .where(eq(chatSessionsTable.id, sessionId))
+      .get();
+    if (!session) throw new NotFoundException('session not found');
+    if (session.userId !== userId) throw new ForbiddenException();
+    return session;
+  }
+
+  listSessions(userId: string) {
     return this.db
       .select()
       .from(chatSessionsTable)
+      .where(eq(chatSessionsTable.userId, userId))
       .orderBy(desc(chatSessionsTable.updatedAt))
       .all();
   }
 
-  createSession(title?: string) {
+  createSession(userId: string, title?: string) {
     const now = new Date().toISOString();
     const session = {
       id: randomUUID(),
+      userId,
       title: title?.trim() || '새 대화',
       createdAt: now,
       updatedAt: now,
@@ -50,35 +64,32 @@ export class ChatbotService {
     return session;
   }
 
-  renameSession(id: string, title: string) {
+  renameSession(id: string, title: string, userId: string) {
+    this.assertOwnership(id, userId);
     const trimmed = title.trim();
     if (!trimmed) {
       throw new NotFoundException('title is required');
     }
     const now = new Date().toISOString();
-    const result = this.db
+    this.db
       .update(chatSessionsTable)
       .set({ title: trimmed, updatedAt: now })
       .where(eq(chatSessionsTable.id, id))
       .run();
-    if (result.changes === 0) {
-      throw new NotFoundException('session not found');
-    }
     return { id, title: trimmed, updatedAt: now };
   }
 
-  deleteSession(id: string) {
-    const result = this.db
+  deleteSession(id: string, userId: string) {
+    this.assertOwnership(id, userId);
+    this.db
       .delete(chatSessionsTable)
       .where(eq(chatSessionsTable.id, id))
       .run();
-    if (result.changes === 0) {
-      throw new NotFoundException('session not found');
-    }
     return { id };
   }
 
-  listMessages(sessionId: string) {
+  listMessages(sessionId: string, userId: string) {
+    this.assertOwnership(sessionId, userId);
     return this.db
       .select()
       .from(chatMessagesTable)
@@ -136,13 +147,14 @@ export class ChatbotService {
     return message;
   }
 
-  async streamGpt(sessionId: string, message: string, res: Response) {
+  async streamGpt(sessionId: string, message: string, userId: string, res: Response) {
     if (!this.openai) {
       throw new ServiceUnavailableException(
         'OpenAI API key is not configured.',
       );
     }
 
+    this.assertOwnership(sessionId, userId);
     const meta = this.touchSession(sessionId, message);
     const userMessage = this.insertMessage(sessionId, 'user', message);
 

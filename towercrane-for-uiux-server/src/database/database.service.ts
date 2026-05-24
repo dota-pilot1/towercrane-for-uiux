@@ -1064,6 +1064,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE TABLE IF NOT EXISTS chat_sessions (
         id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         title TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -1079,6 +1080,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     `);
 
     this.migrateLegacySchema();
+    this.migrateChatSchema();
     this.migrateProjectIssueSchema();
     this.seedDefaults();
     this.seedEvalCategories();
@@ -2924,6 +2926,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `,
       )
       .run(now);
+  }
+
+  private migrateChatSchema() {
+    const hasUserIdCol = (this.sqlite
+      .prepare(`PRAGMA table_info(chat_sessions)`)
+      .all() as Array<{ name: string }>)
+      .some((col) => col.name === 'user_id');
+
+    if (!hasUserIdCol) {
+      // 기존 데이터는 user_id 없으므로 초기화 후 컬럼 추가
+      this.sqlite.exec(`DELETE FROM chat_messages`);
+      this.sqlite.exec(`DELETE FROM chat_sessions`);
+      this.sqlite.exec(
+        `ALTER TABLE chat_sessions ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+      );
+    }
   }
 
   private ensureColumn(

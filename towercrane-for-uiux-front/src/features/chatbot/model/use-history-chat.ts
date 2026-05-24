@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useChatSessionStore } from './chat-session-store'
 import { API_BASE_URL } from '../../../shared/api/http'
+import { useSessionStore } from '../../../shared/store/session-store'
 
 export type { Session } from './chat-session-store'
 
@@ -88,9 +89,13 @@ export function useHistoryChat() {
     setIsStreaming(true)
 
     try {
+      const token = useSessionStore.getState().token
       const res = await fetch(`${API_BASE_URL}/chatbot/stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ sessionId: currentActiveId, message: text }),
       })
 

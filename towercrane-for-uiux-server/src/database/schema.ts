@@ -1183,6 +1183,9 @@ export const devChallengeSubmissionsTable = sqliteTable(
 
 export const chatSessionsTable = sqliteTable('chat_sessions', {
   id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),

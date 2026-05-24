@@ -10,14 +10,14 @@ type Props = {
 
 export function ChatInput({ value, onChange, onSend, onKeyDown, disabled }: Props) {
   return (
-    <div className="mt-3 flex items-end gap-2">
+    <div className="flex items-end gap-2">
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder="메시지를 입력하세요... (Enter 전송, Shift+Enter 줄바꿈)"
         rows={3}
-        className="ui-input !h-auto min-h-[4.5rem] flex-1 resize-none rounded-xl px-4 py-3 text-sm leading-relaxed"
+        className="min-h-[4.5rem] flex-1 resize-none rounded-lg border border-surface-border-soft bg-surface-muted px-4 py-3 text-sm leading-relaxed outline-none focus:border-brand-border focus:ring-2 focus:ring-brand-border/10 transition-all ui-text-primary placeholder:text-text-muted"
       />
       <button
         onClick={onSend}

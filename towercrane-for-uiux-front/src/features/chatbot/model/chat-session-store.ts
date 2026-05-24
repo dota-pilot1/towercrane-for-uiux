@@ -59,6 +59,7 @@ type ChatSessionState = {
   updateLocalChunk: (sessionId: string, messageId: string, chunk: string) => void
   replaceLocalMessage: (sessionId: string, oldId: string, message: Message) => void
   setSessionTitle: (sessionId: string, title: string) => void
+  resetStore: () => void
 }
 
 export const useChatSessionStore = create<ChatSessionState>()((set, get) => ({
@@ -178,5 +179,9 @@ export const useChatSessionStore = create<ChatSessionState>()((set, get) => ({
         s.id === sessionId ? { ...s, title } : s,
       ),
     }))
+  },
+
+  resetStore: () => {
+    set({ sessions: [], activeId: '', messagesBySession: {}, loaded: false })
   },
 }))
