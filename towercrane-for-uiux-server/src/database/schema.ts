@@ -1342,11 +1342,56 @@ export type DevChallengeSubmissionStatus =
   | 'NEEDS_CHANGES'
   | 'APPROVED'
   | 'REJECTED';
+export type DevChallengeWorkspaceRole = 'owner' | 'editor' | 'member';
+
+export const devChallengeWorkspacesTable = sqliteTable(
+  'dev_challenge_workspaces',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    icon: text('icon').notNull().default('Trophy'),
+    color: text('color'),
+    orderIdx: integer('order_idx').notNull().default(0),
+    archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const devChallengeWorkspaceMembersTable = sqliteTable(
+  'dev_challenge_workspace_members',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => devChallengeWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    role: text('role')
+      .$type<DevChallengeWorkspaceRole>()
+      .notNull()
+      .default('member'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
 
 export const devChallengeCategoriesTable = sqliteTable(
   'dev_challenge_categories',
   {
     id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => devChallengeWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
     name: text('name').notNull(),
     summary: text('summary'),
     icon: text('icon').notNull().default('Trophy'),
@@ -1530,6 +1575,8 @@ export const schema = {
   sqlTeamPracticeSchemaVersionsTable,
   sqlTeamPracticeProblemsTable,
   sqlTeamPracticeSubmissionsTable,
+  devChallengeWorkspacesTable,
+  devChallengeWorkspaceMembersTable,
   devChallengeCategoriesTable,
   devChallengeSectionsTable,
   devChallengeAssignmentsTable,
@@ -1725,6 +1772,14 @@ export type DevChallengeCategoryRow =
   typeof devChallengeCategoriesTable.$inferSelect;
 export type DevChallengeCategoryInsert =
   typeof devChallengeCategoriesTable.$inferInsert;
+export type DevChallengeWorkspaceRow =
+  typeof devChallengeWorkspacesTable.$inferSelect;
+export type DevChallengeWorkspaceInsert =
+  typeof devChallengeWorkspacesTable.$inferInsert;
+export type DevChallengeWorkspaceMemberRow =
+  typeof devChallengeWorkspaceMembersTable.$inferSelect;
+export type DevChallengeWorkspaceMemberInsert =
+  typeof devChallengeWorkspaceMembersTable.$inferInsert;
 export type DevChallengeSectionRow =
   typeof devChallengeSectionsTable.$inferSelect;
 export type DevChallengeSectionInsert =

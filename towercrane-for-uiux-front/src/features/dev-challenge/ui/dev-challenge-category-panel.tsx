@@ -20,15 +20,19 @@ import { Card } from '../../../shared/ui/card'
 import type { DevChallengeCategory } from '../../../entities/dev-challenge/model/types'
 import {
   useCreateDevChallengeCategory,
+  useCreateDevChallengeWorkspaceCategory,
   useDeleteDevChallengeCategory,
   useDevChallengeCategories,
+  useDevChallengeWorkspaceCategories,
   useReorderDevChallengeCategories,
+  useReorderDevChallengeWorkspaceCategories,
   useUpdateDevChallengeCategory,
 } from '../lib/hooks'
 
 type ActionState = { type: 'idle' } | { type: 'edit'; value: string } | { type: 'delete' }
 
 type DevChallengeCategoryPanelProps = {
+  workspaceId?: string
   selectedCategoryId: string | null
   onSelectCategory: (id: string | null) => void
   onResetSection: () => void
@@ -126,6 +130,7 @@ function CategoryItem({
 }
 
 export function DevChallengeCategoryPanel({
+  workspaceId,
   selectedCategoryId,
   onSelectCategory,
   onResetSection,
@@ -133,11 +138,17 @@ export function DevChallengeCategoryPanel({
   const [isAdding, setIsAdding] = useState(false)
   const [addValue, setAddValue] = useState('')
   const [actionMap, setActionMap] = useState<Record<string, ActionState>>({})
-  const { data: categories = [], isLoading } = useDevChallengeCategories()
+  const legacyCategoriesQuery = useDevChallengeCategories()
+  const workspaceCategoriesQuery = useDevChallengeWorkspaceCategories(workspaceId ?? '')
+  const categoriesQuery = workspaceId ? workspaceCategoriesQuery : legacyCategoriesQuery
+  const categories = categoriesQuery.data ?? []
+  const isLoading = categoriesQuery.isLoading
   const createCategory = useCreateDevChallengeCategory()
+  const createWorkspaceCategory = useCreateDevChallengeWorkspaceCategory(workspaceId ?? '')
   const updateCategory = useUpdateDevChallengeCategory()
   const deleteCategory = useDeleteDevChallengeCategory()
   const reorderCategories = useReorderDevChallengeCategories()
+  const reorderWorkspaceCategories = useReorderDevChallengeWorkspaceCategories(workspaceId ?? '')
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -157,7 +168,9 @@ export function DevChallengeCategoryPanel({
 
   const handleAdd = async () => {
     if (!addValue.trim()) return
-    const category = await createCategory.mutateAsync({ name: addValue.trim() })
+    const category = workspaceId
+      ? await createWorkspaceCategory.mutateAsync({ name: addValue.trim() })
+      : await createCategory.mutateAsync({ name: addValue.trim() })
     setAddValue('')
     setIsAdding(false)
     if (category?.id) {
@@ -194,7 +207,9 @@ export function DevChallengeCategoryPanel({
     const reordered = [...categories]
     const [moved] = reordered.splice(activeIndex, 1)
     reordered.splice(overIndex, 0, moved)
-    reorderCategories.mutate(reordered.map((category) => category.id))
+    const categoryIds = reordered.map((category) => category.id)
+    if (workspaceId) reorderWorkspaceCategories.mutate(categoryIds)
+    else reorderCategories.mutate(categoryIds)
   }
 
   return (
@@ -262,4 +277,3 @@ export function DevChallengeCategoryPanel({
     </Card>
   )
 }
-

@@ -17,14 +17,18 @@ import {
   createAssignmentBlockSchema,
   createAssignmentSchema,
   createCategorySchema,
+  createWorkspaceSchema,
   createSectionSchema,
   createSubmissionSchema,
+  reorderWorkspacesSchema,
   reviewSubmissionSchema,
   updateAssignmentBlockSchema,
   updateAssignmentSchema,
   updateCategorySchema,
   updateSectionSchema,
   updateSubmissionSchema,
+  updateWorkspaceSchema,
+  upsertWorkspaceMemberSchema,
 } from './dto/dev-challenge.schema';
 import { DevChallengeService } from './dev-challenge.service';
 
@@ -32,6 +36,124 @@ import { DevChallengeService } from './dev-challenge.service';
 @UseGuards(SessionGuard)
 export class DevChallengeController {
   constructor(private readonly devChallengeService: DevChallengeService) {}
+
+  @Get('workspaces')
+  getWorkspaces(@Req() req: SessionRequest) {
+    return this.devChallengeService.listWorkspaces(req.user);
+  }
+
+  @Post('workspaces')
+  @UseGuards(AdminGuard)
+  createWorkspace(@Body() body: unknown, @Req() req: SessionRequest) {
+    const input = createWorkspaceSchema.parse(body);
+    return this.devChallengeService.createWorkspace(req.user, input);
+  }
+
+  @Get('workspaces/:workspaceId')
+  getWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.devChallengeService.getWorkspace(req.user, workspaceId);
+  }
+
+  @Patch('workspaces/:workspaceId')
+  updateWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateWorkspaceSchema.parse(body);
+    return this.devChallengeService.updateWorkspace(
+      req.user,
+      workspaceId,
+      input,
+    );
+  }
+
+  @Delete('workspaces/:workspaceId')
+  deleteWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.devChallengeService.deleteWorkspace(req.user, workspaceId);
+  }
+
+  @Post('workspaces/reorder')
+  reorderWorkspaces(@Body() body: unknown, @Req() req: SessionRequest) {
+    const input = reorderWorkspacesSchema.parse(body);
+    return this.devChallengeService.reorderWorkspaces(
+      req.user,
+      input.workspaceIds,
+    );
+  }
+
+  @Get('workspaces/:workspaceId/members')
+  getWorkspaceMembers(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.devChallengeService.getWorkspaceMembers(req.user, workspaceId);
+  }
+
+  @Post('workspaces/:workspaceId/members')
+  upsertWorkspaceMember(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = upsertWorkspaceMemberSchema.parse(body);
+    return this.devChallengeService.upsertWorkspaceMember(
+      req.user,
+      workspaceId,
+      input,
+    );
+  }
+
+  @Delete('workspaces/:workspaceId/members/:memberId')
+  deleteWorkspaceMember(
+    @Param('workspaceId') workspaceId: string,
+    @Param('memberId') memberId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.devChallengeService.removeWorkspaceMember(
+      req.user,
+      workspaceId,
+      memberId,
+    );
+  }
+
+  @Get('workspaces/:workspaceId/categories')
+  getWorkspaceCategories(@Param('workspaceId') workspaceId: string) {
+    return this.devChallengeService.getCategoriesByWorkspace(workspaceId);
+  }
+
+  @Post('workspaces/:workspaceId/categories')
+  createWorkspaceCategory(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = createCategorySchema.parse(body);
+    return this.devChallengeService.createCategoryInWorkspace(
+      workspaceId,
+      input,
+      req.user,
+    );
+  }
+
+  @Post('workspaces/:workspaceId/categories/reorder')
+  reorderWorkspaceCategories(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: { categoryIds: string[] },
+    @Req() req: SessionRequest,
+  ) {
+    return this.devChallengeService.reorderWorkspaceCategories(
+      workspaceId,
+      body.categoryIds,
+      req.user,
+    );
+  }
 
   @Get('categories')
   getCategories() {

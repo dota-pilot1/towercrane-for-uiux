@@ -4,6 +4,7 @@ import {
   createRouter,
   Outlet,
   useNavigate,
+  useSearch,
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { FileText, UserCog } from 'lucide-react'
@@ -35,6 +36,7 @@ import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
 import { StudyDiaryPage } from '../pages/study-diary/ui/study-diary-page'
 import { StudyDiaryPublicPage } from '../pages/study-diary/ui/study-diary-public-page'
 import { DevChallengePage } from '../pages/dev-challenge/ui/dev-challenge-page'
+import { DevChallengeWorkspaceHomePage } from '../pages/dev-challenge-workspace/ui/dev-challenge-workspace-home-page'
 import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
 import { SqlPracticeExamplesPage } from '../pages/sql-practice/ui/sql-practice-examples-page'
 import { SqlNotesPage } from '../pages/sql-practice/ui/sql-notes-page'
@@ -272,8 +274,46 @@ const devChallengeRoute = createRoute({
     sec: typeof search.sec === 'string' ? search.sec : undefined,
     asgn: typeof search.asgn === 'string' ? search.asgn : undefined,
   }),
-  component: DevChallengePage,
+  component: DevChallengeIndexRoute,
 })
+
+function DevChallengeIndexRoute() {
+  const navigate = useNavigate()
+  const search = useSearch({ strict: false }) as {
+    cat?: string
+    sec?: string
+    asgn?: string
+  }
+
+  useEffect(() => {
+    if (!search.cat && !search.sec && !search.asgn) return
+    navigate({
+      to: '/dev-challenge/workspaces/$workspaceId',
+      params: { workspaceId: 'dev-challenge-workspace-default' },
+      search,
+      replace: true,
+    })
+  }, [navigate, search])
+
+  if (search.cat || search.sec || search.asgn) return null
+  return <DevChallengeWorkspaceHomePage />
+}
+
+const devChallengeWorkspaceRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-challenge/workspaces/$workspaceId',
+  validateSearch: (search: Record<string, unknown>) => ({
+    cat: typeof search.cat === 'string' ? search.cat : undefined,
+    sec: typeof search.sec === 'string' ? search.sec : undefined,
+    asgn: typeof search.asgn === 'string' ? search.asgn : undefined,
+  }),
+  component: DevChallengeWorkspaceRoute,
+})
+
+function DevChallengeWorkspaceRoute() {
+  const { workspaceId } = devChallengeWorkspaceRoute.useParams()
+  return <DevChallengePage workspaceId={workspaceId} />
+}
 
 // ─── Legacy redirects → /study-diary ─────────────────────────────────────────
 
@@ -722,6 +762,7 @@ export const router = createRouter({
       prototypeCategoryRoute,
       studyDiaryRoute,
       devChallengeRoute,
+      devChallengeWorkspaceRoute,
       legacyChallengeRedirectRoute,
       chatbotRoute,
       chatbotStreamingRoute,

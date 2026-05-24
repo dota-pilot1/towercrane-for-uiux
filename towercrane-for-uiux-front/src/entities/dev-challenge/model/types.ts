@@ -1,5 +1,37 @@
+export type DevChallengeWorkspaceRole = 'owner' | 'editor' | 'member'
+
+export type DevChallengeWorkspace = {
+  id: string
+  name: string
+  description: string
+  icon: string
+  color?: string | null
+  orderIdx: number
+  archived: boolean
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  myRole: DevChallengeWorkspaceRole
+  categoryCount: number
+  sectionCount: number
+  assignmentCount: number
+  memberCount: number
+}
+
+export type DevChallengeWorkspaceMember = {
+  id: string
+  workspaceId: string
+  userId: string
+  role: DevChallengeWorkspaceRole
+  createdAt: string
+  updatedAt: string
+  userName?: string | null
+  userEmail?: string | null
+}
+
 export type DevChallengeCategory = {
   id: string
+  workspaceId: string
   name: string
   summary?: string | null
   icon: string

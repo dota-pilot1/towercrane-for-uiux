@@ -10,11 +10,100 @@ import type {
 
 export const DEV_CHALLENGE_KEYS = {
   all: ['dev-challenge'] as const,
+  workspaces: () => [...DEV_CHALLENGE_KEYS.all, 'workspaces'] as const,
+  workspace: (workspaceId: string) =>
+    [...DEV_CHALLENGE_KEYS.all, 'workspaces', workspaceId] as const,
+  workspaceCategories: (workspaceId: string) =>
+    [...DEV_CHALLENGE_KEYS.workspace(workspaceId), 'categories'] as const,
+  workspaceMembers: (workspaceId: string) =>
+    [...DEV_CHALLENGE_KEYS.workspace(workspaceId), 'members'] as const,
   categories: () => [...DEV_CHALLENGE_KEYS.all, 'categories'] as const,
   sections: (categoryId: string) => [...DEV_CHALLENGE_KEYS.all, 'sections', categoryId] as const,
   assignments: (sectionId: string) => [...DEV_CHALLENGE_KEYS.all, 'assignments', sectionId] as const,
   assignment: (assignmentId: string) => [...DEV_CHALLENGE_KEYS.all, 'assignment', assignmentId] as const,
   mySubmission: (assignmentId: string) => [...DEV_CHALLENGE_KEYS.all, 'my-submission', assignmentId] as const,
+}
+
+export function useDevChallengeWorkspaces() {
+  return useQuery({
+    queryKey: DEV_CHALLENGE_KEYS.workspaces(),
+    queryFn: devChallengeApi.listWorkspaces,
+  })
+}
+
+export function useDevChallengeWorkspace(workspaceId: string) {
+  return useQuery({
+    queryKey: DEV_CHALLENGE_KEYS.workspace(workspaceId),
+    queryFn: () => devChallengeApi.getWorkspace(workspaceId),
+    enabled: !!workspaceId,
+  })
+}
+
+export function useCreateDevChallengeWorkspace() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: devChallengeApi.createWorkspace,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.workspaces() })
+    },
+  })
+}
+
+export function useDevChallengeWorkspaceCategories(workspaceId: string) {
+  return useQuery({
+    queryKey: DEV_CHALLENGE_KEYS.workspaceCategories(workspaceId),
+    queryFn: () => devChallengeApi.listWorkspaceCategories(workspaceId),
+    enabled: !!workspaceId,
+  })
+}
+
+export function useCreateDevChallengeWorkspaceCategory(workspaceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { name: string }) =>
+      devChallengeApi.createWorkspaceCategory(workspaceId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: DEV_CHALLENGE_KEYS.workspaceCategories(workspaceId),
+      })
+      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.workspaces() })
+      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.workspace(workspaceId) })
+    },
+  })
+}
+
+export function useReorderDevChallengeWorkspaceCategories(workspaceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (categoryIds: string[]) =>
+      devChallengeApi.reorderWorkspaceCategories(workspaceId, categoryIds),
+    onMutate: async (categoryIds) => {
+      const key = DEV_CHALLENGE_KEYS.workspaceCategories(workspaceId)
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<DevChallengeCategory[]>(key)
+      if (previous) {
+        const next = categoryIds
+          .map((id) => previous.find((category) => category.id === id))
+          .filter(Boolean)
+        queryClient.setQueryData(key, next)
+      }
+      return { previous }
+    },
+    onError: (_error, _ids, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          DEV_CHALLENGE_KEYS.workspaceCategories(workspaceId),
+          context.previous,
+        )
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: DEV_CHALLENGE_KEYS.workspaceCategories(workspaceId),
+      })
+      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.workspaces() })
+    },
+  })
 }
 
 export function useDevChallengeCategories() {

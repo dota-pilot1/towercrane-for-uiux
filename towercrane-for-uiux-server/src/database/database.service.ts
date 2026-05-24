@@ -16,6 +16,8 @@ import {
   boardConfigsTable,
   challengeCategoriesTable,
   challengeSectionsTable,
+  devChallengeWorkspacesTable,
+  devChallengeWorkspaceMembersTable,
   devChallengeCategoriesTable,
   devChallengeSectionsTable,
   devChallengeAssignmentsTable,
@@ -1161,8 +1163,35 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_at
       FROM sql_practice_submissions;
 
+      CREATE TABLE IF NOT EXISTS dev_challenge_workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        icon TEXT NOT NULL DEFAULT 'Trophy',
+        color TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS dev_challenge_workspace_members (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'member',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES dev_challenge_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(workspace_id, user_id)
+      );
+
       CREATE TABLE IF NOT EXISTS dev_challenge_categories (
         id TEXT PRIMARY KEY,
+        workspace_id TEXT,
         name TEXT NOT NULL,
         summary TEXT,
         icon TEXT NOT NULL DEFAULT 'Trophy',
@@ -1170,8 +1199,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES dev_challenge_workspaces(id) ON DELETE CASCADE,
         FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_workspaces_order
+        ON dev_challenge_workspaces(archived, order_idx, created_at);
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_dev_challenge_workspace_members_unique
+        ON dev_challenge_workspace_members(workspace_id, user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_workspace_members_user
+        ON dev_challenge_workspace_members(user_id, workspace_id);
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_categories_workspace_order
+        ON dev_challenge_categories(workspace_id, order_idx);
 
       CREATE TABLE IF NOT EXISTS dev_challenge_sections (
         id TEXT PRIMARY KEY,
@@ -1874,6 +1916,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .insert(devChallengeCategoriesTable)
         .values({
           id: categoryId,
+          workspaceId: this.getDevChallengeDefaultWorkspaceId(),
           name: 'Frontend',
           summary: '프론트엔드 개발 챌린지',
           icon: 'Trophy',
@@ -2225,6 +2268,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'team_id',
       'ALTER TABLE api_doc_categories ADD COLUMN team_id TEXT',
     );
+    this.ensureColumn(
+      'dev_challenge_categories',
+      'workspace_id',
+      'ALTER TABLE dev_challenge_categories ADD COLUMN workspace_id TEXT',
+    );
     this.sqlite.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user
         ON study_diaries(user_id);
@@ -2267,6 +2315,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_api_doc_categories_team_order
         ON api_doc_categories(team_id, order_idx);
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_workspaces_order
+        ON dev_challenge_workspaces(archived, order_idx, created_at);
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_dev_challenge_workspace_members_unique
+        ON dev_challenge_workspace_members(workspace_id, user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_workspace_members_user
+        ON dev_challenge_workspace_members(user_id, workspace_id);
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_categories_workspace_order
+        ON dev_challenge_categories(workspace_id, order_idx);
     `);
 
     const now = new Date().toISOString();
@@ -2274,6 +2334,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.ensurePrototypeDefaultWorkspace(now, demoUser.id);
     this.ensureTaskDefaultWorkspace(now, demoUser.id);
     this.ensureMeetingDefaultWorkspace(now, demoUser.id);
+    this.ensureDevChallengeDefaultWorkspace(now, demoUser.id);
     this.ensureApiDocDefaultTeam(now, demoUser.id);
     this.ensureStudyDiariesForUsers(now);
     this.backfillChallengeCategoryDiaries(demoUser.id, now);
@@ -2560,6 +2621,72 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   getMeetingDefaultWorkspaceId() {
     return 'meeting-workspace-default';
+  }
+
+  private ensureDevChallengeDefaultWorkspace(now: string, userId: string) {
+    const defaultWorkspaceId = this.getDevChallengeDefaultWorkspaceId();
+    const existing = this.sqlite
+      .prepare(
+        'SELECT id FROM dev_challenge_workspaces WHERE id = ? LIMIT 1',
+      )
+      .get(defaultWorkspaceId) as { id: string } | undefined;
+
+    if (!existing) {
+      this.sqlite
+        .prepare(
+          `
+            INSERT INTO dev_challenge_workspaces (
+              id, name, description, icon, color,
+              order_idx, archived, created_by, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+        )
+        .run(
+          defaultWorkspaceId,
+          'Dev Challenge',
+          '기존 개발 챌린지를 담는 기본 워크스페이스',
+          'Trophy',
+          null,
+          0,
+          0,
+          userId,
+          now,
+          now,
+        );
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          INSERT OR IGNORE INTO dev_challenge_workspace_members (
+            id, workspace_id, user_id, role, created_at, updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `,
+      )
+      .run(
+        `dev-challenge-member-${defaultWorkspaceId}-${userId}`,
+        defaultWorkspaceId,
+        userId,
+        'owner',
+        now,
+        now,
+      );
+
+    this.sqlite
+      .prepare(
+        `
+          UPDATE dev_challenge_categories
+          SET workspace_id = ?, updated_at = ?
+          WHERE workspace_id IS NULL OR workspace_id = ''
+        `,
+      )
+      .run(defaultWorkspaceId, now);
+  }
+
+  getDevChallengeDefaultWorkspaceId() {
+    return 'dev-challenge-workspace-default';
   }
 
   private reconcileAiNativeMenus(now: string) {

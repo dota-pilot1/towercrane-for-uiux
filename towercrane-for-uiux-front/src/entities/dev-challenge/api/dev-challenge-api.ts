@@ -8,9 +8,89 @@ import type {
   DevChallengeChecklistItem,
   DevChallengeSection,
   DevChallengeSubmission,
+  DevChallengeWorkspace,
+  DevChallengeWorkspaceMember,
+  DevChallengeWorkspaceRole,
 } from '../model/types'
 
 export const devChallengeApi = {
+  listWorkspaces: () => apiRequest<DevChallengeWorkspace[]>('/dev-challenge/workspaces'),
+
+  getWorkspace: (workspaceId: string) =>
+    apiRequest<DevChallengeWorkspace>(`/dev-challenge/workspaces/${workspaceId}`),
+
+  createWorkspace: (data: { name: string; description?: string; icon?: string }) =>
+    apiRequest<DevChallengeWorkspace>('/dev-challenge/workspaces', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateWorkspace: (
+    workspaceId: string,
+    data: Partial<{ name: string; description: string; icon: string; archived: boolean; orderIdx: number }>,
+  ) =>
+    apiRequest<DevChallengeWorkspace>(`/dev-challenge/workspaces/${workspaceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deleteWorkspace: (workspaceId: string) =>
+    apiRequest<{ success: boolean }>(`/dev-challenge/workspaces/${workspaceId}`, {
+      method: 'DELETE',
+    }),
+
+  reorderWorkspaces: (workspaceIds: string[]) =>
+    apiRequest<{ success: boolean }>('/dev-challenge/workspaces/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ workspaceIds }),
+    }),
+
+  listWorkspaceMembers: (workspaceId: string) =>
+    apiRequest<DevChallengeWorkspaceMember[]>(
+      `/dev-challenge/workspaces/${workspaceId}/members`,
+    ),
+
+  upsertWorkspaceMember: (
+    workspaceId: string,
+    data: { userId: string; role: DevChallengeWorkspaceRole },
+  ) =>
+    apiRequest<DevChallengeWorkspaceMember[]>(
+      `/dev-challenge/workspaces/${workspaceId}/members`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+    ),
+
+  deleteWorkspaceMember: (workspaceId: string, memberId: string) =>
+    apiRequest<{ success: boolean }>(
+      `/dev-challenge/workspaces/${workspaceId}/members/${memberId}`,
+      { method: 'DELETE' },
+    ),
+
+  listWorkspaceCategories: (workspaceId: string) =>
+    apiRequest<DevChallengeCategory[]>(
+      `/dev-challenge/workspaces/${workspaceId}/categories`,
+    ),
+
+  createWorkspaceCategory: (workspaceId: string, data: { name: string }) =>
+    apiRequest<DevChallengeCategory>(
+      `/dev-challenge/workspaces/${workspaceId}/categories`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+    ),
+
+  reorderWorkspaceCategories: (workspaceId: string, categoryIds: string[]) =>
+    apiRequest<{ success: boolean }>(
+      `/dev-challenge/workspaces/${workspaceId}/categories/reorder`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ categoryIds }),
+      },
+    ),
+
   listCategories: () => apiRequest<DevChallengeCategory[]>('/dev-challenge/categories'),
 
   createCategory: (data: { name: string }) =>

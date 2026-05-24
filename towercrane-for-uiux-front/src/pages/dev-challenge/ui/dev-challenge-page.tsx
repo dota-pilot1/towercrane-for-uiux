@@ -1,13 +1,20 @@
 import { useNavigate, useSearch } from '@tanstack/react-router'
-import { Trophy } from 'lucide-react'
+import { ChevronLeft, Trophy } from 'lucide-react'
 import { PageHeader } from '../../../shared/ui/page-header'
 import { DevChallengeCategoryPanel } from '../../../features/dev-challenge/ui/dev-challenge-category-panel'
 import { DevChallengeSectionPanel } from '../../../features/dev-challenge/ui/dev-challenge-section-panel'
 import { DevChallengeMainPanel } from '../../../features/dev-challenge/ui/dev-challenge-main-panel'
+import { useDevChallengeWorkspace } from '../../../features/dev-challenge/lib/hooks'
 
-export function DevChallengePage() {
+type DevChallengePageProps = {
+  workspaceId?: string
+}
+
+export function DevChallengePage({ workspaceId }: DevChallengePageProps) {
   const search = useSearch({ strict: false }) as { cat?: string; sec?: string; asgn?: string }
   const navigate = useNavigate()
+  const workspaceQuery = useDevChallengeWorkspace(workspaceId ?? '')
+  const workspace = workspaceQuery.data
 
   const selectedCategoryId = search.cat ?? null
   const selectedSectionId = search.sec ?? null
@@ -30,12 +37,25 @@ export function DevChallengePage() {
     <section className="space-y-4 ui-page-bg pb-4">
       <PageHeader
         icon={Trophy}
-        title="Dev Challenge"
-        description="개발 챌린지를 출제하고 제출을 관리합니다."
+        title={workspace?.name ?? 'Dev Challenge'}
+        description={workspace?.description || '개발 챌린지를 출제하고 제출을 관리합니다.'}
+        actions={
+          workspaceId ? (
+            <button
+              type="button"
+              className="inline-flex h-8 items-center justify-center rounded-sm border border-background bg-background px-3 text-sm font-semibold text-text-primary transition hover:bg-surface-raised"
+              onClick={() => navigate({ to: '/dev-challenge' })}
+            >
+              <ChevronLeft className="mr-1.5 size-4" />
+              워크스페이스
+            </button>
+          ) : null
+        }
       />
 
       <div className="flex h-[calc(100vh-200px)] gap-3">
         <DevChallengeCategoryPanel
+          workspaceId={workspaceId}
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
           onResetSection={() => {}} // setSelectedCategoryId가 sec·asgn 초기화까지 포함

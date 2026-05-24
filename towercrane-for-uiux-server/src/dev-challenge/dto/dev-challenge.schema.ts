@@ -1,6 +1,34 @@
 import { z } from 'zod';
 
+export const devChallengeWorkspaceRoleSchema = z.enum([
+  'owner',
+  'editor',
+  'member',
+]);
+
+export const createWorkspaceSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(1000).optional().default(''),
+  icon: z.string().trim().min(1).max(100).optional().default('Trophy'),
+  color: z.string().trim().max(80).nullable().optional(),
+});
+
+export const updateWorkspaceSchema = createWorkspaceSchema.partial().extend({
+  archived: z.boolean().optional(),
+  orderIdx: z.number().int().nonnegative().optional(),
+});
+
+export const reorderWorkspacesSchema = z.object({
+  workspaceIds: z.array(z.string().min(1)).min(1),
+});
+
+export const upsertWorkspaceMemberSchema = z.object({
+  userId: z.string().min(1),
+  role: devChallengeWorkspaceRoleSchema.default('member'),
+});
+
 export const createCategorySchema = z.object({
+  workspaceId: z.string().min(1).optional(),
   name: z.string().min(1).max(255),
   summary: z.string().max(500).optional(),
   icon: z.string().min(1).max(100).default('Trophy'),
@@ -94,6 +122,11 @@ export const reviewSubmissionSchema = z.object({
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
+export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
+export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;
+export type UpsertWorkspaceMemberInput = z.infer<
+  typeof upsertWorkspaceMemberSchema
+>;
 export type CreateSectionInput = z.infer<typeof createSectionSchema>;
 export type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
 export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;
