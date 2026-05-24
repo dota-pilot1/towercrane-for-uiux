@@ -3686,6 +3686,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `ALTER TABLE chat_sessions ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
       );
     }
+
+    this.ensureColumn(
+      'chat_messages',
+      'file_urls',
+      `ALTER TABLE chat_messages ADD COLUMN file_urls TEXT`,
+    );
   }
 
   private ensureColumn(

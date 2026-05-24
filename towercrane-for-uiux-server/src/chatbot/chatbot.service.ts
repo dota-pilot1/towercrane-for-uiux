@@ -90,12 +90,16 @@ export class ChatbotService {
 
   listMessages(sessionId: string, userId: string) {
     this.assertOwnership(sessionId, userId);
-    return this.db
+    const rows = this.db
       .select()
       .from(chatMessagesTable)
       .where(eq(chatMessagesTable.sessionId, sessionId))
       .orderBy(asc(chatMessagesTable.createdAt))
       .all();
+    return rows.map((r) => ({
+      ...r,
+      fileUrls: r.fileUrls ? (JSON.parse(r.fileUrls) as string[]) : [],
+    }));
   }
 
   private touchSession(sessionId: string, firstMessageText?: string) {
@@ -135,19 +139,59 @@ export class ChatbotService {
     sessionId: string,
     role: 'user' | 'assistant',
     content: string,
+    fileUrls?: string[],
   ) {
     const message = {
       id: randomUUID(),
       sessionId,
       role,
       content,
+      fileUrls: fileUrls && fileUrls.length > 0 ? JSON.stringify(fileUrls) : null,
       createdAt: new Date().toISOString(),
     };
     this.db.insert(chatMessagesTable).values(message).run();
-    return message;
+    return { ...message, fileUrls: fileUrls ?? [] };
   }
 
-  async streamGpt(sessionId: string, message: string, userId: string, res: Response) {
+  private buildUserContent(
+    message: string,
+    fileUrls: string[],
+  ): string | OpenAI.ChatCompletionContentPart[] {
+    if (fileUrls.length === 0) return message
+
+    const parts: OpenAI.ChatCompletionContentPart[] = []
+
+    for (const url of fileUrls) {
+      // 쿼리스트링 제거 후 확장자 체크
+      const cleanUrl = url.split('?')[0]
+      if (/\.(jpg|jpeg|png|gif|webp)/i.test(cleanUrl)) {
+        parts.push({ type: 'image_url', image_url: { url, detail: 'auto' } })
+      }
+    }
+
+    if (message) parts.push({ type: 'text', text: message })
+
+    return parts.length > 0 ? parts : message
+  }
+
+  private buildHistory(
+    sessionId: string,
+  ): OpenAI.ChatCompletionMessageParam[] {
+    const rows = this.db
+      .select()
+      .from(chatMessagesTable)
+      .where(eq(chatMessagesTable.sessionId, sessionId))
+      .orderBy(asc(chatMessagesTable.createdAt))
+      .all()
+
+    return rows.map((r) => {
+      const fileUrls: string[] = r.fileUrls ? (JSON.parse(r.fileUrls) as string[]) : []
+      const content = this.buildUserContent(r.content, fileUrls)
+      return { role: r.role, content } as OpenAI.ChatCompletionMessageParam
+    })
+  }
+
+  async streamGpt(sessionId: string, message: string, userId: string, res: Response, fileUrls: string[] = []) {
     if (!this.openai) {
       throw new ServiceUnavailableException(
         'OpenAI API key is not configured.',
@@ -155,18 +199,34 @@ export class ChatbotService {
     }
 
     this.assertOwnership(sessionId, userId);
-    const meta = this.touchSession(sessionId, message);
-    const userMessage = this.insertMessage(sessionId, 'user', message);
+    const meta = this.touchSession(sessionId, message || '파일 첨부');
+    const userMessage = this.insertMessage(sessionId, 'user', message, fileUrls);
 
     res.write(
       `data: ${JSON.stringify({ type: 'meta', userMessage, sessionTitle: meta.title })}\n\n`,
     );
 
+    const content = this.buildUserContent(message, fileUrls)
+
+    const hasImage = fileUrls.some((url) =>
+      /\.(jpg|jpeg|png|gif|webp)/i.test(url.split('?')[0]),
+    )
+    const defaultModel =
+      this.configService.get<string>('OPENAI_DEFAULT_MODEL') ?? 'gpt-4o-mini'
+    const model = hasImage ? 'gpt-4o-mini' : defaultModel
+
+    // 이전 대화 히스토리 로드 (현재 메시지 제외 — insertMessage 이후라 이미 포함됨)
+    const history = this.buildHistory(sessionId)
+    const messages: OpenAI.ChatCompletionMessageParam[] = [
+      { role: 'system', content: '당신은 친절한 AI 어시스턴트입니다.' },
+      ...history.slice(0, -1), // 마지막은 방금 insert한 현재 메시지 → content로 교체
+      { role: 'user', content },
+    ]
+
     const stream = await this.openai.chat.completions.create({
-      model:
-        this.configService.get<string>('OPENAI_DEFAULT_MODEL') ?? 'gpt-4o-mini',
+      model,
       stream: true,
-      messages: [{ role: 'user', content: message }],
+      messages,
     });
 
     let assistantContent = '';

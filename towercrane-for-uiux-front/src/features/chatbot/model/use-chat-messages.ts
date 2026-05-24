@@ -5,6 +5,7 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  fileUrls?: string[];
 };
 
 const MOCK_RESPONSES = [

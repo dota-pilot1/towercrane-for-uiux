@@ -1508,6 +1508,7 @@ export const chatMessagesTable = sqliteTable('chat_messages', {
     .references(() => chatSessionsTable.id, { onDelete: 'cascade' }),
   role: text('role').$type<'user' | 'assistant'>().notNull(),
   content: text('content').notNull(),
+  fileUrls: text('file_urls'),
   createdAt: text('created_at').notNull(),
 });
 

@@ -54,13 +54,13 @@ export class ChatbotController {
   @Post('stream')
   async stream(
     @CurrentUser() user: User,
-    @Body() body: { sessionId: string; message: string },
+    @Body() body: { sessionId: string; message: string; fileUrls?: string[] },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    await this.chatbotService.streamGpt(body.sessionId, body.message, user.id, res);
+    await this.chatbotService.streamGpt(body.sessionId, body.message, user.id, res, body.fileUrls);
   }
 }

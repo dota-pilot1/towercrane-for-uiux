@@ -21,6 +21,7 @@ type MessageDto = {
   sessionId: string
   role: 'user' | 'assistant'
   content: string
+  fileUrls?: string[]
   createdAt: string
 }
 
@@ -38,6 +39,7 @@ function toMessage(m: MessageDto): Message {
     id: m.id,
     role: m.role,
     content: m.content,
+    fileUrls: m.fileUrls && m.fileUrls.length > 0 ? m.fileUrls : undefined,
     timestamp: new Date(m.createdAt),
   }
 }
