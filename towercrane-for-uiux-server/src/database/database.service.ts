@@ -1212,9 +1212,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_dev_challenge_workspace_members_user
         ON dev_challenge_workspace_members(user_id, workspace_id);
 
-      CREATE INDEX IF NOT EXISTS idx_dev_challenge_categories_workspace_order
-        ON dev_challenge_categories(workspace_id, order_idx);
-
       CREATE TABLE IF NOT EXISTS dev_challenge_sections (
         id TEXT PRIMARY KEY,
         category_id TEXT NOT NULL,
