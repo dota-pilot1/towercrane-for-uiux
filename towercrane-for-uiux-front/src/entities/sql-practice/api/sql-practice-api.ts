@@ -206,6 +206,14 @@ export const sqlPracticeApi = {
     apiRequest<SqlExecuteResponse>(
       `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/tables/${encodeURIComponent(tableName)}/rows`,
     ),
+  executePersonal: (workspaceId: string, query: string) =>
+    apiRequest<SqlExecuteResponse>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/execute`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ query }),
+      },
+    ),
   replacePersonalSchemaVersion: (
     workspaceId: string,
     payload: { file: File; title?: string; description?: string },

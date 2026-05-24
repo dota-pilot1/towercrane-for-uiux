@@ -508,6 +508,25 @@ export function useSqlPersonalPracticeProblems(
   })
 }
 
+export function useExecuteSqlPersonalPracticeQuery(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (query: string) => sqlPracticeApi.executePersonal(workspaceId!, query),
+    onSuccess: (response) => {
+      if (workspaceId && response.seedReloaded) {
+        queryClient.invalidateQueries({
+          queryKey: sqlPracticeQueryKeys.personalMeta(workspaceId),
+        })
+        queryClient.invalidateQueries({
+          queryKey: sqlPracticeQueryKeys.personalTables(workspaceId),
+        })
+      }
+    },
+    onError: (error) => toast.error(messageFromError(error, '개인 SQL 실행에 실패했습니다.')),
+  })
+}
+
 function invalidatePersonalPractice(
   queryClient: ReturnType<typeof useQueryClient>,
   workspaceId: string,

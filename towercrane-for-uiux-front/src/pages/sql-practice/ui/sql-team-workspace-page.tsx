@@ -8,9 +8,11 @@ import {
   CheckCircle2,
   Database,
   FileUp,
+  Info,
   Loader2,
   Plus,
   RefreshCw,
+  Settings,
   Send,
   Table2,
   Trash2,
@@ -122,8 +124,10 @@ export function SqlTeamWorkspacePage() {
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all')
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState<TableInfo | null>(null)
+  const [activeTableName, setActiveTableName] = useState<string | null>(null)
   const [erdOpen, setErdOpen] = useState(false)
   const [replaceSqlOpen, setReplaceSqlOpen] = useState(false)
+  const [problemDialogOpen, setProblemDialogOpen] = useState(false)
   const [replaceSqlError, setReplaceSqlError] = useState<string | null>(null)
   const [form, setForm] = useState<SqlUserPracticeProblemPayload>(initialForm)
   const [targetTablesText, setTargetTablesText] = useState('')
@@ -201,11 +205,13 @@ export function SqlTeamWorkspacePage() {
     }
     const problem = await createProblemMutation.mutateAsync(payload)
     setSelectedProblemId(problem?.id ?? null)
+    setActiveTableName(null)
     setSubmittedSql(problem?.starterSql || '')
     setLastResult(null)
     setGradeResult(null)
     setForm(initialForm)
     setTargetTablesText('')
+    setProblemDialogOpen(false)
   }
 
   const handleGenerateAnswer = async () => {
@@ -242,6 +248,7 @@ export function SqlTeamWorkspacePage() {
     if (!window.confirm('팀 문제를 삭제할까요?')) return
     await deleteProblemMutation.mutateAsync(problem.id)
     setSelectedProblemId(null)
+    setActiveTableName(null)
     setSubmittedSql('')
     setLastResult(null)
     setGradeResult(null)
@@ -258,6 +265,7 @@ export function SqlTeamWorkspacePage() {
       setReplaceSqlOpen(false)
       setSelectedProblemId(null)
       setSelectedTable(null)
+      setActiveTableName(null)
       setSubmittedSql('')
       setScratchSql('')
       setLastResult(null)
@@ -279,6 +287,7 @@ export function SqlTeamWorkspacePage() {
 
   const handleSelectProblem = (problem: SqlTeamPracticeProblem) => {
     setSelectedProblemId(problem.id)
+    setActiveTableName(null)
     setSubmittedSql(problem.starterSql || '')
     setLastResult(null)
     setGradeResult(null)
@@ -286,6 +295,7 @@ export function SqlTeamWorkspacePage() {
 
   const handleStartTableQuery = (table: TableInfo) => {
     setSelectedProblemId(null)
+    setActiveTableName(table.tableName)
     setScratchSql(`SELECT *\nFROM ${quoteSqlIdentifier(table.tableName)}\nLIMIT 50;`)
     setScratchResult(null)
     requestAnimationFrame(() => scratchTextareaRef.current?.focus())
@@ -350,21 +360,34 @@ export function SqlTeamWorkspacePage() {
                 <h2 className="text-sm font-black text-text-primary">팀 문제</h2>
                 <p className="mt-1 text-xs font-semibold text-text-muted">{problems.length}문제</p>
               </div>
-              <Select
-                value={String(levelFilter)}
-                onChange={(event) =>
-                  setLevelFilter(event.target.value === 'all' ? 'all' : (Number(event.target.value) as LevelFilter))
-                }
-                className="h-9 py-0 text-xs"
-                wrapperClassName="w-24"
-              >
-                <option value="all">전체</option>
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <option key={level} value={level}>
-                    Lv {level}
-                  </option>
-                ))}
-              </Select>
+              <div className="flex shrink-0 items-center gap-2">
+                {canEdit && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setProblemDialogOpen(true)}
+                  >
+                    <Plus className="size-3.5" />
+                    등록
+                  </Button>
+                )}
+                <Select
+                  value={String(levelFilter)}
+                  onChange={(event) =>
+                    setLevelFilter(event.target.value === 'all' ? 'all' : (Number(event.target.value) as LevelFilter))
+                  }
+                  className="h-9 py-0 text-xs"
+                  wrapperClassName="w-24"
+                >
+                  <option value="all">전체</option>
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <option key={level} value={level}>
+                      Lv {level}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -568,145 +591,146 @@ export function SqlTeamWorkspacePage() {
         </Card>
 
         <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
-          {canEdit && (
-            <Card className="rounded-md p-4">
-              <form className="space-y-3" onSubmit={handleCreateProblem}>
-                <div className="flex items-center gap-2">
-                  <Plus className="size-4 text-brand-primary" />
-                  <h2 className="text-sm font-black text-text-primary">문제 등록</h2>
-                </div>
-                <Input
-                  value={form.title}
-                  onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-                  placeholder="제목"
-                  maxLength={80}
-                  required
-                />
-                <Select
-                  value={String(form.level)}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, level: Number(event.target.value) }))
-                  }
-                >
-                  {[1, 2, 3, 4, 5].map((level) => (
-                    <option key={level} value={level}>
-                      Level {level}
-                    </option>
-                  ))}
-                </Select>
-                <Input
-                  value={targetTablesText}
-                  onChange={(event) => setTargetTablesText(event.target.value)}
-                  placeholder="대상 테이블: orders, customers"
-                />
-                <textarea
-                  value={form.description}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, description: event.target.value }))
-                  }
-                  className="ui-input min-h-24 w-full resize-y rounded-md border p-3 text-sm outline-none focus:border-brand-border focus:ring-2 focus:ring-brand-border"
-                  placeholder="문제 설명"
-                  required
-                />
-                <textarea
-                  value={form.answerSql}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, answerSql: event.target.value }))
-                  }
-                  className="ui-input min-h-24 w-full resize-y rounded-md border p-3 font-mono text-sm outline-none focus:border-brand-border focus:ring-2 focus:ring-brand-border"
-                  placeholder="정답 SQL"
-                  spellCheck={false}
-                  required
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={handleGenerateAnswer}
-                    disabled={!form.description.trim() || generateAnswerMutation.isPending}
-                    className="gap-1.5"
-                  >
-                    {generateAnswerMutation.isPending ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <WandSparkles className="size-3.5" />
-                    )}
-                    정답 생성
-                  </Button>
-                  <Button type="submit" disabled={createProblemMutation.isPending}>
-                    저장
-                  </Button>
-                </div>
-              </form>
-            </Card>
-          )}
-
-          <Card className="min-h-0 shrink overflow-hidden rounded-md p-0">
+          <Card className="flex min-h-[320px] flex-1 flex-col overflow-hidden rounded-md p-0">
             <div className="border-b border-surface-border px-4 py-3">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <Table2 className="size-4 shrink-0 text-brand-primary" />
-                  <h2 className="truncate text-sm font-black text-text-primary">테이블</h2>
+                <h2 className="truncate text-sm font-black text-text-primary">테이블</h2>
+                <div className="flex items-center gap-1.5">
+                  {erdQuery.data?.mmd && (
+                    <button
+                      type="button"
+                      className="ui-icon-button-brand h-8 px-3 text-xs font-black"
+                      onClick={() => setErdOpen(true)}
+                    >
+                      ERD
+                    </button>
+                  )}
+                  <Button
+                    variant="secondary"
+                    size="sm-icon"
+                    onClick={handleRefresh}
+                    disabled={
+                      workspaceQuery.isFetching ||
+                      metaQuery.isFetching ||
+                      tablesQuery.isFetching ||
+                      problemsQuery.isFetching
+                    }
+                    aria-label="테이블 새로고침"
+                    title="새로고침"
+                  >
+                    <RefreshCw
+                      className={`size-3.5 ${
+                        workspaceQuery.isFetching ||
+                        metaQuery.isFetching ||
+                        tablesQuery.isFetching ||
+                        problemsQuery.isFetching
+                          ? 'animate-spin'
+                          : ''
+                      }`}
+                    />
+                  </Button>
                 </div>
-                <div className="flex items-center gap-2">
+              </div>
+            </div>
+
+            <div className="border-b border-surface-border p-3">
+              <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2 text-xs font-black text-text-primary">
+                    <Database className="size-3.5 shrink-0 text-brand-primary" />
+                    <span className="truncate">
+                      {schemaVersion?.title ?? workspace?.title ?? 'team-practice.sqlite'}
+                    </span>
+                  </div>
                   {canEdit && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="gap-1.5"
+                    <button
+                      className="ui-icon-button size-7 shrink-0"
+                      type="button"
+                      aria-label="팀 SQL 파일 교체"
+                      title="SQL 교체"
                       onClick={() => {
                         setReplaceSqlError(null)
                         setReplaceSqlOpen(true)
                       }}
                     >
-                      <FileUp className="size-3.5" />
-                      SQL 교체
-                    </Button>
+                      <Settings className="size-3.5" />
+                    </button>
                   )}
-                  <Button variant="secondary" size="sm" onClick={() => setErdOpen(true)}>
-                    ERD
-                  </Button>
                 </div>
-              </div>
-              <div className="mt-3 rounded-md border border-surface-border-soft bg-surface-muted p-3 text-xs text-text-secondary">
-                <p>schema: {schemaVersion ? `v${schemaVersion.version}` : '-'}</p>
-                <p>tables: {metaQuery.data?.tableCount ?? tables.length}</p>
-                <p>hash: {schemaVersion?.dbFileHash.slice(0, 10) ?? 'loading'}</p>
-              </div>
-            </div>
-            <div className="max-h-72 overflow-y-auto p-2">
-              {tables.map((table) => (
-                <div
-                  key={table.tableName}
-                  className="mb-1.5 grid grid-cols-[minmax(0,1fr)_auto] gap-1.5"
-                >
+                <div className="mt-2 space-y-1 text-xs text-text-secondary">
+                  <p>schema: {schemaVersion ? `v${schemaVersion.version}` : '-'}</p>
+                  <p>tables: {metaQuery.data?.tableCount ?? tables.length}</p>
+                  <p>hash: {schemaVersion?.dbFileHash.slice(0, 10) ?? 'loading'}</p>
+                </div>
+                {canEdit && (
                   <button
                     type="button"
-                    className="flex min-w-0 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-raised px-3 py-2 text-left hover:bg-surface-muted"
-                    onClick={() => setSelectedTable(table)}
+                    className="ui-icon-button mt-3 h-8 w-full gap-1.5 text-xs"
+                    onClick={() => {
+                      setReplaceSqlError(null)
+                      setReplaceSqlOpen(true)
+                    }}
                   >
-                    <Table2 className="size-3.5 shrink-0 text-brand-primary" />
-                    <span className="min-w-0 flex-1 truncate text-sm font-black text-text-primary">
-                      {table.tableName}
-                    </span>
-                    <span className="shrink-0 text-xs font-semibold text-text-muted">
-                      {table.rowCount}행
-                    </span>
+                    <FileUp className="size-3.5" />
+                    SQL 교체
                   </button>
-                  <Button
-                    variant="secondary"
-                    size="sm-icon"
-                    onClick={() => handleStartTableQuery(table)}
-                    aria-label={`${table.tableName} 쿼리 시작`}
-                    title="쿼리 시작"
-                  >
-                    <Send className="size-3.5" />
-                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-2">
+              {tables.length === 0 ? (
+                <div className="flex min-h-[240px] flex-col items-center justify-center px-5 text-center">
+                  <Table2 className="mb-3 size-9 text-text-muted" />
+                  <p className="text-sm font-semibold text-text-primary">테이블이 없습니다</p>
+                  <p className="mt-1 text-xs leading-5 text-text-secondary">
+                    SQL 파일을 교체하거나 새로고침으로 팀 DB를 다시 확인하세요.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-1">
+                  {tables.map((table) => {
+                    const isActive = activeTableName === table.tableName
+                    return (
+                      <div
+                        key={table.tableName}
+                        className={`flex items-center gap-2 rounded-md border px-3 py-2 transition-colors ${
+                          isActive
+                            ? 'border-brand-border bg-brand-glass text-brand-primary'
+                            : 'border-transparent text-text-primary hover:border-surface-border-soft hover:bg-surface-muted'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                          onClick={() => handleStartTableQuery(table)}
+                          title="쿼리 시작"
+                        >
+                          <Table2 className="size-3.5 shrink-0" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-black">
+                              {table.tableName}
+                            </span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-sm border border-surface-border-soft p-1.5 text-text-secondary transition-colors hover:border-brand-border hover:text-brand-primary"
+                          title="스키마 보기"
+                          aria-label={`${table.tableName} 스키마 보기`}
+                          onClick={() => setSelectedTable(table)}
+                        >
+                          <Info className="size-3.5" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </Card>
 
-          <Card className="min-h-0 overflow-hidden rounded-md p-4">
+          <Card className="flex max-h-64 shrink-0 flex-col overflow-hidden rounded-md p-4">
             <div className="flex items-center gap-2">
               <UsersRound className="size-4 text-brand-primary" />
               <h2 className="text-sm font-black text-text-primary">멤버</h2>
@@ -733,7 +757,7 @@ export function SqlTeamWorkspacePage() {
                 </div>
               </form>
             )}
-            <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
+            <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto">
               {members.map((member) => (
                 <div
                   key={member.id}
@@ -818,7 +842,131 @@ export function SqlTeamWorkspacePage() {
         problemDescription={selectedProblem?.description ?? ''}
         onClose={() => setGradeResult(null)}
       />
+      <SqlTeamProblemDialog
+        open={problemDialogOpen}
+        form={form}
+        targetTablesText={targetTablesText}
+        isSaving={createProblemMutation.isPending}
+        isGeneratingAnswer={generateAnswerMutation.isPending}
+        onFormChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
+        onTargetTablesTextChange={setTargetTablesText}
+        onGenerateAnswer={handleGenerateAnswer}
+        onSubmit={handleCreateProblem}
+        onClose={() => setProblemDialogOpen(false)}
+      />
     </section>
+  )
+}
+
+function SqlTeamProblemDialog({
+  open,
+  form,
+  targetTablesText,
+  isSaving,
+  isGeneratingAnswer,
+  onFormChange,
+  onTargetTablesTextChange,
+  onGenerateAnswer,
+  onSubmit,
+  onClose,
+}: {
+  open: boolean
+  form: SqlUserPracticeProblemPayload
+  targetTablesText: string
+  isSaving: boolean
+  isGeneratingAnswer: boolean
+  onFormChange: (patch: Partial<SqlUserPracticeProblemPayload>) => void
+  onTargetTablesTextChange: (value: string) => void
+  onGenerateAnswer: () => void | Promise<void>
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>
+  onClose: () => void
+}) {
+  return (
+    <Dialog.Root open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[220] ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[221] flex max-h-[min(760px,calc(100vh-2rem))] w-[min(760px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-md border border-surface-border shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-surface-border px-5 py-4">
+            <div className="min-w-0 flex-1">
+              <Dialog.Title className="flex items-center gap-2 text-sm font-black text-text-primary">
+                <Plus className="size-4 shrink-0 text-brand-primary" />
+                팀 문제 등록
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-xs leading-5 text-text-muted">
+                팀 워크스페이스 DB를 기준으로 공유 문제를 추가합니다.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button type="button" className="ui-icon-button size-8 shrink-0" aria-label="닫기">
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <form className="min-h-0 flex-1 overflow-y-auto p-5" onSubmit={onSubmit}>
+            <div className="grid gap-3">
+              <Input
+                value={form.title}
+                onChange={(event) => onFormChange({ title: event.target.value })}
+                placeholder="제목"
+                maxLength={80}
+                required
+              />
+              <Select
+                value={String(form.level)}
+                onChange={(event) => onFormChange({ level: Number(event.target.value) })}
+              >
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <option key={level} value={level}>
+                    Level {level}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                value={targetTablesText}
+                onChange={(event) => onTargetTablesTextChange(event.target.value)}
+                placeholder="대상 테이블: orders, customers"
+              />
+              <textarea
+                value={form.description}
+                onChange={(event) => onFormChange({ description: event.target.value })}
+                className="ui-input min-h-32 w-full resize-y rounded-md border p-3 text-sm leading-6 outline-none focus:border-brand-border focus:ring-2 focus:ring-brand-border"
+                placeholder="문제 설명"
+                required
+              />
+              <textarea
+                value={form.answerSql}
+                onChange={(event) => onFormChange({ answerSql: event.target.value })}
+                className="ui-input min-h-40 w-full resize-y rounded-md border p-3 font-mono text-sm leading-6 outline-none focus:border-brand-border focus:ring-2 focus:ring-brand-border"
+                placeholder="정답 SQL"
+                spellCheck={false}
+                required
+              />
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onGenerateAnswer}
+                disabled={!form.description.trim() || isGeneratingAnswer}
+                className="gap-1.5"
+              >
+                {isGeneratingAnswer ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <WandSparkles className="size-3.5" />
+                )}
+                정답 생성
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                저장
+              </Button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 

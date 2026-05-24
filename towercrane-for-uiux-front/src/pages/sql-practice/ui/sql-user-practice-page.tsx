@@ -6,6 +6,7 @@ import {
   useState,
   type FormEvent,
   type ReactNode,
+  type RefObject,
   type TextareaHTMLAttributes,
 } from 'react'
 import {
@@ -14,18 +15,22 @@ import {
   Database,
   FileUp,
   FileText,
+  Info,
   Link2,
   Loader2,
   Plus,
   RefreshCw,
   RotateCcw,
+  Settings,
   Send,
   Sparkles,
   Table2,
   Trash2,
+  WandSparkles,
   X,
   XCircle,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import type {
   SqlExecuteResponse,
@@ -35,10 +40,12 @@ import type {
   TableInfo,
 } from '../../../entities/sql-practice/model/types'
 import { sqlPracticeApi } from '../../../entities/sql-practice/api/sql-practice-api'
+import { formatSqlQuery } from '../../../features/sql-practice/lib/format-sql'
 import {
   useCreateSqlUserPracticeProblem,
   useCreateSqlPersonalPracticeProblem,
   useDeleteSqlPersonalPracticeProblem,
+  useExecuteSqlPersonalPracticeQuery,
   useGenerateSqlUserPracticeAnswer,
   useGenerateSqlPersonalPracticeAnswer,
   useGradeSqlPersonalPracticeProblem,
@@ -58,6 +65,7 @@ import {
   useSqlUserPracticeTables,
   useUnshareSqlPersonalPracticeProblem,
 } from '../../../features/sql-practice/model/use-sql-practice-queries'
+import { SqlAutocompleteTextarea } from '../../../features/sql-practice/ui/sql-autocomplete-textarea'
 import { SqlErdDialog } from '../../../features/sql-practice/ui/sql-erd-dialog'
 import { SqlResultTable } from '../../../features/sql-practice/ui/sql-result-table'
 import { SqlTableSchemaDialog } from '../../../features/sql-practice/ui/sql-table-schema-dialog'
@@ -79,21 +87,42 @@ const EMPTY_TABLES: TableInfo[] = []
 const SQL_KEYWORDS = [
   'SELECT',
   'FROM',
+  'WITH',
+  'AS',
   'JOIN',
+  'LEFT JOIN',
+  'INNER JOIN',
   'ON',
   'WHERE',
   'AND',
   'OR',
   'LIKE',
+  'IN',
+  'NOT IN',
+  'IS NULL',
+  'IS NOT NULL',
   'GROUP BY',
   'HAVING',
   'COUNT(*)',
   'SUM()',
+  'AVG()',
+  'MAX()',
+  'MIN()',
+  'COALESCE()',
+  'CASE',
+  'WHEN',
+  'THEN',
+  'ELSE',
+  'END',
   'ORDER BY',
   'ASC',
   'DESC',
   'LIMIT',
-]
+  'OFFSET',
+  'DISTINCT',
+  'UNION',
+  'UNION ALL',
+] as const
 
 const initialForm: SqlUserPracticeProblemPayload = {
   title: '',
@@ -142,7 +171,10 @@ function SqlUserPracticeWorkspace() {
   const gradeProblemMutation = useGradeSqlUserPracticeProblem()
 
   const tables = tablesQuery.data ?? EMPTY_TABLES
-  const problems = problemsQuery.data?.problems ?? []
+  const problems = useMemo(
+    () => problemsQuery.data?.problems ?? [],
+    [problemsQuery.data?.problems],
+  )
   const submissionStatusByProblem = submissionsQuery.data?.byExample ?? {}
   const totalScore = problems.reduce(
     (sum, problem) => sum + (submissionStatusByProblem[problem.id]?.isCorrect ? 1 : 0),
@@ -160,14 +192,6 @@ function SqlUserPracticeWorkspace() {
     const targets = new Set(selectedProblem.targetTables)
     return tables.filter((table) => targets.has(table.tableName))
   }, [selectedProblem, tables])
-
-  useEffect(() => {
-    if (!selectedProblem) return
-    setSelectedProblemId(selectedProblem.id)
-    setQuery(selectedProblem.starterSql || '')
-    setLastResult(null)
-    setGradeResult(null)
-  }, [selectedProblem?.id])
 
   const handleRefresh = () => {
     metaQuery.refetch()
@@ -231,27 +255,11 @@ function SqlUserPracticeWorkspace() {
     }))
   }
 
-  const insertQueryKeyword = (keyword: string) => {
-    const textarea = queryTextareaRef.current
-    if (!textarea) {
-      setQuery((current) => `${current}${current.endsWith(' ') || !current ? '' : ' '}${keyword} `)
-      return
-    }
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const prefix = query.slice(0, start)
-    const suffix = query.slice(end)
-    const needsLeadingSpace = prefix.length > 0 && !/\s$/.test(prefix)
-    const insertion = `${needsLeadingSpace ? ' ' : ''}${keyword} `
-    const nextQuery = `${prefix}${insertion}${suffix}`
-
-    setQuery(nextQuery)
-    window.requestAnimationFrame(() => {
-      textarea.focus()
-      const cursor = start + insertion.length
-      textarea.setSelectionRange(cursor, cursor)
-    })
+  const handleSelectUserProblem = (problem: (typeof problems)[number]) => {
+    setSelectedProblemId(problem.id)
+    setQuery(problem.starterSql || '')
+    setLastResult(null)
+    setGradeResult(null)
   }
 
   return (
@@ -351,7 +359,7 @@ function SqlUserPracticeWorkspace() {
                         ? 'border-brand-border bg-brand-glass'
                         : 'border-surface-border-soft bg-surface-raised hover:bg-surface-muted'
                     }`}
-                    onClick={() => setSelectedProblemId(problem.id)}
+                    onClick={() => handleSelectUserProblem(problem)}
                   >
                     <div className="flex items-center gap-2">
                       <span className="flex size-7 shrink-0 items-center justify-center rounded-sm border border-surface-border-soft text-xs font-black text-text-secondary">
@@ -488,57 +496,18 @@ function SqlUserPracticeWorkspace() {
                   </div>
                 )}
 
-                <div className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-black text-text-primary">답안 SQL</h3>
-                    <p className="text-xs font-semibold text-text-muted">
-                      키워드 클릭: 커서 위치에 입력 · Ctrl+Enter: 실행
-                    </p>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {SQL_KEYWORDS.map((keyword) => (
-                      <button
-                        key={keyword}
-                        type="button"
-                        className="rounded-sm border border-surface-border-soft bg-surface-muted px-2.5 py-1 text-xs font-black text-text-secondary hover:border-brand-border hover:text-brand-primary"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => insertQueryKeyword(keyword)}
-                      >
-                        {keyword}
-                      </button>
-                    ))}
-                  </div>
-                  <Textarea
-                    ref={queryTextareaRef}
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-                        event.preventDefault()
-                        handleExecute()
-                      }
-                    }}
-                    placeholder={'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'}
-                    rows={7}
-                    className="mt-3 min-h-[170px] resize-none font-mono text-sm leading-6"
-                  />
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleExecute}
-                      disabled={!query.trim() || gradeProblemMutation.isPending}
-                      className="gap-1.5"
-                    >
-                      {gradeProblemMutation.isPending ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Send className="size-3.5" />
-                      )}
-                      실행
-                    </Button>
-                  </div>
-                </div>
+                <SqlPracticeEditor
+                  value={query}
+                  onChange={setQuery}
+                  onRun={handleExecute}
+                  onFormat={() => formatSqlInto(query, setQuery)}
+                  isRunning={gradeProblemMutation.isPending}
+                  tables={tables}
+                  textareaRef={queryTextareaRef}
+                  title="답안 SQL"
+                  runLabel="실행"
+                  placeholder={'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'}
+                />
 
                 {lastResult ? (
                   <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
@@ -958,6 +927,7 @@ function SqlPersonalPracticeWorkspace() {
   const [levelFilter, setLevelFilter] = useState<LevelFilter>(1)
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState<TableInfo | null>(null)
+  const [activeTableName, setActiveTableName] = useState<string | null>(null)
   const [erdOpen, setErdOpen] = useState(false)
   const [replaceSqlOpen, setReplaceSqlOpen] = useState(false)
   const [replaceSqlError, setReplaceSqlError] = useState<string | null>(null)
@@ -968,9 +938,12 @@ function SqlPersonalPracticeWorkspace() {
   })
   const [targetTablesText, setTargetTablesText] = useState('')
   const [query, setQuery] = useState('')
+  const [scratchQuery, setScratchQuery] = useState('')
   const [lastResult, setLastResult] = useState<SqlExecuteResponse | null>(null)
+  const [scratchResult, setScratchResult] = useState<SqlExecuteResponse | null>(null)
   const [gradeResult, setGradeResult] = useState<SqlUserPracticeGradeResponse | null>(null)
   const queryTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const scratchTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const metaQuery = useSqlPersonalPracticeMeta(workspaceId)
   const tablesQuery = useSqlPersonalPracticeTables(workspaceId)
@@ -981,16 +954,20 @@ function SqlPersonalPracticeWorkspace() {
   const createProblemMutation = useCreateSqlPersonalPracticeProblem(workspaceId)
   const generateAnswerMutation = useGenerateSqlPersonalPracticeAnswer(workspaceId)
   const gradeProblemMutation = useGradeSqlPersonalPracticeProblem(workspaceId)
+  const executePersonalMutation = useExecuteSqlPersonalPracticeQuery(workspaceId)
   const shareProblemMutation = useShareSqlPersonalPracticeProblem(workspaceId)
   const unshareProblemMutation = useUnshareSqlPersonalPracticeProblem(workspaceId)
   const deleteProblemMutation = useDeleteSqlPersonalPracticeProblem(workspaceId)
   const replaceSchemaMutation = useReplaceSqlPersonalPracticeSchemaVersion(workspaceId)
 
   const tables = tablesQuery.data ?? EMPTY_TABLES
-  const problems = problemsQuery.data?.problems ?? []
+  const problems = useMemo(
+    () => problemsQuery.data?.problems ?? [],
+    [problemsQuery.data?.problems],
+  )
   const schemaVersion = problemsQuery.data?.schemaVersion
   const selectedProblem = useMemo(
-    () => problems.find((problem) => problem.id === selectedProblemId) ?? problems[0] ?? null,
+    () => (selectedProblemId ? problems.find((problem) => problem.id === selectedProblemId) ?? null : null),
     [problems, selectedProblemId],
   )
   const selectedTargetTables = useMemo(() => {
@@ -998,14 +975,6 @@ function SqlPersonalPracticeWorkspace() {
     const targets = new Set(selectedProblem.targetTables)
     return tables.filter((table) => targets.has(table.tableName))
   }, [selectedProblem, tables])
-
-  useEffect(() => {
-    if (!selectedProblem) return
-    setSelectedProblemId(selectedProblem.id)
-    setQuery(selectedProblem.starterSql || '')
-    setLastResult(null)
-    setGradeResult(null)
-  }, [selectedProblem?.id])
 
   const handleRefresh = () => {
     workspaceQuery.refetch()
@@ -1023,6 +992,13 @@ function SqlPersonalPracticeWorkspace() {
     })
     setLastResult(response.execution)
     setGradeResult(response)
+  }
+
+  const handleScratchExecute = async () => {
+    const trimmed = scratchQuery.trim()
+    if (!trimmed) return
+    const response = await executePersonalMutation.mutateAsync(trimmed)
+    setScratchResult(response)
   }
 
   const handleCreateProblem = async (event: FormEvent<HTMLFormElement>) => {
@@ -1064,27 +1040,21 @@ function SqlPersonalPracticeWorkspace() {
     }))
   }
 
-  const insertQueryKeyword = (keyword: string) => {
-    const textarea = queryTextareaRef.current
-    if (!textarea) {
-      setQuery((current) => `${current}${current.endsWith(' ') || !current ? '' : ' '}${keyword} `)
-      return
-    }
+  const handleSelectPersonalProblem = (problem: (typeof problems)[number]) => {
+    setSelectedProblemId(problem.id)
+    setActiveTableName(null)
+    setQuery(problem.starterSql || '')
+    setScratchResult(null)
+    setLastResult(null)
+    setGradeResult(null)
+  }
 
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const prefix = query.slice(0, start)
-    const suffix = query.slice(end)
-    const needsLeadingSpace = prefix.length > 0 && !/\s$/.test(prefix)
-    const insertion = `${needsLeadingSpace ? ' ' : ''}${keyword} `
-    const nextQuery = `${prefix}${insertion}${suffix}`
-
-    setQuery(nextQuery)
-    window.requestAnimationFrame(() => {
-      textarea.focus()
-      const cursor = start + insertion.length
-      textarea.setSelectionRange(cursor, cursor)
-    })
+  const handleStartTableQuery = (table: TableInfo) => {
+    setSelectedProblemId(null)
+    setActiveTableName(table.tableName)
+    setScratchQuery(`SELECT *\nFROM ${quoteSqlIdentifier(table.tableName)}\nLIMIT 50;`)
+    setScratchResult(null)
+    window.requestAnimationFrame(() => scratchTextareaRef.current?.focus())
   }
 
   const getShareUrl = (token: string) => `${window.location.origin}/share/sql/personal/${token}`
@@ -1108,6 +1078,10 @@ function SqlPersonalPracticeWorkspace() {
     if (!window.confirm('개인 문제를 삭제할까요?')) return
     await deleteProblemMutation.mutateAsync(selectedProblem.id)
     setSelectedProblemId(null)
+    setActiveTableName(null)
+    setQuery('')
+    setLastResult(null)
+    setGradeResult(null)
   }
 
   const handleReplaceSchema = async (input: {
@@ -1121,7 +1095,11 @@ function SqlPersonalPracticeWorkspace() {
       setReplaceSqlOpen(false)
       setSelectedProblemId(null)
       setSelectedTable(null)
+      setActiveTableName(null)
+      setQuery('')
+      setScratchQuery('')
       setLastResult(null)
+      setScratchResult(null)
       setGradeResult(null)
       handleRefresh()
     } catch (error) {
@@ -1216,7 +1194,7 @@ function SqlPersonalPracticeWorkspace() {
                         ? 'border-brand-border bg-brand-glass'
                         : 'border-surface-border-soft bg-surface-raised hover:bg-surface-muted'
                     }`}
-                    onClick={() => setSelectedProblemId(problem.id)}
+                    onClick={() => handleSelectPersonalProblem(problem)}
                   >
                     <div className="flex items-center gap-2">
                       <span className="flex size-7 shrink-0 items-center justify-center rounded-sm border border-surface-border-soft text-xs font-black text-text-secondary">
@@ -1358,57 +1336,18 @@ function SqlPersonalPracticeWorkspace() {
                   </div>
                 )}
 
-                <div className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-black text-text-primary">답안 SQL</h3>
-                    <p className="text-xs font-semibold text-text-muted">
-                      키워드 클릭: 커서 위치에 입력 · Ctrl+Enter: 실행
-                    </p>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {SQL_KEYWORDS.map((keyword) => (
-                      <button
-                        key={keyword}
-                        type="button"
-                        className="rounded-sm border border-surface-border-soft bg-surface-muted px-2.5 py-1 text-xs font-black text-text-secondary hover:border-brand-border hover:text-brand-primary"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => insertQueryKeyword(keyword)}
-                      >
-                        {keyword}
-                      </button>
-                    ))}
-                  </div>
-                  <Textarea
-                    ref={queryTextareaRef}
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-                        event.preventDefault()
-                        handleExecute()
-                      }
-                    }}
-                    placeholder={'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'}
-                    rows={7}
-                    className="mt-3 min-h-[170px] resize-none font-mono text-sm leading-6"
-                  />
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleExecute}
-                      disabled={!query.trim() || gradeProblemMutation.isPending}
-                      className="gap-1.5"
-                    >
-                      {gradeProblemMutation.isPending ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Send className="size-3.5" />
-                      )}
-                      실행
-                    </Button>
-                  </div>
-                </div>
+                <SqlPracticeEditor
+                  value={query}
+                  onChange={setQuery}
+                  onRun={handleExecute}
+                  onFormat={() => formatSqlInto(query, setQuery)}
+                  isRunning={gradeProblemMutation.isPending}
+                  tables={tables}
+                  textareaRef={queryTextareaRef}
+                  title="답안 SQL"
+                  runLabel="실행"
+                  placeholder={'SELECT ...\nFROM ...\nWHERE ...\nORDER BY ...;'}
+                />
 
                 {lastResult ? (
                   <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
@@ -1422,8 +1361,45 @@ function SqlPersonalPracticeWorkspace() {
                 )}
               </div>
             ) : (
-              <div className="flex min-h-[420px] items-center justify-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted text-sm font-semibold text-text-muted">
-                문제를 선택하거나 새 개인 문제를 등록하세요.
+              <div className="flex min-h-full flex-col gap-4">
+                <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                  <div className="flex items-center gap-2">
+                    <Database className="size-4 text-brand-primary" />
+                    <h3 className="text-sm font-black text-text-primary">개인 DB 자유 SQL</h3>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-text-secondary">
+                    문제를 선택하지 않아도 개인 DB를 바로 조회할 수 있습니다. 조회 쿼리만 실행됩니다.
+                  </p>
+                </div>
+
+                <SqlPracticeEditor
+                  value={scratchQuery}
+                  onChange={setScratchQuery}
+                  onRun={handleScratchExecute}
+                  onFormat={() => formatSqlInto(scratchQuery, setScratchQuery)}
+                  isRunning={executePersonalMutation.isPending}
+                  tables={tables}
+                  textareaRef={scratchTextareaRef}
+                  title="SQL"
+                  runLabel="실행"
+                  placeholder={`SELECT *\nFROM ${tables[0]?.tableName ?? 'table_name'}\nLIMIT 50;`}
+                />
+
+                {scratchResult ? (
+                  <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-black text-text-primary">실행 결과</h3>
+                      <Button variant="secondary" size="sm" onClick={() => setScratchResult(null)}>
+                        결과 지우기
+                      </Button>
+                    </div>
+                    <SqlResultTable response={scratchResult} />
+                  </div>
+                ) : (
+                  <div className="flex min-h-[120px] flex-1 items-center justify-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted text-sm font-semibold text-text-muted">
+                    오른쪽 테이블에서 쿼리를 시작하거나 SQL을 직접 입력하세요.
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1431,26 +1407,9 @@ function SqlPersonalPracticeWorkspace() {
 
         <Card className="flex min-h-0 flex-col overflow-hidden rounded-md p-0">
           <div className="border-b border-surface-border px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-black text-text-primary">테이블</h2>
-                <p className="mt-1 text-xs font-semibold text-text-muted">
-                  {metaQuery.data?.dbFile ?? 'personal-practice.sqlite'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="ui-icon-button h-8 gap-1.5 px-3 text-xs"
-                  onClick={() => {
-                    setReplaceSqlError(null)
-                    setReplaceSqlOpen(true)
-                  }}
-                  disabled={!workspaceId}
-                >
-                  <FileUp className="size-3.5" />
-                  SQL 교체
-                </button>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="truncate text-sm font-black text-text-primary">테이블</h2>
+              <div className="flex items-center gap-1.5">
                 {erdQuery.data?.mmd && (
                   <button
                     type="button"
@@ -1460,30 +1419,118 @@ function SqlPersonalPracticeWorkspace() {
                     ERD
                   </button>
                 )}
+                <button
+                  className="ui-icon-button size-8"
+                  type="button"
+                  aria-label="테이블 새로고침"
+                  title="새로고침"
+                  onClick={handleRefresh}
+                  disabled={workspaceQuery.isFetching || metaQuery.isFetching || tablesQuery.isFetching}
+                >
+                  <RefreshCw
+                    className={`size-3.5 ${
+                      workspaceQuery.isFetching || metaQuery.isFetching || tablesQuery.isFetching
+                        ? 'animate-spin'
+                        : ''
+                    }`}
+                  />
+                </button>
               </div>
-            </div>
-            <div className="mt-3 rounded-md border border-surface-border-soft bg-surface-muted p-3 text-xs text-text-secondary">
-              <p>schema: {schemaVersion ? `v${schemaVersion.version}` : '-'}</p>
-              <p>tables: {metaQuery.data?.tableCount ?? tables.length}</p>
-              <p>hash: {schemaVersion?.dbFileHash.slice(0, 10) ?? 'loading'}</p>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2">
-            {tables.map((table) => (
+          <div className="border-b border-surface-border p-3">
+            <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2 text-xs font-black text-text-primary">
+                  <Database className="size-3.5 shrink-0 text-brand-primary" />
+                  <span className="truncate">
+                    {metaQuery.data?.dbFile ?? 'practice.sqlite'}
+                  </span>
+                </div>
+                <button
+                  className="ui-icon-button size-7 shrink-0"
+                  type="button"
+                  aria-label="개인 SQL 파일 교체"
+                  title="SQL 교체"
+                  onClick={() => {
+                    setReplaceSqlError(null)
+                    setReplaceSqlOpen(true)
+                  }}
+                  disabled={!workspaceId}
+                >
+                  <Settings className="size-3.5" />
+                </button>
+              </div>
+              <div className="mt-2 space-y-1 text-xs text-text-secondary">
+                <p>seed: {schemaVersion?.title ?? metaQuery.data?.seedFile ?? 'personal-practice.sql'}</p>
+                <p>tables: {metaQuery.data?.tableCount ?? tables.length}</p>
+                <p>hash: {schemaVersion?.dbFileHash.slice(0, 10) ?? 'loading'}</p>
+              </div>
               <button
-                key={table.tableName}
                 type="button"
-                className="mb-1.5 flex w-full items-center gap-2 rounded-md border border-surface-border-soft bg-surface-raised px-3 py-2 text-left hover:bg-surface-muted"
-                onClick={() => setSelectedTable(table)}
+                className="ui-icon-button mt-3 h-8 w-full gap-1.5 text-xs"
+                onClick={() => {
+                  setReplaceSqlError(null)
+                  setReplaceSqlOpen(true)
+                }}
+                disabled={!workspaceId}
               >
-                <Table2 className="size-3.5 text-brand-primary" />
-                <span className="min-w-0 flex-1 truncate text-sm font-black text-text-primary">
-                  {table.tableName}
-                </span>
-                <span className="text-xs font-semibold text-text-muted">{table.rowCount}행</span>
+                <FileUp className="size-3.5" />
+                SQL 교체
               </button>
-            ))}
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+            {tables.length === 0 ? (
+              <div className="flex min-h-[240px] flex-col items-center justify-center px-5 text-center">
+                <Table2 className="mb-3 size-9 text-text-muted" />
+                <p className="text-sm font-semibold text-text-primary">테이블이 없습니다</p>
+                <p className="mt-1 text-xs leading-5 text-text-secondary">
+                  SQL 파일을 교체하거나 새로고침으로 개인 DB를 다시 확인하세요.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {tables.map((table) => {
+                  const isActive = activeTableName === table.tableName
+                  return (
+                    <div
+                      key={table.tableName}
+                      className={`flex items-center gap-2 rounded-md border px-3 py-2 transition-colors ${
+                        isActive
+                          ? 'border-brand-border bg-brand-glass text-brand-primary'
+                          : 'border-transparent text-text-primary hover:border-surface-border-soft hover:bg-surface-muted'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                        onClick={() => handleStartTableQuery(table)}
+                        title="쿼리 시작"
+                      >
+                        <Table2 className="size-3.5 shrink-0" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-black">
+                            {table.tableName}
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-sm border border-surface-border-soft p-1.5 text-text-secondary transition-colors hover:border-brand-border hover:text-brand-primary"
+                        title="스키마 보기"
+                        aria-label={`${table.tableName} 스키마 보기`}
+                        onClick={() => setSelectedTable(table)}
+                      >
+                        <Info className="size-3.5" />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </Card>
       </div>
@@ -1533,4 +1580,123 @@ function SqlPersonalPracticeWorkspace() {
       />
     </section>
   )
+}
+
+function SqlPracticeEditor({
+  value,
+  onChange,
+  onRun,
+  onFormat,
+  isRunning,
+  tables,
+  textareaRef,
+  title,
+  runLabel,
+  placeholder,
+}: {
+  value: string
+  onChange: (value: string) => void
+  onRun: () => void | Promise<void>
+  onFormat: () => void
+  isRunning: boolean
+  tables: TableInfo[]
+  textareaRef: RefObject<HTMLTextAreaElement | null>
+  title: string
+  runLabel: string
+  placeholder: string
+}) {
+  return (
+    <div className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <h3 className="text-sm font-black text-text-primary">{title}</h3>
+        <p className="text-xs font-semibold text-text-muted">
+          Tab 자동완성 · Ctrl+Enter 실행 · 키워드 클릭 삽입
+        </p>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {SQL_KEYWORDS.map((keyword) => (
+          <button
+            key={keyword}
+            type="button"
+            className="rounded-sm border border-surface-border-soft bg-surface-muted px-2.5 py-1 text-xs font-black text-text-secondary hover:border-brand-border hover:text-brand-primary"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => insertSqlText(textareaRef.current, value, onChange, keyword)}
+          >
+            {keyword}
+          </button>
+        ))}
+      </div>
+      <SqlAutocompleteTextarea
+        ref={textareaRef}
+        value={value}
+        onChange={onChange}
+        onSubmit={onRun}
+        keywords={SQL_KEYWORDS}
+        tableNames={tables.map((table) => table.tableName)}
+        columnNames={tables.flatMap((table) => table.columns.map((column) => column.name))}
+        rows={7}
+        className="ui-input mt-3 min-h-[180px] w-full resize-y rounded-md border p-4 font-mono text-sm leading-6 outline-none focus:border-brand-border focus:ring-2 focus:ring-brand-border"
+        placeholder={placeholder}
+        spellCheck={false}
+      />
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="gap-1.5"
+          onClick={onFormat}
+          disabled={!value.trim() || isRunning}
+        >
+          <WandSparkles className="size-3.5" />
+          SQL 정리
+        </Button>
+        <Button size="sm" className="gap-1.5" onClick={onRun} disabled={!value.trim() || isRunning}>
+          {isRunning ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+          {runLabel}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function formatSqlInto(value: string, onChange: (value: string) => void) {
+  const trimmed = value.trim()
+  if (!trimmed) return
+
+  try {
+    onChange(formatSqlQuery(trimmed))
+  } catch {
+    toast.error('SQL을 정리할 수 없습니다. 문법을 확인해 주세요.')
+  }
+}
+
+function insertSqlText(
+  textarea: HTMLTextAreaElement | null,
+  value: string,
+  onChange: (value: string) => void,
+  text: string,
+) {
+  if (!textarea) {
+    onChange(`${value}${value.endsWith(' ') || !value ? '' : ' '}${text} `)
+    return
+  }
+
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const prefix = value.slice(0, start)
+  const suffix = value.slice(end)
+  const needsLeadingSpace = prefix.length > 0 && !/\s$/.test(prefix)
+  const insertion = `${needsLeadingSpace ? ' ' : ''}${text} `
+  const nextValue = `${prefix}${insertion}${suffix}`
+
+  onChange(nextValue)
+  window.requestAnimationFrame(() => {
+    textarea.focus()
+    const cursor = start + insertion.length
+    textarea.setSelectionRange(cursor, cursor)
+  })
+}
+
+function quoteSqlIdentifier(identifier: string) {
+  return `"${identifier.replace(/"/g, '""')}"`
 }

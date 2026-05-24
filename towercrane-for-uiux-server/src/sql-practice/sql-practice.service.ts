@@ -509,10 +509,15 @@ export class SqlPracticeService {
   getPersonalPracticeTables(workspaceId: string, userId: string): TableInfo[] {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const runtimeUserId = this.getPersonalPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
     return this.getPersonalPracticeTablesForSchema(
       workspace.id,
       schemaVersion,
-      userId,
+      runtimeUserId,
     );
   }
 
@@ -523,11 +528,80 @@ export class SqlPracticeService {
   ): SqlExecuteResponse {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const runtimeUserId = this.getPersonalPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
     return this.executePersonalPracticeTablePreview(
       tableName,
       schemaVersion,
+      runtimeUserId,
+    );
+  }
+
+  executePersonalPractice(
+    workspaceId: string,
+    payload: unknown,
+    userId: string,
+  ): SqlExecuteResponse {
+    const start = Date.now();
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const parsed = executeSqlSchema.safeParse(payload);
+
+    if (!parsed.success) {
+      throw new BadRequestException(
+        parsed.error.issues[0]?.message ?? 'Invalid SQL request.',
+      );
+    }
+
+    const { query, type } = sanitizeSql(
+      parsed.data.query,
+      this.getMaxQueryLength(),
+    );
+
+    if (!this.isReaderType(type)) {
+      return {
+        success: false,
+        type,
+        columns: null,
+        rows: null,
+        affectedRows: 0,
+        message:
+          '개인 SQL 자유 실행은 SELECT/WITH/PRAGMA/EXPLAIN 조회 쿼리만 허용됩니다.',
+        executionTimeMs: Date.now() - start,
+        schemaChanged: false,
+      };
+    }
+
+    const seed = this.buildPersonalPracticeSeed(schemaVersion);
+    const runtimeUserId = this.getPersonalPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
       userId,
     );
+    const freshness = this.ensureDatabaseFresh(runtimeUserId, seed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      return this.executeReader(db, query, type, start, freshness.seedReloaded);
+    } catch (error) {
+      return {
+        success: false,
+        type,
+        columns: null,
+        rows: null,
+        affectedRows: 0,
+        message:
+          error instanceof Error ? error.message : 'SQL execution failed.',
+        executionTimeMs: Date.now() - start,
+        schemaChanged: false,
+        seedReloaded: freshness.seedReloaded,
+      };
+    } finally {
+      db.close();
+    }
   }
 
   replacePersonalPracticeSchemaVersion(
@@ -617,10 +691,15 @@ export class SqlPracticeService {
     }
 
     const schemaVersion = this.getPersonalSchemaVersion(schemaVersionId);
+    const runtimeUserId = this.getPersonalPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
     const activeTables = this.getPersonalPracticeTablesForSchema(
       workspace.id,
       schemaVersion,
-      userId,
+      runtimeUserId,
     );
 
     return {
@@ -733,17 +812,22 @@ export class SqlPracticeService {
   ): SqlPersonalPracticeProblem | null {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const runtimeUserId = this.getPersonalPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
     this.validatePersonalProblemTables(
       input.targetTables,
       workspace.id,
       schemaVersion,
-      userId,
+      runtimeUserId,
     );
     this.validatePersonalAnswerSql(
       input.answerSql,
       workspace.id,
       schemaVersion,
-      userId,
+      runtimeUserId,
     );
 
     const id = randomUUID();
@@ -786,13 +870,18 @@ export class SqlPracticeService {
     const schemaVersion = this.getPersonalSchemaVersion(
       problem.schemaVersionId,
     );
+    const runtimeUserId = this.getPersonalPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
 
     if (input.targetTables) {
       this.validatePersonalProblemTables(
         input.targetTables,
         workspace.id,
         schemaVersion,
-        userId,
+        runtimeUserId,
       );
     }
     if (input.answerSql) {
@@ -800,7 +889,7 @@ export class SqlPracticeService {
         input.answerSql,
         workspace.id,
         schemaVersion,
-        userId,
+        runtimeUserId,
       );
     }
 
@@ -848,17 +937,22 @@ export class SqlPracticeService {
   ): Promise<SqlUserPracticeGenerateAnswerResponse> {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const runtimeUserId = this.getPersonalPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
     this.validatePersonalProblemTables(
       input.targetTables,
       workspace.id,
       schemaVersion,
-      userId,
+      runtimeUserId,
     );
     const prompt = this.buildPersonalPracticeAnswerPrompt(
       workspace.id,
       schemaVersion,
       input,
-      userId,
+      runtimeUserId,
     );
     const raw = await this.callGroq(prompt, 'general');
     const parsed = this.parseGeneratedAnswer(raw);
@@ -871,7 +965,7 @@ export class SqlPracticeService {
       parsed.answerSql,
       workspace.id,
       schemaVersion,
-      userId,
+      runtimeUserId,
     );
     return parsed;
   }

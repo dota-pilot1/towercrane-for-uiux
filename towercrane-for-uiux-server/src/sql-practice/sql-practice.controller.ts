@@ -125,6 +125,19 @@ export class SqlPracticeController {
     );
   }
 
+  @Post('personal/workspaces/:workspaceId/execute')
+  personalWorkspaceExecute(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.executePersonalPractice(
+      workspaceId,
+      body,
+      req.user.id,
+    );
+  }
+
   @Post('personal/workspaces/:workspaceId/schema-versions/replace')
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }),
