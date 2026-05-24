@@ -3,21 +3,25 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { FolderKanban, Plus, ShieldAlert } from 'lucide-react'
 import { ProjectIssueWorkbench } from '../../../features/project-issue/ui/project-issue-workbench'
 import {
-  useCreateProjectIssueCategory,
-  useProjectIssueCategories,
+  useCreateProjectIssueWorkspace,
+  useProjectIssueWorkspaces,
 } from '../../../features/project-issue/model/use-project-issue-queries'
 
 export function ProjectIssuesPage() {
   const navigate = useNavigate()
-  const { projectId } = useSearch({ strict: false }) as { projectId?: string }
-  const categoriesQuery = useProjectIssueCategories()
-  const createCategory = useCreateProjectIssueCategory()
-  const categories = categoriesQuery.data ?? []
+  const search = useSearch({ strict: false }) as {
+    workspaceId?: string
+    projectId?: string
+  }
+  const workspaceId = search.workspaceId ?? search.projectId
+  const workspacesQuery = useProjectIssueWorkspaces()
+  const createWorkspace = useCreateProjectIssueWorkspace()
+  const workspaces = workspacesQuery.data ?? []
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
 
-  const selectedCategory = projectId
-    ? categories.find((category) => category.id === projectId)
+  const selectedWorkspace = workspaceId
+    ? workspaces.find((workspace) => workspace.id === workspaceId)
     : null
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
@@ -25,7 +29,7 @@ export function ProjectIssuesPage() {
     const trimmedName = name.trim()
     if (!trimmedName) return
 
-    const category = await createCategory.mutateAsync({
+    const workspace = await createWorkspace.mutateAsync({
       name: trimmedName,
       description: description.trim(),
     })
@@ -33,18 +37,18 @@ export function ProjectIssuesPage() {
     setDescription('')
     navigate({
       to: '/project-issues',
-      search: { projectId: category.id },
+      search: { workspaceId: workspace.id },
     })
   }
 
-  if (projectId && selectedCategory) {
+  if (workspaceId && selectedWorkspace) {
     return (
       <ProjectIssueWorkbench
-        projectId={projectId}
-        title={`${selectedCategory.name} 이슈`}
+        workspaceId={workspaceId}
+        title={`${selectedWorkspace.name} 이슈`}
         description={
-          selectedCategory.description ||
-          '선택한 카테고리의 이슈, 담당자, 체크리스트와 댓글을 관리합니다.'
+          selectedWorkspace.description ||
+          '선택한 워크스페이스의 이슈, 담당자, 체크리스트와 댓글을 관리합니다.'
         }
       />
     )
@@ -61,7 +65,7 @@ export function ProjectIssuesPage() {
             <div>
               <h1 className="text-xl font-black text-text-primary">프로젝트 이슈</h1>
               <p className="mt-1 text-sm text-text-secondary">
-                이슈를 묶을 카테고리를 먼저 만들고, 카테고리별로 이슈를 관리합니다.
+                이슈 워크스페이스를 먼저 만들고, 워크스페이스별로 이슈를 관리합니다.
               </p>
             </div>
           </div>
@@ -75,12 +79,12 @@ export function ProjectIssuesPage() {
                 className="ui-input h-10"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="카테고리 이름"
+                placeholder="워크스페이스 이름"
               />
               <button
                 type="submit"
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-sm border border-brand-border bg-brand-glass px-3 text-sm font-bold text-brand-primary transition hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!name.trim() || createCategory.isPending}
+                disabled={!name.trim() || createWorkspace.isPending}
               >
                 <Plus className="size-4" aria-hidden />
                 추가
@@ -97,25 +101,25 @@ export function ProjectIssuesPage() {
       </section>
 
       <section className="rounded-md border border-surface-border bg-surface-raised p-4">
-        {categoriesQuery.isLoading ? (
+        {workspacesQuery.isLoading ? (
           <div className="flex min-h-[220px] items-center justify-center text-sm text-text-muted">
-            카테고리를 불러오는 중입니다.
+            워크스페이스를 불러오는 중입니다.
           </div>
-        ) : categories.length === 0 ? (
+        ) : workspaces.length === 0 ? (
           <div className="flex min-h-[220px] items-center justify-center text-sm text-text-muted">
-            등록된 이슈 카테고리가 없습니다.
+            등록된 이슈 워크스페이스가 없습니다.
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {categories.map((category) => (
+            {workspaces.map((workspace) => (
               <button
-                key={category.id}
+                key={workspace.id}
                 type="button"
                 className="min-h-28 rounded-md border border-surface-border-soft bg-surface-muted p-4 text-left transition hover:border-brand-border hover:bg-brand-glass"
                 onClick={() =>
                   navigate({
                     to: '/project-issues',
-                    search: { projectId: category.id },
+                    search: { workspaceId: workspace.id },
                   })
                 }
               >
@@ -126,14 +130,14 @@ export function ProjectIssuesPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h2 className="min-w-0 break-words text-sm font-black text-text-primary">
-                        {category.name}
+                        {workspace.name}
                       </h2>
                       <span className="shrink-0 rounded-sm border border-surface-border-soft px-1.5 py-0.5 text-[11px] font-bold text-text-muted">
-                        {category.issueCount}
+                        {workspace.issueCount}
                       </span>
                     </div>
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-text-secondary">
-                      {category.description || '설명 없음'}
+                      {workspace.description || '설명 없음'}
                     </p>
                   </div>
                 </div>

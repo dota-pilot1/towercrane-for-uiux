@@ -7,6 +7,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import {
   Activity,
   AlertTriangle,
@@ -107,7 +108,7 @@ import {
 type ViewMode = 'table' | 'kanban' | 'card'
 
 type ProjectIssueWorkbenchProps = {
-  projectId: string
+  workspaceId: string
   title?: string
   description?: string
 }
@@ -781,12 +782,12 @@ function Pagination({
 }
 
 function IssueFormDialog({
-  projectId,
+  workspaceId,
   open,
   users,
   onOpenChange,
 }: {
-  projectId: string
+  workspaceId: string
   open: boolean
   users: AssignableUser[]
   onOpenChange: (open: boolean) => void
@@ -806,7 +807,7 @@ function IssueFormDialog({
     event.preventDefault()
     if (!form.title.trim()) return
     await createIssue.mutateAsync({
-      projectId,
+      projectId: workspaceId,
       title: form.title.trim(),
       content: form.content,
       issueType: form.issueType,
@@ -1689,13 +1690,14 @@ function DetailDialog({
 }
 
 export function ProjectIssueWorkbench({
-  projectId,
+  workspaceId,
   title = '프로젝트 이슈',
   description = '프로젝트 전체 이슈, 담당자, 체크리스트와 댓글을 관리합니다.',
 }: ProjectIssueWorkbenchProps) {
+  const navigate = useNavigate()
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [filters, setFilters] = useState<ProjectIssueFilters>({
-    projectId,
+    projectId: workspaceId,
     archived: false,
     sort: 'order',
     page: 1,
@@ -1706,8 +1708,8 @@ export function ProjectIssueWorkbench({
   const [detailOpen, setDetailOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const normalizedFilters = useMemo(
-    () => ({ ...filters, projectId }),
-    [filters, projectId],
+    () => ({ ...filters, projectId: workspaceId }),
+    [filters, workspaceId],
   )
   const issuesQuery = useProjectIssues(normalizedFilters)
   const usersQuery = useAssignableUsers()
@@ -1743,7 +1745,21 @@ export function ProjectIssueWorkbench({
 
   return (
     <section className="space-y-4 ui-page-bg pb-8">
-      <PageHeader icon={ShieldAlert} title={title} description={description} />
+      <PageHeader
+        icon={ShieldAlert}
+        title={title}
+        description={description}
+        actions={
+          <button
+            type="button"
+            className="inline-flex h-8 items-center justify-center rounded-sm border border-background bg-background px-3 text-sm font-semibold text-text-primary transition hover:bg-surface-raised"
+            onClick={() => navigate({ to: '/project-issues', search: {} })}
+          >
+            <ChevronLeft className="mr-1.5 size-4" />
+            워크스페이스
+          </button>
+        }
+      />
       <IssueToolbar
         filters={normalizedFilters}
         users={users}
@@ -1897,7 +1913,7 @@ export function ProjectIssueWorkbench({
       ) : null}
 
       <IssueFormDialog
-        projectId={projectId}
+        workspaceId={workspaceId}
         open={createOpen}
         users={users}
         onOpenChange={setCreateOpen}

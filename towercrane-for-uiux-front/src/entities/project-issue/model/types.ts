@@ -15,7 +15,7 @@ export type ProjectIssueStatus =
 
 export type ProjectIssuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
 
-export type ProjectIssueCategory = {
+export type ProjectIssueWorkspace = {
   id: string
   name: string
   description: string
@@ -26,6 +26,8 @@ export type ProjectIssueCategory = {
   updatedAt: string
   issueCount: number
 }
+
+export type ProjectIssueCategory = ProjectIssueWorkspace
 
 export type ProjectIssue = {
   id: string
@@ -87,6 +89,9 @@ export type CreateProjectIssueCategoryRequest = {
   name: string
   description?: string
 }
+
+export type CreateProjectIssueWorkspaceRequest =
+  CreateProjectIssueCategoryRequest
 
 export type ProjectIssueChecklist = {
   id: string

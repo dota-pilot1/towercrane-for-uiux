@@ -29,6 +29,36 @@ export class ProjectIssuesController {
     return this.projectIssuesService.listProjectIssues(user, query);
   }
 
+  @Get('workspaces')
+  listWorkspaces(@Query() query: Record<string, unknown>) {
+    return this.projectIssuesService.listWorkspaces(query);
+  }
+
+  @Post('workspaces')
+  createWorkspace(
+    @CurrentUser() user: ProjectIssueUser,
+    @Body() body: unknown,
+  ) {
+    return this.projectIssuesService.createWorkspace(user, body);
+  }
+
+  @Patch('workspaces/:workspaceId')
+  updateWorkspace(
+    @CurrentUser() user: ProjectIssueUser,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.projectIssuesService.updateWorkspace(user, workspaceId, body);
+  }
+
+  @Delete('workspaces/:workspaceId')
+  deleteWorkspace(
+    @CurrentUser() user: ProjectIssueUser,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.projectIssuesService.deleteWorkspace(user, workspaceId);
+  }
+
   @Get('categories')
   listCategories(@Query() query: Record<string, unknown>) {
     return this.projectIssuesService.listCategories(query);

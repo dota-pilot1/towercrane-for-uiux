@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { projectIssueApi } from '../../../entities/project-issue/api/project-issue-api'
 import type {
   CreateProjectIssueCategoryRequest,
+  CreateProjectIssueWorkspaceRequest,
   CreateProjectIssueRequest,
   ProjectIssue,
   ProjectIssueAttachment,
@@ -13,6 +14,8 @@ import type {
 
 export const projectIssueQueryKeys = {
   all: ['project-issues'] as const,
+  workspaces: (archived = false) =>
+    ['project-issues', 'workspaces', archived] as const,
   categories: (archived = false) =>
     ['project-issues', 'categories', archived] as const,
   list: (filters: ProjectIssueFilters) =>
@@ -48,6 +51,13 @@ export function useProjectIssueCategories(archived = false) {
   })
 }
 
+export function useProjectIssueWorkspaces(archived = false) {
+  return useQuery({
+    queryKey: projectIssueQueryKeys.workspaces(archived),
+    queryFn: () => projectIssueApi.listWorkspaces(archived),
+  })
+}
+
 export function useCreateProjectIssueCategory() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -55,10 +65,26 @@ export function useCreateProjectIssueCategory() {
       projectIssueApi.createCategory(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectIssueQueryKeys.all })
-      toast.success('이슈 카테고리가 생성되었습니다.')
+      toast.success('이슈 워크스페이스가 생성되었습니다.')
     },
     onError: (error) =>
-      toast.error(messageFromError(error, '카테고리 생성에 실패했습니다.')),
+      toast.error(messageFromError(error, '워크스페이스 생성에 실패했습니다.')),
+  })
+}
+
+export function useCreateProjectIssueWorkspace() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateProjectIssueWorkspaceRequest) =>
+      projectIssueApi.createWorkspace(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectIssueQueryKeys.all })
+      toast.success('이슈 워크스페이스가 생성되었습니다.')
+    },
+    onError: (error) =>
+      toast.error(
+        messageFromError(error, '워크스페이스 생성에 실패했습니다.'),
+      ),
   })
 }
 

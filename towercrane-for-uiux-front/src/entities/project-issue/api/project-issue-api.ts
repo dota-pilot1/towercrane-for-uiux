@@ -1,6 +1,7 @@
 import { apiRequest } from '../../../shared/api/http'
 import type {
   CreateProjectIssueCategoryRequest,
+  CreateProjectIssueWorkspaceRequest,
   CreateProjectIssueRequest,
   ProjectIssue,
   ProjectIssueActivityLog,
@@ -10,6 +11,7 @@ import type {
   ProjectIssueComment,
   ProjectIssueFilters,
   ProjectIssueListResponse,
+  ProjectIssueWorkspace,
   UpdateProjectIssueRequest,
 } from '../model/types'
 
@@ -26,6 +28,40 @@ function toSearchParams(filters?: ProjectIssueFilters) {
 }
 
 export const projectIssueApi = {
+  listWorkspaces: (archived = false) =>
+    apiRequest<ProjectIssueWorkspace[]>(
+      `/project-issues/workspaces?archived=${String(archived)}`,
+    ),
+
+  createWorkspace: (body: CreateProjectIssueWorkspaceRequest) =>
+    apiRequest<ProjectIssueWorkspace>('/project-issues/workspaces', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  updateWorkspace: (
+    workspaceId: string,
+    body: Partial<CreateProjectIssueWorkspaceRequest> & {
+      archived?: boolean
+      orderIdx?: number
+    },
+  ) =>
+    apiRequest<ProjectIssueWorkspace>(
+      `/project-issues/workspaces/${workspaceId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      },
+    ),
+
+  deleteWorkspace: (workspaceId: string) =>
+    apiRequest<{ success: boolean }>(
+      `/project-issues/workspaces/${workspaceId}`,
+      {
+        method: 'DELETE',
+      },
+    ),
+
   listCategories: (archived = false) =>
     apiRequest<ProjectIssueCategory[]>(
       `/project-issues/categories?archived=${String(archived)}`,

@@ -60,7 +60,7 @@ export class ProjectIssuesService {
     return this.databaseService.db;
   }
 
-  listCategories(rawQuery: unknown) {
+  listWorkspaces(rawQuery: unknown) {
     const query = listProjectIssueCategoriesQuerySchema.parse(rawQuery ?? {});
     const rows = this.db
       .select()
@@ -93,7 +93,11 @@ export class ProjectIssuesService {
     );
   }
 
-  createCategory(user: ProjectIssueUser, payload: unknown) {
+  listCategories(rawQuery: unknown) {
+    return this.listWorkspaces(rawQuery);
+  }
+
+  createWorkspace(user: ProjectIssueUser, payload: unknown) {
     const input = createProjectIssueCategorySchema.parse(payload);
     const now = new Date().toISOString();
     const maxOrder = this.db
@@ -117,28 +121,44 @@ export class ProjectIssuesService {
     return this.toCategoryDto(this.ensureCategory(row.id), 0);
   }
 
-  updateCategory(user: ProjectIssueUser, categoryId: string, payload: unknown) {
-    const category = this.ensureCategory(categoryId);
-    this.ensureCanManageCategory(user, category);
+  createCategory(user: ProjectIssueUser, payload: unknown) {
+    return this.createWorkspace(user, payload);
+  }
+
+  updateWorkspace(
+    user: ProjectIssueUser,
+    workspaceId: string,
+    payload: unknown,
+  ) {
+    const workspace = this.ensureCategory(workspaceId);
+    this.ensureCanManageCategory(user, workspace);
     const input = updateProjectIssueCategorySchema.parse(payload);
 
     this.db
       .update(projectIssueCategoriesTable)
       .set({ ...input, updatedAt: new Date().toISOString() })
-      .where(eq(projectIssueCategoriesTable.id, categoryId))
+      .where(eq(projectIssueCategoriesTable.id, workspaceId))
       .run();
 
-    return this.toCategoryDto(this.ensureCategory(categoryId), 0);
+    return this.toCategoryDto(this.ensureCategory(workspaceId), 0);
+  }
+
+  updateCategory(user: ProjectIssueUser, categoryId: string, payload: unknown) {
+    return this.updateWorkspace(user, categoryId, payload);
+  }
+
+  deleteWorkspace(user: ProjectIssueUser, workspaceId: string) {
+    const workspace = this.ensureCategory(workspaceId);
+    this.ensureCanManageCategory(user, workspace);
+    this.db
+      .delete(projectIssueCategoriesTable)
+      .where(eq(projectIssueCategoriesTable.id, workspaceId))
+      .run();
+    return { success: true };
   }
 
   deleteCategory(user: ProjectIssueUser, categoryId: string) {
-    const category = this.ensureCategory(categoryId);
-    this.ensureCanManageCategory(user, category);
-    this.db
-      .delete(projectIssueCategoriesTable)
-      .where(eq(projectIssueCategoriesTable.id, categoryId))
-      .run();
-    return { success: true };
+    return this.deleteWorkspace(user, categoryId);
   }
 
   listProjectIssues(_user: ProjectIssueUser, rawQuery: unknown) {
@@ -799,7 +819,7 @@ export class ProjectIssuesService {
 
     if (!category) {
       throw new NotFoundException(
-        `Project issue category not found: ${categoryId}`,
+        `Project issue workspace not found: ${categoryId}`,
       );
     }
 
@@ -923,7 +943,7 @@ export class ProjectIssuesService {
     }
 
     throw new ForbiddenException(
-      'You cannot modify this project issue category',
+      'You cannot modify this project issue workspace',
     );
   }
 

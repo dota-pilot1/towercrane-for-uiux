@@ -529,6 +529,8 @@ const projectIssuesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/project-issues',
   validateSearch: (search: Record<string, unknown>) => ({
+    workspaceId:
+      typeof search.workspaceId === 'string' ? search.workspaceId : undefined,
     projectId:
       typeof search.projectId === 'string' ? search.projectId : undefined,
   }),
