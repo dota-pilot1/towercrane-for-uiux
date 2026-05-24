@@ -1165,7 +1165,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: sqlGroupMenuId,
-          name: 'SQL Practice',
+          name: 'SQL Prac',
           sectionId: 'sql_group',
           icon: 'Database',
           displayOrder: 5,
@@ -1225,7 +1225,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
-          name: 'Study Diary',
+          name: '학습 일지',
           sectionId: 'study_diary',
           icon: 'BookOpen',
           displayOrder: 7,
@@ -1237,7 +1237,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
-          name: 'Dev Challenge',
+          name: 'Challenge',
           sectionId: 'dev_challenge',
           icon: 'Trophy',
           displayOrder: 8,
@@ -1393,7 +1393,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       )
       .run(now);
 
-    // 챗봇 파일럿 루트 메뉴 + 5개 자식 upsert
+    // 챗봇 루트 메뉴 + 5개 자식 upsert
     const existingChatbotPilot = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'chatbot_pilot' AND parent_id IS NULL LIMIT 1")
       .get() as { id: string } | undefined;
@@ -1404,7 +1404,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .insert(menusTable)
         .values({
           id: chatbotPilotId,
-          name: '챗봇 파일럿',
+          name: '챗봇',
           sectionId: 'chatbot_pilot',
           icon: 'BotMessageSquare',
           displayOrder: 9,
@@ -1440,11 +1440,24 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           })
           .run();
       }
+    } else {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET name = '챗봇',
+                icon = 'BotMessageSquare',
+                is_visible = 1,
+                updated_at = ?
+            WHERE id = ?
+          `,
+        )
+        .run(now, existingChatbotPilot.id);
     }
 
     // 루트 메뉴 표시 순서 고정:
-    // 0:AI Native, 1:회의실, 2:업무관리, 3:Postman, 4:Study Diary,
-    // 5:게시판, 6:SQL Practice, 7:Dev Challenge, 8:Prototype, 9:챗봇 파일럿, 10:Admin
+    // 0:AI Native, 1:회의실, 2:업무관리, 3:Postman, 4:학습 일지,
+    // 5:게시판, 6:SQL Prac, 7:Challenge, 8:Prototype, 9:챗봇, 10:Admin
     const rootMenuOrder: Array<{ sectionId: string | string[]; displayOrder: number }> = [
       { sectionId: ['task_group', 'task'],      displayOrder: 0 },
       { sectionId: 'api_doc',                  displayOrder: 1 },
@@ -2091,7 +2104,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .prepare(
           `
             UPDATE menus
-            SET name = 'Study Diary',
+            SET name = '학습 일지',
                 section_id = 'study_diary',
                 icon = 'BookOpen',
                 is_visible = 1,
@@ -2153,7 +2166,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .insert(menusTable)
         .values({
           id: randomUUID(),
-          name: 'Study Diary',
+          name: '학습 일지',
           sectionId: 'study_diary',
           icon: 'BookOpen',
           displayOrder,
@@ -2181,7 +2194,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .prepare(
           `
             UPDATE menus
-            SET name = 'Study Diary',
+            SET name = '학습 일지',
                 icon = 'BookOpen',
                 is_visible = 1,
                 updated_at = ?
@@ -2228,7 +2241,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .insert(menusTable)
         .values({
           id: randomUUID(),
-          name: 'Dev Challenge',
+          name: 'Challenge',
           sectionId: 'dev_challenge',
           icon: 'Trophy',
           displayOrder,
@@ -2244,7 +2257,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .prepare(
           `
             UPDATE menus
-            SET name = 'Dev Challenge',
+            SET name = 'Challenge',
                 icon = 'Trophy',
                 is_visible = 1,
                 updated_at = ?
@@ -2315,7 +2328,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .insert(menusTable)
         .values({
           id: sqlGroupMenuId,
-          name: 'SQL Practice',
+          name: 'SQL Prac',
           sectionId: 'sql_group',
           icon: 'Database',
           displayOrder,
@@ -2333,7 +2346,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .prepare(
           `
             UPDATE menus
-            SET name = 'SQL Practice',
+            SET name = 'SQL Prac',
                 icon = 'Database',
                 parent_id = NULL,
                 is_visible = 1,

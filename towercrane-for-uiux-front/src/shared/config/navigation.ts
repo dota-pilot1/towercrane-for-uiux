@@ -6,8 +6,8 @@ import {
 
 export const navigationItems = [
   { id: 'prototype', label: 'Prototype', icon: GitBranch },
-  { id: 'study_diary', label: 'Study Diary', icon: BookOpen },
-  { id: 'dev_challenge', label: 'Dev Challenge', icon: Trophy },
+  { id: 'study_diary', label: '학습 일지', icon: BookOpen },
+  { id: 'dev_challenge', label: 'Challenge', icon: Trophy },
   { id: 'readme', label: 'README', icon: BookOpen },
 ] as const
 
