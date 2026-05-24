@@ -1,5 +1,5 @@
 import { apiRequest } from '../../../shared/api/http'
-import type { MeetingMember, MeetingMessage, MeetingMessageType, MeetingRoom } from '../model/types'
+import type { CreateMeetingRoomRequest, MeetingMember, MeetingMessage, MeetingMessageType, MeetingRoom } from '../model/types'
 
 export const meetingApi = {
   listRooms: () => apiRequest<MeetingRoom[]>('/meeting/rooms'),
@@ -27,5 +27,16 @@ export const meetingApi = {
     apiRequest<MeetingRoom>('/meeting/dms', {
       method: 'POST',
       body: JSON.stringify({ otherUserId }),
+    }),
+
+  createRoom: (payload: CreateMeetingRoomRequest) =>
+    apiRequest<MeetingRoom>('/meeting/rooms', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteRoom: (roomId: string) =>
+    apiRequest<{ success: boolean; roomId: string }>(`/meeting/rooms/${roomId}`, {
+      method: 'DELETE',
     }),
 }

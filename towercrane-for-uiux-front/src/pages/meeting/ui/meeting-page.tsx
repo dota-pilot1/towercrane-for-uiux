@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import {
   Bot,
   Bug,
@@ -13,11 +14,16 @@ import {
   MessageSquare,
   MessagesSquare,
   Paperclip,
+  Plus,
   Send,
   Smile,
+  Trash2,
   Users,
+  X,
 } from 'lucide-react'
 import {
+  useCreateMeetingRoom,
+  useDeleteMeetingRoom,
   useMeetingMembers,
   useMeetingMessages,
   useMeetingRooms,
@@ -27,7 +33,9 @@ import {
 } from '../../../entities/meeting/model/use-meeting'
 import type { MeetingMember, MeetingMessage, MeetingRoom, MeetingRoomType } from '../../../entities/meeting/model/types'
 import { Button } from '../../../shared/ui/button'
+import { Input } from '../../../shared/ui/input'
 import { PageHeader } from '../../../shared/ui/page-header'
+import { Select } from '../../../shared/ui/select'
 import { Textarea } from '../../../shared/ui/textarea'
 import { useSessionStore } from '../../../shared/store/session-store'
 
@@ -92,23 +100,33 @@ function formatMessageTime(value: string) {
 function ChannelSidebar({
   rooms,
   selectedRoomId,
+  isAdmin,
   isLoading,
   onSelect,
+  onDelete,
 }: {
   rooms: MeetingRoom[]
   selectedRoomId: string | null
+  isAdmin?: boolean
   isLoading?: boolean
   onSelect: (roomId: string) => void
+  onDelete: (roomId: string) => void
 }) {
+  const publicRooms = rooms.filter((room) => room.roomType !== 'DM')
+  const dmRooms = rooms.filter((room) => room.roomType === 'DM')
+
   return (
     <aside className="ui-panel flex min-h-0 w-full flex-col overflow-hidden bg-surface-raised lg:w-72">
       <div className="border-b border-surface-border-soft bg-surface-muted px-5 py-4">
         <p className="text-[11px] font-black uppercase tracking-[0.22em] ui-text-muted">Meetingroom</p>
         <div className="mt-1 flex items-center justify-between">
           <h2 className="text-lg font-black ui-text-primary">회의실</h2>
-          <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
-            LIVE
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
+              LIVE
+            </span>
+            {isAdmin ? <CreateChannelDialog /> : null}
+          </div>
         </div>
       </div>
 
@@ -118,42 +136,54 @@ function ChannelSidebar({
             채널을 불러오는 중입니다.
           </div>
         ) : null}
-        {!isLoading && rooms.length === 0 ? (
+        {!isLoading && publicRooms.length === 0 ? (
           <div className="rounded-md border border-surface-border-soft bg-surface-muted px-3 py-3 text-sm ui-text-muted">
             생성된 회의실 채널이 없습니다.
           </div>
         ) : null}
-        {rooms.filter((room) => room.roomType !== 'DM').map((room) => {
+        {publicRooms.map((room) => {
           const isActive = selectedRoomId === room.id
+          const canDelete = isAdmin && room.roomType !== 'ANNOUNCE'
           return (
-            <button
-              key={room.id}
-              type="button"
-              onClick={() => onSelect(room.id)}
-              className={`flex w-full items-center gap-3 rounded-md border px-3 py-3 text-left transition-all ${
-                isActive
-                  ? 'border-brand-border bg-brand-glass text-brand-primary shadow-sm'
-                  : 'border-transparent ui-text-secondary hover:border-surface-border-soft hover:bg-surface-muted'
-              }`}
-            >
-              <RoomIcon type={room.roomType} className={`size-4 shrink-0 ${isActive ? 'text-brand-primary' : ''}`} />
-              <span className="min-w-0 flex-1">
-                <span className={`block truncate text-sm font-bold ${isActive ? 'text-brand-primary' : ''}`}>{room.name}</span>
-                <span className={`block truncate text-xs ${isActive ? 'text-brand-primary/70' : 'ui-text-muted'}`}>{room.description ?? '프로젝트 채널'}</span>
-              </span>
-              {room.messageCount > 0 ? (
-                <span className="rounded-full bg-brand-primary px-1.5 py-0.5 text-[10px] font-bold text-text-on-brand">
-                  {room.messageCount}
+            <div key={room.id} className="group relative">
+              <button
+                type="button"
+                onClick={() => onSelect(room.id)}
+                className={`flex w-full items-center gap-3 rounded-md border px-3 py-3 text-left transition-all ${
+                  isActive
+                    ? 'border-brand-border bg-brand-glass text-brand-primary shadow-sm'
+                    : 'border-transparent ui-text-secondary hover:border-surface-border-soft hover:bg-surface-muted'
+                } ${canDelete ? 'pr-8' : ''}`}
+              >
+                <RoomIcon type={room.roomType} className={`size-4 shrink-0 ${isActive ? 'text-brand-primary' : ''}`} />
+                <span className="min-w-0 flex-1">
+                  <span className={`block truncate text-sm font-bold ${isActive ? 'text-brand-primary' : ''}`}>{room.name}</span>
+                  <span className={`block truncate text-xs ${isActive ? 'text-brand-primary/70' : 'ui-text-muted'}`}>{room.description ?? '프로젝트 채널'}</span>
                 </span>
+                {room.messageCount > 0 ? (
+                  <span className="rounded-full bg-brand-primary px-1.5 py-0.5 text-[10px] font-bold text-text-on-brand">
+                    {room.messageCount}
+                  </span>
+                ) : null}
+              </button>
+              {canDelete ? (
+                <button
+                  type="button"
+                  onClick={() => onDelete(room.id)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 hidden size-6 items-center justify-center rounded text-text-muted opacity-0 transition-opacity hover:bg-surface-strong hover:text-status-danger group-hover:flex group-hover:opacity-100"
+                  aria-label={`${room.name} 채널 삭제`}
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
               ) : null}
-            </button>
+            </div>
           )
         })}
-        {rooms.some((room) => room.roomType === 'DM') ? (
+        {dmRooms.length > 0 ? (
           <div className="pt-4">
             <p className="mb-2 px-2 text-[11px] font-black uppercase tracking-[0.18em] ui-text-muted">DM</p>
             <div className="space-y-1">
-              {rooms.filter((room) => room.roomType === 'DM').map((room) => {
+              {dmRooms.map((room) => {
                 const isActive = selectedRoomId === room.id
                 return (
                   <button
@@ -184,6 +214,146 @@ function ChannelSidebar({
         ) : null}
       </div>
     </aside>
+  )
+}
+
+const ROOM_TYPE_OPTIONS: { value: MeetingRoomType; label: string }[] = [
+  { value: 'FREE', label: '일반' },
+  { value: 'ANNOUNCE', label: '공지' },
+  { value: 'PROTOTYPE', label: '프로토타입' },
+  { value: 'FEEDBACK', label: '피드백' },
+  { value: 'ISSUE', label: '이슈' },
+  { value: 'DECISION', label: '결정사항' },
+  { value: 'RESOURCE', label: '자료' },
+  { value: 'QNA', label: 'Q&A' },
+]
+
+function CreateChannelDialog() {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [roomType, setRoomType] = useState<MeetingRoomType>('FREE')
+  const createRoom = useCreateMeetingRoom()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const canSubmit = name.trim().length >= 1
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
+      setName('')
+      setDescription('')
+      setRoomType('FREE')
+    }
+    setOpen(next)
+  }
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!canSubmit) return
+    await createRoom.mutateAsync({
+      name: name.trim(),
+      description: description.trim() || null,
+      roomType,
+    })
+    handleOpenChange(false)
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
+      <Dialog.Trigger asChild>
+        <button
+          type="button"
+          className="ui-icon-button size-6"
+          aria-label="채널 추가"
+        >
+          <Plus className="size-3.5" />
+        </button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 ui-overlay" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(440px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-md border border-surface-border bg-surface-raised p-5 shadow-2xl">
+          <div className="flex items-center justify-between">
+            <Dialog.Title className="text-lg font-black text-text-primary">채널 추가</Dialog.Title>
+            <Dialog.Close asChild>
+              <button type="button" className="ui-icon-button size-7" aria-label="닫기">
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+          <form className="mt-5 space-y-4" onSubmit={onSubmit}>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold text-text-secondary">채널 이름</span>
+              <Input
+                ref={inputRef}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="예: 스프린트 회고"
+                autoFocus
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold text-text-secondary">유형</span>
+              <Select
+                value={roomType}
+                onChange={(e) => setRoomType(e.target.value as MeetingRoomType)}
+              >
+                {ROOM_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </Select>
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold text-text-secondary">설명 (선택)</span>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="채널 용도를 간단히 설명합니다"
+              />
+            </label>
+            <div className="flex justify-end gap-2 border-t border-surface-border-soft pt-4">
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>취소</Button>
+              <Button type="submit" disabled={!canSubmit || createRoom.isPending}>
+                {createRoom.isPending ? '생성 중...' : '채널 생성'}
+              </Button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
+function DeleteChannelConfirm({
+  room,
+  onConfirm,
+  onCancel,
+}: {
+  room: MeetingRoom
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <Dialog.Root open onOpenChange={(open) => { if (!open) onCancel() }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 ui-overlay" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(380px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-md border border-surface-border bg-surface-raised p-5 shadow-2xl">
+          <Dialog.Title className="text-base font-black text-text-primary">채널 삭제</Dialog.Title>
+          <Dialog.Description className="mt-2 text-sm text-text-secondary">
+            <span className="font-bold text-text-primary">#{room.name}</span> 채널을 삭제하면 모든 메시지가 사라집니다. 계속할까요?
+          </Dialog.Description>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={onCancel}>취소</Button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="rounded-md border border-status-danger bg-status-danger/10 px-4 py-2 text-sm font-bold text-status-danger transition-colors hover:bg-status-danger hover:text-background"
+            >
+              삭제
+            </button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
@@ -543,8 +713,11 @@ function MemberList({
 
 export function MeetingPage() {
   const currentUserId = useSessionStore((state) => state.userId)
+  const currentUserRole = useSessionStore((state) => state.userRole)
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+  const isAdmin = currentUserRole === 'admin'
   const [requestedRoomId, setRequestedRoomId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<MeetingRoom | null>(null)
   const roomsQuery = useMeetingRooms()
   const rooms = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data])
   const selectedRoomId =
@@ -557,6 +730,7 @@ export function MeetingPage() {
   const membersQuery = useMeetingMembers(roomId)
   const sendMutation = useSendMeetingMessage(roomId)
   const startDmMutation = useStartMeetingDm()
+  const deleteRoomMutation = useDeleteMeetingRoom()
   useMeetingWebSocket(roomId)
 
   const members = membersQuery.data ?? []
@@ -571,6 +745,16 @@ export function MeetingPage() {
     startDmMutation.mutate(member.id, {
       onSuccess: (room) => {
         setRequestedRoomId(room.id)
+      },
+    })
+  }
+
+  const handleDeleteConfirm = () => {
+    if (!deleteTarget) return
+    deleteRoomMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        if (selectedRoomId === deleteTarget.id) setRequestedRoomId(null)
+        setDeleteTarget(null)
       },
     })
   }
@@ -597,12 +781,24 @@ export function MeetingPage() {
         description="팀 채널에서 실시간으로 소통합니다."
       />
     <div className="h-[calc(100vh-212px)] min-h-[600px] overflow-hidden rounded-md bg-surface-muted p-1">
+      {deleteTarget ? (
+        <DeleteChannelConfirm
+          room={deleteTarget}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      ) : null}
       <div className="grid h-full gap-4 lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)_16rem]">
         <ChannelSidebar
           rooms={rooms}
           selectedRoomId={selectedRoom?.id ?? null}
+          isAdmin={isAdmin}
           isLoading={roomsQuery.isLoading}
           onSelect={setRequestedRoomId}
+          onDelete={(roomId) => {
+            const room = rooms.find((r) => r.id === roomId)
+            if (room) setDeleteTarget(room)
+          }}
         />
         {selectedRoom ? (
           <MessageArea

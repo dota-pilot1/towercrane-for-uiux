@@ -1,3 +1,9 @@
+export type CreateMeetingRoomRequest = {
+  name: string
+  description?: string | null
+  roomType?: MeetingRoomType
+}
+
 export type MeetingRoomType =
   | 'ANNOUNCE'
   | 'PROTOTYPE'

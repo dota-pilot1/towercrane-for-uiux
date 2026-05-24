@@ -62,6 +62,28 @@ export function useSendMeetingMessage(roomId: string | null) {
   })
 }
 
+export function useCreateMeetingRoom() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: meetingApi.createRoom,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: meetingKeys.rooms() })
+    },
+  })
+}
+
+export function useDeleteMeetingRoom() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (roomId: string) => meetingApi.deleteRoom(roomId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: meetingKeys.rooms() })
+    },
+  })
+}
+
 export function useStartMeetingDm() {
   const queryClient = useQueryClient()
 

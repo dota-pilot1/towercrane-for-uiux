@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { MeetingGateway } from './meeting.gateway';
@@ -15,6 +15,19 @@ export class MeetingController {
   @Get('rooms')
   listRooms(@CurrentUser() user: MeetingUser) {
     return this.meetingService.listRooms(user);
+  }
+
+  @Post('rooms')
+  createRoom(@CurrentUser() user: MeetingUser, @Body() body: unknown) {
+    return this.meetingService.createRoom(user, body);
+  }
+
+  @Delete('rooms/:roomId')
+  deleteRoom(
+    @CurrentUser() user: MeetingUser,
+    @Param('roomId') roomId: string,
+  ) {
+    return this.meetingService.deleteRoom(user, roomId);
   }
 
   @Get('rooms/:roomId')

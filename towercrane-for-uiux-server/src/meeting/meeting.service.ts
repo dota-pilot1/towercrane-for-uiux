@@ -13,7 +13,7 @@ import {
   type MeetingRoomInsert,
   type MeetingRoomRow,
 } from '../database/schema';
-import { sendMeetingMessageSchema, startMeetingDmSchema } from './meeting.schemas';
+import { createMeetingRoomSchema, sendMeetingMessageSchema, startMeetingDmSchema } from './meeting.schemas';
 
 export type MeetingUser = {
   id: string;
@@ -214,6 +214,54 @@ export class MeetingService {
     this.db.insert(meetingDmPairsTable).values(pair).run();
 
     return this.toRoomDto(this.findRoom(room.id), user, pair);
+  }
+
+  createRoom(user: MeetingUser, payload: unknown) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can create channels');
+    }
+    const input = createMeetingRoomSchema.parse(payload);
+    const now = new Date().toISOString();
+    const maxOrder = this.db
+      .select({ orderIdx: meetingRoomsTable.orderIdx })
+      .from(meetingRoomsTable)
+      .where(sql`${meetingRoomsTable.roomType} != 'DM'`)
+      .all()
+      .reduce((max, row) => Math.max(max, row.orderIdx), -1);
+
+    const room: MeetingRoomInsert = {
+      id: `meeting-room-${randomUUID().slice(0, 12)}`,
+      name: input.name,
+      roomType: input.roomType,
+      description: input.description ?? null,
+      orderIdx: maxOrder + 1,
+      archived: false,
+      createdBy: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.db.insert(meetingRoomsTable).values(room).run();
+    return this.toRoomDto(this.findRoom(room.id), user);
+  }
+
+  deleteRoom(user: MeetingUser, roomId: string) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can delete channels');
+    }
+    const room = this.findRoom(roomId);
+    if (room.roomType === 'ANNOUNCE') {
+      throw new BadRequestException('공지 채널은 삭제할 수 없습니다');
+    }
+    if (room.roomType === 'DM') {
+      throw new BadRequestException('DM 채널은 삭제할 수 없습니다');
+    }
+    this.db
+      .update(meetingRoomsTable)
+      .set({ archived: true, updatedAt: new Date().toISOString() })
+      .where(eq(meetingRoomsTable.id, roomId))
+      .run();
+    return { success: true, roomId };
   }
 
   private findRoom(roomId: string) {
