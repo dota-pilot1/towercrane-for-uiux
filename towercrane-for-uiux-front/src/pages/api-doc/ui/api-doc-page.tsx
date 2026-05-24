@@ -41,6 +41,7 @@ import {
 import { useApiEnvStore } from '../../../features/api-doc/model/api-env-store'
 import { ApiDocImportExportActions } from '../../../features/api-doc/ui/api-doc-import-export-actions'
 import { ApiTesterPanel } from '../../../features/api-doc/ui/api-tester-panel'
+import { cn } from '../../../shared/lib/utils'
 
 const EMPTY_CATEGORIES: ApiDocCategory[] = []
 const EMPTY_ENDPOINTS: ApiDocEndpoint[] = []
@@ -123,8 +124,9 @@ export function ApiDocPage() {
   )
 
   return (
-    <section className="space-y-3 ui-page-bg pb-8">
-      <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border border-surface-border-soft bg-surface-raised px-4 py-2 shadow-sm">
+    <section className="ui-page-bg pb-8">
+      <div className="grid h-[calc(100vh-10rem)] min-h-[680px] grid-cols-1 gap-3 lg:grid-cols-[300px_300px_minmax(0,1fr)] lg:grid-rows-[52px_minmax(0,1fr)]">
+      <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border border-brand-border bg-[color:color-mix(in_srgb,var(--primary)_7%,var(--surface-raised))] px-4 py-2 shadow-sm lg:col-start-3 lg:row-start-1">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
             <FileJson className="size-4" />
@@ -137,8 +139,8 @@ export function ApiDocPage() {
         <ApiDocImportExportActions isAdmin={isAdmin} />
       </div>
 
-      <div className="grid h-[calc(100vh-12.5rem)] min-h-[640px] grid-cols-1 gap-3 lg:grid-cols-[300px_300px_minmax(0,1fr)]">
         <CategorySidebar
+          className="lg:col-start-1 lg:row-span-2 lg:row-start-1"
           categories={categories}
           activeId={selectedCategoryId}
           isAdmin={isAdmin}
@@ -149,6 +151,7 @@ export function ApiDocPage() {
           }}
         />
         <EndpointSidebar
+          className="lg:col-start-2 lg:row-span-2 lg:row-start-1"
           categoryId={selectedCategoryId}
           endpoints={endpoints}
           activeId={selectedEndpointId}
@@ -157,6 +160,7 @@ export function ApiDocPage() {
           onSelect={setRequestedEndpointId}
         />
         <ApiTesterPanel
+          className="lg:col-start-3 lg:row-start-2"
           endpoint={selectedEndpoint}
           blocks={blocksQuery.data ?? []}
           isAdmin={isAdmin}
@@ -173,12 +177,14 @@ export function ApiDocPage() {
 }
 
 function CategorySidebar({
+  className,
   categories,
   activeId,
   isAdmin,
   isLoading,
   onSelect,
 }: {
+  className?: string
   categories: ApiDocCategory[]
   activeId: string | null
   isAdmin: boolean
@@ -242,8 +248,8 @@ function CategorySidebar({
   }
 
   return (
-    <aside className="flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted px-4">
+    <aside className={cn('flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm transform-gpu', className)}>
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-brand-border bg-[color:color-mix(in_srgb,var(--primary)_8%,var(--surface-raised))] px-4">
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-brand-primary opacity-70" />
           <div>
@@ -400,6 +406,7 @@ function CategorySidebar({
 }
 
 function EndpointSidebar({
+  className,
   categoryId,
   endpoints,
   activeId,
@@ -407,6 +414,7 @@ function EndpointSidebar({
   isLoading,
   onSelect,
 }: {
+  className?: string
   categoryId: string | null
   endpoints: ApiDocEndpoint[]
   activeId: string | null
@@ -492,8 +500,8 @@ function EndpointSidebar({
   }
 
   return (
-    <aside className="flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted px-4">
+    <aside className={cn('flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm transform-gpu', className)}>
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-[color:color-mix(in_srgb,var(--status-online)_7%,var(--surface-raised))] px-4">
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-brand-primary opacity-70" />
           <div>

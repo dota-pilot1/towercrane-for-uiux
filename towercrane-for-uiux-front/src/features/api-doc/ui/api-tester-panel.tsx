@@ -339,7 +339,7 @@ export function ApiTesterPanel({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm transform-gpu">
       <div className="flex shrink-0 flex-col gap-3 border-b border-surface-border-soft bg-surface-muted px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
