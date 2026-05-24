@@ -297,11 +297,11 @@ function CategorySidebar({
   return (
     <aside
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm transform-gpu",
+        "flex min-h-0 flex-col rounded-md border border-surface-border-soft bg-surface-raised shadow-sm",
         className,
       )}
     >
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-brand-border bg-[color:color-mix(in_srgb,var(--primary)_8%,var(--surface-raised))] px-4">
+      <div className="flex h-12 shrink-0 items-center justify-between rounded-t-md border-b border-brand-border bg-[color:color-mix(in_srgb,var(--primary)_8%,var(--surface-raised))] px-4">
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-brand-primary opacity-70" />
           <div>
@@ -596,11 +596,11 @@ function EndpointSidebar({
   return (
     <aside
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm transform-gpu",
+        "flex min-h-0 flex-col rounded-md border border-surface-border-soft bg-surface-raised shadow-sm",
         className,
       )}
     >
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-[color:color-mix(in_srgb,var(--status-online)_7%,var(--surface-raised))] px-4">
+      <div className="flex h-12 shrink-0 items-center justify-between rounded-t-md border-b border-surface-border-soft bg-[color:color-mix(in_srgb,var(--status-online)_7%,var(--surface-raised))] px-4">
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-brand-primary opacity-70" />
           <div>

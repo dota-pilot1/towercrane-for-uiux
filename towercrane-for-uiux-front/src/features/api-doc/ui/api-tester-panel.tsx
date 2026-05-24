@@ -405,11 +405,11 @@ export function ApiTesterPanel({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm transform-gpu",
+        "flex h-full min-h-0 flex-col rounded-md border border-surface-border-soft bg-surface-raised shadow-sm",
         className,
       )}
     >
-      <div className="flex shrink-0 flex-col gap-3 border-b border-brand-border bg-[color:color-mix(in_srgb,var(--primary)_6%,var(--surface-raised))] px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex shrink-0 flex-col gap-3 rounded-t-md border-b border-brand-border bg-[color:color-mix(in_srgb,var(--primary)_6%,var(--surface-raised))] px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
