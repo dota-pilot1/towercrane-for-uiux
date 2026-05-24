@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import {
@@ -231,6 +231,24 @@ export function ApiTesterPanel({
   );
   const [responseTab, setResponseTab] = useState<"body" | "headers">("body");
   const [isResponseFullscreen, setIsResponseFullscreen] = useState(false);
+  const [requestHeight, setRequestHeight] = useState(300);
+  const dragStartY = useRef(0);
+  const dragStartHeight = useRef(0);
+
+  const handleDividerMouseDown = (e: React.MouseEvent) => {
+    dragStartY.current = e.clientY;
+    dragStartHeight.current = requestHeight;
+    const onMove = (ev: MouseEvent) => {
+      const delta = ev.clientY - dragStartY.current;
+      setRequestHeight((h) => Math.max(160, Math.min(560, dragStartHeight.current + delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
 
   useEffect(() => {
     setContent(parseApiBlockContent(blocks, endpoint));
@@ -405,7 +423,7 @@ export function ApiTesterPanel({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-col rounded-md border border-surface-border-soft bg-surface-raised shadow-sm",
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm",
         className,
       )}
     >
@@ -422,9 +440,6 @@ export function ApiTesterPanel({
               {endpoint.title}
             </p>
           </div>
-          <p className="mt-1 truncate font-mono text-[11px] text-text-muted">
-            {endpoint.path || "경로 미지정"}
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -479,8 +494,8 @@ export function ApiTesterPanel({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 flex flex-col overflow-hidden bg-surface-muted">
-        <div className="shrink-0 flex flex-col gap-2.5 p-3 pb-0">
+      <div className="min-h-0 flex-1 flex flex-col bg-surface-muted">
+        <div className="shrink-0 flex flex-col gap-2.5 overflow-hidden p-3 pb-0" style={{ height: requestHeight }}>
           <div className="rounded-md border border-surface-border-soft bg-surface-raised p-2.5 shadow-sm">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
               <CompactSelect
@@ -540,8 +555,8 @@ export function ApiTesterPanel({
             ) : null}
           </div>
 
-          <div className="min-h-[200px] rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-            <div className="flex border-b border-surface-border-soft bg-surface-muted px-3 pt-2">
+          <div className="min-h-[200px] overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
+            <div className="flex rounded-t-md border-b border-surface-border-soft bg-surface-muted px-3 pt-2">
               {tabMeta.map((tab) => (
                 <button
                   key={tab.id}
@@ -632,9 +647,16 @@ export function ApiTesterPanel({
             </div>
           </div>
         </div>
-        <div className="min-h-0 flex-1 px-3 pb-3 pt-2.5">
-          <div className="min-h-0 h-full flex flex-col rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-            <div className="flex flex-wrap items-center gap-2 border-b border-surface-border-soft bg-surface-muted px-4 py-2.5">
+        <div
+          onMouseDown={handleDividerMouseDown}
+          className="group mx-3 flex h-3 shrink-0 cursor-ns-resize items-center justify-center"
+          title="드래그해서 응답 영역 크기 조절"
+        >
+          <div className="h-0.5 w-10 rounded-full bg-surface-border-soft transition-colors group-hover:bg-brand-border" />
+        </div>
+        <div className="min-h-0 flex-1 px-3 pb-3">
+          <div className="min-h-0 flex h-full flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
+            <div className="flex flex-wrap items-center gap-2 rounded-t-md border-b border-surface-border-soft bg-surface-muted px-4 py-2.5">
               <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">
                 Response
               </span>
