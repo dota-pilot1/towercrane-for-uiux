@@ -300,7 +300,7 @@ export function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-[1040px] flex-col items-center justify-center gap-4 px-4 py-8">
-      <div className="w-full rounded-md border border-surface-border bg-surface-raised px-5 py-3 shadow-[0_10px_28px_rgba(0,0,0,0.05)]">
+      <div className="w-full rounded-md border border-surface-border-soft bg-surface-raised px-5 py-3 shadow-[0_10px_28px_rgba(0,0,0,0.05)]">
         <div className="mb-2.5 flex items-center gap-1.5">
           <Zap className="size-3.5 text-brand-primary" />
           <span className="text-xs font-semibold text-brand-primary">테스트 계정 간편 로그인</span>
@@ -322,7 +322,7 @@ export function LoginPage() {
       </div>
 
       <section
-        className={`relative min-h-[560px] w-full overflow-hidden rounded-md border border-surface-border bg-background shadow-[0_22px_60px_rgba(0,0,0,0.10)] lg:min-h-[580px] ${
+        className={`relative min-h-[560px] w-full overflow-hidden rounded-md border border-surface-border-soft bg-background shadow-[0_22px_60px_rgba(0,0,0,0.10)] lg:min-h-[580px] ${
           isSignup ? 'lg:[&_.signin-panel]:translate-x-full lg:[&_.signup-panel]:translate-x-full lg:[&_.signup-panel]:opacity-100 lg:[&_.signup-panel]:z-20 lg:[&_.switch-overlay]:-translate-x-full lg:[&_.switch-track]:translate-x-1/2' : ''
         }`}
       >
@@ -498,7 +498,7 @@ export function LoginPage() {
           </form>
         </div>
 
-        <div className="switch-overlay pointer-events-none absolute left-1/2 top-0 z-30 hidden h-full w-1/2 overflow-hidden border-l border-brand-border bg-[color:color-mix(in_srgb,var(--status-online)_18%,var(--background))] transition-transform duration-300 ease-in-out lg:block">
+        <div className="switch-overlay pointer-events-none absolute left-1/2 top-0 z-30 hidden h-full w-1/2 overflow-hidden bg-[color:color-mix(in_srgb,var(--status-online)_18%,var(--background))] transition-transform duration-300 ease-in-out lg:block">
           <div className="switch-track relative -left-full flex h-full w-[200%] bg-[color:color-mix(in_srgb,var(--status-online)_18%,var(--background))] transition-transform duration-300 ease-in-out">
             <SwitchPanel
               title="다시 오셨나요?"
