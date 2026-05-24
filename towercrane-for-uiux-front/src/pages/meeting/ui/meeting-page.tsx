@@ -108,7 +108,6 @@ function ChannelSidebar({
   isAdmin,
   isLoading,
   workspaceId,
-  workspaceName,
   onSelect,
   onDelete,
 }: {
@@ -117,27 +116,15 @@ function ChannelSidebar({
   isAdmin?: boolean
   isLoading?: boolean
   workspaceId?: string | null
-  workspaceName?: string | null
   onSelect: (roomId: string) => void
   onDelete: (roomId: string) => void
 }) {
-  const navigate = useNavigate()
   const publicRooms = rooms.filter((room) => room.roomType !== 'DM')
   const dmRooms = rooms.filter((room) => room.roomType === 'DM')
 
   return (
     <aside className="ui-panel flex min-h-0 w-full flex-col overflow-hidden bg-surface-raised lg:w-72">
       <div className="border-b border-surface-border-soft bg-surface-muted px-5 py-4">
-        {workspaceId ? (
-          <button
-            type="button"
-            onClick={() => navigate({ to: '/meeting' })}
-            className="mb-2 flex items-center gap-1 text-xs text-text-muted transition-colors hover:text-brand-primary"
-          >
-            <ChevronLeft className="size-3.5" />
-            Workspaces / {workspaceName ?? '회의실'}
-          </button>
-        ) : null}
         <p className="text-[11px] font-black uppercase tracking-[0.22em] ui-text-muted">Meetingroom</p>
         <div className="mt-1 flex items-center justify-between">
           <h2 className="text-lg font-black ui-text-primary">회의실</h2>
@@ -735,6 +722,7 @@ function MemberList({
 }
 
 export function MeetingPage({ workspaceId }: { workspaceId?: string }) {
+  const navigate = useNavigate()
   const currentUserId = useSessionStore((state) => state.userId)
   const currentUserRole = useSessionStore((state) => state.userRole)
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
@@ -808,6 +796,18 @@ export function MeetingPage({ workspaceId }: { workspaceId?: string }) {
         icon={MessagesSquare}
         title={workspaceName ? `회의실 · ${workspaceName}` : '회의실'}
         description="팀 채널에서 실시간으로 소통합니다."
+        actions={
+          workspaceId ? (
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/meeting' })}
+              className="flex items-center gap-1.5 rounded-md border border-background/20 bg-background/10 px-3 py-1.5 text-xs font-bold text-background/80 transition-colors hover:bg-background/20 hover:text-background"
+            >
+              <ChevronLeft className="size-3.5" />
+              Workspaces
+            </button>
+          ) : undefined
+        }
       />
     <div className="h-[calc(100vh-212px)] min-h-[600px] overflow-hidden rounded-md bg-surface-muted p-1">
       {deleteTarget ? (
@@ -824,7 +824,6 @@ export function MeetingPage({ workspaceId }: { workspaceId?: string }) {
           isAdmin={isAdmin}
           isLoading={roomsQuery.isLoading}
           workspaceId={workspaceId}
-          workspaceName={workspaceName}
           onSelect={setRequestedRoomId}
           onDelete={(roomId) => {
             const room = rooms.find((r) => r.id === roomId)
