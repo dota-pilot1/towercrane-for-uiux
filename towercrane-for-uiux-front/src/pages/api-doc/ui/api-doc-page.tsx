@@ -16,7 +16,6 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Check, FileJson, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
-import { PageHeader } from '../../../shared/ui/page-header'
 import type {
   ApiDocCategory,
   ApiDocEndpoint,
@@ -46,13 +45,21 @@ import { ApiTesterPanel } from '../../../features/api-doc/ui/api-tester-panel'
 const EMPTY_CATEGORIES: ApiDocCategory[] = []
 const EMPTY_ENDPOINTS: ApiDocEndpoint[] = []
 const SIDEBAR_ITEM_CLASS =
-  'group flex min-h-12 items-center gap-2 rounded-md border px-2 py-1.5 transition-colors'
+  'group flex h-8 items-center gap-1.5 rounded-sm px-2 transition-colors'
 const SIDEBAR_DRAG_HANDLE_CLASS =
-  'flex size-5 shrink-0 cursor-grab items-center justify-center text-text-muted opacity-50 transition-opacity group-hover:opacity-100'
+  'flex size-4 shrink-0 cursor-grab items-center justify-center text-text-muted opacity-40 transition-opacity group-hover:opacity-100'
 const SIDEBAR_TEXT_BUTTON_CLASS =
-  'flex min-h-7 min-w-0 flex-1 translate-y-px items-center truncate text-left text-sm font-bold leading-none text-text-primary'
+  'flex min-w-0 flex-1 items-center truncate text-left text-xs font-semibold leading-none text-text-primary'
 const SIDEBAR_ACTIONS_CLASS =
   'flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'
+
+const METHOD_COLOR: Record<string, string> = {
+  GET: 'text-[oklch(0.46_0.15_155)] bg-[color-mix(in_srgb,oklch(0.46_0.15_155)_12%,transparent)]',
+  POST: 'text-[oklch(0.5_0.15_255)] bg-[color-mix(in_srgb,oklch(0.5_0.15_255)_12%,transparent)]',
+  PUT: 'text-[oklch(0.55_0.14_75)] bg-[color-mix(in_srgb,oklch(0.55_0.14_75)_12%,transparent)]',
+  PATCH: 'text-[oklch(0.52_0.16_300)] bg-[color-mix(in_srgb,oklch(0.52_0.16_300)_12%,transparent)]',
+  DELETE: 'text-destructive bg-[var(--color-danger-glass)]',
+}
 
 function SortableItem({
   id,
@@ -116,14 +123,21 @@ export function ApiDocPage() {
   )
 
   return (
-    <section className="space-y-4 ui-page-bg pb-8">
-      <PageHeader
-        icon={FileJson}
-        title="Postman Lite"
-        actions={<ApiDocImportExportActions isAdmin={isAdmin} />}
-      />
+    <section className="space-y-3 ui-page-bg pb-8">
+      <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border border-surface-border-soft bg-surface-raised px-4 py-2 shadow-sm">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
+            <FileJson className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-black leading-tight text-text-primary">Postman Lite</h2>
+            <p className="truncate text-[11px] leading-tight text-text-muted">API 요청 컬렉션</p>
+          </div>
+        </div>
+        <ApiDocImportExportActions isAdmin={isAdmin} />
+      </div>
 
-      <div className="grid h-[calc(100vh-15rem)] min-h-[640px] grid-cols-1 gap-3 lg:grid-cols-[300px_300px_minmax(0,1fr)]">
+      <div className="grid h-[calc(100vh-12.5rem)] min-h-[640px] grid-cols-1 gap-3 lg:grid-cols-[300px_300px_minmax(0,1fr)]">
         <CategorySidebar
           categories={categories}
           activeId={selectedCategoryId}
@@ -255,7 +269,7 @@ function CategorySidebar({
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-1 py-1.5">
         {adding ? (
           <div className="mb-2 rounded-md border border-brand-border bg-brand-glass p-2.5">
             <input
@@ -296,8 +310,8 @@ function CategorySidebar({
                       <div
                         className={`${SIDEBAR_ITEM_CLASS} ${
                           activeId === category.id
-                            ? 'border-brand-border bg-brand-glass'
-                            : 'border-transparent hover:border-surface-border-soft hover:bg-surface-muted'
+                            ? 'border-l-2 border-brand-border bg-brand-glass pl-1.5 text-brand-primary'
+                            : 'hover:bg-surface-muted'
                         }`}
                       >
                         {isAdmin ? (
@@ -307,7 +321,7 @@ function CategorySidebar({
                             className={SIDEBAR_DRAG_HANDLE_CLASS}
                             aria-label="드래그"
                           >
-                            <GripVertical className="size-3.5" />
+                            <GripVertical className="size-3" />
                           </button>
                         ) : null}
                         {editingId === category.id ? (
@@ -503,7 +517,7 @@ function EndpointSidebar({
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-1 py-1.5">
         {adding && categoryId ? (
           <div className="mb-2 rounded-md border border-brand-border bg-brand-glass p-2">
             <input
@@ -560,8 +574,8 @@ function EndpointSidebar({
                       <div
                         className={`${SIDEBAR_ITEM_CLASS} ${
                           activeId === endpoint.id
-                            ? 'border-brand-border bg-brand-glass'
-                            : 'border-transparent hover:border-surface-border-soft hover:bg-surface-muted'
+                            ? 'border-l-2 border-brand-border bg-brand-glass pl-1.5'
+                            : 'hover:bg-surface-muted'
                         }`}
                       >
                         {editingId === endpoint.id ? (
@@ -608,16 +622,19 @@ function EndpointSidebar({
                                 className={SIDEBAR_DRAG_HANDLE_CLASS}
                                 aria-label="드래그"
                               >
-                                <GripVertical className="size-3.5" />
+                                <GripVertical className="size-3" />
                               </button>
                             ) : null}
                             <button
                               type="button"
                               onClick={() => onSelect(endpoint.id)}
-                              className={SIDEBAR_TEXT_BUTTON_CLASS}
+                              className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left leading-none"
                               title={endpoint.title}
                             >
-                              {endpoint.title}
+                              <span className={`shrink-0 rounded px-1 py-0.5 font-mono text-[9px] font-black tracking-wide ${METHOD_COLOR[endpoint.method] ?? METHOD_COLOR.GET}`}>
+                                {endpoint.method}
+                              </span>
+                              <span className="truncate text-xs font-semibold text-text-primary">{endpoint.title}</span>
                             </button>
                             {isAdmin ? (
                               <div className={SIDEBAR_ACTIONS_CLASS}>
