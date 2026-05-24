@@ -20,6 +20,10 @@ import { ChatbotHistoryPage } from '../pages/chatbot/ui/chatbot-history-page'
 import { ChatbotFlowPage } from '../pages/chatbot/ui/chatbot-flow-page'
 import { ChatbotFilesPage } from '../pages/chatbot/ui/chatbot-files-page'
 import { ChatbotKnowledgePage } from '../pages/chatbot/ui/chatbot-knowledge-page'
+import { ChatbotKnowledgeNoticePage } from '../pages/chatbot/ui/chatbot-knowledge-notice-page'
+import { ChatbotKnowledgeFaqPage } from '../pages/chatbot/ui/chatbot-knowledge-faq-page'
+import { ChatbotKnowledgeAiPage } from '../pages/chatbot/ui/chatbot-knowledge-ai-page'
+import { ChatbotKnowledgeDevPage } from '../pages/chatbot/ui/chatbot-knowledge-dev-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-workspace-home-page'
@@ -373,6 +377,30 @@ const chatbotKnowledgeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot/knowledge',
   component: ChatbotKnowledgePage,
+})
+
+const chatbotKnowledgeNoticeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/knowledge/notice',
+  component: ChatbotKnowledgeNoticePage,
+})
+
+const chatbotKnowledgeFaqRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/knowledge/faq',
+  component: ChatbotKnowledgeFaqPage,
+})
+
+const chatbotKnowledgeAiRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/knowledge/ai',
+  component: ChatbotKnowledgeAiPage,
+})
+
+const chatbotKnowledgeDevRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/knowledge/dev',
+  component: ChatbotKnowledgeDevPage,
 })
 
 function StudyDiaryRedirect() {
@@ -792,6 +820,10 @@ export const router = createRouter({
       chatbotFlowRoute,
       chatbotFilesRoute,
       chatbotKnowledgeRoute,
+      chatbotKnowledgeNoticeRoute,
+      chatbotKnowledgeFaqRoute,
+      chatbotKnowledgeAiRoute,
+      chatbotKnowledgeDevRoute,
       meetingRoute,
       meetingWorkspaceRoute,
       docuRoute,

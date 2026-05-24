@@ -20,10 +20,10 @@ function sectionIdToPath(sectionId: string): string {
     meeting: '/meeting',
     docu: '/docu',
     knowledge_channel: '/chatbot/knowledge',
-    knowledge_notice: '/chatbot/knowledge',
-    knowledge_faq: '/chatbot/knowledge',
-    knowledge_ai: '/chatbot/knowledge',
-    knowledge_dev: '/chatbot/knowledge',
+    knowledge_notice: '/chatbot/knowledge/notice',
+    knowledge_faq: '/chatbot/knowledge/faq',
+    knowledge_ai: '/chatbot/knowledge/ai',
+    knowledge_dev: '/chatbot/knowledge/dev',
     ai_service_request: '/chatbot/knowledge',
     ai_evaluation: '/ai-evaluation',
     api_doc: '/api-doc',
@@ -95,7 +95,11 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/chatbot/history')) return 'chatbot_history'
   if (pathname.startsWith('/chatbot/flow')) return 'chatbot_flow'
   if (pathname.startsWith('/chatbot/files')) return 'chatbot_files'
-  if (pathname.startsWith('/chatbot/knowledge')) return 'chatbot_knowledge'
+  if (pathname.startsWith('/chatbot/knowledge/notice')) return 'knowledge_notice'
+  if (pathname.startsWith('/chatbot/knowledge/faq')) return 'knowledge_faq'
+  if (pathname.startsWith('/chatbot/knowledge/ai')) return 'knowledge_ai'
+  if (pathname.startsWith('/chatbot/knowledge/dev')) return 'knowledge_dev'
+  if (pathname.startsWith('/chatbot/knowledge')) return 'knowledge_channel'
   if (pathname.startsWith('/chatbot')) return 'chatbot_basic'
   return 'prototype'
 }
@@ -103,6 +107,13 @@ function getSectionIdFromPath(pathname: string): string {
 function normalizeSectionId(sectionId: string | null | undefined): string {
   if (sectionId === 'challenge' || sectionId === 'study_diary') return 'study_diary'
   if (sectionId === 'task') return 'task_all'
+  if (
+    sectionId === 'knowledge_notice' ||
+    sectionId === 'knowledge_faq' ||
+    sectionId === 'knowledge_ai' ||
+    sectionId === 'knowledge_dev'
+  )
+    return sectionId
   return sectionId ?? ''
 }
 
