@@ -36,6 +36,7 @@ import { ProfilePage } from '../pages/profile/ui/profile-page'
 import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
 import { StudyDiaryPage } from '../pages/study-diary/ui/study-diary-page'
 import { StudyDiaryPublicPage } from '../pages/study-diary/ui/study-diary-public-page'
+import { StudyDiaryWorkspaceHomePage } from '../pages/study-diary/ui/study-diary-workspace-home-page'
 import { DevChallengePage } from '../pages/dev-challenge/ui/dev-challenge-page'
 import { DevChallengeWorkspaceHomePage } from '../pages/dev-challenge-workspace/ui/dev-challenge-workspace-home-page'
 import { SqlPracticePage } from '../pages/sql-practice/ui/sql-practice-page'
@@ -252,6 +253,12 @@ export const prototypeCategoryRoute = createRoute({
 const studyDiaryRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/study-diary',
+  component: StudyDiaryWorkspaceHomePage,
+})
+
+const studyDiaryWorkspaceRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/study-diary/workspaces/$workspaceId',
   validateSearch: (search: Record<string, unknown>) => ({
     cat: typeof search.cat === 'string' ? search.cat : undefined,
     sec: typeof search.sec === 'string' ? search.sec : undefined,
@@ -262,6 +269,12 @@ const studyDiaryRoute = createRoute({
 const studyDiaryPublicRoute = createRoute({
   getParentRoute: () => semiPublicLayoutRoute,
   path: '/study-diary/$userId',
+  component: StudyDiaryPublicPage,
+})
+
+const studyDiaryPublicWorkspaceRoute = createRoute({
+  getParentRoute: () => semiPublicLayoutRoute,
+  path: '/study-diary/public/$workspaceId',
   component: StudyDiaryPublicPage,
 })
 
@@ -759,6 +772,7 @@ export const router = createRouter({
     publicSqlPersonalPracticeRoute,
     semiPublicLayoutRoute.addChildren([
       sqlNoteDetailRoute,
+      studyDiaryPublicWorkspaceRoute,
       studyDiaryPublicRoute,
     ]),
     appLayoutRoute.addChildren([
@@ -768,6 +782,7 @@ export const router = createRouter({
       prototypeWorkspaceCategoryRoute,
       prototypeCategoryRoute,
       studyDiaryRoute,
+      studyDiaryWorkspaceRoute,
       devChallengeRoute,
       devChallengeWorkspaceRoute,
       legacyChallengeRedirectRoute,

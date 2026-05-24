@@ -125,21 +125,22 @@ function SectionItem({
 }
 
 type StudyDiarySectionListProps = {
+  workspaceId?: string
   categoryId: string
   selectedSection: string | null
   onSelectSection: (id: string) => void
 }
 
-export function StudyDiarySectionList({ categoryId, selectedSection, onSelectSection }: StudyDiarySectionListProps) {
+export function StudyDiarySectionList({ workspaceId, categoryId, selectedSection, onSelectSection }: StudyDiarySectionListProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [addValue, setAddValue] = useState('')
   const [actionMap, setActionMap] = useState<Record<string, ActionState>>({})
 
-  const { data: sections = [], isLoading } = useStudyDiarySections(categoryId)
-  const createSection = useCreateStudyDiarySection()
-  const updateSection = useUpdateStudyDiarySection()
-  const deleteSection = useDeleteStudyDiarySection()
-  const reorderSections = useReorderStudyDiarySections()
+  const { data: sections = [], isLoading } = useStudyDiarySections(categoryId, workspaceId)
+  const createSection = useCreateStudyDiarySection(workspaceId)
+  const updateSection = useUpdateStudyDiarySection(workspaceId)
+  const deleteSection = useDeleteStudyDiarySection(workspaceId)
+  const reorderSections = useReorderStudyDiarySections(workspaceId)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

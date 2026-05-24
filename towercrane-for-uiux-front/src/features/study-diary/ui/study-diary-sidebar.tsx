@@ -125,20 +125,21 @@ function CategoryItem({
 }
 
 type StudyDiarySidebarProps = {
+  workspaceId?: string
   selectedCategory: string | null
   onSelectCategory: (id: string) => void
 }
 
-export function StudyDiarySidebar({ selectedCategory, onSelectCategory }: StudyDiarySidebarProps) {
+export function StudyDiarySidebar({ workspaceId, selectedCategory, onSelectCategory }: StudyDiarySidebarProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [addValue, setAddValue] = useState('')
   const [actionMap, setActionMap] = useState<Record<string, ActionState>>({})
 
-  const { data: categories = [], isLoading } = useStudyDiaryCategories()
-  const createCategory = useCreateStudyDiaryCategory()
-  const updateCategory = useUpdateStudyDiaryCategory()
-  const deleteCategory = useDeleteStudyDiaryCategory()
-  const reorderCategories = useReorderStudyDiaryCategories()
+  const { data: categories = [], isLoading } = useStudyDiaryCategories(workspaceId)
+  const createCategory = useCreateStudyDiaryCategory(workspaceId)
+  const updateCategory = useUpdateStudyDiaryCategory(workspaceId)
+  const deleteCategory = useDeleteStudyDiaryCategory(workspaceId)
+  const reorderCategories = useReorderStudyDiaryCategories(workspaceId)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

@@ -8,6 +8,44 @@ import type {
 } from '../model/types'
 
 export const studyDiaryApi = {
+  listWorkspaces: () => apiRequest<StudyDiary[]>('/study-diary/workspaces'),
+
+  createWorkspace: (data: { title: string; description?: string | null; visibility?: StudyDiaryVisibility }) =>
+    apiRequest<StudyDiary>('/study-diary/workspaces', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getWorkspace: (workspaceId: string) =>
+    apiRequest<StudyDiary>(`/study-diary/workspaces/${workspaceId}`),
+
+  updateWorkspace: (workspaceId: string, data: { title?: string; description?: string | null; visibility?: StudyDiaryVisibility }) =>
+    apiRequest<StudyDiary>(`/study-diary/workspaces/${workspaceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  listWorkspaceCategories: (workspaceId: string) =>
+    apiRequest<StudyDiaryCategory[]>(`/study-diary/workspaces/${workspaceId}/categories`),
+
+  createWorkspaceCategory: (workspaceId: string, data: { name: string }) =>
+    apiRequest<StudyDiaryCategory>(`/study-diary/workspaces/${workspaceId}/categories`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  reorderWorkspaceCategories: (workspaceId: string, categoryIds: string[]) =>
+    apiRequest<void>(`/study-diary/workspaces/${workspaceId}/categories/reorder`, {
+      method: 'POST',
+      body: JSON.stringify({ categoryIds }),
+    }),
+
+  listWorkspaceSections: (workspaceId: string, categoryId: string) =>
+    apiRequest<StudyDiarySection[]>(`/study-diary/workspaces/${workspaceId}/categories/${categoryId}/sections`),
+
+  listWorkspaceMyNotes: (workspaceId: string, sectionId: string) =>
+    apiRequest<StudyDiaryNote[]>(`/study-diary/workspaces/${workspaceId}/sections/${sectionId}/notes/mine`),
+
   getMe: () => apiRequest<StudyDiary>('/study-diary/me'),
 
   updateMe: (data: { title?: string; description?: string | null; visibility?: StudyDiaryVisibility }) =>
@@ -91,12 +129,24 @@ export const studyDiaryApi = {
   getPublicDiary: (userId: string) =>
     apiRequest<StudyDiary>(`/study-diary/public/${userId}`),
 
+  getPublicWorkspace: (workspaceId: string) =>
+    apiRequest<StudyDiary>(`/study-diary/public/workspaces/${workspaceId}`),
+
   listPublicCategories: (userId: string) =>
     apiRequest<StudyDiaryCategory[]>(`/study-diary/public/${userId}/categories`),
+
+  listPublicWorkspaceCategories: (workspaceId: string) =>
+    apiRequest<StudyDiaryCategory[]>(`/study-diary/public/workspaces/${workspaceId}/categories`),
 
   listPublicSections: (userId: string, categoryId: string) =>
     apiRequest<StudyDiarySection[]>(`/study-diary/public/${userId}/categories/${categoryId}/sections`),
 
+  listPublicWorkspaceSections: (workspaceId: string, categoryId: string) =>
+    apiRequest<StudyDiarySection[]>(`/study-diary/public/workspaces/${workspaceId}/categories/${categoryId}/sections`),
+
   listPublicNotes: (userId: string, sectionId: string) =>
     apiRequest<StudyDiaryNote[]>(`/study-diary/public/${userId}/sections/${sectionId}/notes`),
+
+  listPublicWorkspaceNotes: (workspaceId: string, sectionId: string) =>
+    apiRequest<StudyDiaryNote[]>(`/study-diary/public/workspaces/${workspaceId}/sections/${sectionId}/notes`),
 }

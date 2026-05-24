@@ -28,6 +28,103 @@ import { StudyDiaryService } from './study-diary.service';
 export class StudyDiaryController {
   constructor(private readonly studyDiaryService: StudyDiaryService) {}
 
+  @Get('workspaces')
+  listWorkspaces(@Req() req: SessionRequest) {
+    return this.studyDiaryService.listWorkspaces(req.user.id);
+  }
+
+  @Post('workspaces')
+  createWorkspace(@Req() req: SessionRequest, @Body() body: unknown) {
+    const input = updateStudyDiarySchema.parse(body);
+    return this.studyDiaryService.createWorkspace(req.user.id, input);
+  }
+
+  @Get('workspaces/:workspaceId')
+  getWorkspace(
+    @Req() req: SessionRequest,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.studyDiaryService.getWorkspace(req.user.id, workspaceId);
+  }
+
+  @Patch('workspaces/:workspaceId')
+  updateWorkspace(
+    @Req() req: SessionRequest,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    const input = updateStudyDiarySchema.parse(body);
+    return this.studyDiaryService.updateWorkspace(
+      req.user.id,
+      workspaceId,
+      input,
+    );
+  }
+
+  @Get('workspaces/:workspaceId/categories')
+  getWorkspaceCategories(
+    @Req() req: SessionRequest,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.studyDiaryService.getWorkspaceCategories(
+      req.user.id,
+      workspaceId,
+    );
+  }
+
+  @Post('workspaces/:workspaceId/categories')
+  createWorkspaceCategory(
+    @Req() req: SessionRequest,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    const input = createStudyDiaryCategorySchema.parse(body);
+    return this.studyDiaryService.createWorkspaceCategory(
+      req.user.id,
+      workspaceId,
+      input,
+    );
+  }
+
+  @Post('workspaces/:workspaceId/categories/reorder')
+  reorderWorkspaceCategories(
+    @Req() req: SessionRequest,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: { categoryIds: string[] },
+  ) {
+    return this.studyDiaryService.reorderWorkspaceCategories(
+      req.user.id,
+      workspaceId,
+      body.categoryIds,
+    );
+  }
+
+  @Get('workspaces/:workspaceId/categories/:categoryId/sections')
+  getWorkspaceSectionsByCategory(
+    @Req() req: SessionRequest,
+    @Param('workspaceId') workspaceId: string,
+    @Param('categoryId') categoryId: string,
+  ) {
+    return this.studyDiaryService.getWorkspaceSectionsByCategory(
+      req.user.id,
+      workspaceId,
+      categoryId,
+    );
+  }
+
+  @Get('workspaces/:workspaceId/sections/:sectionId/notes/mine')
+  getWorkspaceMyNotes(
+    @Req() req: SessionRequest,
+    @Param('workspaceId') workspaceId: string,
+    @Param('sectionId') sectionId: string,
+  ) {
+    return this.studyDiaryService.getWorkspaceNotes(
+      req.user.id,
+      workspaceId,
+      sectionId,
+    );
+  }
+
   @Get('me')
   getMyDiary(@Req() req: SessionRequest) {
     return this.studyDiaryService.getMyDiary(req.user.id);

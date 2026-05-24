@@ -9,10 +9,26 @@ import {
   usePublicDiary,
   usePublicNotes,
   usePublicSections,
+  usePublicWorkspace,
+  usePublicWorkspaceCategories,
+  usePublicWorkspaceNotes,
+  usePublicWorkspaceSections,
 } from '../../../features/study-diary/lib/hooks'
 
-function PublicNotesPanel({ targetUserId, sectionId }: { targetUserId: string; sectionId: string }) {
-  const { data: notes = [], isLoading } = usePublicNotes(targetUserId, sectionId)
+function PublicNotesPanel({
+  targetUserId,
+  workspaceId,
+  sectionId,
+}: {
+  targetUserId: string
+  workspaceId: string
+  sectionId: string
+}) {
+  const userNotesQuery = usePublicNotes(targetUserId, sectionId)
+  const workspaceNotesQuery = usePublicWorkspaceNotes(workspaceId, sectionId)
+  const activeQuery = workspaceId ? workspaceNotesQuery : userNotesQuery
+  const notes = activeQuery.data ?? []
+  const isLoading = activeQuery.isLoading
 
   if (isLoading) {
     return (
@@ -46,14 +62,30 @@ function PublicNotesPanel({ targetUserId, sectionId }: { targetUserId: string; s
 }
 
 export function StudyDiaryPublicPage() {
-  const { userId } = useParams({ strict: false }) as { userId: string }
+  const { userId, workspaceId } = useParams({ strict: false }) as { userId?: string; workspaceId?: string }
   const search = useSearch({ strict: false }) as { cat?: string; sec?: string }
   const [selectedCategory, setSelectedCategory] = useState<string | null>(search.cat ?? null)
   const [selectedSection, setSelectedSection] = useState<string | null>(search.sec ?? null)
 
-  const { data: diary, isLoading: diaryLoading, isError } = usePublicDiary(userId)
-  const { data: categories = [], isLoading: categoriesLoading } = usePublicCategories(userId)
-  const { data: sections = [], isLoading: sectionsLoading } = usePublicSections(userId, selectedCategory ?? '')
+  const targetUserId = userId ?? ''
+  const targetWorkspaceId = workspaceId ?? ''
+  const publicDiaryQuery = usePublicDiary(targetUserId)
+  const publicWorkspaceQuery = usePublicWorkspace(targetWorkspaceId)
+  const categoriesQuery = usePublicCategories(targetUserId)
+  const workspaceCategoriesQuery = usePublicWorkspaceCategories(targetWorkspaceId)
+  const sectionsQuery = usePublicSections(targetUserId, selectedCategory ?? '')
+  const workspaceSectionsQuery = usePublicWorkspaceSections(targetWorkspaceId, selectedCategory ?? '')
+
+  const diaryQuery = targetWorkspaceId ? publicWorkspaceQuery : publicDiaryQuery
+  const activeCategoriesQuery = targetWorkspaceId ? workspaceCategoriesQuery : categoriesQuery
+  const activeSectionsQuery = targetWorkspaceId ? workspaceSectionsQuery : sectionsQuery
+  const diary = diaryQuery.data
+  const diaryLoading = diaryQuery.isLoading
+  const isError = diaryQuery.isError
+  const categories = activeCategoriesQuery.data ?? []
+  const categoriesLoading = activeCategoriesQuery.isLoading
+  const sections = activeSectionsQuery.data ?? []
+  const sectionsLoading = activeSectionsQuery.isLoading
 
   const handleSelectCategory = (categoryId: string) => {
     setSelectedCategory(categoryId)
@@ -161,7 +193,11 @@ export function StudyDiaryPublicPage() {
           {/* 노트 패널 */}
           {selectedSection ? (
             <Card className="flex flex-1 flex-col overflow-hidden rounded-md">
-              <PublicNotesPanel targetUserId={userId} sectionId={selectedSection} />
+              <PublicNotesPanel
+                targetUserId={targetUserId}
+                workspaceId={targetWorkspaceId}
+                sectionId={selectedSection}
+              />
             </Card>
           ) : (
             <Card className="flex flex-1 items-center justify-center rounded-md">

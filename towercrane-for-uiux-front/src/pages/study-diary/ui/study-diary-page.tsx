@@ -1,27 +1,26 @@
 import { useState } from 'react'
-import { useNavigate, useSearch } from '@tanstack/react-router'
-import { BookOpen, Check, Copy, Globe, Lock, Loader2 } from 'lucide-react'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { ArrowLeft, BookOpen, Check, Copy, Globe, Lock, Loader2 } from 'lucide-react'
 import { Card } from '../../../shared/ui/card'
 import { PageHeader } from '../../../shared/ui/page-header'
 import { UserNotesPanel } from '../../../features/challenge/user-notes/ui/user-notes-panel'
 import {
   useCreateStudyDiaryNote,
   useDeleteStudyDiaryNote,
-  useStudyDiary,
+  useStudyDiaryWorkspace,
   useStudyDiaryMyNotes,
-  useUpdateStudyDiary,
+  useUpdateStudyDiaryWorkspace,
   useUpdateStudyDiaryNote,
 } from '../../../features/study-diary/lib/hooks'
 import { StudyDiarySectionList } from '../../../features/study-diary/ui/study-diary-section-list'
 import { StudyDiarySidebar } from '../../../features/study-diary/ui/study-diary-sidebar'
-import { useSessionStore } from '../../../shared/store/session-store'
 
-function ShareButton({ diary }: { diary: { visibility: string; userId: string } | undefined }) {
+function ShareButton({ diary }: { diary: { id: string; visibility: string } | undefined }) {
   const [copied, setCopied] = useState(false)
-  const updateDiary = useUpdateStudyDiary()
+  const updateDiary = useUpdateStudyDiaryWorkspace(diary?.id ?? '')
 
   const isShared = diary?.visibility === 'shared' || diary?.visibility === 'public'
-  const shareUrl = diary ? `${window.location.origin}/study-diary/${diary.userId}` : ''
+  const shareUrl = diary ? `${window.location.origin}/study-diary/public/${diary.id}` : ''
 
   const handleToggleShare = async () => {
     if (!diary) return
@@ -62,23 +61,34 @@ function ShareButton({ diary }: { diary: { visibility: string; userId: string } 
 }
 
 export function StudyDiaryPage() {
+  const params = useParams({ strict: false }) as { workspaceId?: string }
   const search = useSearch({ strict: false }) as { cat?: string; sec?: string }
   const navigate = useNavigate()
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
 
+  const workspaceId = params.workspaceId ?? ''
   const selectedCategory = search.cat ?? null
   const selectedSection = search.sec ?? null
 
   const setSelectedCategory = (id: string | null) => {
-    navigate({ search: { cat: id ?? undefined, sec: undefined }, replace: true })
+    navigate({
+      to: '/study-diary/workspaces/$workspaceId',
+      params: { workspaceId },
+      search: { cat: id ?? undefined, sec: undefined },
+      replace: true,
+    })
   }
   const setSelectedSection = (id: string | null) => {
-    navigate({ search: { cat: search.cat, sec: id ?? undefined }, replace: true })
+    navigate({
+      to: '/study-diary/workspaces/$workspaceId',
+      params: { workspaceId },
+      search: { cat: search.cat, sec: id ?? undefined },
+      replace: true,
+    })
   }
 
-  const userId = useSessionStore((s) => s.userId)
-  const { data: diary, isLoading: diaryLoading } = useStudyDiary()
-  const { data: myNotes = [] } = useStudyDiaryMyNotes(selectedSection || '')
+  const { data: diary, isLoading: diaryLoading } = useStudyDiaryWorkspace(workspaceId)
+  const { data: myNotes = [] } = useStudyDiaryMyNotes(selectedSection || '', workspaceId)
   const createNote = useCreateStudyDiaryNote()
   const updateNote = useUpdateStudyDiaryNote()
   const deleteNote = useDeleteStudyDiaryNote()
@@ -87,15 +97,37 @@ export function StudyDiaryPage() {
     setSelectedCategory(categoryId)
   }
 
-  const diaryWithUserId = diary && userId ? { ...diary, userId } : undefined
+  if (!workspaceId) {
+    return (
+      <section className="space-y-4 ui-page-bg pb-4">
+        <Card className="flex h-[calc(100vh-200px)] items-center justify-center rounded-md">
+          <p className="text-sm ui-text-muted">워크스페이스를 찾을 수 없습니다.</p>
+        </Card>
+      </section>
+    )
+  }
 
   return (
     <section className="space-y-4 ui-page-bg pb-4">
       <PageHeader
         icon={BookOpen}
         title={diary?.title ?? '스터디 다이어리'}
-        description="학습 주제와 노트를 개인 공간에 정리합니다."
-        actions={<ShareButton diary={diaryWithUserId} />}
+        description={diary?.description ?? '학습 주제와 노트를 워크스페이스에 정리합니다.'}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/study-diary' })}
+              className="flex items-center gap-1.5 rounded-md border border-background/20 bg-background/10 px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-background/20"
+              aria-label="워크스페이스 목록으로 돌아가기"
+              title="워크스페이스 목록"
+            >
+              <ArrowLeft className="size-3.5" />
+              워크스페이스
+            </button>
+            <ShareButton diary={diary} />
+          </div>
+        }
       />
 
       {diaryLoading ? (
@@ -105,11 +137,13 @@ export function StudyDiaryPage() {
       ) : (
         <div className="flex h-[calc(100vh-200px)] gap-3">
           <StudyDiarySidebar
+            workspaceId={workspaceId}
             selectedCategory={selectedCategory}
             onSelectCategory={handleSelectCategory}
           />
 
           <StudyDiarySectionList
+            workspaceId={workspaceId}
             categoryId={selectedCategory ?? ''}
             selectedSection={selectedSection}
             onSelectSection={setSelectedSection}
@@ -120,7 +154,7 @@ export function StudyDiaryPage() {
               <UserNotesPanel
                 sectionId={selectedSection}
                 myNotes={myNotes}
-                shareUrl={userId ? `${window.location.origin}/study-diary/${userId}?cat=${selectedCategory}&sec=${selectedSection}` : undefined}
+                shareUrl={`${window.location.origin}/study-diary/public/${workspaceId}?cat=${selectedCategory}&sec=${selectedSection}`}
                 onCreateNote={async (data) => {
                   await createNote.mutateAsync({ sectionId: selectedSection, ...data })
                 }}
