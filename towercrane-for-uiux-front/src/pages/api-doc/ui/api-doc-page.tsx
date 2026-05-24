@@ -16,17 +16,20 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  ArrowLeft,
   Check,
   FileJson,
   GripVertical,
   Pencil,
   Plus,
+  Send,
   Trash2,
   X,
 } from "lucide-react";
 import type {
   ApiDocCategory,
   ApiDocEndpoint,
+  ApiDocTeam,
   ApiEnvironment,
   ApiEnvironmentVariable,
 } from "../../../entities/api-doc/model/types";
@@ -36,8 +39,10 @@ import {
   useApiDocBlocks,
   useApiDocCategories,
   useApiDocEndpoints,
+  useApiDocTeams,
   useCreateApiDocCategory,
   useCreateApiDocEndpoint,
+  useCreateApiDocTeam,
   useDeleteApiDocCategory,
   useDeleteApiDocEndpoint,
   useReorderApiDocCategories,
@@ -53,6 +58,7 @@ import { cn } from "../../../shared/lib/utils";
 
 const EMPTY_CATEGORIES: ApiDocCategory[] = [];
 const EMPTY_ENDPOINTS: ApiDocEndpoint[] = [];
+const EMPTY_TEAMS: ApiDocTeam[] = [];
 const SIDEBAR_ITEM_CLASS =
   "group flex h-8 items-center gap-1.5 rounded-sm px-2 transition-colors";
 const SIDEBAR_DRAG_HANDLE_CLASS =
@@ -109,8 +115,44 @@ function SortableItem({
 export function ApiDocPage() {
   const userRole = useSessionStore((state) => state.userRole);
   const isAdmin = userRole === "admin";
+  const teamsQuery = useApiDocTeams();
+  const teams = teamsQuery.data ?? EMPTY_TEAMS;
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const selectedTeam = useMemo(() => {
+    if (!selectedTeamId) return null;
+    return teams.find((team) => team.id === selectedTeamId) ?? null;
+  }, [selectedTeamId, teams]);
 
-  const categoriesQuery = useApiDocCategories();
+  if (!selectedTeam) {
+    return (
+      <ApiWorkspaceHome
+        teams={teams}
+        isAdmin={isAdmin}
+        isLoading={teamsQuery.isLoading}
+        onOpenWorkspace={setSelectedTeamId}
+      />
+    );
+  }
+
+  return (
+    <ApiDocWorkbench
+      team={selectedTeam}
+      isAdmin={isAdmin}
+      onBack={() => setSelectedTeamId(null)}
+    />
+  );
+}
+
+function ApiDocWorkbench({
+  team,
+  isAdmin,
+  onBack,
+}: {
+  team: ApiDocTeam;
+  isAdmin: boolean;
+  onBack: () => void;
+}) {
+  const categoriesQuery = useApiDocCategories(team.id);
   const categories = categoriesQuery.data ?? EMPTY_CATEGORIES;
   const [requestedCategoryId, setRequestedCategoryId] = useState<string | null>(
     null,
@@ -153,17 +195,29 @@ export function ApiDocPage() {
   return (
     <section className="ui-page-bg pb-8">
       <div className="grid h-[calc(100vh-10rem)] min-h-[680px] grid-cols-1 gap-3 lg:grid-cols-[300px_300px_minmax(0,1fr)] lg:grid-rows-[52px_minmax(0,1fr)]">
-        <div className="flex min-h-12 items-center justify-between gap-3 rounded-md border border-brand-border bg-[color:color-mix(in_srgb,var(--primary)_7%,var(--surface-raised))] px-4 py-2 shadow-sm lg:col-start-3 lg:row-start-1">
+        <div className="flex min-h-12 items-center justify-between gap-3 overflow-hidden rounded-md border border-surface-border-soft bg-surface-muted px-4 py-2 shadow-sm lg:col-start-3 lg:row-start-1">
           <div className="flex min-w-0 items-center gap-2.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-9 shrink-0 gap-1.5 px-3 text-xs font-black"
+              onClick={onBack}
+              aria-label="워크스페이스 목록"
+              title="워크스페이스 목록"
+            >
+              <ArrowLeft className="size-4" />
+              워크스페이스
+            </Button>
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
               <FileJson className="size-4" />
             </span>
             <div className="min-w-0">
               <h2 className="truncate text-base font-black leading-tight text-text-primary">
-                Postman Lite
+                {team.name}
               </h2>
               <p className="truncate text-[11px] leading-tight text-text-muted">
-                API 요청 컬렉션
+                Postman Lite
               </p>
             </div>
           </div>
@@ -172,6 +226,7 @@ export function ApiDocPage() {
 
         <CategorySidebar
           className="lg:col-start-1 lg:row-span-2 lg:row-start-1"
+          teamId={team.id}
           categories={categories}
           activeId={selectedCategoryId}
           isAdmin={isAdmin}
@@ -212,8 +267,197 @@ export function ApiDocPage() {
   );
 }
 
+function ApiWorkspaceHome({
+  teams,
+  isAdmin,
+  isLoading,
+  onOpenWorkspace,
+}: {
+  teams: ApiDocTeam[];
+  isAdmin: boolean;
+  isLoading: boolean;
+  onOpenWorkspace: (teamId: string) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const createTeamMutation = useCreateApiDocTeam();
+
+  const submitAdd = () => {
+    const name = newName.trim();
+    if (!name) {
+      setAdding(false);
+      return;
+    }
+    createTeamMutation.mutate(
+      {
+        name,
+        description: newDescription.trim() || null,
+        icon: "FileJson",
+        emoji: null,
+      },
+      {
+        onSuccess: (team) => {
+          setNewName("");
+          setNewDescription("");
+          setAdding(false);
+          onOpenWorkspace(team.id);
+        },
+      },
+    );
+  };
+
+  return (
+    <section className="ui-page-bg min-h-[calc(100vh-8rem)] pb-10">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-1 sm:px-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-surface-border-soft bg-surface-muted px-5 py-4 shadow-sm">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-widest text-brand-primary">
+              Postman Workspaces
+            </p>
+            <h2 className="mt-1 text-2xl font-black leading-tight text-text-primary">
+              팀별 API 요청 공간
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              워크스페이스를 선택하면 해당 팀의 컬렉션과 요청을 관리합니다.
+            </p>
+          </div>
+          {isAdmin ? (
+            <Button
+              type="button"
+              size="sm"
+              tone="brand"
+              onClick={() => setAdding(true)}
+            >
+              <Plus className="mr-1.5 size-4" />
+              워크스페이스
+            </Button>
+          ) : null}
+        </div>
+
+        {adding ? (
+          <div className="ui-panel-soft p-4">
+            <div className="grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] md:items-end">
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-text-secondary">
+                  이름
+                </span>
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={(event) => setNewName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.nativeEvent.isComposing)
+                      submitAdd();
+                    if (event.key === "Escape") setAdding(false);
+                  }}
+                  placeholder="예: AI 서비스 포털 팀"
+                  className="ui-input text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-text-secondary">
+                  설명
+                </span>
+                <input
+                  value={newDescription}
+                  onChange={(event) => setNewDescription(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.nativeEvent.isComposing)
+                      submitAdd();
+                    if (event.key === "Escape") setAdding(false);
+                  }}
+                  placeholder="워크스페이스 용도"
+                  className="ui-input text-sm"
+                />
+              </label>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  size="sm-icon"
+                  variant="ghost"
+                  onClick={() => setAdding(false)}
+                  aria-label="취소"
+                >
+                  <X className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm-icon"
+                  tone="brand"
+                  onClick={submitAdd}
+                  disabled={createTeamMutation.isPending}
+                  aria-label="추가"
+                >
+                  <Check className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {isLoading ? (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-40 animate-pulse rounded-md border border-surface-border-soft bg-surface-muted"
+              />
+            ))}
+          </div>
+        ) : teams.length === 0 ? (
+          <div className="rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-5 py-14 text-center text-sm text-text-muted">
+            {isAdmin
+              ? "워크스페이스를 추가하세요."
+              : "접근 가능한 워크스페이스가 없습니다."}
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {teams.map((team) => (
+              <button
+                key={team.id}
+                type="button"
+                onClick={() => onOpenWorkspace(team.id)}
+                className="group flex min-h-40 flex-col justify-between rounded-md border border-surface-border-soft bg-surface-raised p-4 text-left shadow-sm transition hover:border-brand-border hover:bg-brand-glass"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
+                    <FileJson className="size-5" />
+                  </span>
+                  <span className="rounded-md border border-surface-border-soft bg-surface-muted px-2 py-1 text-[11px] font-bold text-text-muted">
+                    Workspace
+                  </span>
+                </div>
+                <div className="mt-5 min-w-0">
+                  <h3 className="truncate text-lg font-black text-text-primary">
+                    {team.name}
+                  </h3>
+                  <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-text-secondary">
+                    {team.description || "팀 API 요청 컬렉션"}
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3 border-t border-surface-border-soft pt-3">
+                  <div className="flex flex-wrap gap-2 text-xs font-bold text-text-secondary">
+                    <span>{team.categoryCount ?? 0} collections</span>
+                    <span>{team.endpointCount ?? 0} requests</span>
+                  </div>
+                  <span className="flex items-center gap-1 text-xs font-black text-brand-primary">
+                    Open
+                    <Send className="size-3.5 transition group-hover:translate-x-0.5" />
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function CategorySidebar({
   className,
+  teamId,
   categories,
   activeId,
   isAdmin,
@@ -221,6 +465,7 @@ function CategorySidebar({
   onSelect,
 }: {
   className?: string;
+  teamId: string;
   categories: ApiDocCategory[];
   activeId: string | null;
   isAdmin: boolean;
@@ -232,10 +477,10 @@ function CategorySidebar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
 
-  const createMutation = useCreateApiDocCategory();
-  const updateMutation = useUpdateApiDocCategory();
-  const deleteMutation = useDeleteApiDocCategory();
-  const reorderMutation = useReorderApiDocCategories();
+  const createMutation = useCreateApiDocCategory(teamId);
+  const updateMutation = useUpdateApiDocCategory(teamId);
+  const deleteMutation = useDeleteApiDocCategory(teamId);
+  const reorderMutation = useReorderApiDocCategories(teamId);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -247,7 +492,7 @@ function CategorySidebar({
       return;
     }
     createMutation.mutate(
-      { name, icon: "Folder", emoji: null },
+      { teamId, name, icon: "Folder", emoji: null },
       {
         onSuccess: (category) => {
           setNewName("");
@@ -297,11 +542,11 @@ function CategorySidebar({
   return (
     <aside
       className={cn(
-        "flex min-h-0 flex-col rounded-md border border-surface-border-soft bg-surface-raised shadow-sm",
+        "flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm",
         className,
       )}
     >
-      <div className="flex h-12 shrink-0 items-center justify-between rounded-t-md border-b border-brand-border bg-[color:color-mix(in_srgb,var(--primary)_8%,var(--surface-raised))] px-4">
+      <div className="flex h-12 shrink-0 items-center justify-between rounded-t-md border-b border-surface-border-soft bg-surface-muted px-4">
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-brand-primary opacity-70" />
           <div>
@@ -596,11 +841,11 @@ function EndpointSidebar({
   return (
     <aside
       className={cn(
-        "flex min-h-0 flex-col rounded-md border border-surface-border-soft bg-surface-raised shadow-sm",
+        "flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm",
         className,
       )}
     >
-      <div className="flex h-12 shrink-0 items-center justify-between rounded-t-md border-b border-surface-border-soft bg-[color:color-mix(in_srgb,var(--status-online)_7%,var(--surface-raised))] px-4">
+      <div className="flex h-12 shrink-0 items-center justify-between rounded-t-md border-b border-surface-border-soft bg-surface-muted px-4">
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-brand-primary opacity-70" />
           <div>

@@ -266,8 +266,25 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_board_comments_board_deleted
         ON board_comments(board_id, deleted);
 
+      CREATE TABLE IF NOT EXISTS api_doc_teams (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        icon TEXT,
+        emoji TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_api_doc_teams_order
+        ON api_doc_teams(order_idx);
+
       CREATE TABLE IF NOT EXISTS api_doc_categories (
         id TEXT PRIMARY KEY,
+        team_id TEXT,
         name TEXT NOT NULL,
         icon TEXT,
         emoji TEXT,
@@ -275,6 +292,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        FOREIGN KEY(team_id) REFERENCES api_doc_teams(id) ON DELETE CASCADE,
         FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
       );
 
@@ -1417,7 +1435,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     // 챗봇 루트 메뉴 + 자식 upsert
     const existingChatbotPilot = this.sqlite
-      .prepare("SELECT id FROM menus WHERE section_id = 'chatbot_pilot' AND parent_id IS NULL LIMIT 1")
+      .prepare(
+        "SELECT id FROM menus WHERE section_id = 'chatbot_pilot' AND parent_id IS NULL LIMIT 1",
+      )
       .get() as { id: string } | undefined;
 
     if (!existingChatbotPilot) {
@@ -1439,10 +1459,30 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .run();
 
       const children = [
-        { name: '기본 채팅',    sectionId: 'chatbot_basic',     icon: 'MessageCircle', displayOrder: 0 },
-        { name: '스트리밍 응답', sectionId: 'chatbot_streaming', icon: 'Zap',           displayOrder: 1 },
-        { name: '히스토리 관리', sectionId: 'chatbot_history',   icon: 'History',       displayOrder: 2 },
-        { name: '파일 첨부',    sectionId: 'chatbot_files',     icon: 'Paperclip',     displayOrder: 3 },
+        {
+          name: '기본 채팅',
+          sectionId: 'chatbot_basic',
+          icon: 'MessageCircle',
+          displayOrder: 0,
+        },
+        {
+          name: '스트리밍 응답',
+          sectionId: 'chatbot_streaming',
+          icon: 'Zap',
+          displayOrder: 1,
+        },
+        {
+          name: '히스토리 관리',
+          sectionId: 'chatbot_history',
+          icon: 'History',
+          displayOrder: 2,
+        },
+        {
+          name: '파일 첨부',
+          sectionId: 'chatbot_files',
+          icon: 'Paperclip',
+          displayOrder: 3,
+        },
       ];
 
       // React Flow 메뉴 완전 삭제
@@ -1484,18 +1524,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     // 루트 메뉴 표시 순서 고정:
     // 0:AI Native, 1:회의실, 2:업무관리, 3:Postman, 4:학습 일지,
     // 5:게시판, 6:SQL Prac, 7:Challenge, 8:Prototype, 9:챗봇, 10:Admin
-    const rootMenuOrder: Array<{ sectionId: string | string[]; displayOrder: number }> = [
-      { sectionId: ['task_group', 'task'],      displayOrder: 0 },
-      { sectionId: 'api_doc',                  displayOrder: 1 },
-      { sectionId: 'meeting',                  displayOrder: 2 },
-      { sectionId: 'study_diary',              displayOrder: 3 },
-      { sectionId: 'ai_native_group',          displayOrder: 4 },
-      { sectionId: 'boards',                   displayOrder: 5 },
-      { sectionId: 'sql_group',                displayOrder: 6 },
-      { sectionId: 'dev_challenge',            displayOrder: 7 },
-      { sectionId: 'prototype',                displayOrder: 8 },
-      { sectionId: 'chatbot_pilot',            displayOrder: 9 },
-      { sectionId: 'admin_dropdown',           displayOrder: 10 },
+    const rootMenuOrder: Array<{
+      sectionId: string | string[];
+      displayOrder: number;
+    }> = [
+      { sectionId: ['task_group', 'task'], displayOrder: 0 },
+      { sectionId: 'api_doc', displayOrder: 1 },
+      { sectionId: 'meeting', displayOrder: 2 },
+      { sectionId: 'study_diary', displayOrder: 3 },
+      { sectionId: 'ai_native_group', displayOrder: 4 },
+      { sectionId: 'boards', displayOrder: 5 },
+      { sectionId: 'sql_group', displayOrder: 6 },
+      { sectionId: 'dev_challenge', displayOrder: 7 },
+      { sectionId: 'prototype', displayOrder: 8 },
+      { sectionId: 'chatbot_pilot', displayOrder: 9 },
+      { sectionId: 'admin_dropdown', displayOrder: 10 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
@@ -1965,6 +2008,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'mmd_content',
       "ALTER TABLE tasks ADD COLUMN mmd_content TEXT DEFAULT '' NOT NULL",
     );
+    this.ensureColumn(
+      'api_doc_categories',
+      'team_id',
+      'ALTER TABLE api_doc_categories ADD COLUMN team_id TEXT',
+    );
     this.sqlite.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user
         ON study_diaries(user_id);
@@ -1983,10 +2031,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_tasks_visibility_updated
         ON tasks(visibility, archived, updated_at);
+
+      CREATE INDEX IF NOT EXISTS idx_api_doc_categories_team_order
+        ON api_doc_categories(team_id, order_idx);
     `);
 
     const now = new Date().toISOString();
     const demoUser = this.ensureDemoUser(now);
+    this.ensureApiDocDefaultTeam(now, demoUser.id);
     this.ensureStudyDiariesForUsers(now);
     this.backfillChallengeCategoryDiaries(demoUser.id, now);
 
@@ -2012,6 +2064,54 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .run();
   }
 
+  private ensureApiDocDefaultTeam(now: string, userId: string) {
+    const defaultTeamId = 'api-team-prototype-console';
+    const existing = this.sqlite
+      .prepare('SELECT id FROM api_doc_teams WHERE id = ? LIMIT 1')
+      .get(defaultTeamId) as { id: string } | undefined;
+
+    if (!existing) {
+      this.sqlite
+        .prepare(
+          `
+            INSERT INTO api_doc_teams (
+              id,
+              name,
+              description,
+              icon,
+              emoji,
+              order_idx,
+              created_by,
+              created_at,
+              updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+        )
+        .run(
+          defaultTeamId,
+          'Prototype Console',
+          '기존 Postman Lite 컬렉션을 담는 기본 워크스페이스',
+          'FileJson',
+          null,
+          0,
+          userId,
+          now,
+          now,
+        );
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          UPDATE api_doc_categories
+          SET team_id = ?, updated_at = ?
+          WHERE team_id IS NULL OR team_id = ''
+        `,
+      )
+      .run(defaultTeamId, now);
+  }
+
   private reconcileAiNativeMenus(now: string) {
     let aiNativeGroup = this.sqlite
       .prepare(
@@ -2023,7 +2123,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     if (!aiNativeGroup) {
       this.sqlite
-        .prepare(`UPDATE menus SET display_order = display_order + 1, updated_at = ? WHERE parent_id IS NULL AND display_order >= 0`)
+        .prepare(
+          `UPDATE menus SET display_order = display_order + 1, updated_at = ? WHERE parent_id IS NULL AND display_order >= 0`,
+        )
         .run(now);
 
       this.db
@@ -2045,13 +2147,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       aiNativeGroup = { id: aiNativeGroupMenuId, displayOrder: 0 };
     } else {
       this.sqlite
-        .prepare(`UPDATE menus SET name = 'AI Native', icon = 'Bot', is_visible = 1, updated_at = ? WHERE id = ?`)
+        .prepare(
+          `UPDATE menus SET name = 'AI Native', icon = 'Bot', is_visible = 1, updated_at = ? WHERE id = ?`,
+        )
         .run(now, aiNativeGroup.id);
     }
 
     // ai_service_request — AI Native 1번째 자식
     const existingAiServiceRequest = this.sqlite
-      .prepare(`SELECT id FROM menus WHERE section_id = 'ai_service_request' LIMIT 1`)
+      .prepare(
+        `SELECT id FROM menus WHERE section_id = 'ai_service_request' LIMIT 1`,
+      )
       .get() as { id: string } | undefined;
 
     if (!existingAiServiceRequest) {
@@ -2072,7 +2178,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .run();
     } else {
       this.sqlite
-        .prepare(`UPDATE menus SET name = 'AI 서비스 신청', icon = 'FilePlus2', parent_id = ?, display_order = 0, is_visible = 1, updated_at = ? WHERE id = ?`)
+        .prepare(
+          `UPDATE menus SET name = 'AI 서비스 신청', icon = 'FilePlus2', parent_id = ?, display_order = 0, is_visible = 1, updated_at = ? WHERE id = ?`,
+        )
         .run(aiNativeGroup.id, now, existingAiServiceRequest.id);
     }
 
@@ -2085,7 +2193,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     // ai_evaluation — AI Native 3번째 자식
     const existingAiEval = this.sqlite
-      .prepare(`SELECT id FROM menus WHERE section_id = 'ai_evaluation' LIMIT 1`)
+      .prepare(
+        `SELECT id FROM menus WHERE section_id = 'ai_evaluation' LIMIT 1`,
+      )
       .get() as { id: string } | undefined;
 
     if (!existingAiEval) {
@@ -2106,16 +2216,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .run();
     } else {
       this.sqlite
-        .prepare(`UPDATE menus SET name = 'AI 활용 능력 평가', icon = 'ClipboardCheck', parent_id = ?, display_order = 2, is_visible = 1, updated_at = ? WHERE id = ?`)
+        .prepare(
+          `UPDATE menus SET name = 'AI 활용 능력 평가', icon = 'ClipboardCheck', parent_id = ?, display_order = 2, is_visible = 1, updated_at = ? WHERE id = ?`,
+        )
         .run(aiNativeGroup.id, now, existingAiEval.id);
     }
   }
 
   private seedEvalCategories() {
     const categories = [
-      { id: 'cat_tech',   name: '기술 역량',   displayOrder: 0 },
-      { id: 'cat_collab', name: '협업 역량',   displayOrder: 1 },
-      { id: 'cat_prod',   name: '업무 생산성', displayOrder: 2 },
+      { id: 'cat_tech', name: '기술 역량', displayOrder: 0 },
+      { id: 'cat_collab', name: '협업 역량', displayOrder: 1 },
+      { id: 'cat_prod', name: '업무 생산성', displayOrder: 2 },
     ];
     for (const cat of categories) {
       const existing = this.sqlite
@@ -2965,10 +3077,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
 
   private migrateChatSchema() {
-    const hasUserIdCol = (this.sqlite
-      .prepare(`PRAGMA table_info(chat_sessions)`)
-      .all() as Array<{ name: string }>)
-      .some((col) => col.name === 'user_id');
+    const hasUserIdCol = (
+      this.sqlite.prepare(`PRAGMA table_info(chat_sessions)`).all() as Array<{
+        name: string;
+      }>
+    ).some((col) => col.name === 'user_id');
 
     if (!hasUserIdCol) {
       // 기존 데이터는 user_id 없으므로 초기화 후 컬럼 추가

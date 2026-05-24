@@ -36,6 +36,8 @@ import { useApiEnvStore } from "../model/api-env-store";
 
 const METHOD_OPTIONS: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 const BODY_TYPES: BodyType[] = ["none", "json", "raw"];
+const KEY_VALUE_GRID_CLASS =
+  "grid grid-cols-[40px_minmax(0,1fr)_minmax(0,1fr)_40px] items-center gap-2";
 
 const METHOD_STYLE: Record<HttpMethod, CSSProperties> = {
   GET: {
@@ -128,8 +130,13 @@ function KeyValueTable({
   };
 
   return (
-    <div className="text-sm">
-      <div className="grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)_32px] gap-2 border-b border-surface-border-soft pb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+    <div className="overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised text-sm">
+      <div
+        className={cn(
+          KEY_VALUE_GRID_CLASS,
+          "min-h-9 border-b border-surface-border-soft bg-surface-muted px-2 text-[11px] font-bold uppercase tracking-widest text-text-muted",
+        )}
+      >
         <span />
         <span>{keyPlaceholder}</span>
         <span>{valuePlaceholder}</span>
@@ -141,18 +148,20 @@ function KeyValueTable({
           return (
             <div
               key={`${row.key}-${index}`}
-              className="grid grid-cols-[28px_minmax(0,1fr)_minmax(0,1fr)_32px] items-center gap-2 py-2"
+              className={cn(KEY_VALUE_GRID_CLASS, "px-2 py-2")}
             >
-              <input
-                type="checkbox"
-                checked={row.enabled}
-                disabled={disabled || isPhantom}
-                onChange={(event) =>
-                  updateRow(index, { enabled: event.target.checked })
-                }
-                className="size-4 accent-[var(--primary)] disabled:cursor-not-allowed"
-                aria-label={`${keyPlaceholder} 활성화`}
-              />
+              <div className="flex h-9 items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={row.enabled}
+                  disabled={disabled || isPhantom}
+                  onChange={(event) =>
+                    updateRow(index, { enabled: event.target.checked })
+                  }
+                  className="size-4 accent-[var(--primary)] disabled:cursor-not-allowed"
+                  aria-label={`${keyPlaceholder} 활성화`}
+                />
+              </div>
               <input
                 value={row.key}
                 disabled={disabled}
@@ -162,7 +171,7 @@ function KeyValueTable({
                 onChange={(event) =>
                   updateRow(index, { key: event.target.value })
                 }
-                className="ui-input font-mono text-xs"
+                className="ui-input min-w-0 font-mono text-xs"
               />
               <input
                 value={row.value}
@@ -173,7 +182,7 @@ function KeyValueTable({
                 onChange={(event) =>
                   updateRow(index, { value: event.target.value })
                 }
-                className="ui-input font-mono text-xs"
+                className="ui-input min-w-0 font-mono text-xs"
               />
               {!isPhantom && !disabled ? (
                 <Button
@@ -181,6 +190,7 @@ function KeyValueTable({
                   variant="ghost"
                   size="sm-icon"
                   tone="danger"
+                  className="size-8"
                   onClick={() => removeRow(index)}
                   aria-label="행 삭제"
                   title="행 삭제"
@@ -188,7 +198,7 @@ function KeyValueTable({
                   <Trash2 className="size-3.5" />
                 </Button>
               ) : (
-                <span />
+                <span className="h-8" />
               )}
             </div>
           );
@@ -389,17 +399,19 @@ export function ApiTesterPanel({
     return (
       <div
         className={cn(
-          "flex h-full min-h-[420px] items-center justify-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted text-center",
+          "flex h-full min-h-[420px] rounded-md border border-surface-border-soft bg-surface-raised p-3",
           className,
         )}
       >
-        <div>
-          <p className="text-sm font-bold text-text-primary">
-            엔드포인트를 선택하세요
-          </p>
-          <p className="mt-1 text-xs text-text-muted">
-            왼쪽 목록에서 요청할 API를 고르면 테스터가 열립니다.
-          </p>
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted text-center">
+          <div>
+            <p className="text-sm font-bold text-text-primary">
+              엔드포인트를 선택하세요
+            </p>
+            <p className="mt-1 text-xs text-text-muted">
+              왼쪽 목록에서 요청할 API를 고르면 테스터가 열립니다.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -412,7 +424,7 @@ export function ApiTesterPanel({
         className,
       )}
     >
-      <div className="flex shrink-0 flex-col gap-3 rounded-t-md border-b border-brand-border bg-[color:color-mix(in_srgb,var(--primary)_6%,var(--surface-raised))] px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex shrink-0 flex-col gap-3 rounded-t-md border-b border-surface-border-soft bg-surface-muted px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
@@ -479,274 +491,285 @@ export function ApiTesterPanel({
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 flex flex-col overflow-hidden bg-surface-muted">
-        <div className="shrink-0 flex flex-col gap-2.5 overflow-hidden p-3 pb-0">
-          <div className="rounded-md border border-surface-border-soft bg-surface-raised p-2.5 shadow-sm">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-              <CompactSelect
-                value={content.method}
-                disabled={!isAdmin}
-                onChange={(event) =>
-                  patch({ method: event.target.value as HttpMethod })
-                }
-                wrapperClassName="w-full lg:w-28"
-                className="font-black"
-                style={METHOD_STYLE[content.method]}
-                aria-label="HTTP 메서드"
-              >
-                {METHOD_OPTIONS.map((method) => (
-                  <option key={method} value={method}>
-                    {method}
-                  </option>
-                ))}
-              </CompactSelect>
-              <input
-                value={content.url}
-                disabled={!isAdmin}
-                placeholder="{{API_BASE}}/endpoint"
-                onChange={(event) => patch({ url: event.target.value })}
-                className="ui-input min-w-0 flex-1 font-mono text-xs"
-              />
-              <label className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 text-xs font-semibold text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={content.authEnabled}
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-muted">
+        <div
+          className={cn(
+            "shrink-0 overflow-hidden transition-all duration-300 ease-in-out motion-reduce:transition-none",
+            isResponseExpanded
+              ? "max-h-0 -translate-y-2 opacity-0 p-0"
+              : "max-h-[680px] translate-y-0 opacity-100 p-3 pb-0",
+          )}
+        >
+          <div className="flex flex-col gap-3">
+            <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3 shadow-sm">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                <CompactSelect
+                  value={content.method}
                   disabled={!isAdmin}
                   onChange={(event) =>
-                    patch({ authEnabled: event.target.checked })
+                    patch({ method: event.target.value as HttpMethod })
                   }
-                  className="size-4 accent-[var(--primary)]"
-                />
-                Auth
-              </label>
-              <Button
-                type="button"
-                onClick={handleSend}
-                disabled={isSending || !content.url.trim()}
-                className="h-9 px-4 py-0 lg:w-28"
-              >
-                {isSending ? (
-                  <Loader2 className="mr-1.5 size-4 animate-spin" />
-                ) : (
-                  <Send className="mr-1.5 size-4" />
-                )}
-                Send
-              </Button>
-            </div>
-            {hasEnvVar ? (
-              <p className="mt-2 truncate rounded-md border border-surface-border-soft bg-surface-muted px-3 py-1.5 font-mono text-[11px] text-text-muted">
-                {resolvedUrl}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="min-h-[200px] overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-            <div className="flex rounded-t-md border-b border-surface-border-soft bg-surface-muted px-3 pt-2">
-              {tabMeta.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-t-md px-3 py-2 text-xs font-bold transition-colors ${
-                    activeTab === tab.id
-                      ? "border-b-2 border-brand-border text-text-primary"
-                      : "text-text-muted hover:text-text-primary"
-                  }`}
+                  wrapperClassName="w-full lg:w-28"
+                  className="font-black"
+                  style={METHOD_STYLE[content.method]}
+                  aria-label="HTTP 메서드"
                 >
-                  {tab.label}
-                  {tab.count > 0 ? (
-                    <span className="ml-1 rounded-full bg-brand-glass px-1.5 py-0.5 text-[10px] text-brand-primary">
-                      {tab.count}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
+                  {METHOD_OPTIONS.map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
+                </CompactSelect>
+                <input
+                  value={content.url}
+                  disabled={!isAdmin}
+                  placeholder="{{API_BASE}}/endpoint"
+                  onChange={(event) => patch({ url: event.target.value })}
+                  className="ui-input min-w-0 flex-1 font-mono text-xs"
+                />
+                <label className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 text-xs font-semibold text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={content.authEnabled}
+                    disabled={!isAdmin}
+                    onChange={(event) =>
+                      patch({ authEnabled: event.target.checked })
+                    }
+                    className="size-4 accent-[var(--primary)]"
+                  />
+                  Auth
+                </label>
+                <Button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={isSending || !content.url.trim()}
+                  className="h-9 px-4 py-0 lg:w-28"
+                >
+                  {isSending ? (
+                    <Loader2 className="mr-1.5 size-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-1.5 size-4" />
+                  )}
+                  Send
+                </Button>
+              </div>
+              {hasEnvVar ? (
+                <p className="mt-2 truncate rounded-md border border-surface-border-soft bg-surface-muted px-3 py-1.5 font-mono text-[11px] text-text-muted">
+                  {resolvedUrl}
+                </p>
+              ) : null}
             </div>
 
-            <div className="p-4">
-              {activeTab === "params" ? (
-                <KeyValueTable
-                  items={content.params}
-                  onChange={(params) => patch({ params })}
-                  disabled={!isAdmin}
-                  keyPlaceholder="Parameter"
-                  valuePlaceholder="Value"
-                />
-              ) : null}
-              {activeTab === "headers" ? (
-                <KeyValueTable
-                  items={content.headers}
-                  onChange={(headers) => patch({ headers })}
-                  disabled={!isAdmin}
-                  keyPlaceholder="Header"
-                  valuePlaceholder="Value"
-                />
-              ) : null}
-              {activeTab === "body" ? (
-                <div className="space-y-3">
-                  <div className="inline-flex rounded-md border border-surface-border-soft bg-surface-muted p-1">
-                    {BODY_TYPES.map((type) => (
-                      <label
-                        key={type}
-                        className={`rounded-sm px-3 py-1 text-xs font-bold transition-colors ${
-                          content.body.type === type
-                            ? "bg-surface-raised text-text-primary shadow-sm"
-                            : "text-text-muted"
-                        } ${isAdmin ? "cursor-pointer" : "cursor-not-allowed opacity-70"}`}
-                      >
-                        <input
-                          type="radio"
-                          className="hidden"
-                          value={type}
-                          checked={content.body.type === type}
-                          disabled={!isAdmin}
-                          onChange={() => updateBody({ type })}
-                        />
-                        {type}
-                      </label>
-                    ))}
-                  </div>
-                  {content.body.type === "none" ? (
-                    <div className="rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-4 py-8 text-sm text-text-muted">
-                      Body를 포함하지 않는 요청입니다.
+            <div className="min-h-[204px] overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
+              <div className="flex min-h-11 rounded-t-md border-b border-surface-border-soft bg-surface-muted px-3 pt-2">
+                {tabMeta.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`rounded-t-md px-3 py-2 text-xs font-bold transition-colors ${
+                      activeTab === tab.id
+                        ? "border-b-2 border-brand-border text-text-primary"
+                        : "text-text-muted hover:text-text-primary"
+                    }`}
+                  >
+                    {tab.label}
+                    {tab.count > 0 ? (
+                      <span className="ml-1 rounded-full bg-brand-glass px-1.5 py-0.5 text-[10px] text-brand-primary">
+                        {tab.count}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-3">
+                {activeTab === "params" ? (
+                  <KeyValueTable
+                    items={content.params}
+                    onChange={(params) => patch({ params })}
+                    disabled={!isAdmin}
+                    keyPlaceholder="Parameter"
+                    valuePlaceholder="Value"
+                  />
+                ) : null}
+                {activeTab === "headers" ? (
+                  <KeyValueTable
+                    items={content.headers}
+                    onChange={(headers) => patch({ headers })}
+                    disabled={!isAdmin}
+                    keyPlaceholder="Header"
+                    valuePlaceholder="Value"
+                  />
+                ) : null}
+                {activeTab === "body" ? (
+                  <div className="space-y-3">
+                    <div className="inline-flex rounded-md border border-surface-border-soft bg-surface-muted p-1">
+                      {BODY_TYPES.map((type) => (
+                        <label
+                          key={type}
+                          className={`rounded-sm px-3 py-1 text-xs font-bold transition-colors ${
+                            content.body.type === type
+                              ? "bg-surface-raised text-text-primary shadow-sm"
+                              : "text-text-muted"
+                          } ${isAdmin ? "cursor-pointer" : "cursor-not-allowed opacity-70"}`}
+                        >
+                          <input
+                            type="radio"
+                            className="hidden"
+                            value={type}
+                            checked={content.body.type === type}
+                            disabled={!isAdmin}
+                            onChange={() => updateBody({ type })}
+                          />
+                          {type}
+                        </label>
+                      ))}
                     </div>
-                  ) : (
-                    <textarea
-                      value={content.body.content}
-                      disabled={!isAdmin}
-                      onChange={(event) =>
-                        updateBody({ content: event.target.value })
-                      }
-                      spellCheck={false}
-                      rows={9}
-                      placeholder={
-                        content.body.type === "json"
-                          ? '{\n  "key": "value"\n}'
-                          : "Raw body content"
-                      }
-                      className="ui-input min-h-44 resize-y py-3 font-mono text-xs leading-5"
-                    />
-                  )}
-                </div>
-              ) : null}
+                    {content.body.type === "none" ? (
+                      <div className="rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-4 py-8 text-sm text-text-muted">
+                        Body를 포함하지 않는 요청입니다.
+                      </div>
+                    ) : (
+                      <textarea
+                        value={content.body.content}
+                        disabled={!isAdmin}
+                        onChange={(event) =>
+                          updateBody({ content: event.target.value })
+                        }
+                        spellCheck={false}
+                        rows={9}
+                        placeholder={
+                          content.body.type === "json"
+                            ? '{\n  "key": "value"\n}'
+                            : "Raw body content"
+                        }
+                        className="ui-input min-h-44 resize-y py-3 font-mono text-xs leading-5"
+                      />
+                    )}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
         <div
           className={cn(
-            "flex flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm transition-[top] duration-300 ease-out",
-            isResponseExpanded
-              ? "absolute inset-3 z-10"
-              : "min-h-0 flex-1 mx-3 mb-3",
+            "mx-3 mb-3 mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm transition-all duration-300 ease-in-out motion-reduce:transition-none",
+            isResponseExpanded ? "shadow-md" : "",
           )}
         >
-            <div className="flex flex-wrap items-center gap-2 rounded-t-md border-b border-surface-border-soft bg-surface-muted px-4 py-2.5">
-              <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">
-                Response
-              </span>
-              {response ? (
-                <>
-                  <span
-                    className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-black"
-                    style={getStatusStyle(response.status)}
-                  >
-                    {response.status === 0
-                      ? "Network Error"
-                      : `${response.status} ${response.statusText}`}
-                  </span>
-                  <span className="rounded-full border border-surface-border-soft bg-surface-muted px-2 py-0.5 font-mono text-[11px] text-text-muted">
-                    {response.durationMs}ms
-                  </span>
-                  <span className="text-[11px] text-text-muted">
-                    {new Date(response.timestamp).toLocaleTimeString()}
-                  </span>
-                  <div className="ml-auto flex rounded-md border border-surface-border-soft bg-surface-muted p-0.5">
-                    {(["body", "headers"] as const).map((tab) => (
-                      <button
-                        key={tab}
-                        type="button"
-                        onClick={() => setResponseTab(tab)}
-                        className={`rounded-sm px-2.5 py-1 text-[11px] font-bold ${
-                          responseTab === tab
-                            ? "bg-surface-raised text-text-primary"
-                            : "text-text-muted"
-                        }`}
-                      >
-                        {tab === "body" ? "Body" : "Headers"}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsResponseFullscreen(true)}
-                    className="flex size-7 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-muted transition-colors hover:bg-surface-strong hover:text-text-primary"
-                    title="전체 보기"
-                    aria-label="응답 전체 보기"
-                  >
-                    <Maximize2 className="size-3.5" />
-                  </button>
-                </>
-              ) : (
-                <span className="ml-auto text-xs text-text-muted">
-                  Send 버튼을 눌러 요청하세요.
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setIsResponseExpanded((v) => !v)}
-                className="flex size-7 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-muted transition-colors hover:bg-brand-glass hover:text-brand-primary"
-                title={isResponseExpanded ? "요청 영역 보기" : "응답 영역 확대"}
-                aria-label={isResponseExpanded ? "요청 영역 보기" : "응답 영역 확대"}
-              >
-                {isResponseExpanded
-                  ? <ChevronDown className="size-3.5" />
-                  : <ChevronUp className="size-3.5" />}
-              </button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-surface-strong/40 p-4">
-              {isSending ? (
-                <div className="flex h-44 flex-col items-center justify-center gap-3 text-text-muted">
-                  <Loader2 className="size-6 animate-spin" />
-                  <p className="text-xs">요청 중...</p>
-                </div>
-              ) : null}
-              {!response && !isSending ? (
-                <div className="flex h-44 flex-col items-center justify-center gap-3 text-text-muted">
-                  <Send className="size-7 opacity-40" />
-                  <p className="text-xs">아직 요청이 없습니다.</p>
-                </div>
-              ) : null}
-              {response && responseTab === "body" ? (
-                <pre
-                  className={`whitespace-pre-wrap break-all font-mono text-xs leading-5 ${response.status === 0 ? "text-destructive" : "text-text-primary"}`}
+          <div className="flex flex-wrap items-center gap-2 rounded-t-md border-b border-surface-border-soft bg-surface-muted px-4 py-2.5">
+            <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">
+              Response
+            </span>
+            {response ? (
+              <>
+                <span
+                  className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-black"
+                  style={getStatusStyle(response.status)}
                 >
-                  {isJsonString(response.body)
-                    ? prettyJson(response.body)
-                    : response.body}
-                </pre>
-              ) : null}
-              {response && responseTab === "headers" ? (
-                <div className="space-y-1.5">
-                  {Object.entries(response.headers).length === 0 ? (
-                    <p className="text-xs text-text-muted">
-                      응답 헤더가 없습니다.
-                    </p>
-                  ) : (
-                    Object.entries(response.headers).map(([key, value]) => (
-                      <div
-                        key={key}
-                        className="grid gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2 font-mono text-xs text-text-secondary md:grid-cols-[180px_minmax(0,1fr)]"
-                      >
-                        <span className="break-all text-text-muted">{key}</span>
-                        <span className="break-all text-text-primary">
-                          {value}
-                        </span>
-                      </div>
-                    ))
-                  )}
+                  {response.status === 0
+                    ? "Network Error"
+                    : `${response.status} ${response.statusText}`}
+                </span>
+                <span className="rounded-full border border-surface-border-soft bg-surface-muted px-2 py-0.5 font-mono text-[11px] text-text-muted">
+                  {response.durationMs}ms
+                </span>
+                <span className="text-[11px] text-text-muted">
+                  {new Date(response.timestamp).toLocaleTimeString()}
+                </span>
+                <div className="ml-auto flex rounded-md border border-surface-border-soft bg-surface-muted p-0.5">
+                  {(["body", "headers"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setResponseTab(tab)}
+                      className={`rounded-sm px-2.5 py-1 text-[11px] font-bold ${
+                        responseTab === tab
+                          ? "bg-surface-raised text-text-primary"
+                          : "text-text-muted"
+                      }`}
+                    >
+                      {tab === "body" ? "Body" : "Headers"}
+                    </button>
+                  ))}
                 </div>
-              ) : null}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setIsResponseFullscreen(true)}
+                  className="flex size-7 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-muted transition-colors hover:bg-surface-strong hover:text-text-primary"
+                  title="전체 보기"
+                  aria-label="응답 전체 보기"
+                >
+                  <Maximize2 className="size-3.5" />
+                </button>
+              </>
+            ) : (
+              <span className="ml-auto text-xs text-text-muted">
+                Send 버튼을 눌러 요청하세요.
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsResponseExpanded((v) => !v)}
+              className="flex size-7 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-muted transition-colors hover:bg-brand-glass hover:text-brand-primary"
+              title={isResponseExpanded ? "요청 영역 보기" : "응답 영역 확대"}
+              aria-label={
+                isResponseExpanded ? "요청 영역 보기" : "응답 영역 확대"
+              }
+            >
+              {isResponseExpanded ? (
+                <ChevronDown className="size-3.5" />
+              ) : (
+                <ChevronUp className="size-3.5" />
+              )}
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto bg-surface-strong/40 p-4">
+            {isSending ? (
+              <div className="flex h-44 flex-col items-center justify-center gap-3 text-text-muted">
+                <Loader2 className="size-6 animate-spin" />
+                <p className="text-xs">요청 중...</p>
+              </div>
+            ) : null}
+            {!response && !isSending ? (
+              <div className="flex h-44 flex-col items-center justify-center gap-3 text-text-muted">
+                <Send className="size-7 opacity-40" />
+                <p className="text-xs">아직 요청이 없습니다.</p>
+              </div>
+            ) : null}
+            {response && responseTab === "body" ? (
+              <pre
+                className={`whitespace-pre-wrap break-all font-mono text-xs leading-5 ${response.status === 0 ? "text-destructive" : "text-text-primary"}`}
+              >
+                {isJsonString(response.body)
+                  ? prettyJson(response.body)
+                  : response.body}
+              </pre>
+            ) : null}
+            {response && responseTab === "headers" ? (
+              <div className="space-y-1.5">
+                {Object.entries(response.headers).length === 0 ? (
+                  <p className="text-xs text-text-muted">
+                    응답 헤더가 없습니다.
+                  </p>
+                ) : (
+                  Object.entries(response.headers).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="grid gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2 font-mono text-xs text-text-secondary md:grid-cols-[180px_minmax(0,1fr)]"
+                    >
+                      <span className="break-all text-text-muted">{key}</span>
+                      <span className="break-all text-text-primary">
+                        {value}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 

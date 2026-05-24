@@ -11,17 +11,21 @@ import {
   apiDocBlocksTable,
   apiDocCategoriesTable,
   apiDocEndpointsTable,
+  apiDocTeamsTable,
   type ApiDocBlockInsert,
   type ApiDocCategoryInsert,
   type ApiDocEndpointInsert,
+  type ApiDocTeamInsert,
 } from '../database/schema';
 import {
   createCategorySchema,
   createEndpointSchema,
+  createTeamSchema,
   reorderSchema,
   replaceBlocksSchema,
   updateCategorySchema,
   updateEndpointSchema,
+  updateTeamSchema,
 } from './api-doc.schemas';
 import {
   apiBlockContentImportSchema,
@@ -45,27 +49,156 @@ export class ApiDocService {
     return this.databaseService.db;
   }
 
+  listTeams() {
+    const teams = this.db
+      .select()
+      .from(apiDocTeamsTable)
+      .orderBy(asc(apiDocTeamsTable.orderIdx), asc(apiDocTeamsTable.createdAt))
+      .all();
+    const categories = this.db.select().from(apiDocCategoriesTable).all();
+    const endpoints = this.db.select().from(apiDocEndpointsTable).all();
+
+    return teams.map((team) => {
+      const teamCategories = categories.filter(
+        (category) => category.teamId === team.id,
+      );
+      const categoryIds = new Set(
+        teamCategories.map((category) => category.id),
+      );
+      return {
+        ...team,
+        categoryCount: teamCategories.length,
+        endpointCount: endpoints.filter((endpoint) =>
+          categoryIds.has(endpoint.categoryId),
+        ).length,
+      };
+    });
+  }
+
+  createTeam(user: ApiDocUser, payload: unknown) {
+    this.ensureAdmin(user);
+    const input = createTeamSchema.parse(payload);
+    const now = new Date().toISOString();
+    const id = `api-team-${randomUUID().slice(0, 12)}`;
+    const maxOrder = this.db
+      .select({ orderIdx: apiDocTeamsTable.orderIdx })
+      .from(apiDocTeamsTable)
+      .all()
+      .reduce((max, row) => Math.max(max, row.orderIdx), -1);
+
+    const row: ApiDocTeamInsert = {
+      id,
+      name: input.name,
+      description: input.description ?? null,
+      icon: input.icon ?? 'FileJson',
+      emoji: input.emoji ?? null,
+      orderIdx: maxOrder + 1,
+      createdBy: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.db.insert(apiDocTeamsTable).values(row).run();
+    return this.ensureTeam(id);
+  }
+
+  updateTeam(user: ApiDocUser, teamId: string, payload: unknown) {
+    this.ensureAdmin(user);
+    this.ensureTeam(teamId);
+    const input = updateTeamSchema.parse(payload);
+
+    this.db
+      .update(apiDocTeamsTable)
+      .set({
+        ...input,
+        description:
+          input.description === undefined
+            ? undefined
+            : (input.description ?? null),
+        icon: input.icon === undefined ? undefined : (input.icon ?? null),
+        emoji: input.emoji === undefined ? undefined : (input.emoji ?? null),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(apiDocTeamsTable.id, teamId))
+      .run();
+
+    return this.ensureTeam(teamId);
+  }
+
+  deleteTeam(user: ApiDocUser, teamId: string) {
+    this.ensureAdmin(user);
+    this.ensureTeam(teamId);
+    this.db
+      .delete(apiDocCategoriesTable)
+      .where(eq(apiDocCategoriesTable.teamId, teamId))
+      .run();
+    this.db
+      .delete(apiDocTeamsTable)
+      .where(eq(apiDocTeamsTable.id, teamId))
+      .run();
+    return { success: true };
+  }
+
+  reorderTeams(user: ApiDocUser, payload: unknown) {
+    this.ensureAdmin(user);
+    const input = reorderSchema.parse(payload);
+    const now = new Date().toISOString();
+
+    for (const item of input.items) {
+      this.db
+        .update(apiDocTeamsTable)
+        .set({ orderIdx: item.orderIdx, updatedAt: now })
+        .where(eq(apiDocTeamsTable.id, item.id))
+        .run();
+    }
+
+    return { success: true };
+  }
+
   listCategories() {
     return this.db
       .select()
       .from(apiDocCategoriesTable)
-      .orderBy(asc(apiDocCategoriesTable.orderIdx), asc(apiDocCategoriesTable.createdAt))
+      .orderBy(
+        asc(apiDocCategoriesTable.orderIdx),
+        asc(apiDocCategoriesTable.createdAt),
+      )
+      .all();
+  }
+
+  listTeamCategories(teamId: string) {
+    this.ensureTeam(teamId);
+    return this.db
+      .select()
+      .from(apiDocCategoriesTable)
+      .where(eq(apiDocCategoriesTable.teamId, teamId))
+      .orderBy(
+        asc(apiDocCategoriesTable.orderIdx),
+        asc(apiDocCategoriesTable.createdAt),
+      )
       .all();
   }
 
   createCategory(user: ApiDocUser, payload: unknown) {
     this.ensureAdmin(user);
     const input = createCategorySchema.parse(payload);
+    const teamId = input.teamId ?? this.getDefaultTeamId();
+    this.ensureTeam(teamId);
     const now = new Date().toISOString();
     const id = `api-cat-${randomUUID().slice(0, 12)}`;
     const maxOrder = this.db
-      .select({ orderIdx: apiDocCategoriesTable.orderIdx })
+      .select({
+        teamId: apiDocCategoriesTable.teamId,
+        orderIdx: apiDocCategoriesTable.orderIdx,
+      })
       .from(apiDocCategoriesTable)
       .all()
+      .filter((row) => row.teamId === teamId)
       .reduce((max, row) => Math.max(max, row.orderIdx), -1);
 
     const row: ApiDocCategoryInsert = {
       id,
+      teamId,
       name: input.name,
       icon: input.icon ?? 'Folder',
       emoji: input.emoji ?? null,
@@ -84,12 +217,20 @@ export class ApiDocService {
     this.ensureCategory(categoryId);
     const input = updateCategorySchema.parse(payload);
 
+    if (input.teamId) {
+      this.ensureTeam(input.teamId);
+    }
+
     this.db
       .update(apiDocCategoriesTable)
       .set({
         ...input,
-        icon: input.icon === undefined ? undefined : input.icon ?? null,
-        emoji: input.emoji === undefined ? undefined : input.emoji ?? null,
+        teamId:
+          input.teamId === undefined
+            ? undefined
+            : (input.teamId ?? this.getDefaultTeamId()),
+        icon: input.icon === undefined ? undefined : (input.icon ?? null),
+        emoji: input.emoji === undefined ? undefined : (input.emoji ?? null),
         updatedAt: new Date().toISOString(),
       })
       .where(eq(apiDocCategoriesTable.id, categoryId))
@@ -130,7 +271,10 @@ export class ApiDocService {
       .select()
       .from(apiDocEndpointsTable)
       .where(eq(apiDocEndpointsTable.categoryId, categoryId))
-      .orderBy(asc(apiDocEndpointsTable.orderIdx), asc(apiDocEndpointsTable.createdAt))
+      .orderBy(
+        asc(apiDocEndpointsTable.orderIdx),
+        asc(apiDocEndpointsTable.createdAt),
+      )
       .all();
   }
 
@@ -216,7 +360,10 @@ export class ApiDocService {
       .select()
       .from(apiDocBlocksTable)
       .where(eq(apiDocBlocksTable.endpointId, endpointId))
-      .orderBy(asc(apiDocBlocksTable.orderIdx), asc(apiDocBlocksTable.createdAt))
+      .orderBy(
+        asc(apiDocBlocksTable.orderIdx),
+        asc(apiDocBlocksTable.createdAt),
+      )
       .all();
   }
 
@@ -251,17 +398,26 @@ export class ApiDocService {
     const categories = this.db
       .select()
       .from(apiDocCategoriesTable)
-      .orderBy(asc(apiDocCategoriesTable.orderIdx), asc(apiDocCategoriesTable.createdAt))
+      .orderBy(
+        asc(apiDocCategoriesTable.orderIdx),
+        asc(apiDocCategoriesTable.createdAt),
+      )
       .all();
     const endpoints = this.db
       .select()
       .from(apiDocEndpointsTable)
-      .orderBy(asc(apiDocEndpointsTable.orderIdx), asc(apiDocEndpointsTable.createdAt))
+      .orderBy(
+        asc(apiDocEndpointsTable.orderIdx),
+        asc(apiDocEndpointsTable.createdAt),
+      )
       .all();
     const blocks = this.db
       .select()
       .from(apiDocBlocksTable)
-      .orderBy(asc(apiDocBlocksTable.orderIdx), asc(apiDocBlocksTable.createdAt))
+      .orderBy(
+        asc(apiDocBlocksTable.orderIdx),
+        asc(apiDocBlocksTable.createdAt),
+      )
       .all();
 
     return {
@@ -276,7 +432,8 @@ export class ApiDocService {
           .filter((endpoint) => endpoint.categoryId === category.id)
           .map((endpoint) => {
             const block = blocks.find(
-              (item) => item.endpointId === endpoint.id && item.blockType === 'API',
+              (item) =>
+                item.endpointId === endpoint.id && item.blockType === 'API',
             );
             return {
               title: endpoint.title,
@@ -307,9 +464,11 @@ export class ApiDocService {
 
     const now = new Date().toISOString();
     const existingNames = new Set(
-      this.db.select({ name: apiDocCategoriesTable.name }).from(apiDocCategoriesTable).all().map(
-        (row) => row.name,
-      ),
+      this.db
+        .select({ name: apiDocCategoriesTable.name })
+        .from(apiDocCategoriesTable)
+        .all()
+        .map((row) => row.name),
     );
     const maxCategoryOrder = this.db
       .select({ orderIdx: apiDocCategoriesTable.orderIdx })
@@ -325,13 +484,17 @@ export class ApiDocService {
     this.db.transaction((tx) => {
       input.collections.forEach((collection, collectionIndex) => {
         const categoryId = `api-cat-${randomUUID().slice(0, 12)}`;
-        const categoryName = this.getUniqueCategoryName(collection.name, existingNames);
+        const categoryName = this.getUniqueCategoryName(
+          collection.name,
+          existingNames,
+        );
         existingNames.add(categoryName);
         importedCategoryIds.push(categoryId);
 
         tx.insert(apiDocCategoriesTable)
           .values({
             id: categoryId,
+            teamId: this.getDefaultTeamId(),
             name: categoryName,
             icon: collection.icon ?? 'Folder',
             emoji: collection.emoji ?? null,
@@ -403,6 +566,42 @@ export class ApiDocService {
     return category;
   }
 
+  private ensureTeam(teamId: string) {
+    const team = this.db
+      .select()
+      .from(apiDocTeamsTable)
+      .where(eq(apiDocTeamsTable.id, teamId))
+      .get();
+
+    if (!team) {
+      throw new NotFoundException('API workspace not found');
+    }
+
+    return team;
+  }
+
+  private getDefaultTeamId() {
+    const preferred = this.db
+      .select({ id: apiDocTeamsTable.id })
+      .from(apiDocTeamsTable)
+      .where(eq(apiDocTeamsTable.id, 'api-team-prototype-console'))
+      .get();
+
+    if (preferred) return preferred.id;
+
+    const first = this.db
+      .select({ id: apiDocTeamsTable.id })
+      .from(apiDocTeamsTable)
+      .orderBy(asc(apiDocTeamsTable.orderIdx), asc(apiDocTeamsTable.createdAt))
+      .get();
+
+    if (!first) {
+      throw new NotFoundException('API workspace not found');
+    }
+
+    return first.id;
+  }
+
   private ensureEndpoint(endpointId: string) {
     const endpoint = this.db
       .select()
@@ -459,7 +658,9 @@ export class ApiDocService {
           : `{{API_BASE}}${trimmedPath.startsWith('/') ? trimmedPath : `/${trimmedPath}`}`
         : '{{API_BASE}}/endpoint',
       authEnabled: true,
-      headers: [{ key: 'Content-Type', value: 'application/json', enabled: true }],
+      headers: [
+        { key: 'Content-Type', value: 'application/json', enabled: true },
+      ],
       params: [],
       body: { type: 'none', content: '' },
       description: '',

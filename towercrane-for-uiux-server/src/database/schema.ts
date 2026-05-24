@@ -246,8 +246,25 @@ export const boardCommentsTable = sqliteTable('board_comments', {
 export type ApiDocHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export type ApiDocBlockType = 'API';
 
+export const apiDocTeamsTable = sqliteTable('api_doc_teams', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  icon: text('icon'),
+  emoji: text('emoji'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const apiDocCategoriesTable = sqliteTable('api_doc_categories', {
   id: text('id').primaryKey(),
+  teamId: text('team_id').references(() => apiDocTeamsTable.id, {
+    onDelete: 'cascade',
+  }),
   name: text('name').notNull(),
   icon: text('icon'),
   emoji: text('emoji'),
@@ -1217,6 +1234,7 @@ export const schema = {
   boardConfigsTable,
   boardsTable,
   boardCommentsTable,
+  apiDocTeamsTable,
   apiDocCategoriesTable,
   apiDocEndpointsTable,
   apiDocBlocksTable,
@@ -1298,6 +1316,8 @@ export type BoardRow = typeof boardsTable.$inferSelect;
 export type BoardInsert = typeof boardsTable.$inferInsert;
 export type BoardCommentRow = typeof boardCommentsTable.$inferSelect;
 export type BoardCommentInsert = typeof boardCommentsTable.$inferInsert;
+export type ApiDocTeamRow = typeof apiDocTeamsTable.$inferSelect;
+export type ApiDocTeamInsert = typeof apiDocTeamsTable.$inferInsert;
 export type ApiDocCategoryRow = typeof apiDocCategoriesTable.$inferSelect;
 export type ApiDocCategoryInsert = typeof apiDocCategoriesTable.$inferInsert;
 export type ApiDocEndpointRow = typeof apiDocEndpointsTable.$inferSelect;

@@ -18,6 +18,40 @@ import { ApiDocService, type ApiDocUser } from './api-doc.service';
 export class ApiDocController {
   constructor(private readonly apiDocService: ApiDocService) {}
 
+  @Get('teams')
+  listTeams() {
+    return this.apiDocService.listTeams();
+  }
+
+  @Post('teams')
+  createTeam(@CurrentUser() user: ApiDocUser, @Body() body: unknown) {
+    return this.apiDocService.createTeam(user, body);
+  }
+
+  @Patch('teams/reorder')
+  reorderTeams(@CurrentUser() user: ApiDocUser, @Body() body: unknown) {
+    return this.apiDocService.reorderTeams(user, body);
+  }
+
+  @Patch('teams/:teamId')
+  updateTeam(
+    @CurrentUser() user: ApiDocUser,
+    @Param('teamId') teamId: string,
+    @Body() body: unknown,
+  ) {
+    return this.apiDocService.updateTeam(user, teamId, body);
+  }
+
+  @Delete('teams/:teamId')
+  deleteTeam(@CurrentUser() user: ApiDocUser, @Param('teamId') teamId: string) {
+    return this.apiDocService.deleteTeam(user, teamId);
+  }
+
+  @Get('teams/:teamId/categories')
+  listTeamCategories(@Param('teamId') teamId: string) {
+    return this.apiDocService.listTeamCategories(teamId);
+  }
+
   @Get('categories')
   listCategories() {
     return this.apiDocService.listCategories();

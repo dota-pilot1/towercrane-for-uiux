@@ -1,46 +1,80 @@
-import { apiRequest } from '../../../shared/api/http'
+import { apiRequest } from "../../../shared/api/http";
 import type {
   ApiDocBlock,
   ApiDocCategory,
   ApiDocEndpoint,
+  ApiDocTeam,
   CreateApiDocCategoryRequest,
   CreateApiDocEndpointRequest,
+  CreateApiDocTeamRequest,
   UpdateApiDocCategoryRequest,
   UpdateApiDocEndpointRequest,
-} from '../model/types'
-import type { ApiDocImportExportFile, ApiDocImportResult } from '../model/import-export-types'
+  UpdateApiDocTeamRequest,
+} from "../model/types";
+import type {
+  ApiDocImportExportFile,
+  ApiDocImportResult,
+} from "../model/import-export-types";
 
 export const apiDocApi = {
-  listCategories: () => apiRequest<ApiDocCategory[]>('/api-doc/categories'),
+  listTeams: () => apiRequest<ApiDocTeam[]>("/api-doc/teams"),
 
-  exportAll: () => apiRequest<ApiDocImportExportFile>('/api-doc/export'),
+  createTeam: (body: CreateApiDocTeamRequest) =>
+    apiRequest<ApiDocTeam>("/api-doc/teams", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  updateTeam: (teamId: string, body: UpdateApiDocTeamRequest) =>
+    apiRequest<ApiDocTeam>(`/api-doc/teams/${teamId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  deleteTeam: (teamId: string) =>
+    apiRequest<{ success: boolean }>(`/api-doc/teams/${teamId}`, {
+      method: "DELETE",
+    }),
+
+  reorderTeams: (items: Array<{ id: string; orderIdx: number }>) =>
+    apiRequest<{ success: boolean }>("/api-doc/teams/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({ items }),
+    }),
+
+  listCategories: () => apiRequest<ApiDocCategory[]>("/api-doc/categories"),
+
+  listTeamCategories: (teamId: string) =>
+    apiRequest<ApiDocCategory[]>(`/api-doc/teams/${teamId}/categories`),
+
+  exportAll: () => apiRequest<ApiDocImportExportFile>("/api-doc/export"),
 
   importAll: (body: ApiDocImportExportFile) =>
-    apiRequest<ApiDocImportResult>('/api-doc/import', {
-      method: 'POST',
+    apiRequest<ApiDocImportResult>("/api-doc/import", {
+      method: "POST",
       body: JSON.stringify(body),
     }),
 
   createCategory: (body: CreateApiDocCategoryRequest) =>
-    apiRequest<ApiDocCategory>('/api-doc/categories', {
-      method: 'POST',
+    apiRequest<ApiDocCategory>("/api-doc/categories", {
+      method: "POST",
       body: JSON.stringify(body),
     }),
 
   updateCategory: (categoryId: string, body: UpdateApiDocCategoryRequest) =>
     apiRequest<ApiDocCategory>(`/api-doc/categories/${categoryId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(body),
     }),
 
   deleteCategory: (categoryId: string) =>
     apiRequest<{ success: boolean }>(`/api-doc/categories/${categoryId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 
   reorderCategories: (items: Array<{ id: string; orderIdx: number }>) =>
-    apiRequest<{ success: boolean }>('/api-doc/categories/reorder', {
-      method: 'PATCH',
+    apiRequest<{ success: boolean }>("/api-doc/categories/reorder", {
+      method: "PATCH",
       body: JSON.stringify({ items }),
     }),
 
@@ -48,25 +82,25 @@ export const apiDocApi = {
     apiRequest<ApiDocEndpoint[]>(`/api-doc/categories/${categoryId}/endpoints`),
 
   createEndpoint: (body: CreateApiDocEndpointRequest) =>
-    apiRequest<ApiDocEndpoint>('/api-doc/endpoints', {
-      method: 'POST',
+    apiRequest<ApiDocEndpoint>("/api-doc/endpoints", {
+      method: "POST",
       body: JSON.stringify(body),
     }),
 
   updateEndpoint: (endpointId: string, body: UpdateApiDocEndpointRequest) =>
     apiRequest<ApiDocEndpoint>(`/api-doc/endpoints/${endpointId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(body),
     }),
 
   deleteEndpoint: (endpointId: string) =>
     apiRequest<{ success: boolean }>(`/api-doc/endpoints/${endpointId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 
   reorderEndpoints: (items: Array<{ id: string; orderIdx: number }>) =>
-    apiRequest<{ success: boolean }>('/api-doc/endpoints/reorder', {
-      method: 'PATCH',
+    apiRequest<{ success: boolean }>("/api-doc/endpoints/reorder", {
+      method: "PATCH",
       body: JSON.stringify({ items }),
     }),
 
@@ -75,7 +109,7 @@ export const apiDocApi = {
 
   replaceBlocks: (endpointId: string, blocks: ApiDocBlock[]) =>
     apiRequest<ApiDocBlock[]>(`/api-doc/endpoints/${endpointId}/blocks`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({ blocks }),
     }),
-}
+};

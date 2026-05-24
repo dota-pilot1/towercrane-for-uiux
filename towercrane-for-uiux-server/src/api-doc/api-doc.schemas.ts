@@ -1,17 +1,40 @@
 import { z } from 'zod';
 
-export const httpMethodSchema = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+export const httpMethodSchema = z.enum([
+  'GET',
+  'POST',
+  'PUT',
+  'PATCH',
+  'DELETE',
+]);
+
+export const createTeamSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(300).nullable().optional(),
+  icon: z.string().trim().max(80).nullable().optional(),
+  emoji: z.string().trim().max(16).nullable().optional(),
+});
+
+export const updateTeamSchema = createTeamSchema
+  .partial()
+  .refine(
+    (input) => Object.keys(input).length > 0,
+    'At least one field is required',
+  );
 
 export const createCategorySchema = z.object({
+  teamId: z.string().trim().min(1).nullable().optional(),
   name: z.string().trim().min(1).max(80),
   icon: z.string().trim().max(80).nullable().optional(),
   emoji: z.string().trim().max(16).nullable().optional(),
 });
 
-export const updateCategorySchema = createCategorySchema.partial().refine(
-  (input) => Object.keys(input).length > 0,
-  'At least one field is required',
-);
+export const updateCategorySchema = createCategorySchema
+  .partial()
+  .refine(
+    (input) => Object.keys(input).length > 0,
+    'At least one field is required',
+  );
 
 export const createEndpointSchema = z.object({
   categoryId: z.string().trim().min(1),
@@ -53,8 +76,9 @@ export const replaceBlocksSchema = z.object({
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
+export type CreateTeamInput = z.infer<typeof createTeamSchema>;
+export type UpdateTeamInput = z.infer<typeof updateTeamSchema>;
 export type CreateEndpointInput = z.infer<typeof createEndpointSchema>;
 export type UpdateEndpointInput = z.infer<typeof updateEndpointSchema>;
 export type ReorderInput = z.infer<typeof reorderSchema>;
 export type ReplaceBlocksInput = z.infer<typeof replaceBlocksSchema>;
-
