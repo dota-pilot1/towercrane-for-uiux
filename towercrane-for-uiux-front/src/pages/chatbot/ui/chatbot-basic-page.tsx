@@ -29,23 +29,36 @@ export function ChatbotBasicPage() {
         </div>
       </div>
 
-      <div className="ui-panel flex-1 overflow-y-auto rounded-lg p-4">
-        <div className="flex flex-col gap-4">
-          {messages.map((msg) => (
-            <ChatMessage key={msg.id} message={msg} />
-          ))}
-          {isTyping && <TypingIndicator />}
-          <div ref={bottomRef} />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-raised">
+        <div className="flex items-center gap-2 border-b border-surface-border bg-surface-strong px-4 py-2 shrink-0">
+          <span className="truncate text-sm font-semibold ui-text-primary">
+            기본 채팅 세션
+          </span>
+          <span className="ml-auto shrink-0 text-[11px] ui-text-muted">
+            {messages.length}개 메시지
+          </span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex flex-col gap-4">
+            {messages.map((msg) => (
+              <ChatMessage key={msg.id} message={msg} />
+            ))}
+            {isTyping && <TypingIndicator />}
+            <div ref={bottomRef} />
+          </div>
+        </div>
+
+        <div className="shrink-0 border-t border-surface-border bg-background p-3">
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSend={handleSend}
+            onKeyDown={handleKeyDown}
+            disabled={!input.trim() || isTyping}
+          />
         </div>
       </div>
-
-      <ChatInput
-        value={input}
-        onChange={setInput}
-        onSend={handleSend}
-        onKeyDown={handleKeyDown}
-        disabled={!input.trim() || isTyping}
-      />
     </div>
   );
 }
