@@ -357,6 +357,31 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_api_doc_blocks_endpoint_order
         ON api_doc_blocks(endpoint_id, order_idx);
 
+      CREATE TABLE IF NOT EXISTS meeting_workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        icon TEXT,
+        color TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS meeting_workspace_members (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'member',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES meeting_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(workspace_id, user_id)
+      );
+
       CREATE TABLE IF NOT EXISTS task_workspaces (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -2146,6 +2171,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'ALTER TABLE meeting_rooms ADD COLUMN archived INTEGER DEFAULT 0 NOT NULL',
     );
     this.ensureColumn(
+      'meeting_rooms',
+      'workspace_id',
+      'ALTER TABLE meeting_rooms ADD COLUMN workspace_id TEXT',
+    );
+    this.ensureColumn(
       'meeting_messages',
       'payload',
       'ALTER TABLE meeting_messages ADD COLUMN payload TEXT',
@@ -2211,6 +2241,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_sql_practice_notes_public_token
         ON sql_practice_notes(public_token);
 
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_meeting_workspace_members_unique
+        ON meeting_workspace_members(workspace_id, user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_meeting_rooms_workspace
+        ON meeting_rooms(workspace_id);
+
       CREATE UNIQUE INDEX IF NOT EXISTS idx_task_workspace_members_unique
         ON task_workspace_members(workspace_id, user_id);
 
@@ -2237,6 +2273,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const demoUser = this.ensureDemoUser(now);
     this.ensurePrototypeDefaultWorkspace(now, demoUser.id);
     this.ensureTaskDefaultWorkspace(now, demoUser.id);
+    this.ensureMeetingDefaultWorkspace(now, demoUser.id);
     this.ensureApiDocDefaultTeam(now, demoUser.id);
     this.ensureStudyDiariesForUsers(now);
     this.backfillChallengeCategoryDiaries(demoUser.id, now);
@@ -2459,6 +2496,70 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   getTaskDefaultWorkspaceId() {
     return 'task-workspace-default';
+  }
+
+  private ensureMeetingDefaultWorkspace(now: string, userId: string) {
+    const defaultWorkspaceId = 'meeting-workspace-default';
+    const existing = this.sqlite
+      .prepare('SELECT id FROM meeting_workspaces WHERE id = ? LIMIT 1')
+      .get(defaultWorkspaceId) as { id: string } | undefined;
+
+    if (!existing) {
+      this.sqlite
+        .prepare(
+          `
+            INSERT INTO meeting_workspaces (
+              id, name, description, icon, color,
+              order_idx, created_by, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+        )
+        .run(
+          defaultWorkspaceId,
+          '공용 회의실',
+          '전체 팀이 함께 사용하는 기본 채널 공간',
+          'MessagesSquare',
+          null,
+          0,
+          userId,
+          now,
+          now,
+        );
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          INSERT OR IGNORE INTO meeting_workspace_members (
+            id, workspace_id, user_id, role, created_at, updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `,
+      )
+      .run(
+        `meeting-member-${defaultWorkspaceId}-${userId}`,
+        defaultWorkspaceId,
+        userId,
+        'owner',
+        now,
+        now,
+      );
+
+    this.sqlite
+      .prepare(
+        `
+          UPDATE meeting_rooms
+          SET workspace_id = ?, updated_at = ?
+          WHERE (workspace_id IS NULL OR workspace_id = '')
+            AND room_type != 'DM'
+        `,
+      )
+      .run(defaultWorkspaceId, now);
+  }
+
+  getMeetingDefaultWorkspaceId() {
+    return 'meeting-workspace-default';
   }
 
   private reconcileAiNativeMenus(now: string) {

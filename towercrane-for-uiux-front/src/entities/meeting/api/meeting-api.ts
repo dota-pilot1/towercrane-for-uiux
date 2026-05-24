@@ -1,7 +1,44 @@
 import { apiRequest } from '../../../shared/api/http'
-import type { CreateMeetingRoomRequest, MeetingMember, MeetingMessage, MeetingMessageType, MeetingRoom } from '../model/types'
+import type {
+  CreateMeetingRoomRequest,
+  CreateMeetingWorkspaceRequest,
+  MeetingMember,
+  MeetingMessage,
+  MeetingMessageType,
+  MeetingRoom,
+  MeetingWorkspace,
+  UpdateMeetingWorkspaceRequest,
+} from '../model/types'
 
 export const meetingApi = {
+  listWorkspaces: () => apiRequest<MeetingWorkspace[]>('/meeting/workspaces'),
+
+  createWorkspace: (payload: CreateMeetingWorkspaceRequest) =>
+    apiRequest<MeetingWorkspace>('/meeting/workspaces', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updateWorkspace: (workspaceId: string, payload: UpdateMeetingWorkspaceRequest) =>
+    apiRequest<MeetingWorkspace>(`/meeting/workspaces/${workspaceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteWorkspace: (workspaceId: string) =>
+    apiRequest<{ success: boolean }>(`/meeting/workspaces/${workspaceId}`, {
+      method: 'DELETE',
+    }),
+
+  listWorkspaceRooms: (workspaceId: string) =>
+    apiRequest<MeetingRoom[]>(`/meeting/workspaces/${workspaceId}/rooms`),
+
+  createWorkspaceRoom: (workspaceId: string, payload: CreateMeetingRoomRequest) =>
+    apiRequest<MeetingRoom>(`/meeting/workspaces/${workspaceId}/rooms`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
   listRooms: () => apiRequest<MeetingRoom[]>('/meeting/rooms'),
 
   listMessages: (roomId: string) =>

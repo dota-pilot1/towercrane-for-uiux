@@ -20,6 +20,7 @@ import { ChatbotFlowPage } from '../pages/chatbot/ui/chatbot-flow-page'
 import { ChatbotFilesPage } from '../pages/chatbot/ui/chatbot-files-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
+import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-workspace-home-page'
 import { AiServiceRequestPage } from '../pages/ai-service-request/ui/ai-service-request-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
@@ -329,8 +330,19 @@ function StudyDiaryRedirect() {
 const meetingRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/meeting',
-  component: MeetingPage,
+  component: MeetingWorkspaceHomePage,
 })
+
+const meetingWorkspaceRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/meeting/workspaces/$workspaceId',
+  component: MeetingWorkspaceRoute,
+})
+
+function MeetingWorkspaceRoute() {
+  const { workspaceId } = meetingWorkspaceRoute.useParams()
+  return <MeetingPage workspaceId={workspaceId} />
+}
 
 // ─── /docu ───────────────────────────────────────────────────────────────────
 
@@ -715,6 +727,7 @@ export const router = createRouter({
       chatbotFlowRoute,
       chatbotFilesRoute,
       meetingRoute,
+      meetingWorkspaceRoute,
       docuRoute,
       aiServiceRequestRoute,
       aiMethodologyRoute,

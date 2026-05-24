@@ -5,6 +5,7 @@ import {
   Bug,
   CalendarClock,
   CheckCircle2,
+  ChevronLeft,
   FileText,
   GitBranch,
   Hash,
@@ -21,13 +22,17 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import {
   useCreateMeetingRoom,
+  useCreateMeetingWorkspaceRoom,
   useDeleteMeetingRoom,
   useMeetingMembers,
   useMeetingMessages,
   useMeetingRooms,
   useMeetingWebSocket,
+  useMeetingWorkspaceRooms,
+  useMeetingWorkspaces,
   useSendMeetingMessage,
   useStartMeetingDm,
 } from '../../../entities/meeting/model/use-meeting'
@@ -102,6 +107,8 @@ function ChannelSidebar({
   selectedRoomId,
   isAdmin,
   isLoading,
+  workspaceId,
+  workspaceName,
   onSelect,
   onDelete,
 }: {
@@ -109,15 +116,28 @@ function ChannelSidebar({
   selectedRoomId: string | null
   isAdmin?: boolean
   isLoading?: boolean
+  workspaceId?: string | null
+  workspaceName?: string | null
   onSelect: (roomId: string) => void
   onDelete: (roomId: string) => void
 }) {
+  const navigate = useNavigate()
   const publicRooms = rooms.filter((room) => room.roomType !== 'DM')
   const dmRooms = rooms.filter((room) => room.roomType === 'DM')
 
   return (
     <aside className="ui-panel flex min-h-0 w-full flex-col overflow-hidden bg-surface-raised lg:w-72">
       <div className="border-b border-surface-border-soft bg-surface-muted px-5 py-4">
+        {workspaceId ? (
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/meeting' })}
+            className="mb-2 flex items-center gap-1 text-xs text-text-muted transition-colors hover:text-brand-primary"
+          >
+            <ChevronLeft className="size-3.5" />
+            Workspaces / {workspaceName ?? '회의실'}
+          </button>
+        ) : null}
         <p className="text-[11px] font-black uppercase tracking-[0.22em] ui-text-muted">Meetingroom</p>
         <div className="mt-1 flex items-center justify-between">
           <h2 className="text-lg font-black ui-text-primary">회의실</h2>
@@ -125,7 +145,7 @@ function ChannelSidebar({
             <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
               LIVE
             </span>
-            {isAdmin ? <CreateChannelDialog /> : null}
+            {isAdmin ? <CreateChannelDialog workspaceId={workspaceId} /> : null}
           </div>
         </div>
       </div>
@@ -228,12 +248,14 @@ const ROOM_TYPE_OPTIONS: { value: MeetingRoomType; label: string }[] = [
   { value: 'QNA', label: 'Q&A' },
 ]
 
-function CreateChannelDialog() {
+function CreateChannelDialog({ workspaceId }: { workspaceId?: string | null }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [roomType, setRoomType] = useState<MeetingRoomType>('FREE')
   const createRoom = useCreateMeetingRoom()
+  const createWorkspaceRoom = useCreateMeetingWorkspaceRoom(workspaceId ?? '')
+  const isPending = workspaceId ? createWorkspaceRoom.isPending : createRoom.isPending
   const inputRef = useRef<HTMLInputElement>(null)
 
   const canSubmit = name.trim().length >= 1
@@ -250,11 +272,12 @@ function CreateChannelDialog() {
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!canSubmit) return
-    await createRoom.mutateAsync({
-      name: name.trim(),
-      description: description.trim() || null,
-      roomType,
-    })
+    const payload = { name: name.trim(), description: description.trim() || null, roomType }
+    if (workspaceId) {
+      await createWorkspaceRoom.mutateAsync(payload)
+    } else {
+      await createRoom.mutateAsync(payload)
+    }
     handleOpenChange(false)
   }
 
@@ -312,8 +335,8 @@ function CreateChannelDialog() {
             </label>
             <div className="flex justify-end gap-2 border-t border-surface-border-soft pt-4">
               <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>취소</Button>
-              <Button type="submit" disabled={!canSubmit || createRoom.isPending}>
-                {createRoom.isPending ? '생성 중...' : '채널 생성'}
+              <Button type="submit" disabled={!canSubmit || isPending}>
+                {isPending ? '생성 중...' : '채널 생성'}
               </Button>
             </div>
           </form>
@@ -711,14 +734,20 @@ function MemberList({
   )
 }
 
-export function MeetingPage() {
+export function MeetingPage({ workspaceId }: { workspaceId?: string }) {
   const currentUserId = useSessionStore((state) => state.userId)
   const currentUserRole = useSessionStore((state) => state.userRole)
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
   const isAdmin = currentUserRole === 'admin'
   const [requestedRoomId, setRequestedRoomId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<MeetingRoom | null>(null)
-  const roomsQuery = useMeetingRooms()
+  const allRoomsQuery = useMeetingRooms()
+  const workspaceRoomsQuery = useMeetingWorkspaceRooms(workspaceId ?? null)
+  const roomsQuery = workspaceId ? workspaceRoomsQuery : allRoomsQuery
+  const workspacesQuery = useMeetingWorkspaces()
+  const workspaceName = workspaceId
+    ? (workspacesQuery.data?.find((w) => w.id === workspaceId)?.name ?? null)
+    : null
   const rooms = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data])
   const selectedRoomId =
     requestedRoomId && rooms.some((room) => room.id === requestedRoomId)
@@ -777,7 +806,7 @@ export function MeetingPage() {
     <section className="space-y-4 ui-page-bg pb-4">
       <PageHeader
         icon={MessagesSquare}
-        title="회의실"
+        title={workspaceName ? `회의실 · ${workspaceName}` : '회의실'}
         description="팀 채널에서 실시간으로 소통합니다."
       />
     <div className="h-[calc(100vh-212px)] min-h-[600px] overflow-hidden rounded-md bg-surface-muted p-1">
@@ -794,6 +823,8 @@ export function MeetingPage() {
           selectedRoomId={selectedRoom?.id ?? null}
           isAdmin={isAdmin}
           isLoading={roomsQuery.isLoading}
+          workspaceId={workspaceId}
+          workspaceName={workspaceName}
           onSelect={setRequestedRoomId}
           onDelete={(roomId) => {
             const room = rooms.find((r) => r.id === roomId)

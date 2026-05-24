@@ -616,6 +616,38 @@ export const projectIssueActivityLogsTable = sqliteTable(
   },
 );
 
+export type MeetingWorkspaceRole = 'owner' | 'editor' | 'member' | 'viewer';
+
+export const meetingWorkspacesTable = sqliteTable('meeting_workspaces', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  icon: text('icon'),
+  color: text('color'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const meetingWorkspaceMembersTable = sqliteTable(
+  'meeting_workspace_members',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => meetingWorkspacesTable.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    role: text('role').$type<MeetingWorkspaceRole>().notNull().default('member'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
 export type MeetingRoomType =
   | 'ANNOUNCE'
   | 'PROTOTYPE'
@@ -640,6 +672,9 @@ export const meetingRoomsTable = sqliteTable('meeting_rooms', {
   description: text('description'),
   orderIdx: integer('order_idx').notNull().default(0),
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  workspaceId: text('workspace_id').references(() => meetingWorkspacesTable.id, {
+    onDelete: 'set null',
+  }),
   createdBy: text('created_by').references(() => usersTable.id, {
     onDelete: 'set null',
   }),
@@ -1466,6 +1501,8 @@ export const schema = {
   projectIssueCommentsTable,
   projectIssueAttachmentsTable,
   projectIssueActivityLogsTable,
+  meetingWorkspacesTable,
+  meetingWorkspaceMembersTable,
   meetingRoomsTable,
   meetingMessagesTable,
   meetingDmPairsTable,
@@ -1590,6 +1627,10 @@ export type ProjectIssueActivityLogRow =
   typeof projectIssueActivityLogsTable.$inferSelect;
 export type ProjectIssueActivityLogInsert =
   typeof projectIssueActivityLogsTable.$inferInsert;
+export type MeetingWorkspaceRow = typeof meetingWorkspacesTable.$inferSelect;
+export type MeetingWorkspaceInsert = typeof meetingWorkspacesTable.$inferInsert;
+export type MeetingWorkspaceMemberRow = typeof meetingWorkspaceMembersTable.$inferSelect;
+export type MeetingWorkspaceMemberInsert = typeof meetingWorkspaceMembersTable.$inferInsert;
 export type MeetingRoomRow = typeof meetingRoomsTable.$inferSelect;
 export type MeetingRoomInsert = typeof meetingRoomsTable.$inferInsert;
 export type MeetingMessageRow = typeof meetingMessagesTable.$inferSelect;

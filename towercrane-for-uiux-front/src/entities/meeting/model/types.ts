@@ -1,3 +1,25 @@
+export type MeetingWorkspace = {
+  id: string
+  name: string
+  description: string | null
+  icon: string | null
+  color: string | null
+  orderIdx: number
+  createdBy: string | null
+  createdAt: string
+  updatedAt: string
+  channelCount: number
+  activeChannelCount: number
+}
+
+export type CreateMeetingWorkspaceRequest = {
+  name: string
+  description?: string | null
+  icon?: string | null
+}
+
+export type UpdateMeetingWorkspaceRequest = Partial<CreateMeetingWorkspaceRequest>
+
 export type CreateMeetingRoomRequest = {
   name: string
   description?: string | null

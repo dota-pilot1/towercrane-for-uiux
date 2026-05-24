@@ -3,13 +3,64 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { API_BASE_URL } from '../../../shared/api/http'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { meetingApi } from '../api/meeting-api'
-import type { MeetingMember, MeetingMessage, MeetingRoom } from './types'
+import type { CreateMeetingRoomRequest, CreateMeetingWorkspaceRequest, MeetingMember, MeetingMessage, MeetingRoom } from './types'
 
 export const meetingKeys = {
   all: ['meeting'] as const,
+  workspaces: () => [...meetingKeys.all, 'workspaces'] as const,
+  workspaceRooms: (workspaceId: string) => [...meetingKeys.all, 'workspaceRooms', workspaceId] as const,
   rooms: () => [...meetingKeys.all, 'rooms'] as const,
   messages: (roomId: string) => [...meetingKeys.all, 'messages', roomId] as const,
   members: (roomId: string) => [...meetingKeys.all, 'members', roomId] as const,
+}
+
+export function useMeetingWorkspaces() {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+  return useQuery({
+    queryKey: meetingKeys.workspaces(),
+    queryFn: meetingApi.listWorkspaces,
+    enabled: isAuthenticated,
+  })
+}
+
+export function useCreateMeetingWorkspace() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateMeetingWorkspaceRequest) => meetingApi.createWorkspace(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: meetingKeys.workspaces() })
+    },
+  })
+}
+
+export function useDeleteMeetingWorkspace() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (workspaceId: string) => meetingApi.deleteWorkspace(workspaceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: meetingKeys.workspaces() })
+    },
+  })
+}
+
+export function useMeetingWorkspaceRooms(workspaceId: string | null) {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+  return useQuery({
+    queryKey: workspaceId ? meetingKeys.workspaceRooms(workspaceId) : [...meetingKeys.all, 'workspaceRooms', 'none'],
+    queryFn: () => meetingApi.listWorkspaceRooms(workspaceId as string),
+    enabled: isAuthenticated && Boolean(workspaceId),
+  })
+}
+
+export function useCreateMeetingWorkspaceRoom(workspaceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateMeetingRoomRequest) => meetingApi.createWorkspaceRoom(workspaceId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: meetingKeys.workspaceRooms(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: meetingKeys.workspaces() })
+    },
+  })
 }
 
 export function useMeetingRooms() {

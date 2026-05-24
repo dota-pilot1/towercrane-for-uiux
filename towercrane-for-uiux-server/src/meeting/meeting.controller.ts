@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { MeetingGateway } from './meeting.gateway';
@@ -11,6 +11,59 @@ export class MeetingController {
     private readonly meetingService: MeetingService,
     private readonly meetingGateway: MeetingGateway,
   ) {}
+
+  // --- workspace routes (static before :param) ---
+
+  @Get('workspaces')
+  listWorkspaces(@CurrentUser() user: MeetingUser) {
+    return this.meetingService.listWorkspaces(user);
+  }
+
+  @Post('workspaces')
+  createWorkspace(@CurrentUser() user: MeetingUser, @Body() body: unknown) {
+    return this.meetingService.createWorkspace(user, body);
+  }
+
+  @Post('workspaces/reorder')
+  reorderWorkspaces(@CurrentUser() user: MeetingUser, @Body() body: unknown) {
+    return this.meetingService.reorderWorkspaces(user, body);
+  }
+
+  @Get('workspaces/:workspaceId/rooms')
+  listWorkspaceRooms(
+    @CurrentUser() user: MeetingUser,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.meetingService.listWorkspaceRooms(user, workspaceId);
+  }
+
+  @Post('workspaces/:workspaceId/rooms')
+  createWorkspaceRoom(
+    @CurrentUser() user: MeetingUser,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.meetingService.createWorkspaceRoom(user, workspaceId, body);
+  }
+
+  @Patch('workspaces/:workspaceId')
+  updateWorkspace(
+    @CurrentUser() user: MeetingUser,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.meetingService.updateWorkspace(user, workspaceId, body);
+  }
+
+  @Delete('workspaces/:workspaceId')
+  deleteWorkspace(
+    @CurrentUser() user: MeetingUser,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.meetingService.deleteWorkspace(user, workspaceId);
+  }
+
+  // --- room routes ---
 
   @Get('rooms')
   listRooms(@CurrentUser() user: MeetingUser) {

@@ -18,6 +18,20 @@ export const createMeetingRoomSchema = z.object({
     .default('FREE'),
 });
 
+export const createMeetingWorkspaceSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  description: z.string().trim().max(200).nullable().optional(),
+  icon: z.string().trim().max(40).nullable().optional(),
+});
+
+export const updateMeetingWorkspaceSchema = createMeetingWorkspaceSchema.partial();
+
+export const reorderMeetingWorkspacesSchema = z.object({
+  items: z.array(z.object({ id: z.string(), orderIdx: z.number().int() })),
+});
+
 export type SendMeetingMessageInput = z.infer<typeof sendMeetingMessageSchema>;
 export type StartMeetingDmInput = z.infer<typeof startMeetingDmSchema>;
 export type CreateMeetingRoomInput = z.infer<typeof createMeetingRoomSchema>;
+export type CreateMeetingWorkspaceInput = z.infer<typeof createMeetingWorkspaceSchema>;
+export type UpdateMeetingWorkspaceInput = z.infer<typeof updateMeetingWorkspaceSchema>;

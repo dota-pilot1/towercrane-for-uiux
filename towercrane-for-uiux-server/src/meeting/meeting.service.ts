@@ -6,14 +6,24 @@ import {
   meetingDmPairsTable,
   meetingMessagesTable,
   meetingRoomsTable,
+  meetingWorkspacesTable,
+  meetingWorkspaceMembersTable,
   usersTable,
   type MeetingDmPairRow,
   type MeetingMessageInsert,
   type MeetingMessageRow,
   type MeetingRoomInsert,
   type MeetingRoomRow,
+  type MeetingWorkspaceInsert,
 } from '../database/schema';
-import { createMeetingRoomSchema, sendMeetingMessageSchema, startMeetingDmSchema } from './meeting.schemas';
+import {
+  createMeetingRoomSchema,
+  createMeetingWorkspaceSchema,
+  reorderMeetingWorkspacesSchema,
+  sendMeetingMessageSchema,
+  startMeetingDmSchema,
+  updateMeetingWorkspaceSchema,
+} from './meeting.schemas';
 
 export type MeetingUser = {
   id: string;
@@ -28,6 +38,173 @@ export class MeetingService {
 
   private get db() {
     return this.databaseService.db;
+  }
+
+  listWorkspaces(user: MeetingUser) {
+    const workspaces = this.db
+      .select()
+      .from(meetingWorkspacesTable)
+      .orderBy(asc(meetingWorkspacesTable.orderIdx), asc(meetingWorkspacesTable.createdAt))
+      .all();
+    const members = this.db.select().from(meetingWorkspaceMembersTable).all();
+    const rooms = this.db
+      .select()
+      .from(meetingRoomsTable)
+      .where(and(eq(meetingRoomsTable.archived, false), sql`${meetingRoomsTable.roomType} != 'DM'`))
+      .all();
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    return workspaces.map((workspace) => {
+      const wsRooms = rooms.filter((r) => r.workspaceId === workspace.id);
+      const wsRoomIds = new Set(wsRooms.map((r) => r.id));
+      const activeCount = wsRooms.filter((r) => r.updatedAt >= oneDayAgo).length;
+      const member = members.find(
+        (m) => m.workspaceId === workspace.id && m.userId === user.id,
+      );
+      return {
+        ...workspace,
+        role: member?.role ?? null,
+        channelCount: wsRooms.length,
+        activeChannelCount: activeCount,
+      };
+    });
+  }
+
+  createWorkspace(user: MeetingUser, payload: unknown) {
+    if (user.role !== 'admin') throw new ForbiddenException('Only admins can create workspaces');
+    const input = createMeetingWorkspaceSchema.parse(payload);
+    const now = new Date().toISOString();
+    const maxOrder = this.db
+      .select({ orderIdx: meetingWorkspacesTable.orderIdx })
+      .from(meetingWorkspacesTable)
+      .all()
+      .reduce((max, r) => Math.max(max, r.orderIdx), -1);
+
+    const workspace: MeetingWorkspaceInsert = {
+      id: `meeting-workspace-${randomUUID().slice(0, 12)}`,
+      name: input.name,
+      description: input.description ?? null,
+      icon: input.icon ?? 'MessagesSquare',
+      color: null,
+      orderIdx: maxOrder + 1,
+      createdBy: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.db.insert(meetingWorkspacesTable).values(workspace).run();
+    this.db.insert(meetingWorkspaceMembersTable).values({
+      id: `meeting-wm-${randomUUID().slice(0, 12)}`,
+      workspaceId: workspace.id,
+      userId: user.id,
+      role: 'owner',
+      createdAt: now,
+      updatedAt: now,
+    }).run();
+    return this.db.select().from(meetingWorkspacesTable).where(eq(meetingWorkspacesTable.id, workspace.id)).get();
+  }
+
+  updateWorkspace(user: MeetingUser, workspaceId: string, payload: unknown) {
+    if (user.role !== 'admin') throw new ForbiddenException('Only admins can update workspaces');
+    const input = updateMeetingWorkspaceSchema.parse(payload);
+    const now = new Date().toISOString();
+    this.db
+      .update(meetingWorkspacesTable)
+      .set({ ...input, updatedAt: now })
+      .where(eq(meetingWorkspacesTable.id, workspaceId))
+      .run();
+    return this.db.select().from(meetingWorkspacesTable).where(eq(meetingWorkspacesTable.id, workspaceId)).get();
+  }
+
+  deleteWorkspace(user: MeetingUser, workspaceId: string) {
+    if (user.role !== 'admin') throw new ForbiddenException('Only admins can delete workspaces');
+    if (workspaceId === 'meeting-workspace-default') {
+      throw new BadRequestException('기본 워크스페이스는 삭제할 수 없습니다');
+    }
+    const roomCount = this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(meetingRoomsTable)
+      .where(and(eq(meetingRoomsTable.workspaceId, workspaceId), eq(meetingRoomsTable.archived, false)))
+      .get();
+    if ((roomCount?.count ?? 0) > 0) {
+      throw new BadRequestException('채널이 있는 워크스페이스는 삭제할 수 없습니다');
+    }
+    this.db.delete(meetingWorkspacesTable).where(eq(meetingWorkspacesTable.id, workspaceId)).run();
+    return { success: true, workspaceId };
+  }
+
+  reorderWorkspaces(user: MeetingUser, payload: unknown) {
+    if (user.role !== 'admin') throw new ForbiddenException('Only admins can reorder workspaces');
+    const { items } = reorderMeetingWorkspacesSchema.parse(payload);
+    const now = new Date().toISOString();
+    for (const item of items) {
+      this.db
+        .update(meetingWorkspacesTable)
+        .set({ orderIdx: item.orderIdx, updatedAt: now })
+        .where(eq(meetingWorkspacesTable.id, item.id))
+        .run();
+    }
+    return { success: true };
+  }
+
+  listWorkspaceRooms(user: MeetingUser, workspaceId: string) {
+    const publicRooms = this.db
+      .select()
+      .from(meetingRoomsTable)
+      .where(
+        and(
+          eq(meetingRoomsTable.workspaceId, workspaceId),
+          eq(meetingRoomsTable.archived, false),
+          sql`${meetingRoomsTable.roomType} != 'DM'`,
+        ),
+      )
+      .orderBy(asc(meetingRoomsTable.orderIdx), asc(meetingRoomsTable.createdAt))
+      .all();
+
+    const dmRooms = this.db
+      .select({ room: meetingRoomsTable, pair: meetingDmPairsTable })
+      .from(meetingDmPairsTable)
+      .innerJoin(meetingRoomsTable, eq(meetingRoomsTable.id, meetingDmPairsTable.roomId))
+      .where(
+        and(
+          eq(meetingRoomsTable.archived, false),
+          sql`(${meetingDmPairsTable.userAId} = ${user.id} OR ${meetingDmPairsTable.userBId} = ${user.id})`,
+        ),
+      )
+      .orderBy(desc(meetingRoomsTable.updatedAt))
+      .all();
+
+    return [
+      ...publicRooms.map((room) => this.toRoomDto(room, user)),
+      ...dmRooms.map(({ room, pair }) => this.toRoomDto(room, user, pair)),
+    ];
+  }
+
+  createWorkspaceRoom(user: MeetingUser, workspaceId: string, payload: unknown) {
+    if (user.role !== 'admin') throw new ForbiddenException('Only admins can create channels');
+    const input = createMeetingRoomSchema.parse(payload);
+    const now = new Date().toISOString();
+    const maxOrder = this.db
+      .select({ orderIdx: meetingRoomsTable.orderIdx })
+      .from(meetingRoomsTable)
+      .where(and(eq(meetingRoomsTable.workspaceId, workspaceId), sql`${meetingRoomsTable.roomType} != 'DM'`))
+      .all()
+      .reduce((max, r) => Math.max(max, r.orderIdx), -1);
+
+    const room: MeetingRoomInsert = {
+      id: `meeting-room-${randomUUID().slice(0, 12)}`,
+      name: input.name,
+      roomType: input.roomType,
+      description: input.description ?? null,
+      orderIdx: maxOrder + 1,
+      workspaceId,
+      archived: false,
+      createdBy: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.db.insert(meetingRoomsTable).values(room).run();
+    return this.toRoomDto(this.findRoom(room.id), user);
   }
 
   listRooms(user: MeetingUser) {
