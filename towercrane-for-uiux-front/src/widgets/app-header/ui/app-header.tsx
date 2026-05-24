@@ -201,7 +201,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-[100] w-full border-b border-surface-border bg-surface-muted/95 px-2 py-2 shadow-sm backdrop-blur-md sm:px-4 sm:py-3">
+    <header className="sticky top-0 z-[100] w-full border-b border-surface-border bg-surface-muted px-2 py-2 shadow-md backdrop-blur-md sm:px-4 sm:py-3">
       <div className="flex items-center justify-between gap-2 sm:gap-4">
         <button
           type="button"

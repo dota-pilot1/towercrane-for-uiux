@@ -229,10 +229,13 @@ function CategorySidebar({
 
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted/50 px-4">
-        <div>
-          <p className="text-sm font-black text-text-primary">컬렉션</p>
-          <p className="text-[11px] text-text-muted">{categories.length} items</p>
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted px-4">
+        <div className="flex items-center gap-2">
+          <span className="size-1.5 rounded-full bg-brand-primary opacity-70" />
+          <div>
+            <p className="text-sm font-black text-text-primary">컬렉션</p>
+            <p className="text-[11px] text-text-muted">{categories.length} items</p>
+          </div>
         </div>
         {isAdmin ? (
           <Button
@@ -476,10 +479,13 @@ function EndpointSidebar({
 
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted/50 px-4">
-        <div>
-          <p className="text-sm font-black text-text-primary">API 항목</p>
-          <p className="text-[11px] text-text-muted">{endpoints.length} items</p>
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-muted px-4">
+        <div className="flex items-center gap-2">
+          <span className="size-1.5 rounded-full bg-brand-primary opacity-70" />
+          <div>
+            <p className="text-sm font-black text-text-primary">API 항목</p>
+            <p className="text-[11px] text-text-muted">{endpoints.length} items</p>
+          </div>
         </div>
         {isAdmin ? (
           <Button

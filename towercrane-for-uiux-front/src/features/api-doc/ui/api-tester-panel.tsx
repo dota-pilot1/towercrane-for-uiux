@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { CSSProperties } from 'react'
-import { Loader2, RotateCcw, Save, Send, Trash2 } from 'lucide-react'
+import { Loader2, Maximize2, RotateCcw, Save, Send, Trash2, X } from 'lucide-react'
 import type {
   ApiBlockContent,
   ApiDocBlock,
@@ -195,6 +196,7 @@ export function ApiTesterPanel({
   const [isSending, setIsSending] = useState(false)
   const [activeTab, setActiveTab] = useState<'params' | 'headers' | 'body'>('params')
   const [responseTab, setResponseTab] = useState<'body' | 'headers'>('body')
+  const [isResponseFullscreen, setIsResponseFullscreen] = useState(false)
 
   useEffect(() => {
     setContent(parseApiBlockContent(blocks, endpoint))
@@ -338,7 +340,7 @@ export function ApiTesterPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-      <div className="flex shrink-0 flex-col gap-3 border-b border-surface-border-soft bg-surface-muted/50 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex shrink-0 flex-col gap-3 border-b border-surface-border-soft bg-surface-muted px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
@@ -429,7 +431,7 @@ export function ApiTesterPanel({
           </div>
 
           <div className="min-h-[230px] rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-            <div className="flex border-b border-surface-border-soft bg-surface-muted/50 px-3 pt-2">
+            <div className="flex border-b border-surface-border-soft bg-surface-muted px-3 pt-2">
               {tabMeta.map((tab) => (
                 <button
                   key={tab.id}
@@ -516,7 +518,7 @@ export function ApiTesterPanel({
         </div>
         <div className="min-h-0 flex-1 px-4 pb-4 pt-3">
           <div className="min-h-0 h-full flex flex-col rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
-            <div className="flex flex-wrap items-center gap-2 border-b border-surface-border-soft bg-surface-muted/50 px-4 py-2.5">
+            <div className="flex flex-wrap items-center gap-2 border-b border-surface-border-soft bg-surface-muted px-4 py-2.5">
               <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">Response</span>
               {response ? (
                 <>
@@ -546,6 +548,15 @@ export function ApiTesterPanel({
                       </button>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsResponseFullscreen(true)}
+                    className="flex size-7 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-muted transition-colors hover:bg-surface-strong hover:text-text-primary"
+                    title="전체 보기"
+                    aria-label="응답 전체 보기"
+                  >
+                    <Maximize2 className="size-3.5" />
+                  </button>
                 </>
               ) : (
                 <span className="ml-auto text-xs text-text-muted">Send 버튼을 눌러 요청하세요.</span>
@@ -590,6 +601,77 @@ export function ApiTesterPanel({
           </div>
         </div>
       </div>
+
+      {isResponseFullscreen && response
+        ? createPortal(
+            <div className="fixed inset-0 z-[200] flex flex-col bg-[color:color-mix(in_srgb,var(--background)_40%,transparent)] backdrop-blur-sm">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden m-4 rounded-lg border border-surface-border-soft bg-surface-raised shadow-2xl">
+                <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-surface-border-soft bg-surface-muted px-4 py-3">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">Response</span>
+                  <span
+                    className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-black"
+                    style={getStatusStyle(response.status)}
+                  >
+                    {response.status === 0 ? 'Network Error' : `${response.status} ${response.statusText}`}
+                  </span>
+                  <span className="rounded-full border border-surface-border-soft bg-surface-muted px-2 py-0.5 font-mono text-[11px] text-text-muted">
+                    {response.durationMs}ms
+                  </span>
+                  <span className="text-[11px] text-text-muted">
+                    {new Date(response.timestamp).toLocaleTimeString()}
+                  </span>
+                  <div className="flex rounded-md border border-surface-border-soft bg-surface-muted p-0.5">
+                    {(['body', 'headers'] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => setResponseTab(tab)}
+                        className={`rounded-sm px-2.5 py-1 text-[11px] font-bold ${
+                          responseTab === tab ? 'bg-surface-raised text-text-primary' : 'text-text-muted'
+                        }`}
+                      >
+                        {tab === 'body' ? 'Body' : 'Headers'}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsResponseFullscreen(false)}
+                    className="ml-auto flex size-7 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-muted transition-colors hover:bg-surface-strong hover:text-text-primary"
+                    title="닫기"
+                    aria-label="전체 보기 닫기"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                  {responseTab === 'body' ? (
+                    <pre className={`whitespace-pre-wrap break-all font-mono text-sm leading-6 ${response.status === 0 ? 'text-destructive' : 'text-text-primary'}`}>
+                      {isJsonString(response.body) ? prettyJson(response.body) : response.body}
+                    </pre>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {Object.entries(response.headers).length === 0 ? (
+                        <p className="text-xs text-text-muted">응답 헤더가 없습니다.</p>
+                      ) : (
+                        Object.entries(response.headers).map(([key, value]) => (
+                          <div
+                            key={key}
+                            className="grid gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2 font-mono text-xs text-text-secondary md:grid-cols-[220px_minmax(0,1fr)]"
+                          >
+                            <span className="break-all text-text-muted">{key}</span>
+                            <span className="break-all text-text-primary">{value}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }
