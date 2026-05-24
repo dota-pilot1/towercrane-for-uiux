@@ -52,6 +52,7 @@ function sectionIdToPath(sectionId: string): string {
     chatbot_history: '/chatbot/history',
     chatbot_flow: '/chatbot/flow',
     chatbot_files: '/chatbot/files',
+    chatbot_knowledge: '/chatbot/knowledge',
   }
   return map[sectionId] ?? '/prototype'
 }
@@ -92,6 +93,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/chatbot/history')) return 'chatbot_history'
   if (pathname.startsWith('/chatbot/flow')) return 'chatbot_flow'
   if (pathname.startsWith('/chatbot/files')) return 'chatbot_files'
+  if (pathname.startsWith('/chatbot/knowledge')) return 'chatbot_knowledge'
   if (pathname.startsWith('/chatbot')) return 'chatbot_basic'
   return 'prototype'
 }

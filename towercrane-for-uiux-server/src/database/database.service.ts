@@ -1718,6 +1718,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           icon: 'Paperclip',
           displayOrder: 3,
         },
+        {
+          name: '지식 검색',
+          sectionId: 'chatbot_knowledge',
+          icon: 'Search',
+          displayOrder: 4,
+        },
       ];
 
       // React Flow 메뉴 완전 삭제
@@ -1755,6 +1761,40 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         )
         .run(now, existingChatbotPilot.id);
     }
+
+    // 챗봇 하위 메뉴 신규 항목 보장 (chatbot_pilot이 이미 존재해도 누락된 항목 추가)
+    const chatbotParent = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'chatbot_pilot'`)
+      .get() as { id: string } | undefined;
+    const parentId = chatbotParent?.id;
+    const ensureChatbotChild = (
+      name: string,
+      sectionId: string,
+      icon: string,
+      displayOrder: number,
+    ) => {
+      const exists = this.sqlite
+        .prepare(`SELECT id FROM menus WHERE section_id = ?`)
+        .get(sectionId);
+      if (!exists) {
+        this.db
+          .insert(menusTable)
+          .values({
+            id: randomUUID(),
+            name,
+            sectionId,
+            icon,
+            displayOrder,
+            isVisible: true,
+            requiredRole: null,
+            parentId,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+      }
+    };
+    ensureChatbotChild('지식 검색', 'chatbot_knowledge', 'Search', 4);
 
     // 루트 메뉴 표시 순서 고정:
     // 0:AI Native, 1:회의실, 2:업무관리, 3:Postman, 4:학습 일지,

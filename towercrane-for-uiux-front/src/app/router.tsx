@@ -19,6 +19,7 @@ import { ChatbotStreamingPage } from '../pages/chatbot/ui/chatbot-streaming-page
 import { ChatbotHistoryPage } from '../pages/chatbot/ui/chatbot-history-page'
 import { ChatbotFlowPage } from '../pages/chatbot/ui/chatbot-flow-page'
 import { ChatbotFilesPage } from '../pages/chatbot/ui/chatbot-files-page'
+import { ChatbotKnowledgePage } from '../pages/chatbot/ui/chatbot-knowledge-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-workspace-home-page'
@@ -353,6 +354,12 @@ const chatbotFilesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot/files',
   component: ChatbotFilesPage,
+})
+
+const chatbotKnowledgeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/knowledge',
+  component: ChatbotKnowledgePage,
 })
 
 function StudyDiaryRedirect() {
@@ -769,6 +776,7 @@ export const router = createRouter({
       chatbotHistoryRoute,
       chatbotFlowRoute,
       chatbotFilesRoute,
+      chatbotKnowledgeRoute,
       meetingRoute,
       meetingWorkspaceRoute,
       docuRoute,
