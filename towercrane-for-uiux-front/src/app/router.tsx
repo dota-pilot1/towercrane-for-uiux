@@ -81,7 +81,7 @@ function LoginRoute() {
   }, [hasHydrated, isAuthenticated, navigate])
 
   return (
-    <div className="min-h-screen bg-background ui-text-primary">
+    <div className="min-h-screen bg-[color:color-mix(in_srgb,var(--status-online)_5%,var(--background))] ui-text-primary">
       <LoginPage />
     </div>
   )
