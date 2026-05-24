@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import {
+  ChevronDown,
+  ChevronUp,
   Loader2,
   Maximize2,
   RotateCcw,
@@ -231,24 +233,7 @@ export function ApiTesterPanel({
   );
   const [responseTab, setResponseTab] = useState<"body" | "headers">("body");
   const [isResponseFullscreen, setIsResponseFullscreen] = useState(false);
-  const [requestHeight, setRequestHeight] = useState(300);
-  const dragStartY = useRef(0);
-  const dragStartHeight = useRef(0);
-
-  const handleDividerMouseDown = (e: React.MouseEvent) => {
-    dragStartY.current = e.clientY;
-    dragStartHeight.current = requestHeight;
-    const onMove = (ev: MouseEvent) => {
-      const delta = ev.clientY - dragStartY.current;
-      setRequestHeight((h) => Math.max(160, Math.min(560, dragStartHeight.current + delta)));
-    };
-    const onUp = () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    };
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-  };
+  const [isResponseExpanded, setIsResponseExpanded] = useState(false);
 
   useEffect(() => {
     setContent(parseApiBlockContent(blocks, endpoint));
@@ -494,8 +479,8 @@ export function ApiTesterPanel({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 flex flex-col bg-surface-muted">
-        <div className="shrink-0 flex flex-col gap-2.5 overflow-hidden p-3 pb-0" style={{ height: requestHeight }}>
+      <div className="relative min-h-0 flex-1 flex flex-col overflow-hidden bg-surface-muted">
+        <div className="shrink-0 flex flex-col gap-2.5 overflow-hidden p-3 pb-0">
           <div className="rounded-md border border-surface-border-soft bg-surface-raised p-2.5 shadow-sm">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
               <CompactSelect
@@ -648,14 +633,13 @@ export function ApiTesterPanel({
           </div>
         </div>
         <div
-          onMouseDown={handleDividerMouseDown}
-          className="group mx-3 flex h-3 shrink-0 cursor-ns-resize items-center justify-center"
-          title="드래그해서 응답 영역 크기 조절"
+          className={cn(
+            "flex flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm transition-[top] duration-300 ease-out",
+            isResponseExpanded
+              ? "absolute inset-3 z-10"
+              : "min-h-0 flex-1 mx-3 mb-3",
+          )}
         >
-          <div className="h-0.5 w-10 rounded-full bg-surface-border-soft transition-colors group-hover:bg-brand-border" />
-        </div>
-        <div className="min-h-0 flex-1 px-3 pb-3">
-          <div className="min-h-0 flex h-full flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-sm">
             <div className="flex flex-wrap items-center gap-2 rounded-t-md border-b border-surface-border-soft bg-surface-muted px-4 py-2.5">
               <span className="text-[11px] font-black uppercase tracking-widest text-text-muted">
                 Response
@@ -673,10 +657,10 @@ export function ApiTesterPanel({
                   <span className="rounded-full border border-surface-border-soft bg-surface-muted px-2 py-0.5 font-mono text-[11px] text-text-muted">
                     {response.durationMs}ms
                   </span>
-                  <span className="ml-auto text-[11px] text-text-muted">
+                  <span className="text-[11px] text-text-muted">
                     {new Date(response.timestamp).toLocaleTimeString()}
                   </span>
-                  <div className="flex rounded-md border border-surface-border-soft bg-surface-muted p-0.5">
+                  <div className="ml-auto flex rounded-md border border-surface-border-soft bg-surface-muted p-0.5">
                     {(["body", "headers"] as const).map((tab) => (
                       <button
                         key={tab}
@@ -707,6 +691,17 @@ export function ApiTesterPanel({
                   Send 버튼을 눌러 요청하세요.
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => setIsResponseExpanded((v) => !v)}
+                className="flex size-7 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-text-muted transition-colors hover:bg-brand-glass hover:text-brand-primary"
+                title={isResponseExpanded ? "요청 영역 보기" : "응답 영역 확대"}
+                aria-label={isResponseExpanded ? "요청 영역 보기" : "응답 영역 확대"}
+              >
+                {isResponseExpanded
+                  ? <ChevronDown className="size-3.5" />
+                  : <ChevronUp className="size-3.5" />}
+              </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto bg-surface-strong/40 p-4">
               {isSending ? (
