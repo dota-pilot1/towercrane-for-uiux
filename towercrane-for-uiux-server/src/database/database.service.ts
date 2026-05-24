@@ -1437,9 +1437,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         { name: '기본 채팅',    sectionId: 'chatbot_basic',     icon: 'MessageCircle', displayOrder: 0 },
         { name: '스트리밍 응답', sectionId: 'chatbot_streaming', icon: 'Zap',           displayOrder: 1 },
         { name: '히스토리 관리', sectionId: 'chatbot_history',   icon: 'History',       displayOrder: 2 },
-        { name: 'React Flow',   sectionId: 'chatbot_flow',      icon: 'GitFork',       displayOrder: 3 },
-        { name: '파일 첨부',    sectionId: 'chatbot_files',     icon: 'Paperclip',     displayOrder: 4 },
+        { name: '파일 첨부',    sectionId: 'chatbot_files',     icon: 'Paperclip',     displayOrder: 3 },
       ];
+
+      // React Flow는 AI Native로 이동 — 챗봇 메뉴에서 숨김
+      this.sqlite
+        .prepare(`UPDATE menus SET is_visible = 0, updated_at = ? WHERE section_id = 'chatbot_flow'`)
+        .run(now);
       for (const child of children) {
         this.db
           .insert(menusTable)
