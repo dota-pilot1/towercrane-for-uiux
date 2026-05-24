@@ -1440,10 +1440,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         { name: '파일 첨부',    sectionId: 'chatbot_files',     icon: 'Paperclip',     displayOrder: 3 },
       ];
 
-      // React Flow는 AI Native로 이동 — 챗봇 메뉴에서 숨김
+      // React Flow 메뉴 완전 삭제
       this.sqlite
-        .prepare(`UPDATE menus SET is_visible = 0, updated_at = ? WHERE section_id = 'chatbot_flow'`)
-        .run(now);
+        .prepare(`DELETE FROM menus WHERE section_id = 'chatbot_flow'`)
+        .run();
       for (const child of children) {
         this.db
           .insert(menusTable)
