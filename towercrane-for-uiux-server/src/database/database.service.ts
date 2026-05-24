@@ -1410,7 +1410,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       )
       .run(now);
 
-    // 챗봇 루트 메뉴 + 5개 자식 upsert
+    // React Flow 메뉴 완전 삭제 (항상 실행)
+    this.sqlite
+      .prepare(`DELETE FROM menus WHERE section_id = 'chatbot_flow'`)
+      .run();
+
+    // 챗봇 루트 메뉴 + 자식 upsert
     const existingChatbotPilot = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'chatbot_pilot' AND parent_id IS NULL LIMIT 1")
       .get() as { id: string } | undefined;
