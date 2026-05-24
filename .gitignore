@@ -8,3 +8,11 @@
 # 배포 관련 민감 정보
 docs-for-배포/*.pem
 docs-for-배포/.env*
+
+# SQL 연습장 런타임 데이터 (로컬 생성 파일)
+towercrane-for-uiux-server/data/sql-practice/runtime/
+towercrane-for-uiux-server/data/sql-practice/personal-schema-versions/
+towercrane-for-uiux-server/data/sql-practice/team-schema-versions/
+
+# 기획 문서 (로컬 작업용)
+docs-for-*/
