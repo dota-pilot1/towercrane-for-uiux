@@ -46,7 +46,7 @@ import { ApiTesterPanel } from '../../../features/api-doc/ui/api-tester-panel'
 const EMPTY_CATEGORIES: ApiDocCategory[] = []
 const EMPTY_ENDPOINTS: ApiDocEndpoint[] = []
 const SIDEBAR_ITEM_CLASS =
-  'group flex h-12 items-center gap-2 rounded-md border px-2 py-1.5 transition-colors'
+  'group flex min-h-12 items-center gap-2 rounded-md border px-2 py-1.5 transition-colors'
 const SIDEBAR_DRAG_HANDLE_CLASS =
   'flex size-5 shrink-0 cursor-grab items-center justify-center text-text-muted opacity-50 transition-opacity group-hover:opacity-100'
 const SIDEBAR_TEXT_BUTTON_CLASS =
@@ -254,7 +254,7 @@ function CategorySidebar({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {adding ? (
-          <div className="mb-2 rounded-md border border-brand-border bg-brand-glass p-2">
+          <div className="mb-2 rounded-md border border-brand-border bg-brand-glass p-2.5">
             <input
               autoFocus
               value={newName}
@@ -266,7 +266,7 @@ function CategorySidebar({
               placeholder="새 컬렉션"
               className="ui-input text-sm"
             />
-            <div className="mt-2 flex justify-end gap-1">
+            <div className="mt-2 flex justify-end gap-2">
               <Button type="button" size="sm-icon" variant="ghost" onClick={() => setAdding(false)} aria-label="취소">
                 <X className="size-3.5" />
               </Button>
@@ -514,7 +514,7 @@ function EndpointSidebar({
               placeholder="API 항목 이름"
               className="ui-input min-w-0 text-sm"
             />
-            <div className="flex justify-end gap-1">
+            <div className="mt-2 flex justify-end gap-2">
               <Button
                 type="button"
                 size="sm-icon"
@@ -559,7 +559,7 @@ function EndpointSidebar({
                         }`}
                       >
                         {editingId === endpoint.id ? (
-                          <div className="space-y-2">
+                          <div className="w-full space-y-2">
                             <input
                               autoFocus
                               value={editingTitle}
@@ -572,7 +572,7 @@ function EndpointSidebar({
                               }}
                               className="ui-input h-9 min-w-0 text-sm"
                             />
-                            <div className="flex justify-end gap-1">
+                            <div className="flex justify-end gap-2">
                               <Button
                                 type="button"
                                 size="sm-icon"
@@ -691,7 +691,9 @@ function EnvironmentDialog({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between border-b border-surface-border-soft bg-surface-muted px-5 py-4">
           <div>
             <p className="text-base font-black text-text-primary">환경 변수</p>
-            <p className="mt-1 text-xs text-text-muted">`{{API_BASE}}`처럼 요청 URL, header, body에서 사용할 수 있습니다.</p>
+            <p className="mt-1 text-xs text-text-muted">
+              {'`{{API_BASE}}`처럼 요청 URL, header, body에서 사용할 수 있습니다.'}
+            </p>
           </div>
           <Button type="button" size="sm-icon" variant="ghost" onClick={onClose} aria-label="닫기">
             <X className="size-4" />

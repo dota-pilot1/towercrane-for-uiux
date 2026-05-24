@@ -34,6 +34,61 @@ const DEFAULT_ENVIRONMENTS: ApiEnvironment[] = [
   },
 ]
 
+const STANDARD_ENV_KEYS: Record<string, string> = {
+  api_base: 'API_BASE',
+  base_url: 'BASE_URL',
+  token: 'TOKEN',
+}
+
+function normalizeEnvKey(key: string) {
+  const trimmedKey = key.trim()
+  return STANDARD_ENV_KEYS[trimmedKey.toLowerCase()] ?? trimmedKey
+}
+
+function normalizeVariables(
+  variables: ApiEnvironment['variables'],
+  defaultVariables: ApiEnvironment['variables'] = [],
+) {
+  const merged = new Map<string, ApiEnvironment['variables'][number]>()
+
+  defaultVariables.forEach((variable) => {
+    merged.set(variable.key, variable)
+  })
+
+  variables.forEach((variable) => {
+    const key = normalizeEnvKey(variable.key)
+    if (!key) return
+    merged.set(key, { ...variable, key })
+  })
+
+  return Array.from(merged.values())
+}
+
+function normalizeEnvironments(environments: ApiEnvironment[]) {
+  const normalizedDefaultEnvs = DEFAULT_ENVIRONMENTS.map((defaultEnv) => {
+    const savedEnv = environments.find((env) => env.id === defaultEnv.id)
+
+    return {
+      ...defaultEnv,
+      ...savedEnv,
+      variables: normalizeVariables(savedEnv?.variables ?? [], defaultEnv.variables),
+    }
+  })
+
+  const customEnvs = environments
+    .filter((env) => !DEFAULT_ENVIRONMENTS.some((defaultEnv) => defaultEnv.id === env.id))
+    .map((env) => ({
+      ...env,
+      variables: normalizeVariables(env.variables),
+    }))
+
+  return [...normalizedDefaultEnvs, ...customEnvs]
+}
+
+function getEnvVarsMap(environment: ApiEnvironment | undefined) {
+  return Object.fromEntries((environment?.variables ?? []).map((item) => [normalizeEnvKey(item.key), item.value]))
+}
+
 type ApiEnvState = {
   environments: ApiEnvironment[]
   activeEnvId: string
@@ -48,17 +103,27 @@ export const useApiEnvStore = create<ApiEnvState>()(
       environments: DEFAULT_ENVIRONMENTS,
       activeEnvId: 'local',
       setActiveEnv: (activeEnvId) => set({ activeEnvId }),
-      updateEnvironments: (environments) => set({ environments }),
+      updateEnvironments: (environments) => set({ environments: normalizeEnvironments(environments) }),
       getActiveVarsMap: () => {
         const { environments, activeEnvId } = get()
-        const active = environments.find((env) => env.id === activeEnvId)
-        return Object.fromEntries((active?.variables ?? []).map((item) => [item.key, item.value]))
+        const normalizedEnvironments = normalizeEnvironments(environments)
+        const active = normalizedEnvironments.find((env) => env.id === activeEnvId) ?? normalizedEnvironments[0]
+        return getEnvVarsMap(active)
       },
     }),
     {
       name: 'towercrane-api-doc-env-store',
       storage: createJSONStorage(() => localStorage),
+      merge: (persistedState, currentState) => {
+        const state = persistedState as Partial<ApiEnvState> | undefined
+
+        return {
+          ...currentState,
+          ...state,
+          environments: normalizeEnvironments(state?.environments ?? currentState.environments),
+          activeEnvId: state?.activeEnvId ?? currentState.activeEnvId,
+        }
+      },
     },
   ),
 )
-

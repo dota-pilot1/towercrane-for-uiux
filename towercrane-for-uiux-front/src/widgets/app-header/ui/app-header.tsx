@@ -20,6 +20,7 @@ function sectionIdToPath(sectionId: string): string {
     meeting: '/meeting',
     docu: '/docu',
     ai_native_group: '/ai-methodology',
+    ai_service_request: '/ai-service-request',
     ai_methodology: '/ai-methodology',
     ai_evaluation: '/ai-evaluation',
     api_doc: '/api-doc',
@@ -61,6 +62,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/challenge')) return 'study_diary'
   if (pathname.startsWith('/meeting')) return 'meeting'
   if (pathname.startsWith('/docu')) return 'docu'
+  if (pathname.startsWith('/ai-service-request')) return 'ai_service_request'
   if (pathname.startsWith('/ai-evaluation')) return 'ai_evaluation'
   if (pathname.startsWith('/ai-methodology')) return 'ai_methodology'
   if (pathname.startsWith('/api-doc')) return 'api_doc'

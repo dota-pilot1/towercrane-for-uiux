@@ -1,5 +1,18 @@
+import * as Dialog from '@radix-ui/react-dialog'
+import * as Tabs from '@radix-ui/react-tabs'
 import { useEffect, useRef, useState } from 'react'
-import { Download, Eye, File, Image as ImageIcon, Paperclip, Save, Trash2, Upload } from 'lucide-react'
+import {
+  Download,
+  Eye,
+  File,
+  Image as ImageIcon,
+  Maximize2,
+  Paperclip,
+  Save,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import type { Task } from '../../../entities/task/model/types'
 import { uploadFile } from '../../../shared/api/upload'
@@ -35,6 +48,8 @@ export function TaskAttachmentsPanel({ task }: { task: Task }) {
   const [isUploading, setIsUploading] = useState(false)
   const [mmdDraft, setMmdDraft] = useState(task.mmdContent ?? '')
   const [showPreview, setShowPreview] = useState(Boolean(task.mmdContent?.trim()))
+  const [mmdDialogOpen, setMmdDialogOpen] = useState(false)
+  const [mmdDialogTab, setMmdDialogTab] = useState<'preview' | 'code'>('preview')
   const taskId = task.id
   const attachmentsQuery = useTaskAttachments(taskId)
   const createAttachment = useCreateTaskAttachment(taskId)
@@ -77,7 +92,13 @@ export function TaskAttachmentsPanel({ task }: { task: Task }) {
     })
   }
 
+  const handleOpenMmdDialog = () => {
+    setMmdDialogTab(showPreview ? 'preview' : 'code')
+    setMmdDialogOpen(true)
+  }
+
   const hasMmdChanges = mmdDraft !== (task.mmdContent ?? '')
+  const hasMmdContent = Boolean(mmdDraft.trim())
 
   return (
     <div className="space-y-4">
@@ -197,10 +218,19 @@ export function TaskAttachmentsPanel({ task }: { task: Task }) {
               type="button"
               variant="secondary"
               onClick={() => setShowPreview((value) => !value)}
-              disabled={!mmdDraft.trim()}
+              disabled={!hasMmdContent}
             >
               <Eye className="mr-2 size-4" />
               {showPreview ? '코드 보기' : '미리보기'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleOpenMmdDialog}
+              disabled={!hasMmdContent}
+            >
+              <Maximize2 className="mr-2 size-4" />
+              크게 보기
             </Button>
             <Button
               type="button"
@@ -226,6 +256,64 @@ export function TaskAttachmentsPanel({ task }: { task: Task }) {
           />
         )}
       </section>
+
+      <Dialog.Root open={mmdDialogOpen} onOpenChange={setMmdDialogOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
+          <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[60] flex h-[min(86vh,860px)] w-[min(1100px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
+              <div className="min-w-0">
+                <Dialog.Title className="truncate text-lg font-black text-text-primary">
+                  MMD 크게 보기
+                </Dialog.Title>
+                <Dialog.Description className="mt-1 truncate text-xs text-text-secondary">
+                  {task.title}
+                </Dialog.Description>
+              </div>
+              <Dialog.Close asChild>
+                <button type="button" className="ui-icon-button size-8" aria-label="닫기">
+                  <X className="size-4" />
+                </button>
+              </Dialog.Close>
+            </div>
+
+            <Tabs.Root
+              value={mmdDialogTab}
+              onValueChange={(value) => setMmdDialogTab(value as 'preview' | 'code')}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <Tabs.List className="flex shrink-0 gap-1 border-b border-surface-border-soft bg-surface-raised px-4 pt-3">
+                {[
+                  ['preview', '미리보기'],
+                  ['code', '코드'],
+                ].map(([value, label]) => (
+                  <Tabs.Trigger
+                    key={value}
+                    value={value}
+                    className="rounded-t-md border border-transparent px-4 py-2 text-sm font-bold text-text-secondary transition-colors data-[state=active]:border-surface-border-soft data-[state=active]:bg-background data-[state=active]:text-text-primary"
+                  >
+                    {label}
+                  </Tabs.Trigger>
+                ))}
+              </Tabs.List>
+
+              <Tabs.Content value="preview" className="min-h-0 flex-1 overflow-auto p-5">
+                <div className="min-h-full rounded-md border border-surface-border-soft bg-surface-raised p-4">
+                  <Mermaid chart={mmdDraft} className="min-h-96" />
+                </div>
+              </Tabs.Content>
+
+              <Tabs.Content value="code" className="min-h-0 flex-1 p-5">
+                <Textarea
+                  value={mmdDraft}
+                  readOnly
+                  className="h-full min-h-96 resize-none font-mono text-sm"
+                />
+              </Tabs.Content>
+            </Tabs.Root>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   )
 }

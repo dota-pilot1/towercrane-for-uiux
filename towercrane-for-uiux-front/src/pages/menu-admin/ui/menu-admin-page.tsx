@@ -357,7 +357,7 @@ function SortableTreeItem({
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="flex size-6 items-center justify-center rounded text-surface-border hover:text-[var(--destructive)] transition-colors"
+              className="flex size-6 items-center justify-center rounded text-surface-border hover:text-(--destructive) transition-colors"
               title="삭제"
             >
               <Trash2 className="size-3.5" />

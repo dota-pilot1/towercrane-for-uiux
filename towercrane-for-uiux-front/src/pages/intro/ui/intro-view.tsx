@@ -70,7 +70,7 @@ function SidebarButton({
       className={`flex w-full items-center gap-2.5 rounded-[16px] border px-4 py-2.5 text-left text-[13px] transition ${
         active
           ? 'border-brand-border bg-brand-glass ui-text-primary'
-          : 'border-transparent bg-transparent ui-text-secondary hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]'
+          : 'border-transparent bg-transparent ui-text-secondary hover:bg-(--surface-muted) hover:text-(--text-primary)'
       }`}
     >
       {icon}

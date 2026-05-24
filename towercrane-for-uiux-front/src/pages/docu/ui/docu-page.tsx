@@ -101,7 +101,7 @@ export function DocuPage() {
         </p>
         <button
           onClick={() => navigate({ to: '/prototype' })}
-          className="inline-flex items-center gap-2 rounded-2xl border border-[var(--surface-border-soft)] bg-[var(--surface-muted)] px-4 py-2 text-sm ui-text-primary hover:bg-[var(--surface-muted)]"
+          className="inline-flex items-center gap-2 rounded-2xl border border-[var(--surface-border-soft)] bg-[var(--surface-muted)] px-4 py-2 text-sm ui-text-primary hover:bg-(--surface-muted)"
         >
           <ArrowLeft className="size-4" /> Prototype 목록으로
         </button>
@@ -840,7 +840,7 @@ function MainPanel({
                   </button>
                   <button
                     onClick={() => setIsEditingTitle(false)}
-                    className="p-1.5 ui-text-secondary hover:text-[var(--text-primary)] hover:bg-[var(--surface-muted)] rounded-lg transition-colors"
+                    className="p-1.5 ui-text-secondary hover:text-(--text-primary) hover:bg-(--surface-muted) rounded-lg transition-colors"
                     title="취소 (Esc)"
                   >
                     <X className="size-4" />

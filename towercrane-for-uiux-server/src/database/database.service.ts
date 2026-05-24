@@ -2040,14 +2040,41 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .run(now, aiNativeGroup.id);
     }
 
+    // ai_service_request — AI Native 1번째 자식
+    const existingAiServiceRequest = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'ai_service_request' LIMIT 1`)
+      .get() as { id: string } | undefined;
+
+    if (!existingAiServiceRequest) {
+      this.db
+        .insert(menusTable)
+        .values({
+          id: randomUUID(),
+          name: 'AI 서비스 신청',
+          sectionId: 'ai_service_request',
+          icon: 'FilePlus2',
+          displayOrder: 0,
+          isVisible: true,
+          requiredRole: null,
+          parentId: aiNativeGroup.id,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    } else {
+      this.sqlite
+        .prepare(`UPDATE menus SET name = 'AI 서비스 신청', icon = 'FilePlus2', parent_id = ?, display_order = 0, is_visible = 1, updated_at = ? WHERE id = ?`)
+        .run(aiNativeGroup.id, now, existingAiServiceRequest.id);
+    }
+
     // ai_methodology를 ai_native_group의 자식으로 이동
     this.sqlite
       .prepare(
-        `UPDATE menus SET parent_id = ?, display_order = 0, updated_at = ? WHERE section_id = 'ai_methodology'`,
+        `UPDATE menus SET parent_id = ?, display_order = 1, updated_at = ? WHERE section_id = 'ai_methodology'`,
       )
       .run(aiNativeGroup.id, now);
 
-    // ai_evaluation — AI Native 2번째 자식
+    // ai_evaluation — AI Native 3번째 자식
     const existingAiEval = this.sqlite
       .prepare(`SELECT id FROM menus WHERE section_id = 'ai_evaluation' LIMIT 1`)
       .get() as { id: string } | undefined;
@@ -2060,7 +2087,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'AI 활용 능력 평가',
           sectionId: 'ai_evaluation',
           icon: 'ClipboardCheck',
-          displayOrder: 1,
+          displayOrder: 2,
           isVisible: true,
           requiredRole: null,
           parentId: aiNativeGroup.id,
@@ -2070,7 +2097,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .run();
     } else {
       this.sqlite
-        .prepare(`UPDATE menus SET name = 'AI 활용 능력 평가', icon = 'ClipboardCheck', parent_id = ?, display_order = 1, is_visible = 1, updated_at = ? WHERE id = ?`)
+        .prepare(`UPDATE menus SET name = 'AI 활용 능력 평가', icon = 'ClipboardCheck', parent_id = ?, display_order = 2, is_visible = 1, updated_at = ? WHERE id = ?`)
         .run(aiNativeGroup.id, now, existingAiEval.id);
     }
   }

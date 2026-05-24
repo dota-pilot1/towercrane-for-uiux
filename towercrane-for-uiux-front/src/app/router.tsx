@@ -19,6 +19,7 @@ import { ChatbotFlowPage } from '../pages/chatbot/ui/chatbot-flow-page'
 import { ChatbotFilesPage } from '../pages/chatbot/ui/chatbot-files-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
+import { AiServiceRequestPage } from '../pages/ai-service-request/ui/ai-service-request-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
 import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
@@ -325,6 +326,12 @@ export const docuRoute = createRoute({
 
 // ─── /ai-methodology ─────────────────────────────────────────────────────────
 
+const aiServiceRequestRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/ai-service-request',
+  component: AiServiceRequestPage,
+})
+
 const aiMethodologyRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/ai-methodology',
@@ -550,7 +557,7 @@ function AdminUsersRoute() {
               users.map((u) => (
                 <tr
                   key={u.id}
-                  className="transition-colors hover:bg-[var(--surface-muted)]"
+                  className="transition-colors hover:bg-(--surface-muted)"
                 >
                   <td className="px-6 py-4 text-sm font-medium ui-text-primary">
                     {u.name}
@@ -654,6 +661,7 @@ export const router = createRouter({
       chatbotFilesRoute,
       meetingRoute,
       docuRoute,
+      aiServiceRequestRoute,
       aiMethodologyRoute,
       aiEvaluationRoute,
       apiDocRoute,
