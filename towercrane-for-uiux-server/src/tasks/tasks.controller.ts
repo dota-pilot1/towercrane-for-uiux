@@ -38,6 +38,58 @@ export class TasksController {
     return this.tasksService.restoreTasks(user, body);
   }
 
+  // ── Workspace endpoints (정적 라우트 — :taskId 보다 먼저 등록) ─────────────
+
+  @Get('workspaces')
+  listWorkspacesEarly() {
+    return this.tasksService.listWorkspaces();
+  }
+
+  @Post('workspaces')
+  createWorkspaceEarly(@CurrentUser() user: TaskUser, @Body() body: unknown) {
+    return this.tasksService.createWorkspace(user, body);
+  }
+
+  @Post('workspaces/reorder')
+  reorderWorkspacesEarly(@CurrentUser() user: TaskUser, @Body() body: unknown) {
+    return this.tasksService.reorderWorkspaces(user, body);
+  }
+
+  @Patch('workspaces/:workspaceId')
+  updateWorkspaceEarly(
+    @CurrentUser() user: TaskUser,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.tasksService.updateWorkspace(user, workspaceId, body);
+  }
+
+  @Delete('workspaces/:workspaceId')
+  deleteWorkspaceEarly(
+    @CurrentUser() user: TaskUser,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.tasksService.deleteWorkspace(user, workspaceId);
+  }
+
+  @Get('workspaces/:workspaceId/tasks')
+  listWorkspaceTasksEarly(
+    @CurrentUser() user: TaskUser,
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: Record<string, unknown>,
+  ) {
+    return this.tasksService.listWorkspaceTasks(user, workspaceId, query);
+  }
+
+  @Post('workspaces/:workspaceId/tasks')
+  createWorkspaceTaskEarly(
+    @CurrentUser() user: TaskUser,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.tasksService.createWorkspaceTask(user, workspaceId, body);
+  }
+
   @Get(':taskId')
   detail(@CurrentUser() user: TaskUser, @Param('taskId') taskId: string) {
     return this.tasksService.getTaskDetail(user, taskId);
@@ -197,4 +249,5 @@ export class TasksController {
   ) {
     return this.tasksService.deleteAttachment(user, taskId, attachmentId);
   }
+
 }

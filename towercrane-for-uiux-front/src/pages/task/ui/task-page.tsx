@@ -37,6 +37,8 @@ import {
   useRestoreTasks,
   taskQueryKeys,
   useTasks,
+  useWorkspaceTasks,
+  useTaskWorkspaces,
 } from '../../../features/task/model/use-task-queries'
 import { PageHeader } from '../../../shared/ui/page-header'
 import { useSessionStore } from '../../../shared/store/session-store'
@@ -397,9 +399,11 @@ function TaskPagination({
 export function TaskPage({
   scopeMode,
   targetUserId,
+  workspaceId,
 }: {
   scopeMode: TaskScopeMode
   targetUserId?: string
+  workspaceId?: string
 }) {
   const navigate = useNavigate()
   const [viewMode, setViewMode] = useState<TaskViewMode>('table')
@@ -423,7 +427,13 @@ export function TaskPage({
     [filters, scopeMode, targetUserId],
   )
 
-  const tasksQuery = useTasks(normalizedFilters)
+  const workspacesQuery = useTaskWorkspaces()
+  const currentWorkspace = workspaceId
+    ? (workspacesQuery.data ?? []).find((ws) => ws.id === workspaceId)
+    : null
+  const allTasksQuery = useTasks(normalizedFilters)
+  const wsTasksQuery = useWorkspaceTasks(workspaceId ?? '', normalizedFilters)
+  const tasksQuery = workspaceId ? wsTasksQuery : allTasksQuery
   const assignableUsersQuery = useAssignableUsers()
   const archiveTasks = useArchiveTasks()
   const restoreTasks = useRestoreTasks()
@@ -481,6 +491,22 @@ export function TaskPage({
 
   return (
     <section className={`space-y-4 ui-page-bg ${tasks.length > 0 ? 'pb-20' : 'pb-8'}`}>
+      {workspaceId ? (
+        <div className="flex items-center gap-2 text-sm">
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/task' })}
+            className="flex items-center gap-1 rounded-sm text-text-muted transition-colors hover:text-brand-primary"
+          >
+            <ChevronLeft className="size-3.5" />
+            Workspaces
+          </button>
+          <span className="text-text-muted">/</span>
+          <span className="font-semibold text-text-primary">
+            {currentWorkspace?.name ?? workspaceId}
+          </span>
+        </div>
+      ) : null}
       <PageHeader
         icon={CheckSquare}
         title={scopeTitle}
@@ -696,6 +722,7 @@ export function TaskPage({
         defaultScope={scopeMode === 'my' ? 'PERSONAL' : 'TEAM'}
         currentUserId={currentUserId}
         lockAssigneeToCurrentUser={scopeMode === 'my'}
+        workspaceId={workspaceId}
         onOpenChange={setIsFormOpen}
       />
     </section>

@@ -5,7 +5,10 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useNavigate } from '@tanstack/react-router'
-import { useCreateCategory } from '../../../shared/api/catalog'
+import {
+  useCreateCategory,
+  useCreateWorkspaceCategory,
+} from '../../../shared/api/catalog'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 
@@ -18,12 +21,17 @@ type FormValues = z.infer<typeof schema>
 
 interface AddCategoryDialogProps {
   children?: React.ReactNode
+  workspaceId?: string
 }
 
-export function AddCategoryDialog({ children }: AddCategoryDialogProps) {
+export function AddCategoryDialog({ children, workspaceId }: AddCategoryDialogProps) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const createCategory = useCreateCategory()
+  const createWorkspaceCategory = useCreateWorkspaceCategory(workspaceId ?? '')
+  const isPending = workspaceId
+    ? createWorkspaceCategory.isPending
+    : createCategory.isPending
 
   const {
     register,
@@ -40,8 +48,18 @@ export function AddCategoryDialog({ children }: AddCategoryDialogProps) {
   })
 
   const onSubmit = async (values: FormValues) => {
-    const category = await createCategory.mutateAsync(values)
-    navigate({ to: '/prototype/$categoryId', params: { categoryId: category.id } })
+    const category = workspaceId
+      ? await createWorkspaceCategory.mutateAsync(values)
+      : await createCategory.mutateAsync(values)
+
+    if (workspaceId) {
+      navigate({
+        to: '/prototype/workspaces/$workspaceId/categories/$categoryId',
+        params: { workspaceId, categoryId: category.id },
+      })
+    } else {
+      navigate({ to: '/prototype/$categoryId', params: { categoryId: category.id } })
+    }
     reset()
     setOpen(false)
   }
@@ -90,8 +108,8 @@ export function AddCategoryDialog({ children }: AddCategoryDialogProps) {
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 취소
               </Button>
-              <Button type="submit" disabled={createCategory.isPending}>
-                {createCategory.isPending ? '저장 중...' : '저장'}
+              <Button type="submit" disabled={isPending}>
+                {isPending ? '저장 중...' : '저장'}
               </Button>
             </div>
           </form>

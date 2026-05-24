@@ -132,7 +132,7 @@ function SqlInputBar({ onExecute, onClear, isLoading, tables = [] }, ref) {
             </button>
           </div>
         </div>
-        <p className="mt-2 text-xs text-text-muted">Ctrl+Enter로 실행 · Tab으로 자동완성/들여쓰기 · <code className="rounded bg-surface-muted px-1 py-0.5 font-mono text-[11px] text-text-secondary">/clear</code> 입력 후 실행하면 결과 화면을 지울 수 있습니다</p>
+        <p className="mt-2 text-xs text-text-muted">Ctrl+Enter로 실행 · 2글자+Tab 자동완성 · <code className="rounded bg-surface-muted px-1 py-0.5 font-mono text-[11px] text-text-secondary">/clear</code> 입력 후 실행하면 결과 화면을 지울 수 있습니다</p>
       </div>
 
       <SqlGeminiDialog

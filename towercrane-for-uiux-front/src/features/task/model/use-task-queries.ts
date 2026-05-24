@@ -3,11 +3,13 @@ import { toast } from 'sonner'
 import { taskApi } from '../../../entities/task/api/task-api'
 import type {
   CreateTaskRequest,
+  CreateTaskWorkspaceRequest,
   Task,
   TaskAttachment,
   TaskChecklist,
   TaskFilters,
   UpdateTaskRequest,
+  UpdateTaskWorkspaceRequest,
 } from '../../../entities/task/model/types'
 
 export const taskQueryKeys = {
@@ -18,6 +20,9 @@ export const taskQueryKeys = {
   comments: (taskId: string | null) => ['tasks', 'comments', taskId] as const,
   activity: (taskId: string | null) => ['tasks', 'activity', taskId] as const,
   attachments: (taskId: string | null) => ['tasks', 'attachments', taskId] as const,
+  workspaces: () => ['tasks', 'workspaces'] as const,
+  workspaceTasks: (workspaceId: string, filters: TaskFilters) =>
+    ['tasks', 'workspaces', workspaceId, 'tasks', filters] as const,
 }
 
 function messageFromError(error: unknown, fallback: string) {
@@ -329,5 +334,84 @@ export function useDeleteTaskAttachment(taskId: string | null) {
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.all })
     },
     onError: (error) => toast.error(messageFromError(error, '첨부 삭제에 실패했습니다.')),
+  })
+}
+
+// ── Workspace Hooks ───────────────────────────────────────────────────────
+
+export function useTaskWorkspaces() {
+  return useQuery({
+    queryKey: taskQueryKeys.workspaces(),
+    queryFn: () => taskApi.listWorkspaces(),
+  })
+}
+
+export function useCreateTaskWorkspace() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateTaskWorkspaceRequest) => taskApi.createWorkspace(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.workspaces() })
+      toast.success('워크스페이스가 생성되었습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '워크스페이스 생성에 실패했습니다.')),
+  })
+}
+
+export function useUpdateTaskWorkspace() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateTaskWorkspaceRequest }) =>
+      taskApi.updateWorkspace(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.workspaces() })
+      toast.success('워크스페이스가 수정되었습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '워크스페이스 수정에 실패했습니다.')),
+  })
+}
+
+export function useDeleteTaskWorkspace() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (workspaceId: string) => taskApi.deleteWorkspace(workspaceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.workspaces() })
+      toast.success('워크스페이스가 삭제되었습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '워크스페이스 삭제에 실패했습니다.')),
+  })
+}
+
+export function useReorderTaskWorkspaces() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (items: Array<{ id: string; orderIdx: number }>) =>
+      taskApi.reorderWorkspaces(items),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: taskQueryKeys.workspaces() }),
+    onError: (error) => toast.error(messageFromError(error, '순서 저장에 실패했습니다.')),
+  })
+}
+
+export function useWorkspaceTasks(workspaceId: string, filters: TaskFilters) {
+  return useQuery({
+    queryKey: taskQueryKeys.workspaceTasks(workspaceId, filters),
+    queryFn: () => taskApi.listWorkspaceTasks(workspaceId, filters),
+    enabled: Boolean(workspaceId),
+  })
+}
+
+export function useCreateWorkspaceTask(workspaceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateTaskRequest) => taskApi.createWorkspaceTask(workspaceId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.workspaces() })
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', 'workspaces', workspaceId, 'tasks'],
+      })
+      toast.success('업무가 생성되었습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '업무 생성에 실패했습니다.')),
   })
 }

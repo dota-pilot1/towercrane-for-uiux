@@ -106,8 +106,34 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user
         ON study_diaries(user_id);
 
+      CREATE TABLE IF NOT EXISTS prototype_workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        icon TEXT,
+        color TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS prototype_workspace_members (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'member',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES prototype_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(workspace_id, user_id)
+      );
+
       CREATE TABLE IF NOT EXISTS categories (
         id TEXT PRIMARY KEY,
+        workspace_id TEXT,
         user_id TEXT NOT NULL,
         title TEXT NOT NULL,
         summary TEXT NOT NULL,
@@ -117,6 +143,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         checklist TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES prototype_workspaces(id) ON DELETE CASCADE,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
@@ -330,8 +357,34 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_api_doc_blocks_endpoint_order
         ON api_doc_blocks(endpoint_id, order_idx);
 
+      CREATE TABLE IF NOT EXISTS task_workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        icon TEXT,
+        color TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS task_workspace_members (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'member',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES task_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(workspace_id, user_id)
+      );
+
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
+        workspace_id TEXT,
         title TEXT NOT NULL,
         content TEXT NOT NULL DEFAULT '',
         mmd_content TEXT NOT NULL DEFAULT '',
@@ -348,6 +401,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         archived INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES task_workspaces(id) ON DELETE SET NULL,
         FOREIGN KEY(reporter_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL,
         FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE SET NULL
@@ -1950,6 +2004,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .insert(categoriesTable)
         .values({
           id: category.id,
+          workspaceId: this.getPrototypeDefaultWorkspaceId(),
           userId: demoUser.id,
           title: category.title,
           summary: category.summary,
@@ -2034,6 +2089,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'categories',
       'checklist',
       "ALTER TABLE categories ADD COLUMN checklist TEXT DEFAULT '[]' NOT NULL",
+    );
+    this.ensureColumn(
+      'categories',
+      'workspace_id',
+      'ALTER TABLE categories ADD COLUMN workspace_id TEXT',
     );
     this.ensureColumn(
       'prototypes',
@@ -2126,6 +2186,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       "ALTER TABLE tasks ADD COLUMN mmd_content TEXT DEFAULT '' NOT NULL",
     );
     this.ensureColumn(
+      'tasks',
+      'workspace_id',
+      'ALTER TABLE tasks ADD COLUMN workspace_id TEXT',
+    );
+    this.ensureColumn(
       'api_doc_categories',
       'team_id',
       'ALTER TABLE api_doc_categories ADD COLUMN team_id TEXT',
@@ -2134,11 +2199,26 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user
         ON study_diaries(user_id);
 
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_prototype_workspace_members_unique
+        ON prototype_workspace_members(workspace_id, user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_categories_workspace_order
+        ON categories(workspace_id, order_idx);
+
       CREATE INDEX IF NOT EXISTS idx_challenge_categories_diary
         ON challenge_categories(diary_id, order_idx);
 
       CREATE INDEX IF NOT EXISTS idx_sql_practice_notes_public_token
         ON sql_practice_notes(public_token);
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_task_workspace_members_unique
+        ON task_workspace_members(workspace_id, user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_tasks_workspace_status
+        ON tasks(workspace_id, status, archived);
+
+      CREATE INDEX IF NOT EXISTS idx_tasks_workspace_order
+        ON tasks(workspace_id, order_idx);
 
       CREATE INDEX IF NOT EXISTS idx_tasks_assignee_scope
         ON tasks(assignee_id, scope, archived, status);
@@ -2155,6 +2235,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     const now = new Date().toISOString();
     const demoUser = this.ensureDemoUser(now);
+    this.ensurePrototypeDefaultWorkspace(now, demoUser.id);
+    this.ensureTaskDefaultWorkspace(now, demoUser.id);
     this.ensureApiDocDefaultTeam(now, demoUser.id);
     this.ensureStudyDiariesForUsers(now);
     this.backfillChallengeCategoryDiaries(demoUser.id, now);
@@ -2227,6 +2309,156 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `,
       )
       .run(defaultTeamId, now);
+  }
+
+  private ensurePrototypeDefaultWorkspace(now: string, userId: string) {
+    const defaultWorkspaceId = 'prototype-workspace-console';
+    const existing = this.sqlite
+      .prepare('SELECT id FROM prototype_workspaces WHERE id = ? LIMIT 1')
+      .get(defaultWorkspaceId) as { id: string } | undefined;
+
+    if (!existing) {
+      this.sqlite
+        .prepare(
+          `
+            INSERT INTO prototype_workspaces (
+              id,
+              name,
+              description,
+              icon,
+              color,
+              order_idx,
+              created_by,
+              created_at,
+              updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+        )
+        .run(
+          defaultWorkspaceId,
+          'Prototype Console',
+          '기존 프로토타입 카테고리를 담는 기본 워크스페이스',
+          'GitBranch',
+          null,
+          0,
+          userId,
+          now,
+          now,
+        );
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          INSERT OR IGNORE INTO prototype_workspace_members (
+            id,
+            workspace_id,
+            user_id,
+            role,
+            created_at,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `,
+      )
+      .run(
+        `prototype-member-${defaultWorkspaceId}-${userId}`,
+        defaultWorkspaceId,
+        userId,
+        'owner',
+        now,
+        now,
+      );
+
+    this.sqlite
+      .prepare(
+        `
+          UPDATE categories
+          SET workspace_id = ?, updated_at = ?
+          WHERE workspace_id IS NULL OR workspace_id = ''
+        `,
+      )
+      .run(defaultWorkspaceId, now);
+  }
+
+  private getPrototypeDefaultWorkspaceId() {
+    return 'prototype-workspace-console';
+  }
+
+  private ensureTaskDefaultWorkspace(now: string, userId: string) {
+    const defaultWorkspaceId = 'task-workspace-default';
+    const existing = this.sqlite
+      .prepare('SELECT id FROM task_workspaces WHERE id = ? LIMIT 1')
+      .get(defaultWorkspaceId) as { id: string } | undefined;
+
+    if (!existing) {
+      this.sqlite
+        .prepare(
+          `
+            INSERT INTO task_workspaces (
+              id,
+              name,
+              description,
+              icon,
+              color,
+              order_idx,
+              created_by,
+              created_at,
+              updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+        )
+        .run(
+          defaultWorkspaceId,
+          '전체 업무',
+          '기존 업무를 담는 기본 워크스페이스',
+          'CheckSquare',
+          null,
+          0,
+          userId,
+          now,
+          now,
+        );
+    }
+
+    this.sqlite
+      .prepare(
+        `
+          INSERT OR IGNORE INTO task_workspace_members (
+            id,
+            workspace_id,
+            user_id,
+            role,
+            created_at,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `,
+      )
+      .run(
+        `task-member-${defaultWorkspaceId}-${userId}`,
+        defaultWorkspaceId,
+        userId,
+        'owner',
+        now,
+        now,
+      );
+
+    this.sqlite
+      .prepare(
+        `
+          UPDATE tasks
+          SET workspace_id = ?, updated_at = ?
+          WHERE workspace_id IS NULL OR workspace_id = ''
+        `,
+      )
+      .run(defaultWorkspaceId, now);
+  }
+
+  getTaskDefaultWorkspaceId() {
+    return 'task-workspace-default';
   }
 
   private reconcileAiNativeMenus(now: string) {

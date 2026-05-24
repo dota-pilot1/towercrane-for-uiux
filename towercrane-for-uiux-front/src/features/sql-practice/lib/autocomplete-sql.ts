@@ -1,3 +1,5 @@
+const MIN_AUTOCOMPLETE_CHARS = 2
+
 function getCurrentWord(text: string, cursorPos: number) {
   const before = text.slice(0, cursorPos)
   const match = before.match(/(\S+)$/)
@@ -18,6 +20,7 @@ export function getAllMatches(
   const result = getCurrentWord(text, cursorPos)
   if (!result) return []
   const { word } = result
+  if (word.length < MIN_AUTOCOMPLETE_CHARS) return []
   const upper = word.toUpperCase()
   const candidates = [...keywords, ...tableNames, ...columnNames]
   return candidates.filter((c) => c.toUpperCase().startsWith(upper) && c !== word)

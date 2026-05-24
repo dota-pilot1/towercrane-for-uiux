@@ -1,3 +1,28 @@
+export type TaskWorkspaceRole = 'owner' | 'editor' | 'member' | 'viewer'
+
+export type TaskWorkspace = {
+  id: string
+  name: string
+  description: string | null
+  icon: string | null
+  color: string | null
+  orderIdx: number
+  createdBy: string | null
+  createdAt: string
+  updatedAt: string
+  taskCount: number
+  openTaskCount: number
+}
+
+export type CreateTaskWorkspaceRequest = {
+  name: string
+  description?: string
+  icon?: string | null
+  color?: string | null
+}
+
+export type UpdateTaskWorkspaceRequest = Partial<CreateTaskWorkspaceRequest>
+
 export type TaskType =
   | 'FEATURE'
   | 'BUG'

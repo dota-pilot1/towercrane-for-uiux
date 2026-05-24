@@ -1,6 +1,7 @@
 import { apiRequest } from '../../../shared/api/http'
 import type {
   CreateTaskRequest,
+  CreateTaskWorkspaceRequest,
   Task,
   TaskActivityLog,
   TaskAttachment,
@@ -8,7 +9,9 @@ import type {
   TaskComment,
   TaskFilters,
   TaskListResponse,
+  TaskWorkspace,
   UpdateTaskRequest,
+  UpdateTaskWorkspaceRequest,
 } from '../model/types'
 
 function toSearchParams(filters?: TaskFilters) {
@@ -156,4 +159,44 @@ export const taskApi = {
       `/tasks/${taskId}/attachments/${attachmentId}`,
       { method: 'DELETE' },
     ),
+
+  // ── Workspace ────────────────────────────────────────────────────────────
+  listWorkspaces: () => apiRequest<TaskWorkspace[]>('/tasks/workspaces'),
+
+  createWorkspace: (body: CreateTaskWorkspaceRequest) =>
+    apiRequest<TaskWorkspace>('/tasks/workspaces', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  updateWorkspace: (workspaceId: string, body: UpdateTaskWorkspaceRequest) =>
+    apiRequest<TaskWorkspace>(`/tasks/workspaces/${workspaceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  deleteWorkspace: (workspaceId: string) =>
+    apiRequest<{ success: boolean }>(`/tasks/workspaces/${workspaceId}`, {
+      method: 'DELETE',
+    }),
+
+  reorderWorkspaces: (items: Array<{ id: string; orderIdx: number }>) =>
+    apiRequest<TaskWorkspace[]>('/tasks/workspaces/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    }),
+
+  listWorkspaceTasks: (workspaceId: string, filters?: TaskFilters) => {
+    const params = toSearchParams(filters)
+    const query = params.toString()
+    return apiRequest<TaskListResponse>(
+      `/tasks/workspaces/${workspaceId}/tasks${query ? `?${query}` : ''}`,
+    )
+  },
+
+  createWorkspaceTask: (workspaceId: string, body: CreateTaskRequest) =>
+    apiRequest<Task>(`/tasks/workspaces/${workspaceId}/tasks`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 }

@@ -998,7 +998,7 @@ function SqlEditor({
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <h3 className="text-sm font-black text-text-primary">{title}</h3>
         <p className="text-xs font-semibold text-text-muted">
-          Tab 자동완성 · Ctrl+Enter 실행 · 키워드 클릭 삽입
+          2글자+Tab 자동완성 · Ctrl+Enter 실행 · 키워드 클릭 삽입
         </p>
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">

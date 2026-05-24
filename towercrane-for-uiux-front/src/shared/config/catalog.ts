@@ -40,6 +40,7 @@ export type ScenarioIconKey =
 
 export type ScenarioCategory = {
   id: string
+  workspaceId?: string | null
   userId?: string
   title: string
   summary: string

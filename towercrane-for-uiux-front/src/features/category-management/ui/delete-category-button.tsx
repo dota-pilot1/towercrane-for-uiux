@@ -6,6 +6,7 @@ import { ConfirmDeleteIconButton } from '../../../shared/ui/confirm-delete-icon-
 
 type DeleteCategoryButtonProps = {
   categoryId: string
+  workspaceId?: string
   fallbackCategoryId?: string
   asIcon?: boolean
   size?: 'icon' | 'sm-icon'
@@ -15,6 +16,7 @@ const CONFIRM_MESSAGE = '이 카테고리를 삭제할까요? 연결된 프로�
 
 export function DeleteCategoryButton({
   categoryId,
+  workspaceId,
   fallbackCategoryId,
   asIcon,
   size = 'icon',
@@ -26,7 +28,14 @@ export function DeleteCategoryButton({
     await deleteCategory.mutateAsync(categoryId)
 
     if (fallbackCategoryId && fallbackCategoryId !== categoryId) {
-      navigate({ to: '/prototype/$categoryId', params: { categoryId: fallbackCategoryId } })
+      if (workspaceId) {
+        navigate({
+          to: '/prototype/workspaces/$workspaceId/categories/$categoryId',
+          params: { workspaceId, categoryId: fallbackCategoryId },
+        })
+      } else {
+        navigate({ to: '/prototype/$categoryId', params: { categoryId: fallbackCategoryId } })
+      }
     }
   }
 

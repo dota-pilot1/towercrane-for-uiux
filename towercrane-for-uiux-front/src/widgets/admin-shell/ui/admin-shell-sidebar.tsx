@@ -47,7 +47,10 @@ import { toast } from 'sonner'
 import { AddCategoryDialog } from '../../../features/category-management/ui/add-category-dialog'
 import { DeleteCategoryButton } from '../../../features/category-management/ui/delete-category-button'
 import { EditCategoryDialog } from '../../../features/category-management/ui/edit-category-dialog'
-import { useReorderCategories } from '../../../shared/api/catalog'
+import {
+  useReorderCategories,
+  useReorderWorkspaceCategories,
+} from '../../../shared/api/catalog'
 import type { ScenarioCategory } from '../../../shared/config/catalog'
 
 const iconMap: Record<string, LucideIcon> = {
@@ -77,6 +80,7 @@ const iconMap: Record<string, LucideIcon> = {
 type AdminShellSidebarProps = {
   activeCategoryId: string | null
   categories: ScenarioCategory[]
+  workspaceId?: string
   isAuthenticated: boolean
   isLoading: boolean
   onCategoriesReorder: (categories: ScenarioCategory[]) => void
@@ -86,12 +90,14 @@ type AdminShellSidebarProps = {
 export function AdminShellSidebar({
   activeCategoryId,
   categories,
+  workspaceId,
   isAuthenticated,
   isLoading,
   onCategoriesReorder,
   onSelectCategory,
 }: AdminShellSidebarProps) {
   const reorderCategories = useReorderCategories()
+  const reorderWorkspaceCategories = useReorderWorkspaceCategories(workspaceId ?? '')
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -114,6 +120,25 @@ export function AdminShellSidebar({
     const nextCategories = arrayMove(categories, oldIndex, newIndex)
 
     onCategoriesReorder(nextCategories)
+    const onError = () => {
+      onCategoriesReorder(prevCategories)
+      toast.error('순서 저장에 실패했어요. 다시 시도해 주세요.')
+    }
+    const onSuccess = () => {
+      toast.success('카테고리 순서가 저장됐어요')
+    }
+
+    if (workspaceId) {
+      reorderWorkspaceCategories.mutate(
+        nextCategories.map((category, idx) => ({
+          id: category.id,
+          orderIdx: idx,
+        })),
+        { onSuccess, onError },
+      )
+      return
+    }
+
     reorderCategories.mutate(nextCategories.map((category) => category.id), {
       onSuccess: () => {
         toast.success('카테고리 순서가 저장됐어요')
@@ -144,7 +169,7 @@ export function AdminShellSidebar({
 
               {isAuthenticated ? (
                 <div className="mb-3">
-                  <AddCategoryDialog />
+                  <AddCategoryDialog workspaceId={workspaceId} />
                 </div>
               ) : null}
 
@@ -170,6 +195,7 @@ export function AdminShellSidebar({
                           <SortableCategoryItem
                             key={category.id}
                             item={category}
+                            workspaceId={workspaceId}
                             isActive={activeCategoryId === category.id}
                             onSelect={() => onSelectCategory(category.id)}
                           />
@@ -225,11 +251,13 @@ export function AdminShellSidebar({
 type SortableCategoryItemProps = {
   isActive: boolean
   item: ScenarioCategory
+  workspaceId?: string
   onSelect: () => void
 }
 
 function SortableCategoryItem({
   item,
+  workspaceId,
   isActive,
   onSelect,
 }: SortableCategoryItemProps) {
@@ -321,7 +349,12 @@ function SortableCategoryItem({
         {actionsOpen ? (
           <div className="absolute right-2 top-[calc(100%+0.35rem)] z-50 flex items-center gap-1 rounded-md border border-surface-border bg-surface-raised p-1 shadow-2xl">
             <EditCategoryDialog category={item} asIcon size="sm-icon" />
-            <DeleteCategoryButton categoryId={item.id} asIcon size="sm-icon" />
+            <DeleteCategoryButton
+              categoryId={item.id}
+              workspaceId={workspaceId}
+              asIcon
+              size="sm-icon"
+            />
           </div>
         ) : null}
       </div>

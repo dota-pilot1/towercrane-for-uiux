@@ -7,6 +7,7 @@ import type { ScenarioCategory } from '../../../shared/config/catalog'
 
 type AdminShellCategoryHeaderProps = {
   selectedCategory: ScenarioCategory
+  workspaceId?: string
   fallbackCategoryId?: string
   isAuthenticated: boolean
   insetClassName: string
@@ -14,6 +15,7 @@ type AdminShellCategoryHeaderProps = {
 
 export function AdminShellCategoryHeader({
   selectedCategory,
+  workspaceId,
   fallbackCategoryId,
   isAuthenticated,
   insetClassName,
@@ -51,6 +53,7 @@ export function AdminShellCategoryHeader({
           {isAuthenticated && (
             <CategoryHeaderActionsMenu
               selectedCategory={selectedCategory}
+              workspaceId={workspaceId}
               fallbackCategoryId={fallbackCategoryId}
             />
           )}
@@ -84,11 +87,13 @@ function CopyLinkButton() {
 
 type CategoryHeaderActionsMenuProps = {
   selectedCategory: ScenarioCategory
+  workspaceId?: string
   fallbackCategoryId?: string
 }
 
 function CategoryHeaderActionsMenu({
   selectedCategory,
+  workspaceId,
   fallbackCategoryId,
 }: CategoryHeaderActionsMenuProps) {
   const [actionsOpen, setActionsOpen] = useState(false)
@@ -127,6 +132,7 @@ function CategoryHeaderActionsMenu({
           <EditCategoryDialog category={selectedCategory} asIcon size="sm-icon" />
           <DeleteCategoryButton
             categoryId={selectedCategory.id}
+            workspaceId={workspaceId}
             fallbackCategoryId={fallbackCategoryId}
             asIcon
             size="sm-icon"

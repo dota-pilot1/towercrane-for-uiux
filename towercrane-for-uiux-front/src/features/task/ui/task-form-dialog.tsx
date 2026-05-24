@@ -21,7 +21,7 @@ import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 import { Select } from '../../../shared/ui/select'
 import { Textarea } from '../../../shared/ui/textarea'
-import { useCreateTask } from '../model/use-task-queries'
+import { useCreateTask, useCreateWorkspaceTask } from '../model/use-task-queries'
 
 type TaskFormState = Required<
   Omit<CreateTaskRequest, 'assigneeId' | 'dueDate' | 'visibility'>
@@ -53,6 +53,7 @@ export function TaskFormDialog({
   defaultScope = 'TEAM',
   currentUserId,
   lockAssigneeToCurrentUser,
+  workspaceId,
   onOpenChange,
 }: {
   open: boolean
@@ -60,12 +61,14 @@ export function TaskFormDialog({
   defaultScope?: TaskScope
   currentUserId?: string
   lockAssigneeToCurrentUser?: boolean
+  workspaceId?: string
   onOpenChange: (open: boolean) => void
 }) {
   const [form, setForm] = useState(() =>
     getInitialForm(defaultScope, currentUserId, lockAssigneeToCurrentUser),
   )
   const createTask = useCreateTask()
+  const createWorkspaceTask = useCreateWorkspaceTask(workspaceId ?? '')
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -78,7 +81,7 @@ export function TaskFormDialog({
     event.preventDefault()
     if (!form.title.trim()) return
 
-    await createTask.mutateAsync({
+    const payload = {
       title: form.title.trim(),
       content: form.content,
       taskType: form.taskType,
@@ -87,10 +90,18 @@ export function TaskFormDialog({
       scope: form.scope,
       assigneeId: form.assigneeId || null,
       dueDate: form.dueDate || null,
-    })
+    }
+
+    if (workspaceId) {
+      await createWorkspaceTask.mutateAsync(payload)
+    } else {
+      await createTask.mutateAsync(payload)
+    }
     setForm(getInitialForm(defaultScope, currentUserId, lockAssigneeToCurrentUser))
     handleOpenChange(false)
   }
+
+  const isPending = workspaceId ? createWorkspaceTask.isPending : createTask.isPending
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
@@ -263,8 +274,8 @@ export function TaskFormDialog({
               >
                 취소
               </Button>
-              <Button type="submit" disabled={createTask.isPending}>
-                {createTask.isPending ? '생성 중' : '생성'}
+              <Button type="submit" disabled={isPending}>
+                {isPending ? '생성 중' : '생성'}
               </Button>
             </div>
           </form>

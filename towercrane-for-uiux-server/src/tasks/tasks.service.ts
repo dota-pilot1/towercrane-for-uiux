@@ -11,6 +11,8 @@ import {
   taskAttachmentsTable,
   taskChecklistsTable,
   taskCommentsTable,
+  taskWorkspaceMembersTable,
+  taskWorkspacesTable,
   tasksTable,
   usersTable,
   type TaskActivityType,
@@ -21,6 +23,8 @@ import {
   type TaskCommentRow,
   type TaskInsert,
   type TaskRow,
+  type TaskWorkspaceInsert,
+  type TaskWorkspaceRow,
   type UserRow,
 } from '../database/schema';
 import {
@@ -28,8 +32,10 @@ import {
   createAttachmentSchema,
   createCommentSchema,
   createTaskSchema,
+  createTaskWorkspaceSchema,
   listTasksQuerySchema,
   reorderTasksSchema,
+  reorderTaskWorkspacesSchema,
   taskIdsSchema,
   updateChecklistSchema,
   updateCommentSchema,
@@ -37,6 +43,7 @@ import {
   updateTaskPrioritySchema,
   updateTaskSchema,
   updateTaskStatusSchema,
+  updateTaskWorkspaceSchema,
 } from './tasks.schemas';
 
 export type TaskUser = {
@@ -896,5 +903,257 @@ export class TasksService {
       userName: user?.name ?? null,
       userEmail: user?.email ?? null,
     };
+  }
+
+  // ── Task Workspaces ──────────────────────────────────────────────────────
+
+  listWorkspaces() {
+    const workspaces = this.db
+      .select()
+      .from(taskWorkspacesTable)
+      .orderBy(asc(taskWorkspacesTable.orderIdx), asc(taskWorkspacesTable.createdAt))
+      .all();
+
+    return workspaces.map((ws) => {
+      const taskCount = this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(tasksTable)
+        .where(and(eq(tasksTable.workspaceId, ws.id), eq(tasksTable.archived, false)))
+        .get();
+
+      const openTaskCount = this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(tasksTable)
+        .where(
+          and(
+            eq(tasksTable.workspaceId, ws.id),
+            eq(tasksTable.archived, false),
+            sql`${tasksTable.status} IN ('TODO','IN_PROGRESS','REVIEW')`,
+          ),
+        )
+        .get();
+
+      return {
+        ...ws,
+        taskCount: Number(taskCount?.count ?? 0),
+        openTaskCount: Number(openTaskCount?.count ?? 0),
+      };
+    });
+  }
+
+  createWorkspace(user: TaskUser, payload: unknown) {
+    const input = createTaskWorkspaceSchema.parse(payload);
+    const now = new Date().toISOString();
+    const maxOrder = this.db
+      .select({ orderIdx: taskWorkspacesTable.orderIdx })
+      .from(taskWorkspacesTable)
+      .all()
+      .reduce((max, row) => Math.max(max, row.orderIdx), -1);
+
+    const row: TaskWorkspaceInsert = {
+      id: `task-ws-${randomUUID().slice(0, 12)}`,
+      name: input.name,
+      description: input.description || null,
+      icon: input.icon ?? null,
+      color: input.color ?? null,
+      orderIdx: maxOrder + 1,
+      createdBy: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.db.insert(taskWorkspacesTable).values(row).run();
+
+    this.db
+      .insert(taskWorkspaceMembersTable)
+      .values({
+        id: `task-wm-${randomUUID().slice(0, 12)}`,
+        workspaceId: row.id,
+        userId: user.id,
+        role: 'owner',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.ensureWorkspace(row.id);
+  }
+
+  updateWorkspace(user: TaskUser, workspaceId: string, payload: unknown) {
+    const ws = this.ensureWorkspace(workspaceId);
+    this.ensureCanManageWorkspace(user, ws);
+    const input = updateTaskWorkspaceSchema.parse(payload);
+    const now = new Date().toISOString();
+    const changes: Partial<TaskWorkspaceInsert> = { updatedAt: now };
+
+    if (input.name !== undefined) changes.name = input.name;
+    if (input.description !== undefined) changes.description = input.description || null;
+    if ('icon' in input) changes.icon = input.icon ?? null;
+    if ('color' in input) changes.color = input.color ?? null;
+
+    this.db
+      .update(taskWorkspacesTable)
+      .set(changes)
+      .where(eq(taskWorkspacesTable.id, workspaceId))
+      .run();
+
+    return this.ensureWorkspace(workspaceId);
+  }
+
+  deleteWorkspace(user: TaskUser, workspaceId: string) {
+    const ws = this.ensureWorkspace(workspaceId);
+    this.ensureCanManageWorkspace(user, ws);
+
+    const taskCount = this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(tasksTable)
+      .where(eq(tasksTable.workspaceId, workspaceId))
+      .get();
+
+    if (Number(taskCount?.count ?? 0) > 0) {
+      throw new ForbiddenException(
+        '업무가 있는 워크스페이스는 삭제할 수 없습니다. 업무를 먼저 이동하거나 삭제하세요.',
+      );
+    }
+
+    this.db
+      .delete(taskWorkspacesTable)
+      .where(eq(taskWorkspacesTable.id, workspaceId))
+      .run();
+
+    return { success: true };
+  }
+
+  reorderWorkspaces(user: TaskUser, payload: unknown) {
+    const input = reorderTaskWorkspacesSchema.parse(payload);
+    const now = new Date().toISOString();
+
+    for (const item of input.items) {
+      this.db
+        .update(taskWorkspacesTable)
+        .set({ orderIdx: item.orderIdx, updatedAt: now })
+        .where(eq(taskWorkspacesTable.id, item.id))
+        .run();
+    }
+
+    return this.listWorkspaces();
+  }
+
+  listWorkspaceTasks(user: TaskUser, workspaceId: string, rawQuery: unknown) {
+    this.ensureWorkspace(workspaceId);
+    const query = listTasksQuerySchema.parse(rawQuery ?? {});
+    const conditions = this.buildListConditions(user, query);
+    conditions.push(eq(tasksTable.workspaceId, workspaceId));
+    const offset = (query.page - 1) * query.pageSize;
+
+    const rows = this.db
+      .select()
+      .from(tasksTable)
+      .where(and(...conditions))
+      .orderBy(...this.getTaskOrderBy(query.sort))
+      .limit(query.pageSize)
+      .offset(offset)
+      .all();
+
+    const totalRow = this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(tasksTable)
+      .where(and(...conditions))
+      .get();
+
+    const usersById = this.getUsersById();
+
+    return {
+      items: rows.map((task) => this.toTaskDto(task, usersById)),
+      total: Number(totalRow?.count ?? 0),
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+  }
+
+  createWorkspaceTask(user: TaskUser, workspaceId: string, payload: unknown) {
+    this.ensureWorkspace(workspaceId);
+    const input = createTaskSchema.parse(payload);
+    const isPersonalTask = input.scope === 'PERSONAL';
+    const assigneeId = isPersonalTask
+      ? (input.assigneeId ?? user.id)
+      : (input.assigneeId ?? null);
+    const ownerId = isPersonalTask ? user.id : null;
+    const visibility = input.visibility ?? (isPersonalTask ? 'PRIVATE' : 'TEAM');
+
+    this.ensureAssignableUser(assigneeId);
+
+    const now = new Date().toISOString();
+    const maxOrder = this.db
+      .select({ orderIdx: tasksTable.orderIdx })
+      .from(tasksTable)
+      .where(eq(tasksTable.workspaceId, workspaceId))
+      .all()
+      .reduce((max, row) => Math.max(max, row.orderIdx), -1);
+
+    const row: TaskInsert = {
+      id: `task-${randomUUID().slice(0, 12)}`,
+      workspaceId,
+      title: input.title,
+      content: input.content,
+      mmdContent: input.mmdContent,
+      taskType: input.taskType,
+      status: input.status,
+      priority: input.priority,
+      scope: input.scope,
+      ownerId,
+      visibility,
+      reporterId: user.id,
+      assigneeId,
+      dueDate: input.dueDate ?? null,
+      orderIdx: maxOrder + 1,
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.db.insert(tasksTable).values(row).run();
+    this.recordActivity({
+      taskId: row.id,
+      actorId: user.id,
+      activityType: 'CREATED',
+      toValue: row.id,
+      message: '업무가 생성되었습니다.',
+    });
+
+    return this.getTaskDetail(user, row.id);
+  }
+
+  private ensureWorkspace(workspaceId: string) {
+    const ws = this.db
+      .select()
+      .from(taskWorkspacesTable)
+      .where(eq(taskWorkspacesTable.id, workspaceId))
+      .get();
+
+    if (!ws) {
+      throw new NotFoundException(`Task workspace not found: ${workspaceId}`);
+    }
+
+    return ws;
+  }
+
+  private ensureCanManageWorkspace(user: TaskUser, ws: TaskWorkspaceRow) {
+    if (user.role === 'admin' || ws.createdBy === user.id) return;
+
+    const member = this.db
+      .select()
+      .from(taskWorkspaceMembersTable)
+      .where(
+        and(
+          eq(taskWorkspaceMembersTable.workspaceId, ws.id),
+          eq(taskWorkspaceMembersTable.userId, user.id),
+        ),
+      )
+      .get();
+
+    if (!member || member.role !== 'owner') {
+      throw new ForbiddenException('You cannot manage this workspace');
+    }
   }
 }

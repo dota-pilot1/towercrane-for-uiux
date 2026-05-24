@@ -40,6 +40,32 @@ export type PrototypeListResponse = {
   query: { q: string; sort: PrototypeListSort }
 }
 
+export type PrototypeWorkspaceRole = 'owner' | 'editor' | 'member' | 'viewer'
+
+export type PrototypeWorkspace = {
+  id: string
+  name: string
+  description: string | null
+  icon: string | null
+  color: string | null
+  orderIdx: number
+  createdBy: string | null
+  createdAt: string
+  updatedAt: string
+  role: PrototypeWorkspaceRole | null
+  categoryCount: number
+  prototypeCount: number
+}
+
+export type CreatePrototypeWorkspacePayload = {
+  name: string
+  description?: string | null
+  icon?: string | null
+  color?: string | null
+}
+
+export type UpdatePrototypeWorkspacePayload = Partial<CreatePrototypeWorkspacePayload>
+
 export type CreateCategoryPayload = {
   title: string
   summary: string
@@ -77,6 +103,86 @@ export function useCatalogCategories() {
   })
 }
 
+export function usePrototypeWorkspaces() {
+  return useQuery({
+    queryKey: ['catalog', 'workspaces'],
+    queryFn: () => apiRequest<PrototypeWorkspace[]>('/catalog/workspaces'),
+  })
+}
+
+export function useCreatePrototypeWorkspace() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: CreatePrototypeWorkspacePayload) =>
+      apiRequest<PrototypeWorkspace>('/catalog/workspaces', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
+    },
+  })
+}
+
+export function useUpdatePrototypeWorkspace(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: UpdatePrototypeWorkspacePayload) =>
+      apiRequest<PrototypeWorkspace>(`/catalog/workspaces/${workspaceId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
+      void queryClient.invalidateQueries({
+        queryKey: ['catalog', 'workspaces', workspaceId],
+      })
+    },
+  })
+}
+
+export function useDeletePrototypeWorkspace() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (workspaceId: string) =>
+      apiRequest<{ success: boolean }>(`/catalog/workspaces/${workspaceId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
+    },
+  })
+}
+
+export function useReorderPrototypeWorkspaces() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (items: { id: string; orderIdx: number }[]) =>
+      apiRequest<{ success: boolean }>('/catalog/workspaces/reorder', {
+        method: 'POST',
+        body: JSON.stringify({ items }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
+    },
+  })
+}
+
+export function useWorkspaceCategories(workspaceId: string | null) {
+  return useQuery({
+    queryKey: ['catalog', 'workspaces', workspaceId, 'categories'],
+    queryFn: () =>
+      apiRequest<ScenarioCategory[]>(
+        `/catalog/workspaces/${workspaceId}/categories`,
+      ),
+    enabled: Boolean(workspaceId),
+  })
+}
+
 export function useCategory(categoryId: string) {
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
 
@@ -84,6 +190,25 @@ export function useCategory(categoryId: string) {
     queryKey: ['catalog', 'categories', categoryId],
     queryFn: () => apiRequest<ScenarioCategory>(`/catalog/categories/${categoryId}`),
     enabled: Boolean(categoryId),
+  })
+}
+
+export function useCreateWorkspaceCategory(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: CreateCategoryPayload) =>
+      apiRequest<ScenarioCategory>(`/catalog/workspaces/${workspaceId}/categories`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
+      void queryClient.invalidateQueries({
+        queryKey: ['catalog', 'workspaces', workspaceId, 'categories'],
+      })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
+    },
   })
 }
 
@@ -98,6 +223,7 @@ export function useCreateCategory() {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
   })
@@ -114,6 +240,7 @@ export function useUpdateCategory(categoryId: string) {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
   })
@@ -129,7 +256,29 @@ export function useDeleteCategory() {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
+    },
+  })
+}
+
+export function useReorderWorkspaceCategories(workspaceId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (items: { id: string; orderIdx: number }[]) =>
+      apiRequest<{ success: boolean }>(
+        `/catalog/workspaces/${workspaceId}/categories/reorder`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ items }),
+        },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['catalog', 'workspaces', workspaceId, 'categories'],
+      })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
     },
   })
 }
@@ -205,6 +354,7 @@ export function useCreatePrototype(categoryId: string) {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
   })
@@ -224,6 +374,7 @@ export function useUpdatePrototype(categoryId: string, prototypeId: string) {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
   })
@@ -242,6 +393,7 @@ export function useDeletePrototype(categoryId: string) {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'categories'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog', 'workspaces'] })
       void queryClient.invalidateQueries({ queryKey: ['catalog', 'prototypes'] })
     },
   })

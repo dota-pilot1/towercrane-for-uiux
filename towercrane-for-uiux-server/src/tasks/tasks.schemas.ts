@@ -119,6 +119,32 @@ export const createAttachmentSchema = z.object({
   fileSize: z.number().int().min(0).default(0),
 });
 
+export const createTaskWorkspaceSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  description: z.string().max(300).optional().default(''),
+  icon: z.string().max(40).optional().nullable(),
+  color: z.string().max(20).optional().nullable(),
+});
+
+export const updateTaskWorkspaceSchema = createTaskWorkspaceSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field is required',
+  });
+
+export const reorderTaskWorkspacesSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        orderIdx: z.number().int().min(0),
+      }),
+    )
+    .min(1),
+});
+
 export type ListTasksQuery = z.infer<typeof listTasksQuerySchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+export type CreateTaskWorkspaceInput = z.infer<typeof createTaskWorkspaceSchema>;
+export type UpdateTaskWorkspaceInput = z.infer<typeof updateTaskWorkspaceSchema>;

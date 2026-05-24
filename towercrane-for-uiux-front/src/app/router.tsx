@@ -12,6 +12,7 @@ import { Toaster } from 'sonner'
 import { AppHeader } from '../widgets/app-header/ui/app-header'
 import { LoginPage } from '../pages/auth/ui/login-page'
 import { WorkbenchPage } from '../pages/workbench/ui/workbench-page'
+import { PrototypeWorkspaceHomePage } from '../pages/prototype-workspace/ui/prototype-workspace-home-page'
 import { ChatbotBasicPage } from '../pages/chatbot/ui/chatbot-basic-page'
 import { ChatbotStreamingPage } from '../pages/chatbot/ui/chatbot-streaming-page'
 import { ChatbotHistoryPage } from '../pages/chatbot/ui/chatbot-history-page'
@@ -25,6 +26,7 @@ import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
 import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
 import { TaskPage } from '../pages/task/ui/task-page'
 import { TaskDetailPage } from '../pages/task/ui/task-detail-page'
+import { TaskWorkspaceHomePage } from '../pages/task-workspace/ui/task-workspace-home-page'
 import { PrototypeIssuesPage } from '../pages/prototype-issues/ui/prototype-issues-page'
 import { ProjectIssuesPage } from '../pages/project-issues/ui/project-issues-page'
 import { ProfilePage } from '../pages/profile/ui/profile-page'
@@ -202,7 +204,7 @@ function AppLayout() {
 const indexRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/',
-  component: WorkbenchPage,
+  component: PrototypeWorkspaceHomePage,
 })
 
 // ─── /prototype → WorkbenchPage (useAdminShell handles redirect to first category) ──
@@ -210,6 +212,22 @@ const indexRoute = createRoute({
 const prototypeIndexRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/prototype',
+  component: PrototypeWorkspaceHomePage,
+})
+
+const prototypeWorkspaceRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/prototype/workspaces/$workspaceId',
+  component: WorkbenchPage,
+})
+
+const prototypeWorkspaceCategoryRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/prototype/workspaces/$workspaceId/categories/$categoryId',
+  validateSearch: (search: Record<string, unknown>) => ({
+    prototypeId:
+      typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
+  }),
   component: WorkbenchPage,
 })
 
@@ -444,8 +462,19 @@ const boardDetailRoute = createRoute({
 const taskRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/task',
-  component: () => <TaskPage scopeMode="all" />,
+  component: TaskWorkspaceHomePage,
 })
+
+const taskWorkspaceRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/task/workspaces/$workspaceId',
+  component: TaskWorkspaceRoute,
+})
+
+function TaskWorkspaceRoute() {
+  const { workspaceId } = taskWorkspaceRoute.useParams()
+  return <TaskPage scopeMode="all" workspaceId={workspaceId} />
+}
 
 const myTaskRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
@@ -674,6 +703,8 @@ export const router = createRouter({
     appLayoutRoute.addChildren([
       indexRoute,
       prototypeIndexRoute,
+      prototypeWorkspaceRoute,
+      prototypeWorkspaceCategoryRoute,
       prototypeCategoryRoute,
       studyDiaryRoute,
       devChallengeRoute,
@@ -700,6 +731,7 @@ export const router = createRouter({
       boardListRoute,
       boardDetailRoute,
       taskRoute,
+      taskWorkspaceRoute,
       myTaskRoute,
       taskDetailRoute,
       userTaskRoute,

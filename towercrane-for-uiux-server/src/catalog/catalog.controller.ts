@@ -18,6 +18,100 @@ import { CatalogService } from './catalog.service';
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 
+  @Get('workspaces')
+  @UseGuards(OptionalAuthGuard)
+  listWorkspaces(@CurrentUser() user?: { id: string; role: string }) {
+    return this.catalogService.listWorkspaces(
+      user?.id ?? '',
+      user?.role ?? 'guest',
+    );
+  }
+
+  @Post('workspaces')
+  @UseGuards(AuthGuard)
+  createWorkspace(
+    @CurrentUser() user: { id: string; role: string },
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.createWorkspace(user.id, user.role, body);
+  }
+
+  @Post('workspaces/reorder')
+  @UseGuards(AuthGuard)
+  reorderWorkspaces(
+    @CurrentUser() user: { id: string; role: string },
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.reorderWorkspaces(user.id, user.role, body);
+  }
+
+  @Patch('workspaces/:workspaceId')
+  @UseGuards(AuthGuard)
+  updateWorkspace(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.updateWorkspace(
+      user.id,
+      user.role,
+      workspaceId,
+      body,
+    );
+  }
+
+  @Delete('workspaces/:workspaceId')
+  @UseGuards(AuthGuard)
+  deleteWorkspace(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.catalogService.deleteWorkspace(user.id, user.role, workspaceId);
+  }
+
+  @Get('workspaces/:workspaceId/categories')
+  @UseGuards(OptionalAuthGuard)
+  listWorkspaceCategories(
+    @CurrentUser() user: { id: string; role: string } | undefined,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.catalogService.listWorkspaceCategories(
+      user?.id ?? '',
+      user?.role ?? 'guest',
+      workspaceId,
+    );
+  }
+
+  @Post('workspaces/:workspaceId/categories')
+  @UseGuards(AuthGuard)
+  createWorkspaceCategory(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.createWorkspaceCategory(
+      user.id,
+      user.role,
+      workspaceId,
+      body,
+    );
+  }
+
+  @Post('workspaces/:workspaceId/categories/reorder')
+  @UseGuards(AuthGuard)
+  reorderWorkspaceCategories(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.reorderWorkspaceCategories(
+      user.id,
+      user.role,
+      workspaceId,
+      body,
+    );
+  }
+
   @Get('categories')
   @UseGuards(OptionalAuthGuard)
   listCategories(@CurrentUser() user?: { id: string; role: string }) {
@@ -44,8 +138,11 @@ export class CatalogController {
 
   @Post('categories')
   @UseGuards(AuthGuard)
-  createCategory(@CurrentUser() user: { id: string }, @Body() body: unknown) {
-    return this.catalogService.createCategory(user.id, body);
+  createCategory(
+    @CurrentUser() user: { id: string; role: string },
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.createCategory(user.id, user.role, body);
   }
 
   @Patch('categories/:categoryId')

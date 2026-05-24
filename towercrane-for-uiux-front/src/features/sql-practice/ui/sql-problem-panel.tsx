@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   BookOpenText,
   CheckCircle,
@@ -454,7 +454,7 @@ export function SqlProblemPanel({
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-sm font-black text-text-primary">답안 SQL</p>
             <p className="text-[10px] font-medium text-text-muted">
-              Tab: 자동완성 · 클릭: 커서 삽입 · Ctrl+클릭: 줄바꿈
+              2글자+Tab: 자동완성 · 클릭: 커서 삽입 · Ctrl+클릭: 줄바꿈
             </p>
           </div>
           <div className="flex items-start justify-between gap-3">

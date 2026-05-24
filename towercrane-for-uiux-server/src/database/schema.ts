@@ -55,8 +55,43 @@ export const emailVerificationsTable = sqliteTable('email_verifications', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export type PrototypeWorkspaceRole = 'owner' | 'editor' | 'member' | 'viewer';
+
+export const prototypeWorkspacesTable = sqliteTable('prototype_workspaces', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  icon: text('icon'),
+  color: text('color'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const prototypeWorkspaceMembersTable = sqliteTable(
+  'prototype_workspace_members',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => prototypeWorkspacesTable.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    role: text('role').$type<PrototypeWorkspaceRole>().notNull().default('member'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
 export const categoriesTable = sqliteTable('categories', {
   id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').references(() => prototypeWorkspacesTable.id, {
+    onDelete: 'cascade',
+  }),
   userId: text('user_id')
     .notNull()
     .references(() => usersTable.id, { onDelete: 'cascade' }),
@@ -307,6 +342,35 @@ export const apiDocBlocksTable = sqliteTable('api_doc_blocks', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export type TaskWorkspaceRole = 'owner' | 'editor' | 'member' | 'viewer';
+
+export const taskWorkspacesTable = sqliteTable('task_workspaces', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  icon: text('icon'),
+  color: text('color'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const taskWorkspaceMembersTable = sqliteTable('task_workspace_members', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id')
+    .notNull()
+    .references(() => taskWorkspacesTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  role: text('role').$type<TaskWorkspaceRole>().notNull().default('member'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export type TaskType =
   | 'FEATURE'
   | 'BUG'
@@ -352,6 +416,9 @@ export type ProjectIssueActivityType =
 
 export const tasksTable = sqliteTable('tasks', {
   id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').references(() => taskWorkspacesTable.id, {
+    onDelete: 'set null',
+  }),
   title: text('title').notNull(),
   content: text('content').notNull().default(''),
   mmdContent: text('mmd_content').notNull().default(''),
@@ -1369,6 +1436,8 @@ export const schema = {
   sessionsTable,
   studyDiariesTable,
   emailVerificationsTable,
+  prototypeWorkspacesTable,
+  prototypeWorkspaceMembersTable,
   categoriesTable,
   prototypesTable,
   prototypeReviewsTable,
@@ -1384,6 +1453,8 @@ export const schema = {
   apiDocCategoriesTable,
   apiDocEndpointsTable,
   apiDocBlocksTable,
+  taskWorkspacesTable,
+  taskWorkspaceMembersTable,
   tasksTable,
   taskChecklistsTable,
   taskCommentsTable,
@@ -1445,6 +1516,14 @@ export type StudyDiaryInsert = typeof studyDiariesTable.$inferInsert;
 export type EmailVerificationRow = typeof emailVerificationsTable.$inferSelect;
 export type EmailVerificationInsert =
   typeof emailVerificationsTable.$inferInsert;
+export type PrototypeWorkspaceRow =
+  typeof prototypeWorkspacesTable.$inferSelect;
+export type PrototypeWorkspaceInsert =
+  typeof prototypeWorkspacesTable.$inferInsert;
+export type PrototypeWorkspaceMemberRow =
+  typeof prototypeWorkspaceMembersTable.$inferSelect;
+export type PrototypeWorkspaceMemberInsert =
+  typeof prototypeWorkspaceMembersTable.$inferInsert;
 export type CategoryRow = typeof categoriesTable.$inferSelect;
 export type CategoryInsert = typeof categoriesTable.$inferInsert;
 export type PrototypeRow = typeof prototypesTable.$inferSelect;
@@ -1475,6 +1554,10 @@ export type ApiDocEndpointRow = typeof apiDocEndpointsTable.$inferSelect;
 export type ApiDocEndpointInsert = typeof apiDocEndpointsTable.$inferInsert;
 export type ApiDocBlockRow = typeof apiDocBlocksTable.$inferSelect;
 export type ApiDocBlockInsert = typeof apiDocBlocksTable.$inferInsert;
+export type TaskWorkspaceRow = typeof taskWorkspacesTable.$inferSelect;
+export type TaskWorkspaceInsert = typeof taskWorkspacesTable.$inferInsert;
+export type TaskWorkspaceMemberRow = typeof taskWorkspaceMembersTable.$inferSelect;
+export type TaskWorkspaceMemberInsert = typeof taskWorkspaceMembersTable.$inferInsert;
 export type TaskRow = typeof tasksTable.$inferSelect;
 export type TaskInsert = typeof tasksTable.$inferInsert;
 export type TaskChecklistRow = typeof taskChecklistsTable.$inferSelect;
