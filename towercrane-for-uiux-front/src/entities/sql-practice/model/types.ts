@@ -394,3 +394,84 @@ export type SqlPersonalPracticePublicProblemResponse = {
   erdMmd: string | null
   submissionStatus: SqlPersonalPracticeSubmissionStatus | null
 }
+
+export type SqlTeamPracticeMemberRole = 'owner' | 'editor' | 'member'
+
+export type SqlTeamPracticeSubmissionStatus = {
+  problemId: string
+  bestScore: number
+  isCorrect: boolean
+  lastSubmittedAt: string
+  lastSubmissionId: string
+}
+
+export type SqlTeamPracticeWorkspace = {
+  id: string
+  title: string
+  description: string
+  activeSchemaVersionId: string | null
+  createdBy: string
+  myRole: SqlTeamPracticeMemberRole
+  memberCount: number
+  problemCount: number
+  archived: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type SqlTeamPracticeMember = {
+  id: string
+  workspaceId: string
+  userId: string
+  userName: string | null
+  userEmail: string | null
+  role: SqlTeamPracticeMemberRole
+  createdAt: string
+  updatedAt: string
+}
+
+export type SqlTeamPracticeSchemaVersion = {
+  id: string
+  workspaceId: string
+  version: number
+  title: string
+  description: string
+  erdMmd: string | null
+  dbFileHash: string
+  sourceType: 'seed' | 'uploaded_sql' | 'uploaded_sqlite'
+  sourceFileName: string | null
+  replacedFromSchemaVersionId: string | null
+  createdAt: string
+}
+
+export type SqlTeamPracticeProblem = {
+  id: string
+  workspaceId: string
+  schemaVersionId: string
+  title: string
+  description: string
+  level: number
+  targetTables: string[]
+  starterSql: string | null
+  answerSql: string
+  explanation: string | null
+  status: SqlUserPracticeProblemStatus
+  createdBy: string
+  authorName: string | null
+  submissionStatus: SqlTeamPracticeSubmissionStatus | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type SqlTeamPracticeProblemListResponse = {
+  workspace: SqlTeamPracticeWorkspace
+  schemaVersion: SqlTeamPracticeSchemaVersion
+  problems: SqlTeamPracticeProblem[]
+}
+
+export type SqlTeamPracticeSchemaReplaceResponse = {
+  workspace: SqlTeamPracticeWorkspace
+  schemaVersion: SqlTeamPracticeSchemaVersion
+  tableCount: number
+  tables: TableInfo[]
+}

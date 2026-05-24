@@ -1078,6 +1078,152 @@ export const sqlPersonalPracticeSubmissionsTable = sqliteTable(
   },
 );
 
+export type SqlTeamPracticeMemberRole = 'owner' | 'editor' | 'member';
+export type SqlTeamPracticeSchemaSourceType =
+  | 'seed'
+  | 'uploaded_sql'
+  | 'uploaded_sqlite';
+export type SqlTeamPracticeProblemStatus = 'draft' | 'published' | 'archived';
+
+export const sqlTeamPracticeWorkspacesTable = sqliteTable(
+  'sql_team_practice_workspaces',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    activeSchemaVersionId: text('active_schema_version_id'),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const sqlTeamPracticeMembersTable = sqliteTable(
+  'sql_team_practice_members',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => sqlTeamPracticeWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    role: text('role')
+      .$type<SqlTeamPracticeMemberRole>()
+      .notNull()
+      .default('member'),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const sqlTeamPracticeSchemaVersionsTable = sqliteTable(
+  'sql_team_practice_schema_versions',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => sqlTeamPracticeWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    version: integer('version').notNull(),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    schemaSql: text('schema_sql').notNull(),
+    erdMmd: text('erd_mmd'),
+    dbFileHash: text('db_file_hash').notNull(),
+    sourceType: text('source_type')
+      .$type<SqlTeamPracticeSchemaSourceType>()
+      .notNull()
+      .default('seed'),
+    sourceFileName: text('source_file_name'),
+    replacedFromSchemaVersionId: text('replaced_from_schema_version_id'),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+  },
+);
+
+export const sqlTeamPracticeProblemsTable = sqliteTable(
+  'sql_team_practice_problems',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => sqlTeamPracticeWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    schemaVersionId: text('schema_version_id')
+      .notNull()
+      .references(() => sqlTeamPracticeSchemaVersionsTable.id, {
+        onDelete: 'restrict',
+      }),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    level: integer('level').notNull().default(1),
+    targetTables: text('target_tables', { mode: 'json' })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    starterSql: text('starter_sql'),
+    answerSql: text('answer_sql').notNull(),
+    explanation: text('explanation'),
+    status: text('status')
+      .$type<SqlTeamPracticeProblemStatus>()
+      .notNull()
+      .default('published'),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    updatedBy: text('updated_by').references(() => usersTable.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const sqlTeamPracticeSubmissionsTable = sqliteTable(
+  'sql_team_practice_submissions',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    problemId: text('problem_id')
+      .notNull()
+      .references(() => sqlTeamPracticeProblemsTable.id, {
+        onDelete: 'cascade',
+      }),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => sqlTeamPracticeWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    schemaVersionId: text('schema_version_id')
+      .notNull()
+      .references(() => sqlTeamPracticeSchemaVersionsTable.id, {
+        onDelete: 'restrict',
+      }),
+    submittedSql: text('submitted_sql').notNull(),
+    answerSql: text('answer_sql').notNull(),
+    isCorrect: integer('is_correct', { mode: 'boolean' }).notNull(),
+    score: integer('score').notNull().default(0),
+    maxScore: integer('max_score').notNull().default(1),
+    feedback: text('feedback').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+);
+
 // ─── Dev Challenge Module Tables ──────────────────────────────────────────
 
 export type DevChallengeAssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -1271,6 +1417,11 @@ export const schema = {
   sqlPersonalPracticeProblemsTable,
   sqlPersonalPracticeSharesTable,
   sqlPersonalPracticeSubmissionsTable,
+  sqlTeamPracticeWorkspacesTable,
+  sqlTeamPracticeMembersTable,
+  sqlTeamPracticeSchemaVersionsTable,
+  sqlTeamPracticeProblemsTable,
+  sqlTeamPracticeSubmissionsTable,
   devChallengeCategoriesTable,
   devChallengeSectionsTable,
   devChallengeAssignmentsTable,
@@ -1426,6 +1577,26 @@ export type SqlPersonalPracticeSubmissionRow =
   typeof sqlPersonalPracticeSubmissionsTable.$inferSelect;
 export type SqlPersonalPracticeSubmissionInsert =
   typeof sqlPersonalPracticeSubmissionsTable.$inferInsert;
+export type SqlTeamPracticeWorkspaceRow =
+  typeof sqlTeamPracticeWorkspacesTable.$inferSelect;
+export type SqlTeamPracticeWorkspaceInsert =
+  typeof sqlTeamPracticeWorkspacesTable.$inferInsert;
+export type SqlTeamPracticeMemberRow =
+  typeof sqlTeamPracticeMembersTable.$inferSelect;
+export type SqlTeamPracticeMemberInsert =
+  typeof sqlTeamPracticeMembersTable.$inferInsert;
+export type SqlTeamPracticeSchemaVersionRow =
+  typeof sqlTeamPracticeSchemaVersionsTable.$inferSelect;
+export type SqlTeamPracticeSchemaVersionInsert =
+  typeof sqlTeamPracticeSchemaVersionsTable.$inferInsert;
+export type SqlTeamPracticeProblemRow =
+  typeof sqlTeamPracticeProblemsTable.$inferSelect;
+export type SqlTeamPracticeProblemInsert =
+  typeof sqlTeamPracticeProblemsTable.$inferInsert;
+export type SqlTeamPracticeSubmissionRow =
+  typeof sqlTeamPracticeSubmissionsTable.$inferSelect;
+export type SqlTeamPracticeSubmissionInsert =
+  typeof sqlTeamPracticeSubmissionsTable.$inferInsert;
 export type DevChallengeCategoryRow =
   typeof devChallengeCategoriesTable.$inferSelect;
 export type DevChallengeCategoryInsert =

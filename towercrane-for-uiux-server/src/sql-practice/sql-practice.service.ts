@@ -29,6 +29,11 @@ import {
   sqlPersonalPracticeSharesTable,
   sqlPersonalPracticeSubmissionsTable,
   sqlPersonalPracticeWorkspacesTable,
+  sqlTeamPracticeMembersTable,
+  sqlTeamPracticeProblemsTable,
+  sqlTeamPracticeSchemaVersionsTable,
+  sqlTeamPracticeSubmissionsTable,
+  sqlTeamPracticeWorkspacesTable,
   sqlUserPracticeProblemsTable,
   sqlUserPracticeSchemasTable,
   usersTable,
@@ -40,9 +45,10 @@ import {
   gradeSqlUserPracticeProblemSchema,
   gradeSqlPracticeSubmissionSchema,
   seedFileNameSchema,
-  sqlPersonalPracticeProblemListQuerySchema,
   sqlPracticeSubmissionActivityQuerySchema,
   sqlPracticeSubmissionSeedQuerySchema,
+  type AddSqlTeamPracticeMemberInput,
+  type CreateSqlTeamPracticeWorkspaceInput,
   type CreateSqlPracticeNoteInput,
   type CreateSqlUserPracticeProblemInput,
   type GenerateSqlUserPracticeAnswerInput,
@@ -51,7 +57,10 @@ import {
   type ListSqlPracticeNotesQuery,
   type ReplacePersonalSchemaVersionInput,
   type SqlPersonalPracticeProblemListQuery,
+  type SqlTeamPracticeProblemListQuery,
   type SqlUserPracticeProblemListQuery,
+  type UpdateSqlTeamPracticeMemberInput,
+  type UpdateSqlTeamPracticeWorkspaceInput,
   type UpdateSqlPracticeNoteInput,
   type UpdateSqlUserPracticeProblemInput,
 } from './sql-practice.schemas';
@@ -72,6 +81,14 @@ import type {
   SqlPracticeSubmission,
   SqlPracticeSubmissionLevel,
   SqlPracticeSubmissionStatus,
+  SqlTeamPracticeMember,
+  SqlTeamPracticeMemberRole,
+  SqlTeamPracticeProblem,
+  SqlTeamPracticeProblemListResponse,
+  SqlTeamPracticeSchemaReplaceResponse,
+  SqlTeamPracticeSchemaVersion,
+  SqlTeamPracticeSubmissionStatus,
+  SqlTeamPracticeWorkspace,
   SqlPersonalPracticeProblem,
   SqlPersonalPracticeProblemListResponse,
   SqlPersonalPracticePublicProblemResponse,
@@ -95,6 +112,7 @@ const USER_PRACTICE_SEED_FILE = 'user_commerce.sql';
 const USER_PRACTICE_RUNTIME_SCOPE = '__user_practice__';
 const PERSONAL_PRACTICE_RUNTIME_SCOPE = '__personal_practice__';
 const PUBLIC_PERSONAL_PRACTICE_RUNTIME_SCOPE = '__public_personal_practice__';
+const TEAM_PRACTICE_RUNTIME_SCOPE = '__team_practice__';
 const PERSONAL_SCHEMA_UPLOAD_MAX_BYTES = 2 * 1024 * 1024;
 const LEGACY_SEED_FILE = 'seed.sql';
 const SEED_LEVELS: SqlPracticeSeedLevel[] = [
@@ -993,6 +1011,10 @@ export class SqlPracticeService {
       shareEnabled: _shareEnabled,
       ...safeProblem
     } = publicProblem;
+    void _answerSql;
+    void _createdBy;
+    void _shareToken;
+    void _shareEnabled;
 
     return {
       workspace: { id: workspace.id, title: workspace.title },
@@ -1063,6 +1085,720 @@ export class SqlPracticeService {
       schemaVersion,
       this.getPublicPersonalPracticeRuntimeUserId(token, schemaVersion.id),
     );
+  }
+
+  listTeamPracticeWorkspaces(userId: string): SqlTeamPracticeWorkspace[] {
+    const isAdmin = this.isAdminUser(userId);
+    const rows = isAdmin
+      ? this.databaseService.db
+          .select()
+          .from(sqlTeamPracticeWorkspacesTable)
+          .where(eq(sqlTeamPracticeWorkspacesTable.archived, false))
+          .orderBy(desc(sqlTeamPracticeWorkspacesTable.updatedAt))
+          .all()
+      : this.databaseService.db
+          .select({
+            id: sqlTeamPracticeWorkspacesTable.id,
+            title: sqlTeamPracticeWorkspacesTable.title,
+            description: sqlTeamPracticeWorkspacesTable.description,
+            activeSchemaVersionId:
+              sqlTeamPracticeWorkspacesTable.activeSchemaVersionId,
+            createdBy: sqlTeamPracticeWorkspacesTable.createdBy,
+            archived: sqlTeamPracticeWorkspacesTable.archived,
+            createdAt: sqlTeamPracticeWorkspacesTable.createdAt,
+            updatedAt: sqlTeamPracticeWorkspacesTable.updatedAt,
+          })
+          .from(sqlTeamPracticeWorkspacesTable)
+          .innerJoin(
+            sqlTeamPracticeMembersTable,
+            eq(
+              sqlTeamPracticeMembersTable.workspaceId,
+              sqlTeamPracticeWorkspacesTable.id,
+            ),
+          )
+          .where(
+            and(
+              eq(sqlTeamPracticeMembersTable.userId, userId),
+              eq(sqlTeamPracticeWorkspacesTable.archived, false),
+            ),
+          )
+          .orderBy(desc(sqlTeamPracticeWorkspacesTable.updatedAt))
+          .all();
+
+    return rows.map((row) => this.toTeamWorkspace(row, userId));
+  }
+
+  createTeamPracticeWorkspace(
+    input: CreateSqlTeamPracticeWorkspaceInput,
+    userId: string,
+  ): SqlTeamPracticeWorkspace {
+    const workspaceId = randomUUID();
+    const memberId = randomUUID();
+    const now = new Date().toISOString();
+
+    this.databaseService.db.transaction((tx) => {
+      tx.insert(sqlTeamPracticeWorkspacesTable)
+        .values({
+          id: workspaceId,
+          title: input.title,
+          description: input.description ?? '',
+          activeSchemaVersionId: null,
+          createdBy: userId,
+          archived: false,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+
+      tx.insert(sqlTeamPracticeMembersTable)
+        .values({
+          id: memberId,
+          workspaceId,
+          userId,
+          role: 'owner',
+          createdBy: userId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    });
+
+    this.createInitialTeamSchemaVersion(workspaceId, userId);
+    return this.assertTeamPracticeAccess(workspaceId, userId);
+  }
+
+  getTeamPracticeWorkspace(
+    workspaceId: string,
+    userId: string,
+  ): SqlTeamPracticeWorkspace {
+    return this.assertTeamPracticeAccess(workspaceId, userId);
+  }
+
+  updateTeamPracticeWorkspace(
+    workspaceId: string,
+    input: UpdateSqlTeamPracticeWorkspaceInput,
+    userId: string,
+  ): SqlTeamPracticeWorkspace {
+    this.assertTeamPracticeOwner(workspaceId, userId);
+    this.databaseService.db
+      .update(sqlTeamPracticeWorkspacesTable)
+      .set({
+        title: input.title,
+        description: input.description,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(sqlTeamPracticeWorkspacesTable.id, workspaceId))
+      .run();
+    return this.assertTeamPracticeAccess(workspaceId, userId);
+  }
+
+  archiveTeamPracticeWorkspace(workspaceId: string, userId: string) {
+    this.assertTeamPracticeOwner(workspaceId, userId);
+    this.databaseService.db
+      .update(sqlTeamPracticeWorkspacesTable)
+      .set({ archived: true, updatedAt: new Date().toISOString() })
+      .where(eq(sqlTeamPracticeWorkspacesTable.id, workspaceId))
+      .run();
+  }
+
+  listTeamPracticeMembers(
+    workspaceId: string,
+    userId: string,
+  ): SqlTeamPracticeMember[] {
+    this.assertTeamPracticeAccess(workspaceId, userId);
+    return this.databaseService.db
+      .select({
+        id: sqlTeamPracticeMembersTable.id,
+        workspaceId: sqlTeamPracticeMembersTable.workspaceId,
+        userId: sqlTeamPracticeMembersTable.userId,
+        userName: usersTable.name,
+        userEmail: usersTable.email,
+        role: sqlTeamPracticeMembersTable.role,
+        createdAt: sqlTeamPracticeMembersTable.createdAt,
+        updatedAt: sqlTeamPracticeMembersTable.updatedAt,
+      })
+      .from(sqlTeamPracticeMembersTable)
+      .innerJoin(
+        usersTable,
+        eq(usersTable.id, sqlTeamPracticeMembersTable.userId),
+      )
+      .where(eq(sqlTeamPracticeMembersTable.workspaceId, workspaceId))
+      .orderBy(sqlTeamPracticeMembersTable.role, usersTable.name)
+      .all();
+  }
+
+  addTeamPracticeMember(
+    workspaceId: string,
+    input: AddSqlTeamPracticeMemberInput,
+    userId: string,
+  ): SqlTeamPracticeMember[] {
+    this.assertTeamPracticeOwner(workspaceId, userId);
+    const user = this.databaseService.db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, input.userId))
+      .get();
+    if (!user) throw new NotFoundException('User not found.');
+
+    const existing = this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeMembersTable)
+      .where(
+        and(
+          eq(sqlTeamPracticeMembersTable.workspaceId, workspaceId),
+          eq(sqlTeamPracticeMembersTable.userId, input.userId),
+        ),
+      )
+      .get();
+    if (existing) return this.listTeamPracticeMembers(workspaceId, userId);
+
+    const now = new Date().toISOString();
+    this.databaseService.db
+      .insert(sqlTeamPracticeMembersTable)
+      .values({
+        id: randomUUID(),
+        workspaceId,
+        userId: input.userId,
+        role: input.role,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+    return this.listTeamPracticeMembers(workspaceId, userId);
+  }
+
+  updateTeamPracticeMember(
+    workspaceId: string,
+    memberId: string,
+    input: UpdateSqlTeamPracticeMemberInput,
+    userId: string,
+  ): SqlTeamPracticeMember[] {
+    this.assertTeamPracticeOwner(workspaceId, userId);
+    const member = this.getTeamPracticeMemberRow(workspaceId, memberId);
+    if (!member) throw new NotFoundException('SQL team member not found.');
+    if (member.role === 'owner' && input.role !== 'owner') {
+      this.assertNotLastTeamOwner(workspaceId, member.id);
+    }
+
+    this.databaseService.db
+      .update(sqlTeamPracticeMembersTable)
+      .set({ role: input.role, updatedAt: new Date().toISOString() })
+      .where(eq(sqlTeamPracticeMembersTable.id, memberId))
+      .run();
+    return this.listTeamPracticeMembers(workspaceId, userId);
+  }
+
+  removeTeamPracticeMember(
+    workspaceId: string,
+    memberId: string,
+    userId: string,
+  ) {
+    this.assertTeamPracticeOwner(workspaceId, userId);
+    const member = this.getTeamPracticeMemberRow(workspaceId, memberId);
+    if (!member) throw new NotFoundException('SQL team member not found.');
+    if (member.role === 'owner') {
+      this.assertNotLastTeamOwner(workspaceId, member.id);
+    }
+
+    this.databaseService.db
+      .delete(sqlTeamPracticeMembersTable)
+      .where(eq(sqlTeamPracticeMembersTable.id, memberId))
+      .run();
+  }
+
+  getTeamPracticeWorkspaceMeta(
+    workspaceId: string,
+    userId: string,
+  ): SqlPracticeMeta {
+    const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const seed = this.buildTeamPracticeSeed(schemaVersion);
+    const runtimeUserId = this.getTeamPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+    const freshness = this.ensureDatabaseFresh(runtimeUserId, seed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      return {
+        seedFile: seed.fileName,
+        seedHash: freshness.seedHash,
+        dbFile: basename(this.getDatabaseFile(runtimeUserId)),
+        lastLoadedAt: freshness.loadedAt,
+        tableCount: this.listTableNames(db).length,
+        activeSeed: this.buildSeedSummary(seed, seed, schemaVersion.dbFileHash),
+      };
+    } finally {
+      db.close();
+    }
+  }
+
+  getTeamPracticeTables(workspaceId: string, userId: string): TableInfo[] {
+    const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const runtimeUserId = this.getTeamPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+    return this.getTeamPracticeTablesForSchema(
+      workspace.id,
+      schemaVersion,
+      runtimeUserId,
+    );
+  }
+
+  getTeamPracticeTableRows(
+    workspaceId: string,
+    tableName: string,
+    userId: string,
+  ): SqlExecuteResponse {
+    const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const runtimeUserId = this.getTeamPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+    return this.executeTeamPracticeTablePreview(
+      tableName,
+      schemaVersion,
+      runtimeUserId,
+    );
+  }
+
+  executeTeamPractice(
+    workspaceId: string,
+    payload: unknown,
+    userId: string,
+  ): SqlExecuteResponse {
+    const start = Date.now();
+    const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const parsed = executeSqlSchema.safeParse(payload);
+
+    if (!parsed.success) {
+      throw new BadRequestException(
+        parsed.error.issues[0]?.message ?? 'Invalid SQL request.',
+      );
+    }
+
+    const { query, type } = sanitizeSql(
+      parsed.data.query,
+      this.getMaxQueryLength(),
+    );
+
+    if (!this.isReaderType(type)) {
+      return {
+        success: false,
+        type,
+        columns: null,
+        rows: null,
+        affectedRows: 0,
+        message:
+          '팀 SQL 자유 실행은 SELECT/WITH/PRAGMA/EXPLAIN 조회 쿼리만 허용됩니다.',
+        executionTimeMs: Date.now() - start,
+        schemaChanged: false,
+      };
+    }
+
+    const seed = this.buildTeamPracticeSeed(schemaVersion);
+    const runtimeUserId = this.getTeamPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+    const freshness = this.ensureDatabaseFresh(runtimeUserId, seed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      return this.executeReader(db, query, type, start, freshness.seedReloaded);
+    } catch (error) {
+      return {
+        success: false,
+        type,
+        columns: null,
+        rows: null,
+        affectedRows: 0,
+        message:
+          error instanceof Error ? error.message : 'SQL execution failed.',
+        executionTimeMs: Date.now() - start,
+        schemaChanged: false,
+        seedReloaded: freshness.seedReloaded,
+      };
+    } finally {
+      db.close();
+    }
+  }
+
+  getTeamPracticeErd(
+    workspaceId: string,
+    userId: string,
+  ): { mmd: string | null } {
+    const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    return { mmd: schemaVersion.erdMmd ?? null };
+  }
+
+  replaceTeamPracticeSchemaVersion(
+    workspaceId: string,
+    file: UploadedSqlFile | undefined,
+    input: ReplacePersonalSchemaVersionInput,
+    userId: string,
+  ): SqlTeamPracticeSchemaReplaceResponse {
+    const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
+    const activeSchemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const schemaSql = this.validateUploadedPersonalSqlFile(file);
+    this.validatePersonalSchemaSql(schemaSql);
+
+    const nextVersion = this.getNextTeamSchemaVersion(workspace.id);
+    const now = new Date().toISOString();
+    const schemaVersionId = randomUUID();
+    const dbFileHash = this.hashSql(schemaSql);
+    const tempRuntimeUserId = `${TEAM_PRACTICE_RUNTIME_SCOPE}:validate:${schemaVersionId}`;
+    const previewSchemaVersion: SqlTeamPracticeSchemaVersion & {
+      schemaSql: string;
+    } = {
+      id: schemaVersionId,
+      workspaceId: workspace.id,
+      version: nextVersion,
+      title: input.title?.trim() || file!.originalname.replace(/\.sql$/i, ''),
+      description: input.description?.trim() || '',
+      erdMmd: null,
+      dbFileHash,
+      sourceType: 'uploaded_sql',
+      sourceFileName: file!.originalname,
+      replacedFromSchemaVersionId: activeSchemaVersion.id,
+      createdAt: now,
+      schemaSql,
+    };
+
+    let tables: TableInfo[];
+    let validationPassed = false;
+    try {
+      tables = this.getTeamPracticeTablesForSchema(
+        workspace.id,
+        previewSchemaVersion,
+        tempRuntimeUserId,
+      );
+      if (tables.length === 0) {
+        throw new BadRequestException('SQL 파일에서 생성된 테이블이 없습니다.');
+      }
+      validationPassed = true;
+    } finally {
+      this.removeRuntimeDatabase(tempRuntimeUserId);
+      if (!validationPassed) this.removeTeamPracticeSeedFile(schemaVersionId);
+    }
+
+    try {
+      this.databaseService.db.transaction((tx) => {
+        tx.insert(sqlTeamPracticeSchemaVersionsTable)
+          .values({
+            id: schemaVersionId,
+            workspaceId: workspace.id,
+            version: nextVersion,
+            title: previewSchemaVersion.title,
+            description: previewSchemaVersion.description,
+            schemaSql,
+            erdMmd: null,
+            dbFileHash,
+            sourceType: 'uploaded_sql',
+            sourceFileName: file!.originalname,
+            replacedFromSchemaVersionId: activeSchemaVersion.id,
+            createdBy: userId,
+            createdAt: now,
+          })
+          .run();
+
+        tx.update(sqlTeamPracticeWorkspacesTable)
+          .set({ activeSchemaVersionId: schemaVersionId, updatedAt: now })
+          .where(eq(sqlTeamPracticeWorkspacesTable.id, workspace.id))
+          .run();
+      });
+    } catch (error) {
+      this.removeTeamPracticeSeedFile(schemaVersionId);
+      throw error;
+    }
+
+    const schemaVersion = this.getTeamSchemaVersion(schemaVersionId);
+    const runtimeUserId = this.getTeamPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+    const activeTables = this.getTeamPracticeTablesForSchema(
+      workspace.id,
+      schemaVersion,
+      runtimeUserId,
+    );
+
+    return {
+      workspace: this.assertTeamPracticeAccess(workspace.id, userId),
+      schemaVersion,
+      tableCount: activeTables.length,
+      tables: activeTables,
+    };
+  }
+
+  listTeamPracticeProblems(
+    workspaceId: string,
+    query: SqlTeamPracticeProblemListQuery,
+    userId: string,
+  ): SqlTeamPracticeProblemListResponse {
+    const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const conditions = [
+      eq(sqlTeamPracticeProblemsTable.workspaceId, workspace.id),
+    ];
+
+    if (query.level) {
+      conditions.push(eq(sqlTeamPracticeProblemsTable.level, query.level));
+    }
+    if (query.mine) {
+      conditions.push(eq(sqlTeamPracticeProblemsTable.createdBy, userId));
+    }
+
+    const rows = this.databaseService.db
+      .select({
+        id: sqlTeamPracticeProblemsTable.id,
+        workspaceId: sqlTeamPracticeProblemsTable.workspaceId,
+        schemaVersionId: sqlTeamPracticeProblemsTable.schemaVersionId,
+        title: sqlTeamPracticeProblemsTable.title,
+        description: sqlTeamPracticeProblemsTable.description,
+        level: sqlTeamPracticeProblemsTable.level,
+        targetTables: sqlTeamPracticeProblemsTable.targetTables,
+        starterSql: sqlTeamPracticeProblemsTable.starterSql,
+        answerSql: sqlTeamPracticeProblemsTable.answerSql,
+        explanation: sqlTeamPracticeProblemsTable.explanation,
+        status: sqlTeamPracticeProblemsTable.status,
+        createdBy: sqlTeamPracticeProblemsTable.createdBy,
+        authorName: usersTable.name,
+        createdAt: sqlTeamPracticeProblemsTable.createdAt,
+        updatedAt: sqlTeamPracticeProblemsTable.updatedAt,
+      })
+      .from(sqlTeamPracticeProblemsTable)
+      .innerJoin(
+        usersTable,
+        eq(usersTable.id, sqlTeamPracticeProblemsTable.createdBy),
+      )
+      .where(and(...conditions))
+      .orderBy(
+        sqlTeamPracticeProblemsTable.level,
+        desc(sqlTeamPracticeProblemsTable.updatedAt),
+      )
+      .all();
+
+    const submissionStatusByProblem = this.getTeamSubmissionStatusByProblemIds(
+      userId,
+      rows.map((row) => row.id),
+    );
+
+    return {
+      workspace,
+      schemaVersion,
+      problems: rows.map((row) =>
+        this.toTeamProblem(row, submissionStatusByProblem[row.id] ?? null),
+      ),
+    };
+  }
+
+  createTeamPracticeProblem(
+    workspaceId: string,
+    input: CreateSqlUserPracticeProblemInput,
+    userId: string,
+  ): SqlTeamPracticeProblem | null {
+    const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const runtimeUserId = this.getTeamPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+    this.validateTeamProblemTables(
+      input.targetTables,
+      workspace.id,
+      schemaVersion,
+      runtimeUserId,
+    );
+    this.validateTeamAnswerSql(
+      input.answerSql,
+      workspace.id,
+      schemaVersion,
+      runtimeUserId,
+    );
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    this.databaseService.db
+      .insert(sqlTeamPracticeProblemsTable)
+      .values({
+        id,
+        workspaceId: workspace.id,
+        schemaVersionId: schemaVersion.id,
+        title: input.title,
+        description: input.description,
+        level: input.level,
+        targetTables: input.targetTables,
+        starterSql: input.starterSql,
+        answerSql: input.answerSql,
+        explanation: input.explanation,
+        status: input.status,
+        createdBy: userId,
+        updatedBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.getTeamPracticeProblem(workspace.id, id, userId);
+  }
+
+  getTeamPracticeProblem(
+    workspaceId: string,
+    id: string,
+    userId: string,
+  ): SqlTeamPracticeProblem | null {
+    this.assertTeamPracticeAccess(workspaceId, userId);
+    const problem = this.getTeamPracticeProblemRow(workspaceId, id);
+    if (!problem) return null;
+    return this.toTeamProblem(
+      problem,
+      this.getTeamSubmissionStatus(userId, problem.id),
+    );
+  }
+
+  updateTeamPracticeProblem(
+    workspaceId: string,
+    id: string,
+    input: UpdateSqlUserPracticeProblemInput,
+    userId: string,
+  ): SqlTeamPracticeProblem | null {
+    const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
+    const problem = this.getTeamPracticeProblemRow(workspace.id, id);
+    if (!problem) throw new NotFoundException('SQL team problem not found.');
+    const schemaVersion = this.getTeamSchemaVersion(problem.schemaVersionId);
+    const runtimeUserId = this.getTeamPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+
+    if (input.targetTables) {
+      this.validateTeamProblemTables(
+        input.targetTables,
+        workspace.id,
+        schemaVersion,
+        runtimeUserId,
+      );
+    }
+    if (input.answerSql) {
+      this.validateTeamAnswerSql(
+        input.answerSql,
+        workspace.id,
+        schemaVersion,
+        runtimeUserId,
+      );
+    }
+
+    this.databaseService.db
+      .update(sqlTeamPracticeProblemsTable)
+      .set({
+        title: input.title,
+        description: input.description,
+        level: input.level,
+        targetTables: input.targetTables,
+        starterSql: input.starterSql,
+        answerSql: input.answerSql,
+        explanation: input.explanation,
+        status: input.status,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(sqlTeamPracticeProblemsTable.id, id))
+      .run();
+
+    return this.getTeamPracticeProblem(workspace.id, id, userId);
+  }
+
+  deleteTeamPracticeProblem(workspaceId: string, id: string, userId: string) {
+    const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
+    const problem = this.getTeamPracticeProblemRow(workspace.id, id);
+    if (!problem) throw new NotFoundException('SQL team problem not found.');
+
+    this.databaseService.db
+      .delete(sqlTeamPracticeProblemsTable)
+      .where(eq(sqlTeamPracticeProblemsTable.id, id))
+      .run();
+  }
+
+  async generateTeamPracticeAnswer(
+    workspaceId: string,
+    input: GenerateSqlUserPracticeAnswerInput,
+    userId: string,
+  ): Promise<SqlUserPracticeGenerateAnswerResponse> {
+    const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const runtimeUserId = this.getTeamPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+    this.validateTeamProblemTables(
+      input.targetTables,
+      workspace.id,
+      schemaVersion,
+      runtimeUserId,
+    );
+    const prompt = this.buildTeamPracticeAnswerPrompt(
+      workspace.id,
+      schemaVersion,
+      input,
+      runtimeUserId,
+    );
+    const raw = await this.callGroq(prompt, 'general');
+    const parsed = this.parseGeneratedAnswer(raw);
+
+    if (!parsed.answerSql) {
+      throw new InternalServerErrorException('정답 SQL을 생성하지 못했습니다.');
+    }
+
+    this.validateTeamAnswerSql(
+      parsed.answerSql,
+      workspace.id,
+      schemaVersion,
+      runtimeUserId,
+    );
+    return parsed;
+  }
+
+  gradeTeamPracticeProblem(
+    workspaceId: string,
+    id: string,
+    body: unknown,
+    userId: string,
+  ): SqlUserPracticeGradeResponse {
+    const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
+    const problem = this.getTeamPracticeProblemRow(workspace.id, id);
+    if (!problem) throw new NotFoundException('SQL team problem not found.');
+    const schemaVersion = this.getTeamSchemaVersion(problem.schemaVersionId);
+    const input = gradeSqlUserPracticeProblemSchema.parse(body);
+    const response = this.gradeTeamProblemWithSchema(
+      problem,
+      schemaVersion,
+      input.submittedSql,
+      this.getTeamPracticeRuntimeUserId(workspace.id, schemaVersion.id, userId),
+    );
+    this.recordTeamPracticeSubmission({
+      userId,
+      problem,
+      schemaVersion,
+      submittedSql: input.submittedSql,
+      result: response,
+    });
+    return response;
   }
 
   listUserPracticeProblems(
@@ -2723,6 +3459,753 @@ export class SqlPracticeService {
     schemaVersionId: string,
   ) {
     return `${PUBLIC_PERSONAL_PRACTICE_RUNTIME_SCOPE}:${schemaVersionId}:${token}`;
+  }
+
+  private isAdminUser(userId: string) {
+    const user = this.databaseService.db
+      .select({ role: usersTable.role })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .get();
+    return user?.role === 'admin';
+  }
+
+  private getTeamPracticeMemberRole(
+    workspaceId: string,
+    userId: string,
+  ): SqlTeamPracticeMemberRole | null {
+    const member = this.databaseService.db
+      .select({ role: sqlTeamPracticeMembersTable.role })
+      .from(sqlTeamPracticeMembersTable)
+      .where(
+        and(
+          eq(sqlTeamPracticeMembersTable.workspaceId, workspaceId),
+          eq(sqlTeamPracticeMembersTable.userId, userId),
+        ),
+      )
+      .get();
+    return member?.role ?? null;
+  }
+
+  private assertTeamPracticeAccess(
+    workspaceId: string,
+    userId: string,
+  ): SqlTeamPracticeWorkspace {
+    const workspace = this.getTeamWorkspaceById(workspaceId, userId);
+    if (!workspace || workspace.archived) {
+      throw new NotFoundException('SQL team workspace not found.');
+    }
+
+    if (
+      !this.isAdminUser(userId) &&
+      !this.getTeamPracticeMemberRole(workspaceId, userId)
+    ) {
+      throw new ForbiddenException('Not authorized.');
+    }
+
+    if (!workspace.activeSchemaVersionId) {
+      this.createInitialTeamSchemaVersion(workspace.id, userId);
+      return this.getTeamWorkspaceById(workspace.id, userId)!;
+    }
+
+    return workspace;
+  }
+
+  private assertTeamPracticeEditor(
+    workspaceId: string,
+    userId: string,
+  ): SqlTeamPracticeWorkspace {
+    const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
+    const role = workspace.myRole;
+    if (!['owner', 'editor'].includes(role)) {
+      throw new ForbiddenException('Not authorized.');
+    }
+    return workspace;
+  }
+
+  private assertTeamPracticeOwner(
+    workspaceId: string,
+    userId: string,
+  ): SqlTeamPracticeWorkspace {
+    const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
+    if (workspace.myRole !== 'owner') {
+      throw new ForbiddenException('Not authorized.');
+    }
+    return workspace;
+  }
+
+  private getTeamWorkspaceById(
+    workspaceId: string,
+    userId: string,
+  ): SqlTeamPracticeWorkspace | null {
+    const row = this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeWorkspacesTable)
+      .where(eq(sqlTeamPracticeWorkspacesTable.id, workspaceId))
+      .get();
+    return row ? this.toTeamWorkspace(row, userId) : null;
+  }
+
+  private createInitialTeamSchemaVersion(workspaceId: string, userId: string) {
+    const workspace = this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeWorkspacesTable)
+      .where(eq(sqlTeamPracticeWorkspacesTable.id, workspaceId))
+      .get();
+    if (!workspace) {
+      throw new NotFoundException('SQL team workspace not found.');
+    }
+    if (workspace.activeSchemaVersionId) return;
+
+    const seed = this.getUserPracticeSeed();
+    const schemaSql = readFileSync(seed.filePath, 'utf8');
+    const erdFile = join(this.getUserPracticeSeedDir(), 'user_commerce.mmd');
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    this.databaseService.db
+      .insert(sqlTeamPracticeSchemaVersionsTable)
+      .values({
+        id,
+        workspaceId,
+        version: 1,
+        title: '팀 커머스 운영 DB',
+        description: '팀 SQL 문제 출제를 위한 기본 커머스 DB입니다.',
+        schemaSql,
+        erdMmd: existsSync(erdFile) ? readFileSync(erdFile, 'utf8') : null,
+        dbFileHash: this.hashSql(schemaSql),
+        sourceType: 'seed',
+        sourceFileName: seed.fileName,
+        replacedFromSchemaVersionId: null,
+        createdBy: userId,
+        createdAt: now,
+      })
+      .run();
+
+    this.databaseService.db
+      .update(sqlTeamPracticeWorkspacesTable)
+      .set({ activeSchemaVersionId: id, updatedAt: now })
+      .where(eq(sqlTeamPracticeWorkspacesTable.id, workspaceId))
+      .run();
+  }
+
+  private getActiveTeamSchemaVersion(
+    workspaceId: string,
+  ): SqlTeamPracticeSchemaVersion {
+    const workspace = this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeWorkspacesTable)
+      .where(eq(sqlTeamPracticeWorkspacesTable.id, workspaceId))
+      .get();
+    if (!workspace) {
+      throw new NotFoundException('SQL team workspace not found.');
+    }
+    if (!workspace.activeSchemaVersionId) {
+      throw new InternalServerErrorException(
+        'Active team schema version is missing.',
+      );
+    }
+    return this.getTeamSchemaVersion(workspace.activeSchemaVersionId);
+  }
+
+  private getTeamSchemaVersion(id: string): SqlTeamPracticeSchemaVersion {
+    const row = this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeSchemaVersionsTable)
+      .where(eq(sqlTeamPracticeSchemaVersionsTable.id, id))
+      .get();
+    if (!row) throw new NotFoundException('SQL team schema version not found.');
+    return this.toTeamSchemaVersion(row);
+  }
+
+  private buildTeamPracticeSeed(
+    schemaVersion: SqlTeamPracticeSchemaVersion & { schemaSql?: string },
+  ): ResolvedSeed {
+    const schemaSql =
+      schemaVersion.schemaSql ??
+      this.databaseService.db
+        .select({ schemaSql: sqlTeamPracticeSchemaVersionsTable.schemaSql })
+        .from(sqlTeamPracticeSchemaVersionsTable)
+        .where(eq(sqlTeamPracticeSchemaVersionsTable.id, schemaVersion.id))
+        .get()?.schemaSql;
+    if (!schemaSql) {
+      throw new InternalServerErrorException('Team schema SQL is missing.');
+    }
+
+    const seedDir = this.getTeamPracticeSeedDir();
+    mkdirSync(seedDir, { recursive: true });
+    const fileName = `${schemaVersion.id}.sql`;
+    const filePath = join(seedDir, fileName);
+    if (!existsSync(filePath)) {
+      writeFileSync(filePath, schemaSql);
+    }
+
+    return {
+      source: 'uploaded',
+      fileName,
+      filePath,
+    };
+  }
+
+  private getTeamPracticeSeedDir() {
+    const configured =
+      this.configService.get<string>('SQL_TEAM_PRACTICE_SCHEMA_DIR') ??
+      './data/sql-practice/team-schema-versions';
+    return isAbsolute(configured)
+      ? configured
+      : join(process.cwd(), configured);
+  }
+
+  private removeTeamPracticeSeedFile(schemaVersionId: string) {
+    const filePath = join(
+      this.getTeamPracticeSeedDir(),
+      `${schemaVersionId}.sql`,
+    );
+    if (existsSync(filePath)) {
+      rmSync(filePath, { force: true });
+    }
+  }
+
+  private getTeamPracticeRuntimeUserId(
+    workspaceId: string,
+    schemaVersionId: string,
+    userId: string,
+  ) {
+    return `${TEAM_PRACTICE_RUNTIME_SCOPE}:${workspaceId}:${schemaVersionId}:${userId}`;
+  }
+
+  private getTeamPracticeTablesForSchema(
+    workspaceId: string,
+    schemaVersion: SqlTeamPracticeSchemaVersion,
+    runtimeUserId: string,
+  ): TableInfo[] {
+    const seed = this.buildTeamPracticeSeed(schemaVersion);
+    this.ensureDatabaseFresh(runtimeUserId, seed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      return this.listTableNames(db).map((tableName) => ({
+        tableName,
+        columns: this.getColumns(db, tableName),
+        rowCount: this.getRowCount(db, tableName),
+      }));
+    } finally {
+      db.close();
+    }
+  }
+
+  private executeTeamPracticeTablePreview(
+    tableName: string,
+    schemaVersion: SqlTeamPracticeSchemaVersion,
+    runtimeUserId: string,
+  ): SqlExecuteResponse {
+    const start = Date.now();
+    const seed = this.buildTeamPracticeSeed(schemaVersion);
+    const freshness = this.ensureDatabaseFresh(runtimeUserId, seed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      this.ensureTableExists(db, tableName);
+      return this.executeReader(
+        db,
+        `SELECT * FROM ${quoteIdentifier(tableName)} LIMIT 50`,
+        'SELECT',
+        start,
+        freshness.seedReloaded,
+      );
+    } finally {
+      db.close();
+    }
+  }
+
+  private validateTeamProblemTables(
+    tableNames: string[],
+    workspaceId: string,
+    schemaVersion: SqlTeamPracticeSchemaVersion,
+    runtimeUserId: string,
+  ) {
+    if (tableNames.length === 0) return;
+    const tables = this.getTeamPracticeTablesForSchema(
+      workspaceId,
+      schemaVersion,
+      runtimeUserId,
+    );
+    const existingTables = new Set(tables.map((table) => table.tableName));
+    const invalidTable = tableNames.find(
+      (tableName) => !existingTables.has(tableName),
+    );
+
+    if (invalidTable) {
+      throw new BadRequestException(`Unknown target table: ${invalidTable}`);
+    }
+  }
+
+  private validateTeamAnswerSql(
+    answerSql: string,
+    workspaceId: string,
+    schemaVersion: SqlTeamPracticeSchemaVersion,
+    runtimeUserId: string,
+  ) {
+    const { query, type } = sanitizeSql(answerSql, this.getMaxQueryLength());
+    if (type !== 'SELECT') {
+      throw new BadRequestException(
+        '정답 SQL은 SELECT/WITH 조회 쿼리만 허용됩니다.',
+      );
+    }
+
+    const seed = this.buildTeamPracticeSeed(schemaVersion);
+    this.ensureDatabaseFresh(runtimeUserId, seed);
+    const db = this.openDatabase(runtimeUserId);
+
+    try {
+      db.prepare(query).all();
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error
+          ? error.message
+          : '정답 SQL을 실행할 수 없습니다.',
+      );
+    } finally {
+      db.close();
+    }
+  }
+
+  private buildTeamPracticeAnswerPrompt(
+    workspaceId: string,
+    schemaVersion: SqlTeamPracticeSchemaVersion,
+    input: GenerateSqlUserPracticeAnswerInput,
+    runtimeUserId: string,
+  ) {
+    const tables = this.getTeamPracticeTablesForSchema(
+      workspaceId,
+      schemaVersion,
+      runtimeUserId,
+    );
+    const relatedTables =
+      input.targetTables.length > 0
+        ? input.targetTables
+        : tables.map((table) => table.tableName);
+    const requested = new Set(relatedTables);
+    const contextTables = tables.filter((table) =>
+      requested.has(table.tableName),
+    );
+    const tableSummaries = (contextTables.length > 0 ? contextTables : tables)
+      .map((table) => {
+        const columns = table.columns
+          .map((column) => {
+            const flags = [
+              column.primaryKey ? 'PK' : '',
+              column.notNull ? 'NOT NULL' : '',
+            ].filter(Boolean);
+            const flagText = flags.length ? ` (${flags.join(', ')})` : '';
+            return `- ${column.name} ${column.type}${flagText}`;
+          })
+          .join('\n');
+        return `table ${table.tableName} (${table.rowCount} rows)\n${columns}`;
+      })
+      .join('\n\n');
+
+    return `팀 SQL 연습 문제에 맞는 정답 SQL을 생성해주세요.
+
+반드시 아래 형식만 출력하세요. 다른 설명, Markdown, code fence는 쓰지 마세요.
+
+[SQL]
+SELECT ...
+
+[EXPLANATION]
+한국어 해설 한 문장
+
+[문제 제목]
+${input.title ?? '(제목 없음)'}
+
+[문제 설명]
+${input.description}
+
+[난이도]
+Level ${input.level}
+
+[관련 테이블]
+${relatedTables.join(', ')}
+
+[테이블 스키마]
+${tableSummaries}
+
+[생성 규칙]
+- SQLite 문법만 사용하세요.
+- SELECT 또는 WITH로 시작하는 조회 쿼리만 생성하세요.
+- 문제 설명을 만족하는 가장 단순하고 명확한 정답 SQL을 생성하세요.
+- INSERT, UPDATE, DELETE, CREATE, DROP, ALTER는 절대 사용하지 마세요.
+- 테이블과 컬럼은 제공된 스키마에 있는 이름만 사용하세요.`;
+  }
+
+  private gradeTeamProblemWithSchema(
+    problem: {
+      id: string;
+      answerSql: string;
+    },
+    schemaVersion: SqlTeamPracticeSchemaVersion,
+    submittedSql: string,
+    runtimeUserId: string,
+  ): SqlUserPracticeGradeResponse {
+    const execution = this.executeTeamPracticeSelectForGrade(
+      submittedSql,
+      schemaVersion,
+      runtimeUserId,
+    );
+
+    if (!execution.success) {
+      return {
+        problemId: problem.id,
+        submittedSql,
+        answerSql: problem.answerSql,
+        isCorrect: false,
+        feedback: `SQL 실행에 실패했습니다.\n\n${execution.message}`,
+        execution,
+        answerExecution: null,
+      };
+    }
+
+    const answerExecution = this.executeTeamPracticeSelectForGrade(
+      problem.answerSql,
+      schemaVersion,
+      runtimeUserId,
+    );
+
+    if (!answerExecution.success) {
+      throw new InternalServerErrorException(
+        `저장된 정답 SQL을 실행할 수 없습니다. ${answerExecution.message}`,
+      );
+    }
+
+    const isCorrect = this.isSameSqlResult(execution, answerExecution);
+    return {
+      problemId: problem.id,
+      submittedSql,
+      answerSql: problem.answerSql,
+      isCorrect,
+      feedback: isCorrect
+        ? '정답입니다. 제출 SQL과 정답 SQL의 실행 결과가 동일합니다.'
+        : '오답입니다. 제출 SQL과 정답 SQL의 실행 결과가 다릅니다. 조회 컬럼, 행, 정렬 조건을 확인해주세요.',
+      execution,
+      answerExecution,
+    };
+  }
+
+  private executeTeamPracticeSelectForGrade(
+    query: string,
+    schemaVersion: SqlTeamPracticeSchemaVersion,
+    runtimeUserId: string,
+  ): SqlExecuteResponse {
+    const start = Date.now();
+
+    try {
+      const { query: sanitizedQuery, type } = sanitizeSql(
+        query,
+        this.getMaxQueryLength(),
+      );
+
+      if (type !== 'SELECT') {
+        return {
+          success: false,
+          type,
+          columns: null,
+          rows: null,
+          affectedRows: 0,
+          message: '답안 제출은 SELECT/WITH 조회 쿼리만 허용됩니다.',
+          executionTimeMs: Date.now() - start,
+          schemaChanged: false,
+        };
+      }
+
+      const seed = this.buildTeamPracticeSeed(schemaVersion);
+      const freshness = this.ensureDatabaseFresh(runtimeUserId, seed);
+      const db = this.openDatabase(runtimeUserId);
+
+      try {
+        return this.executeReader(
+          db,
+          sanitizedQuery,
+          type,
+          start,
+          freshness.seedReloaded,
+        );
+      } catch (error) {
+        return {
+          success: false,
+          type,
+          columns: null,
+          rows: null,
+          affectedRows: 0,
+          message:
+            error instanceof Error ? error.message : 'SQL execution failed.',
+          executionTimeMs: Date.now() - start,
+          schemaChanged: false,
+          seedReloaded: freshness.seedReloaded,
+        };
+      } finally {
+        db.close();
+      }
+    } catch (error) {
+      return {
+        success: false,
+        type: 'OTHER',
+        columns: null,
+        rows: null,
+        affectedRows: 0,
+        message:
+          error instanceof Error ? error.message : 'SQL validation failed.',
+        executionTimeMs: Date.now() - start,
+        schemaChanged: false,
+      };
+    }
+  }
+
+  private getTeamPracticeProblemRow(workspaceId: string, id: string) {
+    return this.databaseService.db
+      .select({
+        id: sqlTeamPracticeProblemsTable.id,
+        workspaceId: sqlTeamPracticeProblemsTable.workspaceId,
+        schemaVersionId: sqlTeamPracticeProblemsTable.schemaVersionId,
+        title: sqlTeamPracticeProblemsTable.title,
+        description: sqlTeamPracticeProblemsTable.description,
+        level: sqlTeamPracticeProblemsTable.level,
+        targetTables: sqlTeamPracticeProblemsTable.targetTables,
+        starterSql: sqlTeamPracticeProblemsTable.starterSql,
+        answerSql: sqlTeamPracticeProblemsTable.answerSql,
+        explanation: sqlTeamPracticeProblemsTable.explanation,
+        status: sqlTeamPracticeProblemsTable.status,
+        createdBy: sqlTeamPracticeProblemsTable.createdBy,
+        authorName: usersTable.name,
+        createdAt: sqlTeamPracticeProblemsTable.createdAt,
+        updatedAt: sqlTeamPracticeProblemsTable.updatedAt,
+      })
+      .from(sqlTeamPracticeProblemsTable)
+      .innerJoin(
+        usersTable,
+        eq(usersTable.id, sqlTeamPracticeProblemsTable.createdBy),
+      )
+      .where(
+        and(
+          eq(sqlTeamPracticeProblemsTable.workspaceId, workspaceId),
+          eq(sqlTeamPracticeProblemsTable.id, id),
+        ),
+      )
+      .get();
+  }
+
+  private getTeamSubmissionStatusByProblemIds(
+    userId: string,
+    problemIds: string[],
+  ): Record<string, SqlTeamPracticeSubmissionStatus> {
+    if (problemIds.length === 0) return {};
+
+    const rows = this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeSubmissionsTable)
+      .where(
+        and(
+          eq(sqlTeamPracticeSubmissionsTable.userId, userId),
+          inArray(sqlTeamPracticeSubmissionsTable.problemId, problemIds),
+        ),
+      )
+      .orderBy(desc(sqlTeamPracticeSubmissionsTable.createdAt))
+      .all();
+
+    const byProblem: Record<string, SqlTeamPracticeSubmissionStatus> = {};
+
+    for (const row of rows) {
+      const previous = byProblem[row.problemId];
+      const bestScore = Math.max(previous?.bestScore ?? 0, row.score);
+
+      byProblem[row.problemId] = {
+        problemId: row.problemId,
+        bestScore,
+        isCorrect: bestScore > 0,
+        lastSubmittedAt: previous?.lastSubmittedAt ?? row.createdAt,
+        lastSubmissionId: previous?.lastSubmissionId ?? row.id,
+      };
+    }
+
+    return byProblem;
+  }
+
+  private getTeamSubmissionStatus(
+    userId: string,
+    problemId: string,
+  ): SqlTeamPracticeSubmissionStatus | null {
+    return (
+      this.getTeamSubmissionStatusByProblemIds(userId, [problemId])[
+        problemId
+      ] ?? null
+    );
+  }
+
+  private recordTeamPracticeSubmission(input: {
+    userId: string;
+    problem: {
+      id: string;
+      workspaceId: string;
+      schemaVersionId: string;
+      answerSql: string;
+    };
+    schemaVersion: SqlTeamPracticeSchemaVersion;
+    submittedSql: string;
+    result: SqlUserPracticeGradeResponse;
+  }) {
+    this.databaseService.db
+      .insert(sqlTeamPracticeSubmissionsTable)
+      .values({
+        id: randomUUID(),
+        userId: input.userId,
+        problemId: input.problem.id,
+        workspaceId: input.problem.workspaceId,
+        schemaVersionId: input.schemaVersion.id,
+        submittedSql: input.submittedSql,
+        answerSql: input.problem.answerSql,
+        isCorrect: input.result.isCorrect,
+        score: input.result.isCorrect ? 1 : 0,
+        maxScore: 1,
+        feedback: input.result.feedback,
+        createdAt: new Date().toISOString(),
+      })
+      .run();
+  }
+
+  private getNextTeamSchemaVersion(workspaceId: string) {
+    const latest = this.databaseService.db
+      .select({ version: sqlTeamPracticeSchemaVersionsTable.version })
+      .from(sqlTeamPracticeSchemaVersionsTable)
+      .where(eq(sqlTeamPracticeSchemaVersionsTable.workspaceId, workspaceId))
+      .orderBy(desc(sqlTeamPracticeSchemaVersionsTable.version))
+      .limit(1)
+      .get();
+
+    return (latest?.version ?? 0) + 1;
+  }
+
+  private getTeamPracticeMemberRow(workspaceId: string, memberId: string) {
+    return this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeMembersTable)
+      .where(
+        and(
+          eq(sqlTeamPracticeMembersTable.workspaceId, workspaceId),
+          eq(sqlTeamPracticeMembersTable.id, memberId),
+        ),
+      )
+      .get();
+  }
+
+  private assertNotLastTeamOwner(workspaceId: string, exceptMemberId: string) {
+    const owners = this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeMembersTable)
+      .where(
+        and(
+          eq(sqlTeamPracticeMembersTable.workspaceId, workspaceId),
+          eq(sqlTeamPracticeMembersTable.role, 'owner'),
+        ),
+      )
+      .all()
+      .filter((member) => member.id !== exceptMemberId);
+
+    if (owners.length === 0) {
+      throw new BadRequestException('마지막 owner는 제거할 수 없습니다.');
+    }
+  }
+
+  private toTeamWorkspace(
+    row: typeof sqlTeamPracticeWorkspacesTable.$inferSelect,
+    userId: string,
+  ): SqlTeamPracticeWorkspace {
+    const isAdmin = this.isAdminUser(userId);
+    const role =
+      this.getTeamPracticeMemberRole(row.id, userId) ??
+      (isAdmin ? 'owner' : null);
+    if (!role) throw new ForbiddenException('Not authorized.');
+
+    const memberCount = this.databaseService.db
+      .select({ id: sqlTeamPracticeMembersTable.id })
+      .from(sqlTeamPracticeMembersTable)
+      .where(eq(sqlTeamPracticeMembersTable.workspaceId, row.id))
+      .all().length;
+    const problemCount = this.databaseService.db
+      .select({ id: sqlTeamPracticeProblemsTable.id })
+      .from(sqlTeamPracticeProblemsTable)
+      .where(eq(sqlTeamPracticeProblemsTable.workspaceId, row.id))
+      .all().length;
+
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      activeSchemaVersionId: row.activeSchemaVersionId,
+      createdBy: row.createdBy,
+      myRole: role,
+      memberCount,
+      problemCount,
+      archived: row.archived,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private toTeamSchemaVersion(
+    row: typeof sqlTeamPracticeSchemaVersionsTable.$inferSelect,
+  ): SqlTeamPracticeSchemaVersion {
+    return {
+      id: row.id,
+      workspaceId: row.workspaceId,
+      version: row.version,
+      title: row.title,
+      description: row.description,
+      erdMmd: row.erdMmd,
+      dbFileHash: row.dbFileHash,
+      sourceType: row.sourceType,
+      sourceFileName: row.sourceFileName,
+      replacedFromSchemaVersionId: row.replacedFromSchemaVersionId,
+      createdAt: row.createdAt,
+    };
+  }
+
+  private toTeamProblem(
+    row: {
+      id: string;
+      workspaceId: string;
+      schemaVersionId: string;
+      title: string;
+      description: string;
+      level: number;
+      targetTables: string[];
+      starterSql: string | null;
+      answerSql: string;
+      explanation: string | null;
+      status: 'draft' | 'published' | 'archived';
+      createdBy: string;
+      authorName: string | null;
+      createdAt: string;
+      updatedAt: string;
+    },
+    submissionStatus: SqlTeamPracticeSubmissionStatus | null = null,
+  ): SqlTeamPracticeProblem {
+    return {
+      id: row.id,
+      workspaceId: row.workspaceId,
+      schemaVersionId: row.schemaVersionId,
+      title: row.title,
+      description: row.description,
+      level: row.level,
+      targetTables: row.targetTables,
+      starterSql: row.starterSql,
+      answerSql: row.answerSql,
+      explanation: row.explanation,
+      status: row.status,
+      createdBy: row.createdBy,
+      authorName: row.authorName,
+      submissionStatus,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
   }
 
   private getPersonalPracticeTablesForSchema(

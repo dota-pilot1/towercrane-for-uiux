@@ -39,6 +39,8 @@ import { SqlNoteDetailPage } from '../pages/sql-practice/ui/sql-note-detail-page
 import { SqlPublicNotePage } from '../pages/sql-practice/ui/sql-public-note-page'
 import { SqlPublicPersonalPracticePage } from '../pages/sql-practice/ui/sql-public-personal-practice-page'
 import { SqlUserPracticePage } from '../pages/sql-practice/ui/sql-user-practice-page'
+import { SqlTeamPracticePage } from '../pages/sql-practice/ui/sql-team-practice-page'
+import { SqlTeamWorkspacePage } from '../pages/sql-practice/ui/sql-team-workspace-page'
 import { BoardHomePage } from '../pages/board/ui/board-home-page'
 import { BoardListPage } from '../pages/board/ui/board-list-page'
 import { BoardDetailPage } from '../pages/board/ui/board-detail-page'
@@ -368,13 +370,35 @@ const sqlPracticeRoute = createRoute({
 const sqlUserPracticeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/sql/user',
-  component: () => <SqlUserPracticePage mode="user" />,
+  component: SqlUserPracticeRedirect,
 })
+
+function SqlUserPracticeRedirect() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    navigate({ to: '/sql/team', replace: true })
+  }, [navigate])
+
+  return null
+}
 
 const sqlPersonalPracticeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/sql/personal',
   component: () => <SqlUserPracticePage mode="personal" />,
+})
+
+const sqlTeamPracticeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql/team',
+  component: SqlTeamPracticePage,
+})
+
+const sqlTeamWorkspaceRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql/team/workspaces/$workspaceId',
+  component: SqlTeamWorkspacePage,
 })
 
 const sqlPracticeExamplesRoute = createRoute({
@@ -668,6 +692,8 @@ export const router = createRouter({
       sqlPracticeRoute,
       sqlUserPracticeRoute,
       sqlPersonalPracticeRoute,
+      sqlTeamPracticeRoute,
+      sqlTeamWorkspaceRoute,
       sqlPracticeExamplesRoute,
       sqlNotesRoute,
       boardsHomeRoute,

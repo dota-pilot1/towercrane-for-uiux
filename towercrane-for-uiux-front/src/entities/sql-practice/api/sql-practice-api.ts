@@ -23,6 +23,12 @@ import type {
   SqlPracticeSeedListResponse,
   SqlPracticeSeedSource,
   SqlResetResponse,
+  SqlTeamPracticeMember,
+  SqlTeamPracticeMemberRole,
+  SqlTeamPracticeProblem,
+  SqlTeamPracticeProblemListResponse,
+  SqlTeamPracticeSchemaReplaceResponse,
+  SqlTeamPracticeWorkspace,
   SqlUserPracticeGenerateAnswerPayload,
   SqlUserPracticeGenerateAnswerResponse,
   SqlUserPracticeGradePayload,
@@ -302,6 +308,152 @@ export const sqlPracticeApi = {
       {
         method: 'POST',
         body: JSON.stringify(payload),
+      },
+    ),
+  getTeamWorkspaces: () => apiRequest<SqlTeamPracticeWorkspace[]>('/sql/team/workspaces'),
+  createTeamWorkspace: (payload: { title: string; description?: string }) =>
+    apiRequest<SqlTeamPracticeWorkspace>('/sql/team/workspaces', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getTeamWorkspace: (workspaceId: string) =>
+    apiRequest<SqlTeamPracticeWorkspace>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}`,
+    ),
+  updateTeamWorkspace: (
+    workspaceId: string,
+    payload: Partial<{ title: string; description: string }>,
+  ) =>
+    apiRequest<SqlTeamPracticeWorkspace>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+    ),
+  archiveTeamWorkspace: (workspaceId: string) =>
+    apiRequest<void>(`/sql/team/workspaces/${encodeURIComponent(workspaceId)}`, {
+      method: 'DELETE',
+    }),
+  getTeamMembers: (workspaceId: string) =>
+    apiRequest<SqlTeamPracticeMember[]>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/members`,
+    ),
+  addTeamMember: (
+    workspaceId: string,
+    payload: { userId: string; role: SqlTeamPracticeMemberRole },
+  ) =>
+    apiRequest<SqlTeamPracticeMember[]>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/members`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+  updateTeamMember: (
+    workspaceId: string,
+    memberId: string,
+    payload: { role: SqlTeamPracticeMemberRole },
+  ) =>
+    apiRequest<SqlTeamPracticeMember[]>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+    ),
+  removeTeamMember: (workspaceId: string, memberId: string) =>
+    apiRequest<void>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}`,
+      { method: 'DELETE' },
+    ),
+  getTeamMeta: (workspaceId: string) =>
+    apiRequest<SqlPracticeMeta>(`/sql/team/workspaces/${encodeURIComponent(workspaceId)}/meta`),
+  getTeamTables: (workspaceId: string) =>
+    apiRequest<TableInfo[]>(`/sql/team/workspaces/${encodeURIComponent(workspaceId)}/tables`),
+  getTeamTableRows: (workspaceId: string, tableName: string) =>
+    apiRequest<SqlExecuteResponse>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/tables/${encodeURIComponent(tableName)}/rows`,
+    ),
+  executeTeam: (workspaceId: string, query: string) =>
+    apiRequest<SqlExecuteResponse>(`/sql/team/workspaces/${encodeURIComponent(workspaceId)}/execute`, {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    }),
+  replaceTeamSchemaVersion: (
+    workspaceId: string,
+    payload: { file: File; title?: string; description?: string },
+  ) => {
+    const formData = new FormData()
+    formData.append('file', payload.file)
+    if (payload.title?.trim()) formData.append('title', payload.title.trim())
+    if (payload.description?.trim()) formData.append('description', payload.description.trim())
+
+    return apiRequest<SqlTeamPracticeSchemaReplaceResponse>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/schema-versions/replace`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+    )
+  },
+  getTeamErd: (workspaceId: string) =>
+    apiRequest<{ mmd: string | null }>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/erd`,
+    ),
+  getTeamProblems: (workspaceId: string, filter?: { level?: number; mine?: boolean }) => {
+    const params = new URLSearchParams()
+    if (filter?.level) params.set('level', String(filter.level))
+    if (filter?.mine) params.set('mine', 'true')
+    const query = params.toString()
+    return apiRequest<SqlTeamPracticeProblemListResponse>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problems${query ? `?${query}` : ''}`,
+    )
+  },
+  createTeamProblem: (workspaceId: string, payload: SqlUserPracticeProblemPayload) =>
+    apiRequest<SqlTeamPracticeProblem>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problems`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+  generateTeamProblemAnswer: (
+    workspaceId: string,
+    payload: SqlUserPracticeGenerateAnswerPayload,
+  ) =>
+    apiRequest<SqlUserPracticeGenerateAnswerResponse>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problems/generate-answer`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+  gradeTeamProblem: (workspaceId: string, id: string, payload: SqlUserPracticeGradePayload) =>
+    apiRequest<SqlUserPracticeGradeResponse>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problems/${encodeURIComponent(id)}/grade`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+  updateTeamProblem: (
+    workspaceId: string,
+    id: string,
+    payload: Partial<SqlUserPracticeProblemPayload>,
+  ) =>
+    apiRequest<SqlTeamPracticeProblem>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problems/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+    ),
+  deleteTeamProblem: (workspaceId: string, id: string) =>
+    apiRequest<void>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problems/${encodeURIComponent(id)}`,
+      {
+        method: 'DELETE',
       },
     ),
 }

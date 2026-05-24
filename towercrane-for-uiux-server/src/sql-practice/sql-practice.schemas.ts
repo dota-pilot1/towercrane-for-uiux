@@ -101,12 +101,11 @@ export const createSqlUserPracticeProblemSchema = z.object({
 });
 
 export const updateSqlUserPracticeProblemSchema =
-  createSqlUserPracticeProblemSchema.partial().refine(
-    (data) => Object.keys(data).length > 0,
-    {
+  createSqlUserPracticeProblemSchema
+    .partial()
+    .refine((data) => Object.keys(data).length > 0, {
       message: 'At least one field must be provided',
-    },
-  );
+    });
 
 export const generateSqlUserPracticeAnswerSchema = z.object({
   title: optionalTrimmedString,
@@ -116,7 +115,11 @@ export const generateSqlUserPracticeAnswerSchema = z.object({
 });
 
 export const gradeSqlUserPracticeProblemSchema = z.object({
-  submittedSql: z.string().trim().min(1, 'Submitted SQL is required').max(10000),
+  submittedSql: z
+    .string()
+    .trim()
+    .min(1, 'Submitted SQL is required')
+    .max(10000),
 });
 
 export const sqlPersonalPracticeProblemListQuerySchema = z.object({
@@ -131,21 +134,58 @@ export const replacePersonalSchemaVersionSchema = z.object({
   description: z.string().trim().max(500).optional().default(''),
 });
 
+export const createSqlTeamPracticeWorkspaceSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(80),
+  description: z.string().trim().max(1000).optional().default(''),
+});
+
+export const updateSqlTeamPracticeWorkspaceSchema =
+  createSqlTeamPracticeWorkspaceSchema
+    .partial()
+    .refine((data) => Object.keys(data).length > 0, {
+      message: 'At least one field must be provided',
+    });
+
+export const sqlTeamPracticeProblemListQuerySchema = z.object({
+  level: z
+    .union([sqlUserPracticeLevelSchema, z.literal('all')])
+    .optional()
+    .transform((value) => (value === 'all' ? undefined : value)),
+  mine: z.coerce.boolean().optional().default(false),
+});
+
+export const addSqlTeamPracticeMemberSchema = z.object({
+  userId: z.string().trim().min(1, 'User id is required'),
+  role: z.enum(['owner', 'editor', 'member']).default('member'),
+});
+
+export const updateSqlTeamPracticeMemberSchema = z.object({
+  role: z.enum(['owner', 'editor', 'member']),
+});
+
 export const publicShareTokenSchema = z.string().trim().min(16).max(128);
 
 export type ExecuteSqlInput = z.infer<typeof executeSqlSchema>;
 export type ActivateSeedInput = z.infer<typeof activateSeedSchema>;
 export type GeminiAskInput = z.infer<typeof geminiAskSchema>;
-export type GradeSqlPracticeSubmissionInput = z.infer<typeof gradeSqlPracticeSubmissionSchema>;
+export type GradeSqlPracticeSubmissionInput = z.infer<
+  typeof gradeSqlPracticeSubmissionSchema
+>;
 export type SqlPracticeSubmissionSeedQuery = z.infer<
   typeof sqlPracticeSubmissionSeedQuerySchema
 >;
 export type SqlPracticeSubmissionActivityQuery = z.infer<
   typeof sqlPracticeSubmissionActivityQuerySchema
 >;
-export type ListSqlPracticeNotesQuery = z.infer<typeof listSqlPracticeNotesQuerySchema>;
-export type CreateSqlPracticeNoteInput = z.infer<typeof createSqlPracticeNoteSchema>;
-export type UpdateSqlPracticeNoteInput = z.infer<typeof updateSqlPracticeNoteSchema>;
+export type ListSqlPracticeNotesQuery = z.infer<
+  typeof listSqlPracticeNotesQuerySchema
+>;
+export type CreateSqlPracticeNoteInput = z.infer<
+  typeof createSqlPracticeNoteSchema
+>;
+export type UpdateSqlPracticeNoteInput = z.infer<
+  typeof updateSqlPracticeNoteSchema
+>;
 export type SqlUserPracticeProblemListQuery = z.infer<
   typeof sqlUserPracticeProblemListQuerySchema
 >;
@@ -166,4 +206,19 @@ export type SqlPersonalPracticeProblemListQuery = z.infer<
 >;
 export type ReplacePersonalSchemaVersionInput = z.infer<
   typeof replacePersonalSchemaVersionSchema
+>;
+export type CreateSqlTeamPracticeWorkspaceInput = z.infer<
+  typeof createSqlTeamPracticeWorkspaceSchema
+>;
+export type UpdateSqlTeamPracticeWorkspaceInput = z.infer<
+  typeof updateSqlTeamPracticeWorkspaceSchema
+>;
+export type SqlTeamPracticeProblemListQuery = z.infer<
+  typeof sqlTeamPracticeProblemListQuerySchema
+>;
+export type AddSqlTeamPracticeMemberInput = z.infer<
+  typeof addSqlTeamPracticeMemberSchema
+>;
+export type UpdateSqlTeamPracticeMemberInput = z.infer<
+  typeof updateSqlTeamPracticeMemberSchema
 >;

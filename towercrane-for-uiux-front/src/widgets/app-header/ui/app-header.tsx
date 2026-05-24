@@ -25,8 +25,9 @@ function sectionIdToPath(sectionId: string): string {
     ai_evaluation: '/ai-evaluation',
     api_doc: '/api-doc',
     sql: '/sql',
-    sql_user: '/sql/user',
+    sql_user: '/sql/team',
     sql_personal: '/sql/personal',
+    sql_team: '/sql/team',
     sql_examples: '/sql/examples',
     boards: '/boards',
     board_notice: '/boards/notice',
@@ -67,8 +68,9 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/ai-methodology')) return 'ai_methodology'
   if (pathname.startsWith('/api-doc')) return 'api_doc'
   if (pathname.startsWith('/sql/examples')) return 'sql_examples'
+  if (pathname.startsWith('/sql/team')) return 'sql_team'
   if (pathname.startsWith('/sql/personal')) return 'sql_personal'
-  if (pathname.startsWith('/sql/user')) return 'sql_user'
+  if (pathname.startsWith('/sql/user')) return 'sql_team'
   if (pathname.startsWith('/sql')) return 'sql'
   if (pathname.startsWith('/boards/notice')) return 'board_notice'
   if (pathname.startsWith('/boards/inquiry')) return 'board_inquiry'

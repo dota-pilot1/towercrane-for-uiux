@@ -20,13 +20,18 @@ import { AuthService } from '../auth/auth.service';
 import type { SessionRequest } from '../auth/types';
 import { SqlPracticeService } from './sql-practice.service';
 import {
+  addSqlTeamPracticeMemberSchema,
   createSqlUserPracticeProblemSchema,
+  createSqlTeamPracticeWorkspaceSchema,
   createSqlPracticeNoteSchema,
   generateSqlUserPracticeAnswerSchema,
   listSqlPracticeNotesQuerySchema,
   replacePersonalSchemaVersionSchema,
   sqlPersonalPracticeProblemListQuerySchema,
+  sqlTeamPracticeProblemListQuerySchema,
   sqlUserPracticeProblemListQuerySchema,
+  updateSqlTeamPracticeMemberSchema,
+  updateSqlTeamPracticeWorkspaceSchema,
   updateSqlUserPracticeProblemSchema,
   updateSqlPracticeNoteSchema,
 } from './sql-practice.schemas';
@@ -257,6 +262,289 @@ export class SqlPracticeController {
     @Req() req: SessionRequest,
   ) {
     return this.sqlPracticeService.deletePersonalPracticeProblem(
+      workspaceId,
+      id,
+      req.user.id,
+    );
+  }
+
+  @Get('team/workspaces')
+  teamWorkspaces(@Req() req: SessionRequest) {
+    return this.sqlPracticeService.listTeamPracticeWorkspaces(req.user.id);
+  }
+
+  @Post('team/workspaces')
+  createTeamWorkspace(@Body() body: unknown, @Req() req: SessionRequest) {
+    const input = createSqlTeamPracticeWorkspaceSchema.parse(body);
+    return this.sqlPracticeService.createTeamPracticeWorkspace(
+      input,
+      req.user.id,
+    );
+  }
+
+  @Get('team/workspaces/:workspaceId')
+  teamWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getTeamPracticeWorkspace(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Patch('team/workspaces/:workspaceId')
+  updateTeamWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSqlTeamPracticeWorkspaceSchema.parse(body);
+    return this.sqlPracticeService.updateTeamPracticeWorkspace(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Delete('team/workspaces/:workspaceId')
+  @HttpCode(204)
+  archiveTeamWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.archiveTeamPracticeWorkspace(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Get('team/workspaces/:workspaceId/members')
+  teamMembers(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.listTeamPracticeMembers(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Post('team/workspaces/:workspaceId/members')
+  addTeamMember(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = addSqlTeamPracticeMemberSchema.parse(body);
+    return this.sqlPracticeService.addTeamPracticeMember(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Patch('team/workspaces/:workspaceId/members/:memberId')
+  updateTeamMember(
+    @Param('workspaceId') workspaceId: string,
+    @Param('memberId') memberId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSqlTeamPracticeMemberSchema.parse(body);
+    return this.sqlPracticeService.updateTeamPracticeMember(
+      workspaceId,
+      memberId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Delete('team/workspaces/:workspaceId/members/:memberId')
+  @HttpCode(204)
+  removeTeamMember(
+    @Param('workspaceId') workspaceId: string,
+    @Param('memberId') memberId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.removeTeamPracticeMember(
+      workspaceId,
+      memberId,
+      req.user.id,
+    );
+  }
+
+  @Get('team/workspaces/:workspaceId/meta')
+  teamWorkspaceMeta(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getTeamPracticeWorkspaceMeta(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Get('team/workspaces/:workspaceId/tables')
+  teamWorkspaceTables(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getTeamPracticeTables(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Get('team/workspaces/:workspaceId/tables/:tableName/rows')
+  teamWorkspaceTableRows(
+    @Param('workspaceId') workspaceId: string,
+    @Param('tableName') tableName: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getTeamPracticeTableRows(
+      workspaceId,
+      tableName,
+      req.user.id,
+    );
+  }
+
+  @Post('team/workspaces/:workspaceId/execute')
+  teamWorkspaceExecute(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.executeTeamPractice(
+      workspaceId,
+      body,
+      req.user.id,
+    );
+  }
+
+  @Post('team/workspaces/:workspaceId/schema-versions/replace')
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }),
+  )
+  replaceTeamSchemaVersion(
+    @Param('workspaceId') workspaceId: string,
+    @UploadedFile() file: UploadedSqlFile | undefined,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = replacePersonalSchemaVersionSchema.parse(body ?? {});
+    return this.sqlPracticeService.replaceTeamPracticeSchemaVersion(
+      workspaceId,
+      file,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Get('team/workspaces/:workspaceId/erd')
+  teamWorkspaceErd(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getTeamPracticeErd(workspaceId, req.user.id);
+  }
+
+  @Get('team/workspaces/:workspaceId/problems')
+  teamProblems(
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const parsed = sqlTeamPracticeProblemListQuerySchema.parse(query);
+    return this.sqlPracticeService.listTeamPracticeProblems(
+      workspaceId,
+      parsed,
+      req.user.id,
+    );
+  }
+
+  @Post('team/workspaces/:workspaceId/problems')
+  createTeamProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = createSqlUserPracticeProblemSchema.parse(body);
+    return this.sqlPracticeService.createTeamPracticeProblem(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Post('team/workspaces/:workspaceId/problems/generate-answer')
+  generateTeamProblemAnswer(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = generateSqlUserPracticeAnswerSchema.parse(body);
+    return this.sqlPracticeService.generateTeamPracticeAnswer(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Post('team/workspaces/:workspaceId/problems/:id/grade')
+  gradeTeamProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.gradeTeamPracticeProblem(
+      workspaceId,
+      id,
+      body,
+      req.user.id,
+    );
+  }
+
+  @Get('team/workspaces/:workspaceId/problems/:id')
+  teamProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Req() req: SessionRequest,
+  ) {
+    return (
+      this.sqlPracticeService.getTeamPracticeProblem(
+        workspaceId,
+        id,
+        req.user.id,
+      ) ?? null
+    );
+  }
+
+  @Patch('team/workspaces/:workspaceId/problems/:id')
+  updateTeamProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSqlUserPracticeProblemSchema.parse(body);
+    return this.sqlPracticeService.updateTeamPracticeProblem(
+      workspaceId,
+      id,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Delete('team/workspaces/:workspaceId/problems/:id')
+  @HttpCode(204)
+  deleteTeamProblem(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.deleteTeamPracticeProblem(
       workspaceId,
       id,
       req.user.id,

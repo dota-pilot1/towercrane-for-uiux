@@ -934,6 +934,123 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_sql_personal_submissions_share_user
         ON sql_personal_practice_submissions(share_id, user_id, created_at);
 
+      CREATE TABLE IF NOT EXISTS sql_team_practice_workspaces (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        active_schema_version_id TEXT,
+        created_by TEXT NOT NULL,
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_workspaces_updated
+        ON sql_team_practice_workspaces(archived, updated_at);
+
+      CREATE TABLE IF NOT EXISTS sql_team_practice_members (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'member',
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sql_team_members_workspace_user
+        ON sql_team_practice_members(workspace_id, user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_members_user
+        ON sql_team_practice_members(user_id, role);
+
+      CREATE TABLE IF NOT EXISTS sql_team_practice_schema_versions (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        schema_sql TEXT NOT NULL,
+        erd_mmd TEXT,
+        db_file_hash TEXT NOT NULL,
+        source_type TEXT NOT NULL DEFAULT 'seed',
+        source_file_name TEXT,
+        replaced_from_schema_version_id TEXT,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sql_team_schema_versions_workspace_version
+        ON sql_team_practice_schema_versions(workspace_id, version);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_schema_versions_workspace_created
+        ON sql_team_practice_schema_versions(workspace_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS sql_team_practice_problems (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        schema_version_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        level INTEGER NOT NULL DEFAULT 1,
+        target_tables TEXT NOT NULL DEFAULT '[]',
+        starter_sql TEXT,
+        answer_sql TEXT NOT NULL,
+        explanation TEXT,
+        status TEXT NOT NULL DEFAULT 'published',
+        created_by TEXT NOT NULL,
+        updated_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(schema_version_id) REFERENCES sql_team_practice_schema_versions(id) ON DELETE RESTRICT,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_problems_workspace_level
+        ON sql_team_practice_problems(workspace_id, level, status, updated_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_problems_schema
+        ON sql_team_practice_problems(schema_version_id, updated_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_problems_creator
+        ON sql_team_practice_problems(created_by, updated_at);
+
+      CREATE TABLE IF NOT EXISTS sql_team_practice_submissions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        problem_id TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
+        schema_version_id TEXT NOT NULL,
+        submitted_sql TEXT NOT NULL,
+        answer_sql TEXT NOT NULL,
+        is_correct INTEGER NOT NULL,
+        score INTEGER NOT NULL DEFAULT 0,
+        max_score INTEGER NOT NULL DEFAULT 1,
+        feedback TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(problem_id) REFERENCES sql_team_practice_problems(id) ON DELETE CASCADE,
+        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(schema_version_id) REFERENCES sql_team_practice_schema_versions(id) ON DELETE RESTRICT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_submissions_user_problem_created
+        ON sql_team_practice_submissions(user_id, problem_id, created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_submissions_problem_created
+        ON sql_team_practice_submissions(problem_id, created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_submissions_workspace_score
+        ON sql_team_practice_submissions(workspace_id, user_id, is_correct, created_at);
+
       INSERT OR IGNORE INTO sql_practice_submission_logs (
         id,
         submission_id,
@@ -1224,9 +1341,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
-          name: 'SQL 연습장(유저)',
-          sectionId: 'sql_user',
-          icon: 'FileUp',
+          name: 'SQL 연습장(개인)',
+          sectionId: 'sql_personal',
+          icon: 'UserRound',
           displayOrder: 1,
           isVisible: true,
           requiredRole: null,
@@ -1236,9 +1353,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
-          name: 'SQL 연습장(개인)',
-          sectionId: 'sql_personal',
-          icon: 'UserRound',
+          name: 'SQL 연습장(팀)',
+          sectionId: 'sql_team',
+          icon: 'UsersRound',
           displayOrder: 2,
           isVisible: true,
           requiredRole: null,
@@ -2537,6 +2654,27 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       sectionId: 'sql_user',
       name: 'SQL 연습장(유저)',
       icon: 'FileUp',
+      displayOrder: 99,
+      parentId: sqlGroupMenu.id,
+      requiredRole: null,
+      now,
+    });
+
+    this.sqlite
+      .prepare(
+        `
+          UPDATE menus
+          SET is_visible = 0,
+              updated_at = ?
+          WHERE section_id = 'sql_user'
+        `,
+      )
+      .run(now);
+
+    this.upsertMenuBySectionId({
+      sectionId: 'sql_personal',
+      name: 'SQL 연습장(개인)',
+      icon: 'UserRound',
       displayOrder: 1,
       parentId: sqlGroupMenu.id,
       requiredRole: null,
@@ -2544,9 +2682,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.upsertMenuBySectionId({
-      sectionId: 'sql_personal',
-      name: 'SQL 연습장(개인)',
-      icon: 'UserRound',
+      sectionId: 'sql_team',
+      name: 'SQL 연습장(팀)',
+      icon: 'UsersRound',
       displayOrder: 2,
       parentId: sqlGroupMenu.id,
       requiredRole: null,
@@ -2603,11 +2741,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .prepare(
         `
           DELETE FROM menus
-          WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_personal', 'sql_examples')
+          WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_personal', 'sql_team', 'sql_examples')
             AND rowid NOT IN (
               SELECT MIN(rowid)
               FROM menus
-              WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_personal', 'sql_examples')
+              WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_personal', 'sql_team', 'sql_examples')
               GROUP BY section_id
             )
         `,

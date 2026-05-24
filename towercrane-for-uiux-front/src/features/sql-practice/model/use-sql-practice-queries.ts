@@ -6,6 +6,7 @@ import type {
   SqlPracticeGradePayload,
   SqlPracticeNoteFilter,
   SqlPracticeSeedSource,
+  SqlTeamPracticeMemberRole,
   SqlUserPracticeGenerateAnswerPayload,
   SqlUserPracticeGradePayload,
   SqlUserPracticeProblemPayload,
@@ -40,6 +41,14 @@ export const sqlPracticeQueryKeys = {
   personalProblems: (workspaceId: string, filter?: { level?: number }) =>
     ['sql-practice', 'personal', workspaceId, 'problems', filter ?? {}] as const,
   publicPersonalProblem: (token: string) => ['sql-practice', 'public-personal', token] as const,
+  teamWorkspaces: ['sql-practice', 'team', 'workspaces'] as const,
+  teamWorkspace: (workspaceId: string) => ['sql-practice', 'team', workspaceId] as const,
+  teamMembers: (workspaceId: string) => ['sql-practice', 'team', workspaceId, 'members'] as const,
+  teamMeta: (workspaceId: string) => ['sql-practice', 'team', workspaceId, 'meta'] as const,
+  teamTables: (workspaceId: string) => ['sql-practice', 'team', workspaceId, 'tables'] as const,
+  teamErd: (workspaceId: string) => ['sql-practice', 'team', workspaceId, 'erd'] as const,
+  teamProblems: (workspaceId: string, filter?: { level?: number; mine?: boolean }) =>
+    ['sql-practice', 'team', workspaceId, 'problems', filter ?? {}] as const,
 }
 
 function messageFromError(error: unknown, fallback: string) {
@@ -622,5 +631,232 @@ export function useGradePublicSqlPersonalPracticeProblem() {
       })
     },
     onError: (error) => toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
+  })
+}
+
+export function useSqlTeamPracticeWorkspaces() {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.teamWorkspaces,
+    queryFn: sqlPracticeApi.getTeamWorkspaces,
+  })
+}
+
+export function useCreateSqlTeamPracticeWorkspace() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: { title: string; description?: string }) =>
+      sqlPracticeApi.createTeamWorkspace(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.teamWorkspaces })
+      toast.success('팀 SQL 연습장을 만들었습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '팀 SQL 연습장 생성에 실패했습니다.')),
+  })
+}
+
+export function useSqlTeamPracticeWorkspace(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.teamWorkspace(workspaceId ?? ''),
+    queryFn: () => sqlPracticeApi.getTeamWorkspace(workspaceId!),
+    enabled: Boolean(workspaceId),
+  })
+}
+
+export function useSqlTeamPracticeMembers(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.teamMembers(workspaceId ?? ''),
+    queryFn: () => sqlPracticeApi.getTeamMembers(workspaceId!),
+    enabled: Boolean(workspaceId),
+  })
+}
+
+export function useAddSqlTeamPracticeMember(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: { userId: string; role: SqlTeamPracticeMemberRole }) =>
+      sqlPracticeApi.addTeamMember(workspaceId!, payload),
+    onSuccess: () => {
+      if (workspaceId) {
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.teamMembers(workspaceId) })
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.teamWorkspace(workspaceId) })
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.teamWorkspaces })
+      }
+      toast.success('팀 멤버를 추가했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '팀 멤버 추가에 실패했습니다.')),
+  })
+}
+
+export function useUpdateSqlTeamPracticeMember(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      memberId,
+      role,
+    }: {
+      memberId: string
+      role: SqlTeamPracticeMemberRole
+    }) => sqlPracticeApi.updateTeamMember(workspaceId!, memberId, { role }),
+    onSuccess: () => {
+      if (workspaceId) {
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.teamMembers(workspaceId) })
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.teamWorkspace(workspaceId) })
+      }
+      toast.success('팀 멤버 권한을 변경했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '팀 멤버 권한 변경에 실패했습니다.')),
+  })
+}
+
+export function useRemoveSqlTeamPracticeMember(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (memberId: string) => sqlPracticeApi.removeTeamMember(workspaceId!, memberId),
+    onSuccess: () => {
+      if (workspaceId) {
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.teamMembers(workspaceId) })
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.teamWorkspace(workspaceId) })
+        queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.teamWorkspaces })
+      }
+      toast.success('팀 멤버를 제거했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '팀 멤버 제거에 실패했습니다.')),
+  })
+}
+
+export function useSqlTeamPracticeMeta(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.teamMeta(workspaceId ?? ''),
+    queryFn: () => sqlPracticeApi.getTeamMeta(workspaceId!),
+    enabled: Boolean(workspaceId),
+  })
+}
+
+export function useSqlTeamPracticeTables(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.teamTables(workspaceId ?? ''),
+    queryFn: () => sqlPracticeApi.getTeamTables(workspaceId!),
+    enabled: Boolean(workspaceId),
+  })
+}
+
+export function useSqlTeamPracticeErd(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.teamErd(workspaceId ?? ''),
+    queryFn: () => sqlPracticeApi.getTeamErd(workspaceId!),
+    enabled: Boolean(workspaceId),
+    staleTime: Infinity,
+  })
+}
+
+export function useExecuteSqlTeamPractice(workspaceId: string | undefined) {
+  return useMutation({
+    mutationFn: (query: string) => sqlPracticeApi.executeTeam(workspaceId!, query),
+    onError: (error) => toast.error(messageFromError(error, '팀 SQL 실행에 실패했습니다.')),
+  })
+}
+
+export function useSqlTeamPracticeProblems(
+  workspaceId: string | undefined,
+  filter?: { level?: number; mine?: boolean },
+) {
+  return useQuery({
+    queryKey: sqlPracticeQueryKeys.teamProblems(workspaceId ?? '', filter),
+    queryFn: () => sqlPracticeApi.getTeamProblems(workspaceId!, filter),
+    enabled: Boolean(workspaceId),
+  })
+}
+
+function invalidateTeamPractice(
+  queryClient: ReturnType<typeof useQueryClient>,
+  workspaceId: string,
+) {
+  queryClient.invalidateQueries({ queryKey: ['sql-practice', 'team', workspaceId] })
+  queryClient.invalidateQueries({ queryKey: sqlPracticeQueryKeys.teamWorkspaces })
+}
+
+export function useCreateSqlTeamPracticeProblem(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: SqlUserPracticeProblemPayload) =>
+      sqlPracticeApi.createTeamProblem(workspaceId!, payload),
+    onSuccess: () => {
+      if (workspaceId) invalidateTeamPractice(queryClient, workspaceId)
+      toast.success('팀 문제를 등록했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '팀 문제 등록에 실패했습니다.')),
+  })
+}
+
+export function useGenerateSqlTeamPracticeAnswer(workspaceId: string | undefined) {
+  return useMutation({
+    mutationFn: (payload: SqlUserPracticeGenerateAnswerPayload) =>
+      sqlPracticeApi.generateTeamProblemAnswer(workspaceId!, payload),
+    onSuccess: () => toast.success('정답 SQL을 생성했습니다.'),
+    onError: (error) => toast.error(messageFromError(error, '정답 SQL 생성에 실패했습니다.')),
+  })
+}
+
+export function useGradeSqlTeamPracticeProblem(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: SqlUserPracticeGradePayload }) =>
+      sqlPracticeApi.gradeTeamProblem(workspaceId!, id, payload),
+    onSuccess: () => {
+      if (workspaceId) invalidateTeamPractice(queryClient, workspaceId)
+    },
+    onError: (error) => toast.error(messageFromError(error, 'SQL 답안 채점에 실패했습니다.')),
+  })
+}
+
+export function useUpdateSqlTeamPracticeProblem(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string
+      payload: Partial<SqlUserPracticeProblemPayload>
+    }) => sqlPracticeApi.updateTeamProblem(workspaceId!, id, payload),
+    onSuccess: () => {
+      if (workspaceId) invalidateTeamPractice(queryClient, workspaceId)
+      toast.success('팀 문제를 수정했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '팀 문제 수정에 실패했습니다.')),
+  })
+}
+
+export function useDeleteSqlTeamPracticeProblem(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => sqlPracticeApi.deleteTeamProblem(workspaceId!, id),
+    onSuccess: () => {
+      if (workspaceId) invalidateTeamPractice(queryClient, workspaceId)
+      toast.success('팀 문제를 삭제했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '팀 문제 삭제에 실패했습니다.')),
+  })
+}
+
+export function useReplaceSqlTeamPracticeSchemaVersion(workspaceId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: { file: File; title?: string; description?: string }) =>
+      sqlPracticeApi.replaceTeamSchemaVersion(workspaceId!, payload),
+    onSuccess: () => {
+      if (workspaceId) invalidateTeamPractice(queryClient, workspaceId)
+      toast.success('팀 SQL 파일을 교체했습니다.')
+    },
+    onError: (error) => toast.error(messageFromError(error, '팀 SQL 파일 교체에 실패했습니다.')),
   })
 }
