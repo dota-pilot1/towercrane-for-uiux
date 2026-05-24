@@ -1181,6 +1181,23 @@ export const devChallengeSubmissionsTable = sqliteTable(
   },
 );
 
+export const chatSessionsTable = sqliteTable('chat_sessions', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const chatMessagesTable = sqliteTable('chat_messages', {
+  id: text('id').primaryKey(),
+  sessionId: text('session_id')
+    .notNull()
+    .references(() => chatSessionsTable.id, { onDelete: 'cascade' }),
+  role: text('role').$type<'user' | 'assistant'>().notNull(),
+  content: text('content').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
 export const schema = {
   usersTable,
   sessionsTable,
@@ -1238,7 +1255,14 @@ export const schema = {
   devChallengeAssignmentsTable,
   devChallengeAssignmentBlocksTable,
   devChallengeSubmissionsTable,
+  chatSessionsTable,
+  chatMessagesTable,
 };
+
+export type ChatSessionRow = typeof chatSessionsTable.$inferSelect;
+export type ChatSessionInsert = typeof chatSessionsTable.$inferInsert;
+export type ChatMessageRow = typeof chatMessagesTable.$inferSelect;
+export type ChatMessageInsert = typeof chatMessagesTable.$inferInsert;
 
 export type UserRow = typeof usersTable.$inferSelect;
 export type UserInsert = typeof usersTable.$inferInsert;

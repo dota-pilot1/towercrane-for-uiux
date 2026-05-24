@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>3-2 — Zustand 기본 구조</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      max-width: 760px;
+      margin: 48px auto;
+      padding: 0 24px;
+      background: #0f1117;
+      color: #e2e8f0;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.5rem; color: #a3e635; margin-bottom: 4px; }
+    h2 { font-size: 1.05rem; color: #a3e635; margin-top: 40px; border-left: 3px solid #a3e635; padding-left: 12px; }
+    .sub { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+    pre {
+      background: #1e2230;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+    .comment { color: #6b7280; font-style: italic; }
+    .hl { color: #a3e635; font-weight: bold; }
+    .box {
+      background: #1e2230;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.92rem;
+    }
+    hr { border: none; border-top: 1px solid #2d3348; margin: 40px 0; }
+    code { color: #93c5fd; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+    th { background: #1e2230; color: #a3e635; padding: 8px 14px; text-align: left; border: 1px solid #2d3348; }
+    td { padding: 8px 14px; border: 1px solid #2d3348; color: #cbd5e1; vertical-align: top; }
+  </style>
+</head>
+<body>
+
+<h1>3-2 — Zustand 기본 구조</h1>
+<p class="sub">3단계 노트 · 파일 구조 + useState vs Zustand 비교</p>
+
+<hr>
+
+<h2>1. 히스토리 챗 관련 파일 구조</h2>
+
+<pre><code>features/chatbot/
+  model/
+    <span class="hl">chat-session-store.ts</span>    ← Zustand store (세션 상태 + 모든 액션)
+    use-history-chat.ts      ← store 연결 + 스트리밍 로직 (여기서만 store 사용)
+    use-chat-messages.ts     ← Message 타입 정의
+  ui/
+    chat-session-sidebar.tsx ← 사이드바 UI (props만 받음)
+    chat-message.tsx         ← 메시지 말풍선
+    chat-input.tsx           ← 입력창
+
+pages/chatbot/ui/
+  chatbot-history-page.tsx   ← 얇은 페이지 (useHistoryChat 호출만)</code></pre>
+
+<div class="box">
+  <code>useChatSessionStore</code>는 <strong><code>use-history-chat.ts</code> 에서만</strong> 호출된다.<br>
+  페이지나 UI 컴포넌트는 store를 직접 몰라도 된다.<br>
+  hook이 store와 UI 사이의 유일한 연결 지점이다.
+</div>
+
+<hr>
+
+<h2>2. useState vs Zustand — 무엇이 어디로 이동했나</h2>
+
+<table>
+  <tr>
+    <th>항목</th>
+    <th>3-1 useState</th>
+    <th>3-2 Zustand</th>
+  </tr>
+  <tr>
+    <td>sessions 상태</td>
+    <td><code>useState&lt;Session[]&gt;</code><br><small>hook 안에 존재</small></td>
+    <td><code>store.sessions</code><br><small>전역 store에 존재</small></td>
+  </tr>
+  <tr>
+    <td>activeId 상태</td>
+    <td><code>useState&lt;string&gt;</code><br><small>hook 안에 존재</small></td>
+    <td><code>store.activeId</code><br><small>전역 store에 존재</small></td>
+  </tr>
+  <tr>
+    <td>addSession</td>
+    <td><code>setSessions([s, ...prev])</code><br><small>hook 안에 함수 정의</small></td>
+    <td><code>store.addSession()</code><br><small>store 안에 액션 정의</small></td>
+  </tr>
+  <tr>
+    <td>deleteSession</td>
+    <td>hook 안에 함수 정의</td>
+    <td>store 안에 액션 정의</td>
+  </tr>
+  <tr>
+    <td>메시지 추가</td>
+    <td><code>setSessions(prev =&gt; prev.map(...))</code></td>
+    <td><code>store.appendMessages(...)</code></td>
+  </tr>
+  <tr>
+    <td>청크 누적</td>
+    <td><code>setSessions(prev =&gt; prev.map(...))</code></td>
+    <td><code>store.updateAssistantChunk(...)</code></td>
+  </tr>
+  <tr>
+    <td>스트리밍 로직</td>
+    <td>hook 안에 존재</td>
+    <td>hook 안에 존재 (그대로)</td>
+  </tr>
+  <tr>
+    <td>input 상태</td>
+    <td>hook 안에 존재</td>
+    <td>hook 안에 존재 (그대로)</td>
+  </tr>
+  <tr>
+    <td>isStreaming 상태</td>
+    <td>hook 안에 존재</td>
+    <td>hook 안에 존재 (그대로)</td>
+  </tr>
+  <tr>
+    <td>페이지 이동 후 상태</td>
+    <td>사라짐</td>
+    <td>유지됨</td>
+  </tr>
+  <tr>
+    <td>새로고침 후 상태</td>
+    <td>사라짐</td>
+    <td>유지됨 (persist)</td>
+  </tr>
+</table>
+
+<div class="box">
+  <strong>store로 이동한 것</strong> — 세션 목록, 활성 id, 세션 관련 액션들<br>
+  <strong>hook에 남은 것</strong> — 스트리밍 로직, input, isStreaming<br><br>
+  결국 <strong>"대화 데이터"는 store로, "현재 입력 중인 UI 상태"는 hook에</strong> 남은 구조다.
+</div>
+
+</body>
+</html>

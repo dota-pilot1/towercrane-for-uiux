@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>3-4 — 로그인 유저별 분리 구현 계획</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; max-width: 820px; margin: 48px auto; padding: 0 24px; background: #0f1117; color: #e2e8f0; line-height: 1.7; }
+    h1 { font-size: 1.5rem; color: #a3e635; margin-bottom: 4px; }
+    h2 { font-size: 1.1rem; color: #a3e635; margin-top: 40px; border-left: 3px solid #a3e635; padding-left: 12px; }
+    h3 { font-size: 0.95rem; color: #60a5fa; margin-top: 24px; }
+    .sub { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+    pre { background: #1e2230; border: 1px solid #2d3348; border-radius: 8px; padding: 16px 20px; overflow-x: auto; font-size: 0.85rem; line-height: 1.6; }
+    .comment { color: #6b7280; font-style: italic; }
+    .hl { color: #a3e635; font-weight: bold; }
+    .box { background: #1e2230; border: 1px solid #2d3348; border-radius: 8px; padding: 14px 20px; margin: 14px 0; font-size: 0.92rem; }
+    .warn { background: #2a1f1a; border: 1px solid #6b3a2a; border-radius: 8px; padding: 14px 20px; margin: 14px 0; font-size: 0.92rem; }
+    .step { background: #1a2535; border: 1px solid #2d4a6b; border-radius: 8px; padding: 14px 20px; margin: 14px 0; }
+    .step-label { color: #60a5fa; font-weight: bold; font-size: 0.85rem; margin-bottom: 8px; }
+    hr { border: none; border-top: 1px solid #2d3348; margin: 32px 0; }
+    code { color: #93c5fd; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+    th { background: #1e2230; color: #a3e635; padding: 8px 14px; text-align: left; border: 1px solid #2d3348; }
+    td { padding: 8px 14px; border: 1px solid #2d3348; color: #cbd5e1; vertical-align: top; }
+    ul { padding-left: 22px; }
+    li { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+<h1>3-4 — 로그인 유저별 분리 구현 계획</h1>
+<p class="sub">JWT 인증 가드로 유저별 대화 분리 · 농협 프로젝트 실무 패턴</p>
+
+<hr>
+
+<h2>목표</h2>
+
+<div class="box">
+  3-3까지는 모든 사용자가 같은 세션 목록을 본다.<br>
+  3-4에서는 <strong>로그인한 유저별로 대화가 완전히 분리</strong>된다.<br><br>
+  A 유저가 만든 세션은 B 유저에게는 보이지 않고,<br>
+  타인의 세션 id로 API를 호출해도 거부된다.
+</div>
+
+<hr>
+
+<h2>전제 — 기존 인증 인프라 활용</h2>
+
+<pre><code>auth/
+  auth.module.ts
+  auth.service.ts
+  guard/
+    auth.guard.ts      ← JWT 검증, request.user 주입
+
+users/
+  usersTable           ← id, email, name, role</code></pre>
+
+<div class="box">
+  TasksModule처럼 <code>imports: [AuthModule]</code> 로 가드를 쓸 수 있다.<br>
+  토큰은 프론트의 <code>useSessionStore</code> 가 이미 관리 중이며<br>
+  <code>apiRequest</code> 가 자동으로 <code>Authorization: Bearer ...</code> 헤더를 붙인다.
+</div>
+
+<hr>
+
+<h2>1. 백엔드 — 스키마에 userId 추가</h2>
+
+<pre><code>export const chatSessionsTable = sqliteTable('chat_sessions', {
+  id: text('id').primaryKey(),
+  <span class="hl">userId: text('user_id')</span>
+    <span class="hl">.notNull()</span>
+    <span class="hl">.references(() =&gt; usersTable.id, { onDelete: 'cascade' }),</span>
+  title: text('title').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})</code></pre>
+
+<div class="warn">
+  <strong>마이그레이션 주의:</strong><br>
+  3-3에서 만든 기존 데이터에는 <code>user_id</code> 가 없다.<br>
+  옵션:<br>
+  ① 기존 chat_sessions 데이터 삭제 후 재생성 (학습용이라 OK)<br>
+  ② ALTER TABLE 로 컬럼 추가 + 기본값으로 admin id 채우기
+</div>
+
+<hr>
+
+<h2>2. 백엔드 — Controller에 가드 적용</h2>
+
+<pre><code>@UseGuards(AuthGuard)
+@Controller('chatbot')
+export class ChatbotController {
+  @Get('sessions')
+  listSessions(<span class="hl">@CurrentUser() user: User</span>) {
+    return this.chatbotService.listSessions(<span class="hl">user.id</span>)
+  }
+
+  @Post('sessions')
+  createSession(<span class="hl">@CurrentUser() user: User</span>, @Body() body) {
+    return this.chatbotService.createSession(<span class="hl">user.id</span>, body?.title)
+  }
+
+  ...
+}</code></pre>
+
+<div class="box">
+  모든 엔드포인트에 가드 적용 → 인증 안 된 요청은 401 반환<br>
+  <code>@CurrentUser()</code> 데코레이터로 토큰에서 추출된 유저 정보를 받는다
+</div>
+
+<hr>
+
+<h2>3. 백엔드 — Service에 userId 필터 + 권한 검증</h2>
+
+<h3>조회 시 userId 필터</h3>
+
+<pre><code>listSessions(userId: string) {
+  return this.db
+    .select()
+    .from(chatSessionsTable)
+    .where(eq(chatSessionsTable.userId, userId))   <span class="comment">← 본인 것만</span>
+    .orderBy(desc(chatSessionsTable.updatedAt))
+    .all()
+}</code></pre>
+
+<h3>수정/삭제 시 소유자 검증</h3>
+
+<pre><code>private assertOwnership(sessionId: string, userId: string) {
+  const session = this.db.select().from(chatSessionsTable)
+    .where(eq(chatSessionsTable.id, sessionId)).get()
+  if (!session) throw new NotFoundException('session not found')
+  if (session.userId !== userId) throw new ForbiddenException()
+  return session
+}
+
+deleteSession(id: string, userId: string) {
+  this.assertOwnership(id, userId)
+  this.db.delete(chatSessionsTable).where(eq(chatSessionsTable.id, id)).run()
+}</code></pre>
+
+<div class="warn">
+  <strong>왜 별도 검증이 필요한가?</strong><br>
+  URL 파라미터로 들어온 <code>sessionId</code> 는 누구의 것인지 알 수 없다.<br>
+  로그인 유저의 토큰만 검증하면 <strong>타인 세션 id로 삭제 요청</strong>이 통과될 수 있다.<br>
+  → 항상 "이 세션이 정말 이 유저 것인가?"를 확인해야 한다.
+</div>
+
+<hr>
+
+<h2>4. 프론트 — 거의 변경 없음</h2>
+
+<div class="box">
+  <code>apiRequest</code> 가 이미 토큰을 자동으로 붙이기 때문에<br>
+  프론트 코드는 <strong>거의 손댈 게 없다</strong>.<br><br>
+  변경 필요한 부분:<br>
+  <ul>
+    <li>로그인하지 않은 상태에서 페이지 진입 시 처리 (리다이렉트 또는 안내)</li>
+    <li>토큰 만료(401) 시 store 초기화 (이미 <code>apiRequest</code>에 구현되어 있음)</li>
+    <li>로그아웃 시 store의 sessions/messagesBySession 초기화</li>
+  </ul>
+</div>
+
+<hr>
+
+<h2>5. 작업 순서</h2>
+
+<ol>
+  <li>백엔드 <code>schema.ts</code> 의 <code>chatSessionsTable</code> 에 <code>userId</code> 추가</li>
+  <li>백엔드 <code>database.service.ts</code> CREATE TABLE 에 <code>user_id</code> 컬럼 추가</li>
+  <li>기존 <code>chat_sessions</code>, <code>chat_messages</code> 데이터 초기화 (학습용)</li>
+  <li>백엔드 <code>chatbot.module.ts</code> 에 <code>AuthModule</code> import</li>
+  <li>백엔드 <code>chatbot.controller.ts</code> 전체에 <code>@UseGuards(AuthGuard)</code> 적용</li>
+  <li>각 컨트롤러 메소드에 <code>@CurrentUser()</code> 추가</li>
+  <li>백엔드 <code>chatbot.service.ts</code> 의 모든 메소드에 <code>userId</code> 파라미터 추가</li>
+  <li><code>listSessions</code> 에 userId 필터 적용</li>
+  <li>수정/삭제/메시지 조회/스트리밍 에 <code>assertOwnership</code> 호출 추가</li>
+  <li>프론트 로그아웃 시 store 초기화 로직 추가</li>
+  <li>두 명의 테스트 계정으로 대화 분리 확인</li>
+</ol>
+
+<hr>
+
+<h2>6. 권한 검증 매트릭스</h2>
+
+<table>
+  <tr><th>요청</th><th>본인 세션</th><th>타인 세션</th><th>존재 X</th></tr>
+  <tr><td>GET sessions</td><td>본인 것만 반환</td><td>안 보임</td><td>-</td></tr>
+  <tr><td>GET messages</td><td>OK</td><td>403 Forbidden</td><td>404</td></tr>
+  <tr><td>PATCH title</td><td>OK</td><td>403</td><td>404</td></tr>
+  <tr><td>DELETE</td><td>OK</td><td>403</td><td>404</td></tr>
+  <tr><td>POST stream</td><td>OK</td><td>403</td><td>404</td></tr>
+</table>
+
+<hr>
+
+<h2>7. 농협 프로젝트 적용 포인트</h2>
+
+<div class="box">
+  실무에서 이 패턴이 그대로 쓰인다:<br>
+  <ul>
+    <li><strong>감사 대응</strong> — 누가 언제 어떤 대화를 했는지 user_id로 추적 가능</li>
+    <li><strong>관리자 모니터링</strong> — role === 'admin' 일 때만 전체 조회 허용</li>
+    <li><strong>보안</strong> — 토큰 + 소유자 검증 이중 방어</li>
+    <li><strong>다중 기기</strong> — 같은 유저가 다른 기기에서 접속해도 대화 동기화</li>
+  </ul>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>3-3 — 저장 관련 로직 정리</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; max-width: 820px; margin: 48px auto; padding: 0 24px; background: #0f1117; color: #e2e8f0; line-height: 1.7; }
+    h1 { font-size: 1.5rem; color: #a3e635; margin-bottom: 4px; }
+    h2 { font-size: 1.1rem; color: #a3e635; margin-top: 40px; border-left: 3px solid #a3e635; padding-left: 12px; }
+    h3 { font-size: 0.95rem; color: #60a5fa; margin-top: 24px; }
+    .sub { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+    pre { background: #1e2230; border: 1px solid #2d3348; border-radius: 8px; padding: 16px 20px; overflow-x: auto; font-size: 0.85rem; line-height: 1.6; }
+    .comment { color: #6b7280; font-style: italic; }
+    .hl { color: #a3e635; font-weight: bold; }
+    .green { color: #6ee7b7; }
+    .red { color: #fca5a5; }
+    .box { background: #1e2230; border: 1px solid #2d3348; border-radius: 8px; padding: 14px 20px; margin: 14px 0; font-size: 0.92rem; }
+    .front { background: #1a2a35; border-left: 3px solid #60a5fa; border-radius: 4px; padding: 14px 20px; margin: 14px 0; }
+    .back { background: #2a1f1a; border-left: 3px solid #fbbf24; border-radius: 4px; padding: 14px 20px; margin: 14px 0; }
+    .label-front { color: #60a5fa; font-weight: bold; font-size: 0.85rem; margin-bottom: 8px; }
+    .label-back { color: #fbbf24; font-weight: bold; font-size: 0.85rem; margin-bottom: 8px; }
+    hr { border: none; border-top: 1px solid #2d3348; margin: 32px 0; }
+    code { color: #93c5fd; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+    th { background: #1e2230; color: #a3e635; padding: 8px 14px; text-align: left; border: 1px solid #2d3348; }
+    td { padding: 8px 14px; border: 1px solid #2d3348; color: #cbd5e1; vertical-align: top; }
+  </style>
+</head>
+<body>
+
+<h1>3-3 — 저장 관련 로직 정리</h1>
+<p class="sub">세션 생성 · 이름 변경 · 메시지 저장 — 프론트와 백엔드 각각의 흐름</p>
+
+<hr>
+
+<h2>저장 작업 4가지</h2>
+
+<table>
+  <tr><th>작업</th><th>트리거</th><th>저장 대상</th></tr>
+  <tr><td>① 세션 생성</td><td>"+" 버튼 클릭</td><td>chat_sessions 1행</td></tr>
+  <tr><td>② 세션 이름 변경</td><td>"이름 변경" 메뉴</td><td>chat_sessions 1행 update</td></tr>
+  <tr><td>③ user 메시지 저장</td><td>전송 버튼</td><td>chat_messages 1행 (stream API 내부)</td></tr>
+  <tr><td>④ assistant 메시지 저장</td><td>스트리밍 완료</td><td>chat_messages 1행 (stream API 내부)</td></tr>
+</table>
+
+<hr>
+
+<h2>① 세션 생성</h2>
+
+<div class="front">
+  <div class="label-front">[프론트] use-history-chat.ts → addSession</div>
+<pre><code>addSession: () =&gt; void addSession()   <span class="comment">// store 액션 호출</span>
+
+<span class="comment">// chat-session-store.ts</span>
+addSession: async () =&gt; {
+  const dto = await apiRequest&lt;SessionDto&gt;('/chatbot/sessions', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+  const session = toSession(dto)
+  set((state) =&gt; ({
+    sessions: [session, ...state.sessions],            <span class="comment">// 맨 앞에 추가</span>
+    activeId: session.id,                              <span class="comment">// 즉시 활성화</span>
+    messagesBySession: { ...state.messagesBySession, [session.id]: [] },
+  }))
+}</code></pre>
+</div>
+
+<div class="back">
+  <div class="label-back">[백엔드] chatbot.controller.ts → createSession</div>
+<pre><code>@Post('sessions')
+createSession(@Body() body: { title?: string }) {
+  return this.chatbotService.createSession(body?.title)
+}
+
+<span class="comment">// chatbot.service.ts</span>
+createSession(title?: string) {
+  const now = new Date().toISOString()
+  const session = {
+    id: <span class="hl">randomUUID()</span>,
+    title: title?.trim() || '새 대화',
+    createdAt: now,
+    updatedAt: now,
+  }
+  this.db.<span class="hl">insert(chatSessionsTable).values(session).run()</span>
+  return session       <span class="comment">// 생성된 객체 그대로 반환</span>
+}</code></pre>
+</div>
+
+<div class="box">
+  포인트:<br>
+  <ul>
+    <li>프론트가 보내는 body는 빈 객체 — title은 서버가 '새 대화'로 기본값 설정</li>
+    <li>id는 서버가 UUID로 생성 → 응답에 담아 반환</li>
+    <li>프론트는 응답 받자마자 store에 추가 + 활성화</li>
+  </ul>
+</div>
+
+<hr>
+
+<h2>② 세션 이름 변경</h2>
+
+<div class="front">
+  <div class="label-front">[프론트] 사이드바 인라인 편집 → renameSession</div>
+<pre><code><span class="comment">// chat-session-sidebar.tsx — 사용자가 Enter 누르면</span>
+function commitEdit(id: string) {
+  const trimmed = editingTitle.trim()
+  if (trimmed) onRename(id, trimmed)
+  setEditingId(null)
+}
+
+<span class="comment">// chat-session-store.ts</span>
+renameSession: async (id, title) =&gt; {
+  await apiRequest(`/chatbot/sessions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  })
+  set((state) =&gt; ({
+    sessions: state.sessions.map((s) =&gt; (s.id === id ? { ...s, title } : s)),
+  }))
+}</code></pre>
+</div>
+
+<div class="back">
+  <div class="label-back">[백엔드] renameSession</div>
+<pre><code>@Patch('sessions/:id')
+renameSession(@Param('id') id: string, @Body() body: { title: string }) {
+  return this.chatbotService.renameSession(id, body.title)
+}
+
+renameSession(id: string, title: string) {
+  const trimmed = title.trim()
+  if (!trimmed) throw new NotFoundException('title is required')
+  const now = new Date().toISOString()
+  const result = this.db
+    .update(chatSessionsTable)
+    .set({ title: trimmed, <span class="hl">updatedAt: now</span> })
+    .where(eq(chatSessionsTable.id, id))
+    .run()
+  if (<span class="hl">result.changes === 0</span>) {
+    throw new NotFoundException('session not found')
+  }
+  return { id, title: trimmed, updatedAt: now }
+}</code></pre>
+</div>
+
+<div class="box">
+  포인트:<br>
+  <ul>
+    <li>title뿐 아니라 <code>updatedAt</code>도 갱신 → 목록 정렬 순서가 바뀜</li>
+    <li><code>result.changes === 0</code> 체크로 존재하지 않는 id 거름</li>
+  </ul>
+</div>
+
+<hr>
+
+<h2>③ ④ 메시지 저장 — 핵심 로직</h2>
+
+<div class="box">
+  메시지 저장은 <strong>별도 API가 없다</strong>. <code>POST /chatbot/stream</code> 안에서 자동으로 저장된다.<br>
+  user 메시지는 스트리밍 시작 직전, assistant 메시지는 스트리밍 완료 직후.
+</div>
+
+<h3>전체 흐름</h3>
+
+<div class="front">
+  <div class="label-front">[프론트] handleSend — temp id로 즉시 추가 후 fetch</div>
+<pre><code>async function handleSend() {
+  const tempUserId = `temp-user-${Date.now()}`
+  const tempAssistantId = `temp-assistant-${Date.now()}`
+
+  <span class="comment">// (A) 화면용 임시 메시지 두 개 추가</span>
+  appendLocalMessage(currentActiveId, {
+    id: <span class="red">tempUserId</span>, role: 'user', content: text, timestamp: new Date(),
+  })
+  appendLocalMessage(currentActiveId, {
+    id: <span class="red">tempAssistantId</span>, role: 'assistant', content: '', timestamp: new Date(),
+  })
+
+  <span class="comment">// (B) stream API 호출</span>
+  const res = await fetch(`${API_BASE_URL}/chatbot/stream`, {
+    method: 'POST',
+    body: JSON.stringify({ <span class="hl">sessionId, message: text</span> }),
+  })
+
+  <span class="comment">// (C) 이벤트 받으면서 처리 ...</span>
+}</code></pre>
+</div>
+
+<div class="back">
+  <div class="label-back">[백엔드] streamGpt — DB 저장 + SSE 응답</div>
+<pre><code>async streamGpt(sessionId: string, message: string, res: Response) {
+  <span class="comment">// (1) 세션 갱신 + 첫 메시지면 title 자동 설정</span>
+  const meta = this.touchSession(sessionId, message)
+
+  <span class="comment">// (2) ★ user 메시지 DB 저장</span>
+  const <span class="green">userMessage</span> = this.<span class="hl">insertMessage(sessionId, 'user', message)</span>
+
+  <span class="comment">// (3) meta 이벤트 전송 (진짜 id 알림)</span>
+  res.write(`data: ${JSON.stringify({
+    type: 'meta', userMessage: <span class="green">userMessage</span>, sessionTitle: meta.title,
+  })}\n\n`)
+
+  <span class="comment">// (4) OpenAI 스트리밍 + 누적</span>
+  let assistantContent = ''
+  for await (const chunk of stream) {
+    const text = chunk.choices[0]?.delta?.content ?? ''
+    if (text) {
+      <span class="hl">assistantContent += text</span>                      <span class="comment">// 변수에 누적만</span>
+      res.write(`data: ${JSON.stringify({ text })}\n\n`)
+    }
+  }
+
+  <span class="comment">// (5) ★ assistant 메시지 DB 저장 (완성본 한 번에)</span>
+  const <span class="green">assistantMessage</span> = this.<span class="hl">insertMessage(sessionId, 'assistant', assistantContent)</span>
+
+  <span class="comment">// (6) done 이벤트 + [DONE]</span>
+  res.write(`data: ${JSON.stringify({ type: 'done', assistantMessage: <span class="green">assistantMessage</span> })}\n\n`)
+  res.write('data: [DONE]\n\n')
+  res.end()
+}</code></pre>
+</div>
+
+<h3>insertMessage 헬퍼</h3>
+
+<pre><code>private insertMessage(sessionId, role, content) {
+  const message = {
+    id: <span class="hl">randomUUID()</span>,
+    sessionId,
+    role,        <span class="comment">// 'user' or 'assistant'</span>
+    content,
+    createdAt: new Date().toISOString(),
+  }
+  this.db.insert(chatMessagesTable).values(message).run()
+  return message
+}</code></pre>
+
+<div class="box">
+  <strong>왜 assistant는 청크마다 저장하지 않나?</strong><br><br>
+  청크마다 INSERT/UPDATE 하면:<br>
+  <ul>
+    <li>토큰 하나에 DB 쓰기 한 번 → 수십~수백 번 발생</li>
+    <li>SQLite도 부담, 디스크 I/O 증가</li>
+  </ul>
+  대신 메모리 변수 <code>assistantContent</code>에 누적했다가 <strong>완성본을 한 번만 INSERT</strong>.
+</div>
+
+<hr>
+
+<h2>프론트 → 백엔드 → 프론트 — meta/done 처리</h2>
+
+<div class="front">
+  <div class="label-front">[프론트] 스트리밍 이벤트 분기</div>
+<pre><code>if (parsed.type === 'meta') {
+  <span class="comment">// 백엔드가 user 메시지를 DB에 저장했다 → 진짜 id로 교체</span>
+  replaceLocalMessage(currentActiveId, <span class="red">tempUserId</span>, {
+    id: parsed.userMessage.id,            <span class="green">// 진짜 id</span>
+    role: 'user',
+    content: parsed.userMessage.content,
+    timestamp: new Date(parsed.userMessage.createdAt),
+  })
+  setSessionTitle(currentActiveId, parsed.sessionTitle)
+}
+else if (parsed.type === 'done') {
+  <span class="comment">// 백엔드가 assistant 메시지를 DB에 저장했다 → 진짜 id로 교체</span>
+  replaceLocalMessage(currentActiveId, <span class="red">tempAssistantId</span>, {
+    id: parsed.assistantMessage.id,       <span class="green">// 진짜 id</span>
+    role: 'assistant',
+    content: parsed.assistantMessage.content,
+    timestamp: new Date(parsed.assistantMessage.createdAt),
+  })
+}
+else if ('text' in parsed) {
+  <span class="comment">// 스트리밍 청크 누적</span>
+  updateLocalChunk(currentActiveId, tempAssistantId, parsed.text)
+}</code></pre>
+</div>
+
+<hr>
+
+<h2>저장 작업 요약 매트릭스</h2>
+
+<table>
+  <tr><th>작업</th><th>프론트 API 호출</th><th>백엔드 처리</th><th>응답</th></tr>
+  <tr><td>세션 생성</td><td>POST /chatbot/sessions</td><td>INSERT chat_sessions</td><td>생성된 session</td></tr>
+  <tr><td>이름 변경</td><td>PATCH /chatbot/sessions/:id</td><td>UPDATE chat_sessions</td><td>{ id, title, updatedAt }</td></tr>
+  <tr><td>user 메시지</td><td>POST /chatbot/stream (간접)</td><td>INSERT chat_messages</td><td>meta 이벤트</td></tr>
+  <tr><td>assistant 메시지</td><td>POST /chatbot/stream (간접)</td><td>INSERT chat_messages</td><td>done 이벤트</td></tr>
+</table>
+
+</body>
+</html>

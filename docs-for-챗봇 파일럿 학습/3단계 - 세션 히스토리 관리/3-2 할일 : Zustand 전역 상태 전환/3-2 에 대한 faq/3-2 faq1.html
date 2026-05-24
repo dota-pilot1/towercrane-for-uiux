@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>3-2 FAQ — Zustand 전역 상태 전환</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      max-width: 760px;
+      margin: 48px auto;
+      padding: 0 24px;
+      background: #0f1117;
+      color: #e2e8f0;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.5rem; color: #a3e635; margin-bottom: 4px; }
+    h2 { font-size: 1.05rem; color: #a3e635; margin-top: 40px; border-left: 3px solid #a3e635; padding-left: 12px; }
+    .sub { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+    pre {
+      background: #1e2230;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+    .comment { color: #6b7280; font-style: italic; }
+    .hl { color: #a3e635; font-weight: bold; }
+    .box {
+      background: #1e2230;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.92rem;
+    }
+    .warn {
+      background: #2a1f1a;
+      border: 1px solid #6b3a2a;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.92rem;
+    }
+    hr { border: none; border-top: 1px solid #2d3348; margin: 40px 0; }
+    code { color: #93c5fd; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+    th { background: #1e2230; color: #a3e635; padding: 8px 14px; text-align: left; border: 1px solid #2d3348; }
+    td { padding: 8px 14px; border: 1px solid #2d3348; color: #cbd5e1; vertical-align: top; }
+  </style>
+</head>
+<body>
+
+<h1>3-2 FAQ — Zustand 전역 상태 전환</h1>
+<p class="sub">3단계 노트 · useState → Zustand store + persist 패턴 정리</p>
+
+<hr>
+
+<h2>1. 왜 Zustand로 바꾸나</h2>
+
+<table>
+  <tr><th></th><th>useState (3-1)</th><th>Zustand (3-2)</th></tr>
+  <tr><td>상태 위치</td><td>컴포넌트 안</td><td>전역 store</td></tr>
+  <tr><td>페이지 이동 후 복귀</td><td>사라짐</td><td>유지됨</td></tr>
+  <tr><td>새로고침</td><td>사라짐</td><td>persist 시 유지됨</td></tr>
+  <tr><td>다른 컴포넌트에서 접근</td><td>props로 내려야 함</td><td>어디서든 바로 접근</td></tr>
+</table>
+
+<hr>
+
+<h2>2. Zustand store 기본 구조</h2>
+
+<pre><code><span class="comment">// useState 방식</span>
+const [sessions, setSessions] = useState&lt;Session[]&gt;([])
+const [activeId, setActiveId] = useState('')
+
+<span class="comment">// Zustand 방식 — 상태 + 액션을 store 하나에 정의</span>
+export const useChatSessionStore = create&lt;ChatSessionState&gt;()((set) => ({
+  sessions: [initialSession],
+  activeId: initialSession.id,
+
+  addSession: () => {
+    const s = makeSession()
+    set((state) => ({ sessions: [s, ...state.sessions], activeId: s.id }))
+  },
+
+  deleteSession: (id) => {
+    set((state) => {
+      const next = state.sessions.filter((s) => s.id !== id)
+      ...
+    })
+  },
+}))</code></pre>
+
+<div class="box">
+  <code>set()</code> — useState의 <code>setState</code>와 같은 역할<br>
+  <code>set((state) => ...)</code> — 이전 상태를 참조할 때 콜백 형태로 사용<br><br>
+  useState처럼 불변성을 지켜야 한다 — 직접 수정 대신 새 객체 반환
+</div>
+
+<hr>
+
+<h2>3. persist — localStorage 연동</h2>
+
+<pre><code>export const useChatSessionStore = create&lt;ChatSessionState&gt;()(
+  <span class="hl">persist(</span>
+    (set) => ({ ... }),   <span class="comment">← store 정의</span>
+    {
+      name: 'towercrane-chat-sessions',              <span class="comment">← localStorage 키</span>
+      storage: createJSONStorage(() => localStorage),
+    }
+  <span class="hl">)</span>
+)</code></pre>
+
+<div class="box">
+  <code>persist</code>로 감싸면 상태가 자동으로 localStorage에 저장된다.<br>
+  새로고침해도 <code>name</code>으로 지정한 키에서 상태를 복원한다.
+</div>
+
+<hr>
+
+<h2>4. Date 직렬화 문제 — partialize + onRehydrateStorage</h2>
+
+<div class="warn">
+  <strong>문제:</strong> localStorage는 JSON만 저장할 수 있다.<br>
+  <code>Date</code> 객체를 저장하면 <strong>ISO 문자열</strong>로 변환되고,<br>
+  복원 시 그냥 문자열 상태로 돌아온다.<br><br>
+  → <code>message.timestamp.toLocaleTimeString()</code> 호출 시 에러 발생
+</div>
+
+<pre><code>{
+  <span class="comment">// 저장 시: Date → ISO 문자열로 직렬화</span>
+  partialize: (state) => ({
+    sessions: state.sessions.map((s) => ({
+      ...s,
+      createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
+      messages: s.messages.map((m) => ({
+        ...m,
+        timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp,
+      })),
+    })),
+    activeId: state.activeId,
+  }),
+
+  <span class="comment">// 복원 시: ISO 문자열 → Date 객체로 역직렬화</span>
+  onRehydrateStorage: () => (state) => {
+    if (!state) return
+    state.sessions = state.sessions.map((s) => ({
+      ...s,
+      createdAt: new Date(s.createdAt),
+      messages: s.messages.map((m) => ({
+        ...m,
+        timestamp: new Date(m.timestamp),
+      })),
+    }))
+  },
+}</code></pre>
+
+<div class="box">
+  <code>partialize</code> — 저장할 때 어떤 형태로 직렬화할지<br>
+  <code>onRehydrateStorage</code> — 불러올 때 어떻게 복원할지<br><br>
+  <strong>저장: Date → 문자열 / 복원: 문자열 → Date</strong>
+</div>
+
+<hr>
+
+<h2>5. hook에서 store 사용</h2>
+
+<pre><code><span class="comment">// 3-1: useState가 hook 안에 있었음</span>
+function useHistoryChat() {
+  const [sessions, setSessions] = useState(...)
+  const [activeId, setActiveId] = useState(...)
+  ...
+}
+
+<span class="comment">// 3-2: store에서 꺼내서 씀</span>
+function useHistoryChat() {
+  const {
+    sessions, activeId,
+    addSession, deleteSession, ...
+  } = <span class="hl">useChatSessionStore()</span>   ← store에서 꺼내기
+  ...
+}</code></pre>
+
+<div class="box">
+  hook의 역할이 바뀌었다:<br><br>
+  <strong>3-1</strong> — 상태도 가지고, 로직도 가짐<br>
+  <strong>3-2</strong> — 상태는 store에, hook은 스트리밍 로직 + UI 연결만 담당
+</div>
+
+<hr>
+
+<h2>전체 구조 한 눈에</h2>
+
+<pre><code>chat-session-store.ts   ← sessions, activeId + 모든 액션 (Zustand + persist)
+use-history-chat.ts     ← store 액션 연결 + 스트리밍 로직 + input/isStreaming
+chatbot-history-page.tsx← 얇은 페이지 (hook 호출만)
+chat-session-sidebar.tsx← 사이드바 UI</code></pre>
+
+</body>
+</html>

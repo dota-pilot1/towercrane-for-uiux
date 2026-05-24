@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>3-3 — 메타 정보 전달의 개념</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; max-width: 820px; margin: 48px auto; padding: 0 24px; background: #0f1117; color: #e2e8f0; line-height: 1.7; }
+    h1 { font-size: 1.5rem; color: #a3e635; margin-bottom: 4px; }
+    h2 { font-size: 1.1rem; color: #a3e635; margin-top: 40px; border-left: 3px solid #a3e635; padding-left: 12px; }
+    h3 { font-size: 0.95rem; color: #60a5fa; margin-top: 24px; }
+    .sub { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+    pre { background: #1e2230; border: 1px solid #2d3348; border-radius: 8px; padding: 16px 20px; overflow-x: auto; font-size: 0.85rem; line-height: 1.6; }
+    .comment { color: #6b7280; font-style: italic; }
+    .hl { color: #a3e635; font-weight: bold; }
+    .red { color: #fca5a5; }
+    .green { color: #6ee7b7; }
+    .box { background: #1e2230; border: 1px solid #2d3348; border-radius: 8px; padding: 14px 20px; margin: 14px 0; font-size: 0.92rem; }
+    .key { background: #1e3a2f; border: 1px solid #2d5a3d; border-radius: 8px; padding: 16px 20px; margin: 16px 0; font-size: 0.95rem; }
+    hr { border: none; border-top: 1px solid #2d3348; margin: 32px 0; }
+    code { color: #93c5fd; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+    th { background: #1e2230; color: #a3e635; padding: 8px 14px; text-align: left; border: 1px solid #2d3348; }
+    td { padding: 8px 14px; border: 1px solid #2d3348; color: #cbd5e1; vertical-align: top; }
+  </style>
+</head>
+<body>
+
+<h1>3-3 — 메타 정보 전달의 개념</h1>
+<p class="sub">조회와 저장의 흐름은 다르다 · "메타"가 등장하는 이유</p>
+
+<hr>
+
+<div class="key" style="font-size: 1.05rem; line-height: 1.9;">
+  <strong style="color: #fbbf24; font-size: 1.1rem;">📌 두 줄 요약 (이거만 기억해도 됨)</strong><br><br>
+  ① <strong>조회</strong> = <strong>쌩 조회</strong>. 응답 JSON에 이미 진짜 id가 들어있어서 메타가 필요 없음.<br><br>
+  ② <strong>메시지 전송</strong> 시에는 화면에 <strong>임시 id로 먼저 그려두고</strong>,<br>
+  &nbsp;&nbsp;&nbsp;서버가 DB에 저장한 <strong>실제 id로 교체하기 위한 응답 데이터</strong>를 보낸다.<br>
+  &nbsp;&nbsp;&nbsp;→ 이 응답을 <strong>메타 데이터 응답</strong>이라고 부른다.
+</div>
+
+<hr>
+
+<h2>핵심 개념 한 줄</h2>
+
+<div class="key">
+  <strong>조회는 그냥 조회다. 메타가 등장하는 건 오직 "저장 + 스트리밍"이 동시에 일어날 때다.</strong><br><br>
+  메타 정보 = "임시 id로 화면에 먼저 그려둔 메시지의 진짜 DB id를 알려주는 신호"
+</div>
+
+<hr>
+
+<h2>1. 조회 — 메타 없음</h2>
+
+<pre><code>useEffect(() =&gt; {
+  if (!loaded) void loadSessions()
+}, [loaded, loadSessions])
+
+       ↓ 페이지 마운트
+
+<span class="hl">GET /chatbot/sessions</span>     ← 일반 REST API
+       ↓
+[
+  { id: '<span class="green">7f3a-...</span>', title: '안녕', createdAt: '...', updatedAt: '...' },
+  { id: '<span class="green">9c4b-...</span>', title: '날씨', createdAt: '...', updatedAt: '...' },
+]
+       ↓
+store.sessions 에 그대로 세팅 끝</code></pre>
+
+<div class="box">
+  <ul>
+    <li>응답이 한 번에 온다 (스트리밍 아님)</li>
+    <li>id가 처음부터 진짜 DB id다</li>
+    <li>프론트가 임시 id를 만든 적이 없으니 교체할 것도 없다</li>
+    <li>→ <strong>메타 신호가 필요 없음</strong></li>
+  </ul>
+</div>
+
+<hr>
+
+<h2>2. 저장 + 스트리밍 — 메타 필수</h2>
+
+<pre><code>사용자: "안녕" 전송
+       ↓
+프론트: tempUserId = 'temp-user-1234' 로 화면에 먼저 표시
+       ↓ (사용자는 즉시 자기 메시지를 본다 — Optimistic UI)
+프론트: POST /chatbot/stream { sessionId, message: '안녕' }
+       ↓
+백엔드: DB에 user 메시지 저장 → 진짜 id = '<span class="green">7f3a-...</span>' 생성
+       ↓
+       <span class="hl">"야 프론트, 너 화면에 temp-user-1234 라고 띄워둔 거 있지?</span>
+        <span class="hl">그거 진짜 id는 7f3a-... 야"</span>
+       ↓
+       data: { type: '<span class="hl">meta</span>', userMessage: { id: '<span class="green">7f3a-...</span>', ... } }
+       ↓
+프론트: temp-user-1234 → <span class="green">7f3a-...</span> 로 교체</code></pre>
+
+<div class="box">
+  <ul>
+    <li>응답이 청크 단위로 흘러나온다 (스트리밍)</li>
+    <li>프론트가 응답 기다리는 동안 답답하지 않게 <strong>임시 id로 미리 그렸다</strong></li>
+    <li>서버가 DB에 저장하면서 만든 진짜 id를 알려줘야 함</li>
+    <li>→ <strong>그 알림이 메타 이벤트</strong></li>
+  </ul>
+</div>
+
+<hr>
+
+<h2>3. 비유 — 음식점 주문</h2>
+
+<table>
+  <tr><th></th><th>조회 (메뉴 보기)</th><th>저장 + 스트리밍 (주문)</th></tr>
+  <tr>
+    <td>흐름</td>
+    <td>메뉴판 한 번 줘서 끝</td>
+    <td>주문번호 외치고 음식 하나씩 나옴</td>
+  </tr>
+  <tr>
+    <td>id 처리</td>
+    <td>메뉴판에 이미 번호 인쇄됨</td>
+    <td>"주문 #43번이요!" — 진동벨 받기</td>
+  </tr>
+  <tr>
+    <td>메타 정보</td>
+    <td>필요 없음</td>
+    <td>주문번호 알림 (= 메타)</td>
+  </tr>
+</table>
+
+<div class="box">
+  음식점에서 카운터에 "주문 #43번이요" 라고 외치는 게 메타 이벤트와 같다.<br>
+  손님은 영수증의 임시 번호로 진동벨을 들고 있다가, 진짜 주문번호 호출되면 그제야 카운터로 간다.
+</div>
+
+<hr>
+
+<h2>4. 왜 굳이 임시 id를 쓰는가</h2>
+
+<pre><code><span class="comment">// 만약 임시 id 없이 서버 응답만 기다리면?</span>
+
+사용자: 전송 클릭
+       ↓
+[화면 멈춤] ← 1~3초 동안 아무것도 안 보임
+       ↓
+서버 응답 도착
+       ↓
+화면에 메시지 표시</code></pre>
+
+<pre><code><span class="comment">// 임시 id + 메타 패턴 (지금 구조)</span>
+
+사용자: 전송 클릭
+       ↓
+[즉시 화면에 표시] ← temp id로 그림 (0ms)
+       ↓
+서버가 진짜 id 알려줌 (50~100ms)
+       ↓
+[티 안 나게 id만 교체] ← 사용자는 모름</code></pre>
+
+<div class="key">
+  결국 메타 정보 전달은:<br>
+  <strong>"속도를 위해 거짓말로 미리 그려둔 화면을, 나중에 진실로 살짝 갈아끼우기 위한 신호"</strong>
+</div>
+
+<hr>
+
+<h2>5. 정리</h2>
+
+<table>
+  <tr><th>상황</th><th>API 형태</th><th>id 처리</th><th>메타 필요?</th></tr>
+  <tr>
+    <td>페이지 진입 (세션 목록)</td>
+    <td>GET — JSON 한 방</td>
+    <td>응답에 진짜 id 포함</td>
+    <td>❌</td>
+  </tr>
+  <tr>
+    <td>세션 클릭 (메시지 조회)</td>
+    <td>GET — JSON 한 방</td>
+    <td>응답에 진짜 id 포함</td>
+    <td>❌</td>
+  </tr>
+  <tr>
+    <td>세션 생성/삭제/이름변경</td>
+    <td>POST/DELETE/PATCH — JSON</td>
+    <td>응답에 진짜 id 포함</td>
+    <td>❌</td>
+  </tr>
+  <tr>
+    <td>메시지 전송 (스트리밍)</td>
+    <td>POST — SSE 스트림</td>
+    <td>temp id → server id 교체 필요</td>
+    <td>✅ meta + done</td>
+  </tr>
+</table>
+
+<div class="box">
+  메타가 필요한 단 하나의 조건:<br>
+  <strong>"서버 응답 전에 프론트가 임시 id로 화면을 먼저 그린 경우"</strong><br><br>
+  스트리밍 + Optimistic UI 조합이 아니면 메타는 등장하지 않는다.
+</div>
+
+</body>
+</html>

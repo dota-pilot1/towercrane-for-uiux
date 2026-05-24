@@ -1,173 +1,171 @@
-import { useState, useRef, useEffect } from "react";
-import type { Message } from "./use-chat-messages";
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { useChatSessionStore } from './chat-session-store'
+import { API_BASE_URL } from '../../../shared/api/http'
 
-export type Session = {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: Date;
-};
+export type { Session } from './chat-session-store'
 
-let sessionCounter = 1;
-
-function makeSession(): Session {
-  return {
-    id: Date.now().toString(),
-    title: `새 대화 ${sessionCounter++}`,
-    messages: [],
-    createdAt: new Date(),
-  };
+type StreamMeta = {
+  type: 'meta'
+  userMessage: {
+    id: string
+    sessionId: string
+    role: 'user'
+    content: string
+    createdAt: string
+  }
+  sessionTitle: string
 }
 
-export function useHistoryChat() {
-  const initialSession = makeSession();
-  const [sessions, setSessions] = useState<Session[]>([initialSession]);
-  const [activeId, setActiveId] = useState<string>(initialSession.id);
-  const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+type StreamDone = {
+  type: 'done'
+  assistantMessage: {
+    id: string
+    sessionId: string
+    role: 'assistant'
+    content: string
+    createdAt: string
+  }
+}
 
-  const activeSession = sessions.find((s) => s.id === activeId)!;
+type StreamChunk = { text: string }
+
+export function useHistoryChat() {
+  const {
+    sessions,
+    activeId,
+    messagesBySession,
+    loaded,
+    loadSessions,
+    addSession,
+    deleteSession,
+    switchSession,
+    renameSession,
+    appendLocalMessage,
+    updateLocalChunk,
+    replaceLocalMessage,
+    setSessionTitle,
+  } = useChatSessionStore()
+
+  const [input, setInput] = useState('')
+  const [isStreaming, setIsStreaming] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeSession.messages, isStreaming]);
+    if (!loaded) void loadSessions()
+  }, [loaded, loadSessions])
 
-  function addSession() {
-    const s = makeSession();
-    setSessions((prev) => [s, ...prev]);
-    setActiveId(s.id);
-    setInput("");
-  }
+  const activeSession = sessions.find((s) => s.id === activeId)
+  const messages = useMemo(
+    () => messagesBySession[activeId] ?? [],
+    [messagesBySession, activeId],
+  )
 
-  function deleteSession(id: string) {
-    setSessions((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      if (next.length === 0) {
-        const fresh = makeSession();
-        setActiveId(fresh.id);
-        return [fresh];
-      }
-      if (activeId === id) setActiveId(next[0].id);
-      return next;
-    });
-  }
-
-  function switchSession(id: string) {
-    setActiveId(id);
-    setInput("");
-  }
-
-  function renameSession(id: string, title: string) {
-    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
-  }
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isStreaming])
 
   async function handleSend() {
-    const text = input.trim();
-    if (!text || isStreaming) return;
+    const text = input.trim()
+    if (!text || isStreaming || !activeId) return
 
-    const currentActiveId = activeId;
+    const currentActiveId = activeId
+    const tempUserId = `temp-user-${Date.now()}`
+    const tempAssistantId = `temp-assistant-${Date.now()}`
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: "user",
+    appendLocalMessage(currentActiveId, {
+      id: tempUserId,
+      role: 'user',
       content: text,
       timestamp: new Date(),
-    };
-    const assistantMsgId = (Date.now() + 1).toString();
-
-    const assistantMsg: Message = {
-      id: assistantMsgId,
-      role: "assistant",
-      content: "",
+    })
+    appendLocalMessage(currentActiveId, {
+      id: tempAssistantId,
+      role: 'assistant',
+      content: '',
       timestamp: new Date(),
-    };
-
-    setSessions((prev) =>
-      prev.map((s) => {
-        if (s.id !== currentActiveId) return s;
-        return {
-          ...s,
-          messages: [...s.messages, userMsg, assistantMsg],
-          title:
-            s.messages.length === 0
-              ? text.slice(0, 20) + (text.length > 20 ? "…" : "")
-              : s.title,
-        };
-      }),
-    );
-    setInput("");
-    setIsStreaming(true);
+    })
+    setInput('')
+    setIsStreaming(true)
 
     try {
-      const res = await fetch("http://localhost:3000/api/chatbot/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
-      });
+      const res = await fetch(`${API_BASE_URL}/chatbot/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: currentActiveId, message: text }),
+      })
 
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
 
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const { done, value } = await reader.read()
+        if (done) break
 
-        const lines = decoder.decode(value).split("\n");
+        const lines = decoder.decode(value).split('\n')
         for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const payload = line.slice(6).trim();
-          if (payload === "[DONE]") {
-            setIsStreaming(false);
-            return;
+          if (!line.startsWith('data: ')) continue
+          const payload = line.slice(6).trim()
+          if (payload === '[DONE]') {
+            setIsStreaming(false)
+            return
           }
           try {
-            const { text: chunk } = JSON.parse(payload) as { text: string };
-            setSessions((prev) =>
-              prev.map((s) => {
-                if (s.id !== currentActiveId) return s;
-                return {
-                  ...s,
-                  messages: s.messages.map((m) =>
-                    m.id === assistantMsgId
-                      ? { ...m, content: m.content + chunk }
-                      : m,
-                  ),
-                };
-              }),
-            );
+            const parsed = JSON.parse(payload) as
+              | StreamMeta
+              | StreamDone
+              | StreamChunk
+
+            if ('type' in parsed && parsed.type === 'meta') {
+              replaceLocalMessage(currentActiveId, tempUserId, {
+                id: parsed.userMessage.id,
+                role: 'user',
+                content: parsed.userMessage.content,
+                timestamp: new Date(parsed.userMessage.createdAt),
+              })
+              setSessionTitle(currentActiveId, parsed.sessionTitle)
+            } else if ('type' in parsed && parsed.type === 'done') {
+              replaceLocalMessage(currentActiveId, tempAssistantId, {
+                id: parsed.assistantMessage.id,
+                role: 'assistant',
+                content: parsed.assistantMessage.content,
+                timestamp: new Date(parsed.assistantMessage.createdAt),
+              })
+            } else if ('text' in parsed) {
+              updateLocalChunk(currentActiveId, tempAssistantId, parsed.text)
+            }
           } catch {
             // 빈 줄 등 파싱 불가 라인 무시
           }
         }
       }
     } catch (err) {
-      console.error("스트리밍 오류:", err);
+      console.error('스트리밍 오류:', err)
     } finally {
-      setIsStreaming(false);
+      setIsStreaming(false)
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      void handleSend();
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      void handleSend()
     }
   }
 
   return {
     sessions,
-    activeSession,
+    activeSession: activeSession ?? { id: '', title: '로딩 중...', messages: [], createdAt: new Date(), updatedAt: new Date() },
+    messages,
     activeId,
     input,
     setInput,
     isStreaming,
     bottomRef,
-    addSession,
-    deleteSession,
-    switchSession,
-    renameSession,
+    addSession: () => void addSession(),
+    deleteSession: (id: string) => void deleteSession(id),
+    switchSession: (id: string) => { switchSession(id); setInput('') },
+    renameSession: (id: string, title: string) => void renameSession(id, title),
     handleSend: () => void handleSend(),
     handleKeyDown,
-  };
+  }
 }
