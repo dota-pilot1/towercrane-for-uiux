@@ -27,6 +27,16 @@ function fmtDate(ts: number) {
   return new Date(ts * 1000).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+function fillDates(data: DayStat[], days: number): DayStat[] {
+  const map = new Map(data.map((d) => [d.date, d]))
+  return Array.from({ length: days }, (_, i) => {
+    const dt = new Date()
+    dt.setDate(dt.getDate() - (days - 1 - i))
+    const date = dt.toISOString().slice(0, 10)
+    return map.get(date) ?? { date, calls: 0, totalTokens: 0, estimatedCostUsd: 0 }
+  })
+}
+
 export function AiMonitoringPage() {
   const summaryQ = useQuery({ queryKey: ['ai-mon-summary'], queryFn: fetchSummary, refetchInterval: 60_000 })
   const byUserQ = useQuery({ queryKey: ['ai-mon-users'], queryFn: fetchByUser, refetchInterval: 60_000 })
@@ -34,6 +44,7 @@ export function AiMonitoringPage() {
   const modelsQ = useQuery({ queryKey: ['ai-mon-models'], queryFn: fetchModels, staleTime: 10 * 60_000 })
 
   const loading = summaryQ.isLoading || byUserQ.isLoading
+  const chartData = fillDates(byDayQ.data ?? [], 30)
 
   const handleRefresh = () => {
     void summaryQ.refetch()
@@ -84,11 +95,10 @@ export function AiMonitoringPage() {
       </div>
 
       {/* 일별 토큰 차트 */}
-      {byDayQ.data && byDayQ.data.length > 0 && (
-        <div className="ui-panel-soft rounded-xl p-5 space-y-3">
+      <div className="ui-panel-soft rounded-xl p-5 space-y-3">
           <p className="text-sm font-semibold text-text-primary">일별 토큰 사용량 <span className="text-xs text-text-muted font-normal ml-1">(최근 30일)</span></p>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={byDayQ.data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="tokenGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
@@ -108,7 +118,6 @@ export function AiMonitoringPage() {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      )}
 
       {/* 사용자별 테이블 */}
       <div className="ui-panel-soft rounded-xl overflow-hidden">
