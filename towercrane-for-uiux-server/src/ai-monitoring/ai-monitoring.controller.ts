@@ -21,4 +21,9 @@ export class AiMonitoringController {
   getByDay(@Query('days') days?: string) {
     return this.service.getByDay(days ? parseInt(days, 10) : 30);
   }
+
+  @Get('models')
+  getModels() {
+    return this.service.getModels();
+  }
 }
