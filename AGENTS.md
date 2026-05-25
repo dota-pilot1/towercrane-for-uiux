@@ -14,6 +14,14 @@
 
 배포 중 오류가 나면 `/Users/terecal/beauty-book-hair/배포 가이드/배포 과정 오류 히스토리`와 `/Users/terecal/beauty-book-hair/배포 가이드/배포 과정 문제점 정리.md`를 먼저 확인한다.
 
+## 메뉴 추가 / 변경 지침
+
+헤더 메뉴 추가 또는 변경 작업을 할 때는 먼저 아래 문서를 참고한다.
+
+- `/Users/terecal/towercrane-for-uiux/docs-for-배포/메뉴 추가 방법에 대해.md`
+
+Towercrane 메뉴는 DB-driven 구조이므로 메뉴 작업 시 서버 DB upsert, 프론트 헤더 라우팅 맵, 실제 라우터 등록을 함께 확인한다.
+
 ## 테마 / 스타일 규칙 (중요)
 
 ### 금지

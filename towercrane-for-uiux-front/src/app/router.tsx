@@ -62,6 +62,7 @@ import { BoardListPage } from '../pages/board/ui/board-list-page'
 import { BoardDetailPage } from '../pages/board/ui/board-detail-page'
 import { AdminBoardConfigPage } from '../pages/board-admin/ui/admin-board-config-page'
 import { AdminBoardManagementPage } from '../pages/board-admin/ui/admin-board-management-page'
+import { ChatbotMonitoringPage } from '../pages/chatbot-monitoring/ui/chatbot-monitoring-page'
 import { useSessionStore } from '../shared/store/session-store'
 import { useCurrentUser } from '../shared/api/auth'
 import { useUsersList } from '../shared/api/users'
@@ -826,6 +827,12 @@ const adminBoardsRoute = createRoute({
   component: AdminBoardManagementPage,
 })
 
+const chatbotMonitoringRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/admin/chatbot-monitoring',
+  component: ChatbotMonitoringPage,
+})
+
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export const router = createRouter({
@@ -894,6 +901,7 @@ export const router = createRouter({
       adminReadmeRoute,
       adminBoardConfigsRoute,
       adminBoardsRoute,
+      chatbotMonitoringRoute,
     ]),
   ]),
 })

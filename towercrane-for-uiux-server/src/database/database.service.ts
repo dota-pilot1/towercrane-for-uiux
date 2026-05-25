@@ -3496,6 +3496,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         requiredRole: 'admin',
         now,
       });
+
+      this.upsertMenuBySectionId({
+        sectionId: 'chatbot_monitoring',
+        name: '챗봇 모니터링',
+        icon: 'ChartColumnBig',
+        displayOrder: 5,
+        parentId: adminMenu.id,
+        requiredRole: 'admin',
+        now,
+      });
     }
 
     this.sqlite
@@ -3509,7 +3519,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             'board_qna',
             'board_free',
             'admin_board_configs',
-            'admin_boards'
+            'admin_boards',
+            'chatbot_monitoring'
           )
             AND rowid NOT IN (
               SELECT MIN(rowid)
@@ -3521,7 +3532,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
                 'board_qna',
                 'board_free',
                 'admin_board_configs',
-                'admin_boards'
+                'admin_boards',
+                'chatbot_monitoring'
               )
               GROUP BY section_id
             )

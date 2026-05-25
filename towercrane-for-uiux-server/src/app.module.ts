@@ -22,6 +22,7 @@ import { StudyDiaryModule } from './study-diary/study-diary.module';
 import { BoardsModule } from './boards/boards.module';
 import { AiEvaluationModule } from './ai-evaluation/ai-evaluation.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
+import { ChatbotMonitoringModule } from './chatbot-monitoring/chatbot-monitoring.module';
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
 
 @Module({
@@ -47,6 +48,7 @@ import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
     BoardsModule,
     AiEvaluationModule,
     ChatbotModule,
+    ChatbotMonitoringModule,
     KnowledgeBaseModule,
   ],
   controllers: [AppController],

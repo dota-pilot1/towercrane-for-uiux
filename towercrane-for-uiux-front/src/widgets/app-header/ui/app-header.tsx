@@ -50,6 +50,7 @@ function sectionIdToPath(sectionId: string): string {
     readme_admin: '/admin/readme',
     admin_board_configs: '/admin/board-configs',
     admin_boards: '/admin/boards',
+    chatbot_monitoring: '/admin/chatbot-monitoring',
     chatbot_pilot: '/chatbot',
     chatbot_basic: '/chatbot',
     chatbot_streaming: '/chatbot/streaming',
@@ -92,6 +93,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/task')) return 'task_all'
   if (pathname.startsWith('/issues')) return 'task_issues'
   if (pathname.startsWith('/profile')) return 'profile'
+  if (pathname.startsWith('/admin/chatbot-monitoring')) return 'chatbot_monitoring'
   if (pathname.startsWith('/admin/users')) return 'users'
   if (pathname.startsWith('/admin/menu')) return 'menu_admin'
   if (pathname.startsWith('/admin/readme')) return 'readme_admin'
@@ -219,6 +221,7 @@ const SECTION_META: Record<string, { description: string; badge?: string }> = {
   readme_admin: { description: '온보딩 문서를 편집합니다.' },
   admin_board_configs: { description: '게시판 설정을 관리합니다.' },
   admin_boards: { description: '게시판 목록을 관리합니다.' },
+  chatbot_monitoring: { description: '챗봇 질문 횟수와 사용자별 사용 현황을 확인합니다.' },
 }
 
 function MegaNavDropdown({
