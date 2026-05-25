@@ -42,7 +42,7 @@ type DevFormState = {
   status: KnowledgeStatus
   docType: string
   difficulty: string
-  techStack: string
+  techStack: string[]
   sourceUrl: string
   fileName: string
   fileLocation: string
@@ -58,7 +58,7 @@ const DEFAULT_FORM: DevFormState = {
   status: 'draft',
   docType: 'guide',
   difficulty: 'normal',
-  techStack: '',
+  techStack: [],
   sourceUrl: '',
   fileName: '',
   fileLocation: '',
@@ -104,7 +104,12 @@ function toFormState(document: KnowledgeDocumentDetail): DevFormState {
     status: document.status,
     docType: metadataString(document.metadata, 'docType') || 'guide',
     difficulty: metadataString(document.metadata, 'difficulty') || 'normal',
-    techStack: metadataString(document.metadata, 'techStack'),
+    techStack: (() => {
+      const val = document.metadata['techStack']
+      if (Array.isArray(val)) return val.filter((v): v is string => typeof v === 'string')
+      if (typeof val === 'string' && val) return val.split(',').map((s) => s.trim()).filter(Boolean)
+      return []
+    })(),
     sourceUrl: metadataString(document.metadata, 'sourceUrl'),
     fileName: metadataString(document.metadata, 'fileName'),
     fileLocation: metadataString(document.metadata, 'fileLocation'),
@@ -131,7 +136,7 @@ function buildChunkPreview(form: DevFormState) {
     form.summary ? `요약: ${form.summary}` : '',
     form.docType ? `자료 유형: ${docTypeLabel}` : '',
     form.difficulty ? `난이도: ${difficultyLabel}` : '',
-    form.techStack ? `기술 스택: ${form.techStack}` : '',
+    form.techStack.length > 0 ? `기술 스택: ${form.techStack.join(', ')}` : '',
     form.ownerTeam ? `담당: ${form.ownerTeam}` : '',
     form.sourceUrl ? `원문 URL: ${form.sourceUrl}` : '',
     form.fileName ? `파일명: ${form.fileName}` : '',
@@ -222,26 +227,16 @@ function DevListItem({ document, selected, onSelect }: DevListItemProps) {
   )
 }
 
-type InlineFieldProps = {
+type FieldProps = {
   label: string
   children: ReactNode
   className?: string
-  align?: 'center' | 'start'
 }
 
-function InlineField({
-  label,
-  children,
-  className = '',
-  align = 'center',
-}: InlineFieldProps) {
+function Field({ label, children, className = '' }: FieldProps) {
   return (
-    <label
-      className={`grid grid-cols-[72px_minmax(0,1fr)] gap-2 ${
-        align === 'start' ? 'items-start' : 'items-center'
-      } ${className}`}
-    >
-      <span className="text-xs font-semibold ui-text-secondary">{label}</span>
+    <label className={`flex flex-col gap-1 ${className}`}>
+      <span className="text-xs font-medium ui-text-secondary">{label}</span>
       {children}
     </label>
   )
@@ -381,8 +376,8 @@ export function KnowledgeDevWorkbench() {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)_420px]">
-        <aside className="flex min-h-0 flex-col rounded-lg border border-surface-border bg-surface-raised">
-          <div className="border-b border-surface-border p-3">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-muted shadow-sm">
+          <div className="border-b border-surface-border bg-surface-raised px-3 py-2.5">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 ui-text-muted" />
               <Input
@@ -421,8 +416,8 @@ export function KnowledgeDevWorkbench() {
           </div>
         </aside>
 
-        <section className="flex min-h-0 flex-col rounded-lg border border-surface-border bg-surface-raised">
-          <div className="flex shrink-0 items-center justify-between border-b border-surface-border px-4 py-3">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-raised shadow-md">
+          <div className="flex shrink-0 items-center justify-between border-b border-surface-border bg-brand-glass px-4 py-3">
             <div>
               <h3 className="text-sm font-semibold ui-text-primary">
                 {isNew ? '개발 자료 등록' : '개발 자료 수정'}
@@ -438,30 +433,26 @@ export function KnowledgeDevWorkbench() {
 
           <div className="grid flex-1 content-start gap-3 overflow-y-auto p-4">
             <div className="grid gap-3 lg:grid-cols-2">
-              <InlineField label="제목">
+              <Field label="제목">
                 <Input
                   value={form.title}
                   onChange={(event) => updateForm('title', event.target.value)}
                   placeholder="예: 디자인 토큰 적용 가이드"
-                  className="h-10 py-0"
                 />
-              </InlineField>
-
-              <InlineField label="요약">
+              </Field>
+              <Field label="요약">
                 <Input
                   value={form.summary}
                   onChange={(event) => updateForm('summary', event.target.value)}
                   placeholder="챗봇 참고용 한 줄 요약"
-                  className="h-10 py-0"
                 />
-              </InlineField>
+              </Field>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
-              <InlineField label="상태">
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+              <Field label="상태">
                 <Select
                   value={form.status}
-                  className="h-10 py-0"
                   onChange={(event) =>
                     updateForm('status', event.target.value as KnowledgeStatus)
                   }
@@ -470,11 +461,10 @@ export function KnowledgeDevWorkbench() {
                   <option value="published">게시</option>
                   <option value="archived">보관</option>
                 </Select>
-              </InlineField>
-              <InlineField label="유형">
+              </Field>
+              <Field label="유형">
                 <Select
                   value={form.docType}
-                  className="h-10 py-0"
                   onChange={(event) => updateForm('docType', event.target.value)}
                 >
                   <option value="guide">가이드</option>
@@ -485,46 +475,41 @@ export function KnowledgeDevWorkbench() {
                   <option value="snippet">코드 예제</option>
                   <option value="file">문서 파일</option>
                 </Select>
-              </InlineField>
-              <InlineField label="난이도">
+              </Field>
+              <Field label="난이도">
                 <Select
                   value={form.difficulty}
-                  className="h-10 py-0"
                   onChange={(event) => updateForm('difficulty', event.target.value)}
                 >
                   <option value="basic">기초</option>
                   <option value="normal">일반</option>
                   <option value="advanced">심화</option>
                 </Select>
-              </InlineField>
-            </div>
-
-            <div className="grid gap-3 lg:grid-cols-2">
-              <InlineField label="스택">
-                <Input
-                  value={form.techStack}
-                  onChange={(event) => updateForm('techStack', event.target.value)}
-                  placeholder="예: React, NestJS, Figma"
-                  className="h-10 py-0"
-                />
-              </InlineField>
-              <InlineField label="담당">
+              </Field>
+              <Field label="담당">
                 <Input
                   value={form.ownerTeam}
                   onChange={(event) => updateForm('ownerTeam', event.target.value)}
-                  placeholder="예: 프론트엔드팀, AX 운영팀"
-                  className="h-10 py-0"
+                  placeholder="개발팀"
                 />
-              </InlineField>
+              </Field>
             </div>
 
-            <InlineField label="원문 URL">
+            <Field label="스택">
+              <TagInput
+                value={form.techStack}
+                onChange={(stack) => updateForm('techStack', stack)}
+                placeholder="예: React, NestJS, Figma"
+              />
+            </Field>
+
+            <Field label="원문 URL">
               <div className="flex min-w-0 gap-2">
                 <Input
                   value={form.sourceUrl}
                   onChange={(event) => updateForm('sourceUrl', event.target.value)}
                   placeholder="Figma, Swagger, Git, Confluence URL"
-                  className="h-10 min-w-0 py-0"
+                  className="min-w-0"
                 />
                 {form.sourceUrl.trim() && (
                   <a
@@ -539,36 +524,34 @@ export function KnowledgeDevWorkbench() {
                   </a>
                 )}
               </div>
-            </InlineField>
+            </Field>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <InlineField label="파일명">
+              <Field label="파일명">
                 <Input
                   value={form.fileName}
                   onChange={(event) => updateForm('fileName', event.target.value)}
                   placeholder="예: AX_API_가이드_v1.0.pdf"
-                  className="h-10 py-0"
                 />
-              </InlineField>
-              <InlineField label="파일 위치">
+              </Field>
+              <Field label="파일 위치">
                 <Input
                   value={form.fileLocation}
                   onChange={(event) => updateForm('fileLocation', event.target.value)}
                   placeholder="예: 사내 문서함 / 개발 자료 / API"
-                  className="h-10 py-0"
                 />
-              </InlineField>
+              </Field>
             </div>
 
-            <InlineField label="태그">
+            <Field label="태그">
               <TagInput
                 value={form.tags}
                 onChange={(tags) => updateForm('tags', tags)}
                 placeholder="예: 디자인시스템, API, 배포"
               />
-            </InlineField>
+            </Field>
 
-            <InlineField label="본문" align="start">
+            <Field label="본문">
               <div className="overflow-hidden rounded-md border border-surface-border bg-surface-raised">
                 <LexicalEditor
                   key={`${selectedId ?? 'new-dev'}-${editorRevision}`}
@@ -582,7 +565,7 @@ export function KnowledgeDevWorkbench() {
                   }}
                 />
               </div>
-            </InlineField>
+            </Field>
           </div>
 
           <div className="flex shrink-0 flex-col gap-2 border-t border-surface-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -614,8 +597,8 @@ export function KnowledgeDevWorkbench() {
           </div>
         </section>
 
-        <aside className="flex min-h-0 flex-col rounded-lg border border-surface-border bg-surface-raised">
-          <div className="shrink-0 border-b border-surface-border px-4 py-3">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-muted shadow-sm">
+          <div className="shrink-0 border-b border-surface-border bg-surface-raised px-4 py-3">
             <h3 className="text-sm font-semibold ui-text-primary">검색 chunk preview</h3>
             <p className="text-xs ui-text-muted">
               본문, URL, 파일 정보, 스택이 함께 검색 대상 텍스트가 됩니다.

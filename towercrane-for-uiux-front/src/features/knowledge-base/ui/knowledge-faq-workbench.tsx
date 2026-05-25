@@ -197,26 +197,16 @@ function FaqListItem({ document, selected, onSelect }: FaqListItemProps) {
   )
 }
 
-type InlineFieldProps = {
+type FieldProps = {
   label: string
   children: ReactNode
   className?: string
-  align?: 'center' | 'start'
 }
 
-function InlineField({
-  label,
-  children,
-  className = '',
-  align = 'center',
-}: InlineFieldProps) {
+function Field({ label, children, className = '' }: FieldProps) {
   return (
-    <label
-      className={`grid grid-cols-[72px_minmax(0,1fr)] gap-2 ${
-        align === 'start' ? 'items-start' : 'items-center'
-      } ${className}`}
-    >
-      <span className="text-xs font-semibold ui-text-secondary">{label}</span>
+    <label className={`flex flex-col gap-1 ${className}`}>
+      <span className="text-xs font-medium ui-text-secondary">{label}</span>
       {children}
     </label>
   )
@@ -350,8 +340,8 @@ export function KnowledgeFaqWorkbench() {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)_380px]">
-        <aside className="flex min-h-0 flex-col rounded-lg border border-surface-border bg-surface-raised">
-          <div className="border-b border-surface-border p-3">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-muted shadow-sm">
+          <div className="border-b border-surface-border bg-surface-raised px-3 py-2.5">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 ui-text-muted" />
               <Input
@@ -390,8 +380,8 @@ export function KnowledgeFaqWorkbench() {
           </div>
         </aside>
 
-        <section className="flex min-h-0 flex-col rounded-lg border border-surface-border bg-surface-raised">
-          <div className="flex shrink-0 items-center justify-between border-b border-surface-border px-4 py-3">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-raised shadow-md">
+          <div className="flex shrink-0 items-center justify-between border-b border-surface-border bg-brand-glass px-4 py-3">
             <div>
               <h3 className="text-sm font-semibold ui-text-primary">
                 {isNew ? 'FAQ 등록' : 'FAQ 수정'}
@@ -407,30 +397,26 @@ export function KnowledgeFaqWorkbench() {
 
           <div className="grid flex-1 content-start gap-3 overflow-y-auto p-4">
             <div className="grid gap-3 lg:grid-cols-2">
-              <InlineField label="질문">
+              <Field label="질문">
                 <Input
                   value={form.question}
                   onChange={(event) => updateForm('question', event.target.value)}
                   placeholder="예: AI 서비스는 어떻게 신청하나요?"
-                  className="h-10 py-0"
                 />
-              </InlineField>
-
-              <InlineField label="요약">
+              </Field>
+              <Field label="요약">
                 <Input
                   value={form.summary}
                   onChange={(event) => updateForm('summary', event.target.value)}
                   placeholder="챗봇 참고용 한 줄 답변"
-                  className="h-10 py-0"
                 />
-              </InlineField>
+              </Field>
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
-              <InlineField label="상태">
+              <Field label="상태">
                 <Select
                   value={form.status}
-                  className="h-10 py-0"
                   onChange={(event) =>
                     updateForm('status', event.target.value as KnowledgeStatus)
                   }
@@ -439,11 +425,10 @@ export function KnowledgeFaqWorkbench() {
                   <option value="published">게시</option>
                   <option value="archived">보관</option>
                 </Select>
-              </InlineField>
-              <InlineField label="카테고리">
+              </Field>
+              <Field label="카테고리">
                 <Select
                   value={form.category}
-                  className="h-10 py-0"
                   onChange={(event) => updateForm('category', event.target.value)}
                 >
                   <option value="account">계정/권한</option>
@@ -453,35 +438,33 @@ export function KnowledgeFaqWorkbench() {
                   <option value="troubleshooting">오류 대응</option>
                   <option value="general">일반</option>
                 </Select>
-              </InlineField>
-              <InlineField label="담당">
+              </Field>
+              <Field label="담당">
                 <Input
                   value={form.ownerTeam}
                   onChange={(event) => updateForm('ownerTeam', event.target.value)}
                   placeholder="예: AX 운영팀"
-                  className="h-10 py-0"
                 />
-              </InlineField>
+              </Field>
             </div>
 
-            <InlineField label="키워드">
+            <Field label="키워드">
               <Input
                 value={form.relatedKeywords}
                 onChange={(event) => updateForm('relatedKeywords', event.target.value)}
                 placeholder="예: 권한 신청, 계정 잠금, 챗봇 오류"
-                className="h-10 py-0"
               />
-            </InlineField>
+            </Field>
 
-            <InlineField label="태그">
+            <Field label="태그">
               <TagInput
                 value={form.tags}
                 onChange={(tags) => updateForm('tags', tags)}
                 placeholder="예: 계정, 권한, 신청"
               />
-            </InlineField>
+            </Field>
 
-            <InlineField label="답변" align="start">
+            <Field label="답변">
               <div className="overflow-hidden rounded-md border border-surface-border bg-surface-raised">
                 <LexicalEditor
                   key={`${selectedId ?? 'new-faq'}-${editorRevision}`}
@@ -495,7 +478,7 @@ export function KnowledgeFaqWorkbench() {
                   }}
                 />
               </div>
-            </InlineField>
+            </Field>
           </div>
 
           <div className="flex shrink-0 flex-col gap-2 border-t border-surface-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -527,8 +510,8 @@ export function KnowledgeFaqWorkbench() {
           </div>
         </section>
 
-        <aside className="flex min-h-0 flex-col rounded-lg border border-surface-border bg-surface-raised">
-          <div className="shrink-0 border-b border-surface-border px-4 py-3">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-muted shadow-sm">
+          <div className="shrink-0 border-b border-surface-border bg-surface-raised px-4 py-3">
             <h3 className="text-sm font-semibold ui-text-primary">검색 chunk preview</h3>
             <p className="text-xs ui-text-muted">
               백엔드가 GPT 없이 생성하는 검색 대상 텍스트입니다.
