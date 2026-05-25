@@ -11,3 +11,4 @@
 /data/sql-practice/runtime/*.seedhash
 /data/sql-practice/seeds/
 /data/sql-practice/active-seed.json
+towercrane.db
