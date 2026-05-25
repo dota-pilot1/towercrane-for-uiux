@@ -1,5 +1,18 @@
-import { useRef, useMemo, useEffect } from 'react'
-import { Paperclip, X, FileText, File, Send } from 'lucide-react'
+import { useRef, useMemo, useEffect, useState } from 'react'
+import { Paperclip, X, FileText, File, Send, HelpCircle } from 'lucide-react'
+
+const RAG_SAMPLE_QUESTIONS = [
+  'AI 서비스는 어떻게 신청하나요?',
+  '프롬프트에 고객 정보를 입력해도 되나요?',
+  '계정 권한은 누가 승인하나요?',
+  '챗봇 답변이 사내 지식과 다를 때는 어떻게 하나요?',
+  '지식 문서는 누가 등록할 수 있나요?',
+  'AX 플랫폼 정기 점검 일정 알려줘',
+  '프롬프트 보안 가이드 내용이 뭐야?',
+  '프론트엔드 저장소 구조와 로컬 실행 방법 알려줘',
+  '디자인 시스템 토큰과 Tailwind 사용 규칙이 뭐야?',
+  '프론트와 백엔드 API 연동 및 인증 헤더 방법 알려줘',
+]
 
 type Props = {
   value: string
@@ -54,6 +67,7 @@ export function ChatInputWithFiles({
   attachedFiles, onFilesChange,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
   function filterAndMerge(incoming: File[]) {
     const valid = incoming.filter((f) => f.size <= MAX_SIZE_MB * 1024 * 1024)
@@ -102,13 +116,22 @@ export function ChatInputWithFiles({
 
       {/* 하단 툴바 */}
       <div className="flex items-center justify-between px-2 pb-2">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="rounded-lg p-2 text-text-muted hover:text-brand-primary hover:bg-surface-raised transition-colors"
-          title="파일 첨부 (최대 5개, 10MB)"
-        >
-          <Paperclip className="size-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-lg p-2 text-text-muted hover:text-brand-primary hover:bg-surface-raised transition-colors"
+            title="파일 첨부 (최대 5개, 10MB)"
+          >
+            <Paperclip className="size-4" />
+          </button>
+          <button
+            onClick={() => setShowSuggestions(true)}
+            className="rounded-lg p-2 text-text-muted hover:text-brand-primary hover:bg-surface-raised transition-colors"
+            title="RAG 테스트 샘플 질문"
+          >
+            <HelpCircle className="size-4" />
+          </button>
+        </div>
 
         <button
           onClick={onSend}
@@ -119,6 +142,48 @@ export function ChatInputWithFiles({
           <span>전송</span>
         </button>
       </div>
+
+      {/* 샘플 질문 다이어로그 */}
+      {showSuggestions && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+          onClick={() => setShowSuggestions(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-surface-border bg-surface-raised shadow-xl mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold ui-text-primary">RAG 테스트 샘플 질문</p>
+                <p className="text-xs ui-text-muted">클릭하면 입력창에 바로 채워집니다</p>
+              </div>
+              <button
+                onClick={() => setShowSuggestions(false)}
+                className="rounded-md p-1 text-text-muted hover:text-brand-primary hover:bg-surface-muted transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <ul className="p-2">
+              {RAG_SAMPLE_QUESTIONS.map((q) => (
+                <li key={q}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(q)
+                      setShowSuggestions(false)
+                    }}
+                    className="w-full rounded-lg px-3 py-2.5 text-left text-sm ui-text-primary hover:bg-brand-glass hover:text-brand-primary transition-colors"
+                  >
+                    {q}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
