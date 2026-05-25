@@ -64,10 +64,17 @@ const SELF_INTRODUCE_TOOL: OpenAI.ChatCompletionTool = {
   },
 };
 
-// STEP 1-C: 툴 실행 함수 — 고정 자기소개 반환 (Hello World)
+// STEP 1-C: 툴 실행 함수 — 실제 GPT 모델 정보를 구조화해서 반환
 function executeSelfIntroduce() {
   return {
-    message: '나는 지구를 지키는 슈퍼 최강 천재 GPT입니다. Welcome to GPT World! 🌍⚡',
+    model: 'GPT-4o',
+    developer: 'OpenAI',
+    released: '2024년 5월',
+    contextWindow: '128,000 tokens',
+    knowledgeCutoff: '2024년 4월',
+    languages: '100개 이상',
+    capabilities: ['텍스트 생성', '이미지 이해', '코드 작성', '수학·논리 추론', '다국어 번역', '문서 요약'],
+    description: '세계 최고 수준의 멀티모달 AI 모델. 텍스트와 이미지를 동시에 이해하고, 복잡한 추론과 창의적 작업 모두 수행합니다.',
   };
 }
 
@@ -411,40 +418,13 @@ export class ChatbotService {
           })}\n\n`,
         );
 
-        // STEP 3-E: 2차 요청 — 실행 결과를 포함해서 최종 답변 생성
-        // messages에 (assistant의 tool_calls) + (tool 역할의 실행 결과) 추가
-        const messagesWithResult: OpenAI.ChatCompletionMessageParam[] = [
-          ...messages,
-          choice.message, // assistant: { tool_calls: [...] }
-          {
-            role: 'tool',
-            tool_call_id: toolCall.id, // 1차 응답의 id와 반드시 일치해야 함
-            content: JSON.stringify(toolResult),
-          },
-        ];
-
-        // STEP 3-F: 최종 답변은 stream: true — 기존과 동일하게 SSE 청크 전송
-        const finalStream = await this.openai.chat.completions.create({
-          model,
-          stream: true,
-          messages: messagesWithResult,
-        });
-
-        let assistantContent = '';
-        for await (const chunk of finalStream) {
-          const text = chunk.choices[0]?.delta?.content ?? '';
-          if (text) {
-            assistantContent += text;
-            res.write(`data: ${JSON.stringify({ text })}\n\n`);
-          }
-        }
-
-        // STEP 3-G: 기존과 동일하게 done 이벤트 + 종료
-        const assistantMessage = this.insertMessage(sessionId, 'assistant', assistantContent);
+        // STEP 3-E: 다이얼로그 전용 툴은 채팅창 응답 없이 바로 종료
+        // 결과가 다이얼로그로 표시되므로 2차 GPT 스트림 불필요 — 빈 메시지로 done 이벤트만 전송
+        const assistantMessage = this.insertMessage(sessionId, 'assistant', '');
         res.write(`data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources: [] })}\n\n`);
         res.write('data: [DONE]\n\n');
         res.end();
-        return; // 이 아래 기존 흐름 실행 안 함
+        return;
       }
 
       // STEP 3-H: tool_calls 없이 일반 답변으로 판단된 경우 — 텍스트 그대로 반환

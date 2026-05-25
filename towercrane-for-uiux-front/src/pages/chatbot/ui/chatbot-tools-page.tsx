@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, Menu, ShieldOff, Wrench, Hammer, X, Sparkles } from 'lucide-react'
+import { Bot, Menu, ShieldOff, Wrench, Hammer, X, Cpu, Building2, CalendarDays, BookOpen, Languages, CheckCircle2 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { useRefreshSession } from '../../../shared/model/use-refresh-session'
@@ -40,7 +40,7 @@ export function ChatbotToolsPage() {
   const userRole = useSessionStore((s) => s.userRole)
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { open: introOpen, message: introMessage, closeIntroDialog } = useToolDialogStore()
+  const { open: introOpen, profile: introMessage, closeIntroDialog } = useToolDialogStore()
 
   // STEP 7: mode: 'tools' 로 훅 호출 — 백엔드 tools 분기 실행됨
   const {
@@ -91,24 +91,69 @@ export function ChatbotToolsPage() {
   return (
     <div className="flex h-[calc(100vh-120px)] gap-4 relative overflow-hidden">
 
-      {/* self_introduce 툴 호출 결과 다이얼로그 */}
-      {introOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50">
-          <div className="ui-panel rounded-2xl p-8 flex flex-col items-center gap-5 max-w-sm w-full mx-4 text-center shadow-2xl">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-brand-glass border border-brand-border">
-              <Sparkles className="size-7 text-brand-primary" />
+      {/* self_introduce 툴 호출 결과 — GPT 모델 카드 다이얼로그 */}
+      {introOpen && introMessage && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
+          <div className="ui-panel rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+
+            {/* 헤더 */}
+            <div className="bg-brand-glass border-b border-brand-border px-6 py-4 flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-brand-glass border border-brand-border shrink-0">
+                <Cpu className="size-5 text-brand-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-bold text-brand-primary">{introMessage.model}</p>
+                <p className="text-xs ui-text-muted">by {introMessage.developer}</p>
+              </div>
+              <button onClick={closeIntroDialog} className="ui-icon-button p-1.5 rounded-lg">
+                <X className="size-4" />
+              </button>
             </div>
-            <div>
-              <p className="text-base font-bold ui-text-primary mb-2">자기소개</p>
-              <p className="text-sm ui-text-secondary leading-relaxed">{introMessage}</p>
+
+            <div className="px-6 py-5 flex flex-col gap-5">
+
+              {/* 설명 */}
+              <p className="text-sm ui-text-secondary leading-relaxed">{introMessage.description}</p>
+
+              {/* 스펙 그리드 */}
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { icon: CalendarDays, label: '출시일', value: introMessage.released },
+                  { icon: BookOpen, label: '지식 기준일', value: introMessage.knowledgeCutoff },
+                  { icon: Cpu, label: '컨텍스트', value: introMessage.contextWindow },
+                  { icon: Languages, label: '지원 언어', value: introMessage.languages },
+                  { icon: Building2, label: '개발사', value: introMessage.developer },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="ui-panel-soft rounded-xl p-3 flex items-start gap-2.5">
+                    <Icon className="size-3.5 text-brand-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[10px] ui-text-muted leading-none mb-1">{label}</p>
+                      <p className="text-xs font-semibold ui-text-primary">{value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 기능 태그 */}
+              <div>
+                <p className="text-[10px] font-bold ui-text-muted uppercase tracking-wide mb-2">주요 기능</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {introMessage.capabilities.map((cap) => (
+                    <span key={cap} className="inline-flex items-center gap-1 rounded-full bg-brand-glass border border-brand-border px-2.5 py-1 text-[11px] font-medium text-brand-primary">
+                      <CheckCircle2 className="size-3" />
+                      {cap}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={closeIntroDialog}
+                className="w-full rounded-lg border border-brand-border bg-brand-glass py-2 text-sm font-bold text-brand-primary hover:bg-brand-glass/80 transition-colors"
+              >
+                닫기
+              </button>
             </div>
-            <button
-              onClick={closeIntroDialog}
-              className="inline-flex items-center gap-2 rounded-lg border border-brand-border bg-brand-glass px-5 py-2 text-sm font-bold text-brand-primary hover:bg-brand-glass/80 transition-colors"
-            >
-              <X className="size-3.5" />
-              닫기
-            </button>
           </div>
         </div>
       )}
@@ -176,7 +221,7 @@ export function ChatbotToolsPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {messages.map((msg, i) => (
+              {messages.filter((msg) => !(msg.role === 'assistant' && msg.content === '')).map((msg, i) => (
                 <ChatMessage
                   key={msg.id}
                   message={msg}

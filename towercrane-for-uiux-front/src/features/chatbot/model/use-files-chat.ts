@@ -182,8 +182,9 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
               setToolCalls((prev) => [...prev, parsed])
               // 툴 이름별 다이얼로그 트리거 — 스토어에 직접 쓰므로 콜백 불필요
               if (parsed.name === 'self_introduce') {
-                const msg = (parsed.result as { message?: string }).message ?? ''
-                useToolDialogStore.getState().setIntroDialog(msg)
+                useToolDialogStore.getState().setIntroDialog(
+                  parsed.result as import('./tool-dialog-store').GptProfile
+                )
               }
             } else if ('type' in parsed && parsed.type === 'meta') {
               replaceLocalMessage(currentActiveId, tempUserId, {
