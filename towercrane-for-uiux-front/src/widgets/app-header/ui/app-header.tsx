@@ -410,7 +410,7 @@ export function AppHeader() {
         <button
           type="button"
           className="shrink-0 text-left transition-transform hover:scale-[1.02] active:scale-[0.98]"
-          onClick={() => handleNavigation('prototype')}
+          onClick={() => navigate({ to: '/' })}
         >
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-sm bg-primary text-primary-foreground shadow-md shadow-primary/10">

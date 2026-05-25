@@ -32,6 +32,7 @@ import { ChatbotKnowledgeGuidePage } from '../pages/chatbot/ui/chatbot-knowledge
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-workspace-home-page'
+import { HomePage } from '../pages/home/ui/home-page'
 import { AiServiceRequestPage } from '../pages/ai-service-request/ui/ai-service-request-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
@@ -219,7 +220,7 @@ function AppLayout() {
 const indexRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/',
-  component: PrototypeWorkspaceHomePage,
+  component: HomePage,
 })
 
 // ─── /prototype → WorkbenchPage (useAdminShell handles redirect to first category) ──
