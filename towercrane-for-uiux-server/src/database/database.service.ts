@@ -1375,6 +1375,46 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_channel
         ON knowledge_chunks(channel, created_at);
+
+      CREATE TABLE IF NOT EXISTS usage_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        user_name TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        model TEXT NOT NULL,
+        prompt_tokens INTEGER NOT NULL DEFAULT 0,
+        completion_tokens INTEGER NOT NULL DEFAULT 0,
+        total_tokens INTEGER NOT NULL DEFAULT 0,
+        estimated_cost_usd REAL NOT NULL DEFAULT 0,
+        is_error INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_usage_logs_user_date
+        ON usage_logs(user_id, created_at DESC);
+
+      CREATE INDEX IF NOT EXISTS idx_usage_logs_created_at
+        ON usage_logs(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS ai_service_requests (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        user_name TEXT NOT NULL,
+        service_type TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        estimated_usage TEXT NOT NULL,
+        security_level TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        reject_reason TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ai_service_requests_user
+        ON ai_service_requests(user_id, created_at DESC);
+
+      CREATE INDEX IF NOT EXISTS idx_ai_service_requests_status
+        ON ai_service_requests(status, created_at DESC);
     `);
 
     this.migrateLegacySchema();
@@ -1632,6 +1672,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.seedBoardConfigs(now);
     this.reconcileBoardMenus(now);
     this.reconcileSqlPracticeMenus(now);
+    this.reconcileDevStudyMenu(now);
 
     const existingTaskMenu = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'task' LIMIT 1")
@@ -1847,23 +1888,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     ensureChatbotChild('지식 검색 가이드',  'chatbot_knowledge_guide', 'BookOpen',        14);
 
     // 루트 메뉴 표시 순서 고정:
-    // 0:업무관리(학습일지 하위 포함), 1:AI 서비스 신청, 2:API Doc, 3:회의실,
-    // 4:게시판, 5:SQL Prac, 6:Challenge, 7:Prototype, 8:지식채널, 9:챗봇, 10:Admin
+    // 0:업무관리, 1:AI 서비스 신청, 2:API Doc, 3:회의실,
+    // 4:게시판, 5:Dev Study(Challenge+SQL+학습일지), 6:Prototype, 7:지식채널, 8:챗봇, 9:Admin
     const rootMenuOrder: Array<{
       sectionId: string | string[];
       displayOrder: number;
     }> = [
       { sectionId: ['task_group', 'task'], displayOrder: 0 },
-      { sectionId: 'ai_service_request', displayOrder: 1 },
+      { sectionId: 'ai_service_group', displayOrder: 1 },
       { sectionId: 'api_doc', displayOrder: 2 },
       { sectionId: 'meeting', displayOrder: 3 },
       { sectionId: 'boards', displayOrder: 4 },
-      { sectionId: 'sql_group', displayOrder: 5 },
-      { sectionId: 'dev_challenge', displayOrder: 6 },
-      { sectionId: 'prototype', displayOrder: 7 },
-      { sectionId: 'knowledge_channel', displayOrder: 8 },
-      { sectionId: 'chatbot_pilot', displayOrder: 9 },
-      { sectionId: 'admin_dropdown', displayOrder: 10 },
+      { sectionId: 'dev_study', displayOrder: 5 },
+      { sectionId: 'prototype', displayOrder: 6 },
+      { sectionId: 'knowledge_channel', displayOrder: 7 },
+      { sectionId: 'chatbot_pilot', displayOrder: 8 },
+      { sectionId: 'admin_dropdown', displayOrder: 9 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
@@ -2224,6 +2264,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'users',
       'profile_image_url',
       'ALTER TABLE users ADD COLUMN profile_image_url TEXT',
+    );
+    this.ensureColumn(
+      'users',
+      'ai_access',
+      `ALTER TABLE users ADD COLUMN ai_access INTEGER NOT NULL DEFAULT 0`,
     );
     this.ensureColumn(
       'categories',
@@ -2839,20 +2884,63 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     ensureChild('개발 자료','knowledge_dev',  'Code2',      2);
     ensureChild('AI 자료', 'knowledge_ai',    'Sparkles',   3);
 
-    // ── AI 서비스 신청 → 루트 메뉴로 보장 ───────────────────────────────
-    const existingAiServiceRequest = this.sqlite
-      .prepare(`SELECT id FROM menus WHERE section_id = 'ai_service_request' LIMIT 1`)
+    // ── AI 서비스 신청 그룹 → 루트 드롭다운 ────────────────────────────
+    let aiServiceGroupId: string;
+    const existingAiServiceGroup = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'ai_service_group' LIMIT 1`)
       .get() as { id: string } | undefined;
-    if (!existingAiServiceRequest) {
+    if (!existingAiServiceGroup) {
+      aiServiceGroupId = randomUUID();
       this.db.insert(menusTable).values({
-        id: randomUUID(), name: 'AI 서비스 신청', sectionId: 'ai_service_request',
-        icon: 'ClipboardList', displayOrder: 10, isVisible: true, requiredRole: null,
+        id: aiServiceGroupId, name: 'AI 서비스 신청', sectionId: 'ai_service_group',
+        icon: 'ClipboardList', displayOrder: 1, isVisible: true, requiredRole: null,
         parentId: null, createdAt: now, updatedAt: now,
       }).run();
     } else {
+      aiServiceGroupId = existingAiServiceGroup.id;
       this.sqlite
         .prepare(`UPDATE menus SET name='AI 서비스 신청', icon='ClipboardList', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`)
-        .run(now, existingAiServiceRequest.id);
+        .run(now, aiServiceGroupId);
+    }
+
+    // 기존 ai_service_request 루트 메뉴 → 그룹 하위로 이동
+    const existingAiServiceRequest = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'ai_service_request' LIMIT 1`)
+      .get() as { id: string } | undefined;
+    if (existingAiServiceRequest) {
+      this.sqlite
+        .prepare(`UPDATE menus SET name='서비스 신청', icon='ClipboardList', parent_id=?, display_order=0, is_visible=1, updated_at=? WHERE id=?`)
+        .run(aiServiceGroupId, now, existingAiServiceRequest.id);
+    } else {
+      this.db.insert(menusTable).values({
+        id: randomUUID(), name: '서비스 신청', sectionId: 'ai_service_request',
+        icon: 'ClipboardList', displayOrder: 0, isVisible: true, requiredRole: null,
+        parentId: aiServiceGroupId, createdAt: now, updatedAt: now,
+      }).run();
+    }
+
+    // AI 서비스 신청 하위 메뉴들
+    const aiServiceChildren = [
+      { name: '내 신청 현황', sectionId: 'ai_service_my', icon: 'FileSearch', displayOrder: 1, requiredRole: null },
+      { name: '신청 관리', sectionId: 'ai_service_admin', icon: 'ShieldCheck', displayOrder: 2, requiredRole: 'admin' },
+      { name: '사용량 모니터링', sectionId: 'ai_service_monitor', icon: 'BarChart3', displayOrder: 3, requiredRole: 'admin' },
+    ];
+    for (const child of aiServiceChildren) {
+      const existing = this.sqlite
+        .prepare(`SELECT id FROM menus WHERE section_id = ? LIMIT 1`)
+        .get(child.sectionId) as { id: string } | undefined;
+      if (existing) {
+        this.sqlite
+          .prepare(`UPDATE menus SET name=?, icon=?, parent_id=?, display_order=?, required_role=?, is_visible=1, updated_at=? WHERE id=?`)
+          .run(child.name, child.icon, aiServiceGroupId, child.displayOrder, child.requiredRole, now, existing.id);
+      } else {
+        this.db.insert(menusTable).values({
+          id: randomUUID(), name: child.name, sectionId: child.sectionId,
+          icon: child.icon, displayOrder: child.displayOrder, isVisible: true,
+          requiredRole: child.requiredRole, parentId: aiServiceGroupId,
+          createdAt: now, updatedAt: now,
+        }).run();
+      }
     }
 
     // ── AI 활용 능력 평가 → 업무 관리 하위 ──────────────────────────────
@@ -3289,6 +3377,64 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `,
       )
       .run();
+  }
+
+  private reconcileDevStudyMenu(now: string) {
+    // ── Dev Study 루트 그룹 보장 ────────────────────────────────────────
+    let devStudy = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'dev_study' LIMIT 1`)
+      .get() as { id: string } | undefined;
+
+    if (!devStudy) {
+      const id = randomUUID();
+      this.db.insert(menusTable).values({
+        id,
+        name: 'Dev Study',
+        sectionId: 'dev_study',
+        icon: 'GraduationCap',
+        displayOrder: 5,
+        isVisible: true,
+        requiredRole: null,
+        parentId: null,
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+      devStudy = { id };
+    } else {
+      this.sqlite
+        .prepare(`UPDATE menus SET name='Dev Study', icon='GraduationCap', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`)
+        .run(now, devStudy.id);
+    }
+
+    // ── Challenge, 학습 일지, SQL 항목들을 Dev Study 하위로 이동 ────────
+    // dev_challenge: displayOrder 0
+    this.sqlite
+      .prepare(`UPDATE menus SET parent_id=?, display_order=0, is_visible=1, updated_at=? WHERE section_id='dev_challenge'`)
+      .run(devStudy.id, now);
+
+    // study_diary: displayOrder 1
+    this.sqlite
+      .prepare(`UPDATE menus SET parent_id=?, display_order=1, name='스터디 다이어리', is_visible=1, updated_at=? WHERE section_id='study_diary'`)
+      .run(devStudy.id, now);
+
+    // SQL 항목들 직접 하위로 (3단계 중첩 방지)
+    this.sqlite
+      .prepare(`UPDATE menus SET parent_id=?, display_order=2, is_visible=1, updated_at=? WHERE section_id='sql'`)
+      .run(devStudy.id, now);
+    this.sqlite
+      .prepare(`UPDATE menus SET parent_id=?, display_order=3, is_visible=1, updated_at=? WHERE section_id='sql_personal'`)
+      .run(devStudy.id, now);
+    this.sqlite
+      .prepare(`UPDATE menus SET parent_id=?, display_order=4, is_visible=1, updated_at=? WHERE section_id='sql_team'`)
+      .run(devStudy.id, now);
+    this.sqlite
+      .prepare(`UPDATE menus SET parent_id=?, display_order=5, is_visible=1, updated_at=? WHERE section_id='sql_examples'`)
+      .run(devStudy.id, now);
+
+    // sql_group은 이제 빈 껍데기 — 숨김
+    this.sqlite
+      .prepare(`UPDATE menus SET is_visible=0, parent_id=NULL, updated_at=? WHERE section_id='sql_group'`)
+      .run(now);
   }
 
   private seedBoardConfigs(now: string) {
@@ -3791,6 +3937,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'file_urls',
       `ALTER TABLE chat_messages ADD COLUMN file_urls TEXT`,
     );
+    this.ensureColumn(
+      'users',
+      'ai_access',
+      `ALTER TABLE users ADD COLUMN ai_access INTEGER NOT NULL DEFAULT 0`,
+    );
   }
 
   private ensureColumn(
@@ -4058,22 +4209,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { email: 'test03@hibot.dev', name: '박지호' },
       { email: 'test04@hibot.dev', name: '최유나' },
       { email: 'test05@hibot.dev', name: '정현우' },
-      { email: 'test06@hibot.dev', name: '강소희' },
-      { email: 'test07@hibot.dev', name: '윤태양' },
-      { email: 'test08@hibot.dev', name: '임하늘' },
-      { email: 'test09@hibot.dev', name: '오지훈' },
-      { email: 'test10@hibot.dev', name: '한수빈' },
-      { email: 'test11@hibot.dev', name: '신도윤' },
-      { email: 'test12@hibot.dev', name: '류지아' },
-      { email: 'test13@hibot.dev', name: '문준혁' },
-      { email: 'test14@hibot.dev', name: '배나은' },
-      { email: 'test15@hibot.dev', name: '전승호' },
-      { email: 'test16@hibot.dev', name: '조하린' },
-      { email: 'test17@hibot.dev', name: '엄태경' },
-      { email: 'test18@hibot.dev', name: '남유진' },
-      { email: 'test19@hibot.dev', name: '황재원' },
-      { email: 'test20@hibot.dev', name: '서다인' },
     ];
+
+    // 목록에 없는 test\d+@hibot.dev 계정 삭제
+    const keepEmails = testUsers.map((u) => u.email);
+    const allTestUsers = this.sqlite
+      .prepare(`SELECT id, email FROM users WHERE email LIKE 'test%@hibot.dev'`)
+      .all() as { id: string; email: string }[];
+    for (const u of allTestUsers) {
+      if (!keepEmails.includes(u.email)) {
+        this.sqlite.prepare(`DELETE FROM users WHERE id = ?`).run(u.id);
+      }
+    }
 
     for (const u of testUsers) {
       const existing = this.db

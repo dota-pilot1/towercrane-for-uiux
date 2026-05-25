@@ -15,6 +15,7 @@ import type { MenuItem } from '../../../entities/menu/model/types'
 function sectionIdToPath(sectionId: string): string {
   const map: Record<string, string> = {
     prototype: '/prototype',
+    dev_study: '/dev-challenge',
     challenge: '/study-diary',
     study_diary: '/study-diary',
     dev_challenge: '/dev-challenge',
@@ -25,7 +26,11 @@ function sectionIdToPath(sectionId: string): string {
     knowledge_faq: '/chatbot/knowledge/faq',
     knowledge_ai: '/chatbot/knowledge/ai',
     knowledge_dev: '/chatbot/knowledge/dev',
+    ai_service_group: '/ai-service-request',
     ai_service_request: '/ai-service-request',
+    ai_service_my: '/ai-service-request/my',
+    ai_service_admin: '/admin/ai-service-requests',
+    ai_service_monitor: '/admin/ai-monitoring',
     ai_evaluation: '/ai-evaluation',
     api_doc: '/api-doc',
     sql: '/sql',
@@ -74,7 +79,10 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/challenge')) return 'study_diary'
   if (pathname.startsWith('/meeting')) return 'meeting'
   if (pathname.startsWith('/docu')) return 'docu'
+  if (pathname.startsWith('/ai-service-request/my')) return 'ai_service_my'
   if (pathname.startsWith('/ai-service-request')) return 'ai_service_request'
+  if (pathname.startsWith('/admin/ai-service-requests')) return 'ai_service_admin'
+  if (pathname.startsWith('/admin/ai-monitoring')) return 'ai_service_monitor'
   if (pathname.startsWith('/ai-evaluation')) return 'ai_evaluation'
   if (pathname.startsWith('/api-doc')) return 'api_doc'
   if (pathname.startsWith('/sql/examples')) return 'sql_examples'
@@ -193,9 +201,21 @@ const SECTION_META: Record<string, { description: string; badge?: string }> = {
   knowledge_dev: {
     description: '개발 관련 사내 자료를 검색해 답변합니다.',
   },
-  ai_service_request: {
+  ai_service_group: {
     description: 'AI Chatbot, LLM API 등 AI 서비스 사용 권한을 신청하고 승인 흐름을 확인합니다.',
     badge: 'NEW',
+  },
+  ai_service_request: {
+    description: 'AI 서비스 사용 신청서를 작성하고 4단계 승인 흐름을 진행합니다.',
+  },
+  ai_service_my: {
+    description: '내가 신청한 AI 서비스 목록과 현재 승인 진행 상태를 확인합니다.',
+  },
+  ai_service_admin: {
+    description: '관리자용: 전체 신청 목록을 조회하고 승인·반려 처리합니다.',
+  },
+  ai_service_monitor: {
+    description: '관리자용: API 사용량·비용·에러율을 실시간으로 모니터링합니다.',
   },
   sql: {
     description: 'SQL 학습 문제를 풀고 실력을 점검할 수 있습니다.',
