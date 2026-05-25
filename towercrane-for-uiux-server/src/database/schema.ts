@@ -1512,6 +1512,49 @@ export const chatMessagesTable = sqliteTable('chat_messages', {
   createdAt: text('created_at').notNull(),
 });
 
+export type KnowledgeChannel = 'notice' | 'faq' | 'ai' | 'dev';
+export type KnowledgeStatus = 'draft' | 'published' | 'archived';
+export type KnowledgeVisibility = 'all' | 'department' | 'role';
+
+export const knowledgeDocumentsTable = sqliteTable('knowledge_documents', {
+  id: text('id').primaryKey(),
+  channel: text('channel').$type<KnowledgeChannel>().notNull(),
+  title: text('title').notNull(),
+  summary: text('summary'),
+  contentMarkdown: text('content_markdown').notNull().default(''),
+  contentJson: text('content_json'),
+  tagsJson: text('tags_json').notNull().default('[]'),
+  status: text('status').$type<KnowledgeStatus>().notNull().default('draft'),
+  visibility: text('visibility')
+    .$type<KnowledgeVisibility>()
+    .notNull()
+    .default('all'),
+  ownerId: text('owner_id').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  ownerName: text('owner_name').notNull(),
+  effectiveFrom: text('effective_from'),
+  effectiveTo: text('effective_to'),
+  metadataJson: text('metadata_json').notNull().default('{}'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  publishedAt: text('published_at'),
+});
+
+export const knowledgeChunksTable = sqliteTable('knowledge_chunks', {
+  id: text('id').primaryKey(),
+  documentId: text('document_id')
+    .notNull()
+    .references(() => knowledgeDocumentsTable.id, { onDelete: 'cascade' }),
+  channel: text('channel').$type<KnowledgeChannel>().notNull(),
+  chunkIndex: integer('chunk_index').notNull().default(0),
+  headingPath: text('heading_path'),
+  chunkText: text('chunk_text').notNull(),
+  tokenEstimate: integer('token_estimate'),
+  metadataJson: text('metadata_json').notNull().default('{}'),
+  createdAt: text('created_at').notNull(),
+});
+
 export const schema = {
   usersTable,
   sessionsTable,
@@ -1585,12 +1628,19 @@ export const schema = {
   devChallengeSubmissionsTable,
   chatSessionsTable,
   chatMessagesTable,
+  knowledgeDocumentsTable,
+  knowledgeChunksTable,
 };
 
 export type ChatSessionRow = typeof chatSessionsTable.$inferSelect;
 export type ChatSessionInsert = typeof chatSessionsTable.$inferInsert;
 export type ChatMessageRow = typeof chatMessagesTable.$inferSelect;
 export type ChatMessageInsert = typeof chatMessagesTable.$inferInsert;
+export type KnowledgeDocumentRow = typeof knowledgeDocumentsTable.$inferSelect;
+export type KnowledgeDocumentInsert =
+  typeof knowledgeDocumentsTable.$inferInsert;
+export type KnowledgeChunkRow = typeof knowledgeChunksTable.$inferSelect;
+export type KnowledgeChunkInsert = typeof knowledgeChunksTable.$inferInsert;
 
 export type UserRow = typeof usersTable.$inferSelect;
 export type UserInsert = typeof usersTable.$inferInsert;

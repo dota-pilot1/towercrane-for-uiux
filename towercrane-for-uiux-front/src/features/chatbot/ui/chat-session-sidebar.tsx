@@ -140,7 +140,7 @@ export function ChatSessionSidebar({ sessions, activeId, onAdd, onSwitch, onDele
       {menuOpenId && menuPos && createPortal(
         <div
           style={{ position: 'fixed', top: menuPos.top, right: menuPos.right }}
-          className="z-50 w-32 rounded-lg border border-surface-border bg-popover py-1 shadow-[0_10px_24px_rgba(0,0,0,0.16)]"
+          className="z-[9999] w-32 rounded-lg border border-surface-border bg-popover py-1 shadow-[0_10px_24px_rgba(0,0,0,0.16)]"
           onMouseDown={(e) => e.stopPropagation()}
         >
           <button

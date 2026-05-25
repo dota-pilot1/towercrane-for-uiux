@@ -27,6 +27,22 @@ WAIT_FOR_INVALIDATION=true ./scripts/deploy-all.sh
 ./scripts/deploy-frontend.sh
 ```
 
+## 지식 채널 샘플 데이터
+
+공지사항, FAQ, 개발 자료 샘플을 API로 등록/갱신합니다. 같은 채널과 제목의 문서가 있으면 새로 만들지 않고 업데이트합니다.
+
+```bash
+# 로컬 API
+node scripts/seed-knowledge-samples.mjs
+
+# 운영 API
+API_BASE_URL=https://api.hibot-docu.com/api node scripts/seed-knowledge-samples.mjs
+
+# 별도 계정 또는 토큰 사용
+KNOWLEDGE_SEED_EMAIL=terecal@daum.net KNOWLEDGE_SEED_PASSWORD=password123 node scripts/seed-knowledge-samples.mjs
+KNOWLEDGE_SEED_TOKEN=... API_BASE_URL=https://api.hibot-docu.com/api node scripts/seed-knowledge-samples.mjs
+```
+
 ## 주요 환경변수
 
 ```bash

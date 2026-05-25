@@ -1,126 +1,119 @@
 import { useState } from 'react'
-import { Menu, BookOpen, ChevronRight, FileText, Bell, HelpCircle, Sparkles, Code2 } from 'lucide-react'
+import {
+  Bell,
+  BookOpen,
+  Bot,
+  Code2,
+  ExternalLink,
+  FileQuestion,
+  Menu,
+  Search,
+} from 'lucide-react'
 import { useFilesChat } from '../../../features/chatbot/model/use-files-chat'
 import { ChatSessionSidebar } from '../../../features/chatbot/ui/chat-session-sidebar'
 import { ChatMessage } from '../../../features/chatbot/ui/chat-message'
 import { ChatInputWithFiles } from '../../../features/chatbot/ui/chat-input-with-files'
+import type { KnowledgeChannel } from '../../../entities/knowledge-base/model/types'
+import type { KnowledgeSource } from '../../../features/chatbot/model/use-chat-messages'
 
-const KNOWLEDGE_TREE = [
-  {
-    id: 'notice',
-    label: '공지사항',
-    Icon: Bell,
-    children: [
-      { id: 'n1', label: '시스템 점검 안내 (5/20)' },
-      { id: 'n2', label: '신규 AI 서비스 오픈' },
-      { id: 'n3', label: '서비스 이용 정책 변경' },
-    ],
-  },
-  {
-    id: 'faq',
-    label: 'FAQ',
-    Icon: HelpCircle,
-    children: [
-      { id: 'f1', label: '계정 및 권한 관련' },
-      { id: 'f2', label: 'AI 서비스 신청 방법' },
-      { id: 'f3', label: '결제 및 비용 정산' },
-      { id: 'f4', label: '오류 및 장애 대응' },
-    ],
-  },
-  {
-    id: 'ai_docs',
-    label: 'AI 자료',
-    Icon: Sparkles,
-    children: [
-      { id: 'a1', label: 'GPT 활용 가이드' },
-      { id: 'a2', label: '프롬프트 엔지니어링 기초' },
-      { id: 'a3', label: 'AI 서비스 소개서' },
-      { id: 'a4', label: 'Embedding 개념 정리' },
-    ],
-  },
-  {
-    id: 'dev_docs',
-    label: '개발 자료',
-    Icon: Code2,
-    children: [
-      { id: 'd1', label: 'API 연동 가이드' },
-      { id: 'd2', label: '개발 환경 설정' },
-      { id: 'd3', label: '배포 프로세스' },
-      { id: 'd4', label: '코드 리뷰 체크리스트' },
-    ],
-  },
+const CHANNEL_OPTIONS: Array<{
+  value: KnowledgeChannel
+  label: string
+  Icon: typeof Bell
+}> = [
+  { value: 'notice', label: '공지사항', Icon: Bell },
+  { value: 'faq', label: 'FAQ', Icon: FileQuestion },
+  { value: 'dev', label: '개발 자료', Icon: Code2 },
 ]
 
-function KnowledgeTreeSidebar() {
-  const [openIds, setOpenIds] = useState<Set<string>>(new Set(['faq', 'notice']))
-  const [activeDocId, setActiveDocId] = useState<string | null>(null)
+function formatScore(score: number) {
+  return Number.isInteger(score) ? String(score) : score.toFixed(1)
+}
 
-  function toggle(id: string) {
-    setOpenIds((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
+function KnowledgeSourcePanel({
+  sources,
+  selectedChannels,
+}: {
+  sources: KnowledgeSource[]
+  selectedChannels: KnowledgeChannel[]
+}) {
+  const scopeLabel =
+    selectedChannels.length === 0
+      ? '전체'
+      : CHANNEL_OPTIONS.filter((option) => selectedChannels.includes(option.value))
+          .map((option) => option.label)
+          .join(', ')
 
   return (
-    <div className="hidden lg:flex w-52 shrink-0 flex-col rounded-lg border border-surface-border bg-surface-raised overflow-hidden">
-      {/* 헤더 */}
-      <div className="flex items-center gap-1.5 px-3 py-2 bg-surface-strong border-b border-surface-border shrink-0">
-        <BookOpen className="size-3.5 text-brand-primary shrink-0" />
-        <span className="text-xs font-semibold ui-text-secondary">지식 문서</span>
-        <span className="ml-auto text-[10px] text-text-muted bg-surface-muted px-1.5 py-0.5 rounded-full">mock</span>
-      </div>
-
-      {/* 트리 */}
-      <div className="flex flex-col overflow-y-auto p-1.5 gap-0.5 flex-1">
-        {KNOWLEDGE_TREE.map(({ id, label, Icon, children }) => (
-          <div key={id}>
-            <button
-              onClick={() => toggle(id)}
-              className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-surface-muted transition-colors"
-            >
-              <ChevronRight
-                className={`size-3 shrink-0 ui-text-muted transition-transform duration-150 ${openIds.has(id) ? 'rotate-90' : ''}`}
-              />
-              <Icon className="size-3.5 text-brand-primary shrink-0" />
-              <span className="text-xs font-medium ui-text-secondary text-left truncate">{label}</span>
-            </button>
-
-            {openIds.has(id) && (
-              <div className="ml-3 border-l border-surface-border pl-2 flex flex-col gap-0.5 mb-1">
-                {children.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveDocId(item.id)}
-                    className={`w-full flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-left ${
-                      activeDocId === item.id
-                        ? 'bg-brand-glass text-brand-primary'
-                        : 'hover:bg-surface-muted ui-text-muted'
-                    }`}
-                  >
-                    <FileText className="size-3 shrink-0 opacity-60" />
-                    <span className="text-[11px] truncate">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+    <aside className="hidden min-h-0 w-[420px] shrink-0 flex-col rounded-lg border border-surface-border bg-surface-raised xl:flex">
+      <div className="shrink-0 border-b border-surface-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="ui-icon-button-brand rounded-md p-1.5">
+            <Search className="size-3.5" />
           </div>
-        ))}
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold ui-text-primary">검색 근거</h3>
+            <p className="truncate text-xs ui-text-muted">범위: {scopeLabel}</p>
+          </div>
+        </div>
       </div>
 
-      {/* 하단 안내 */}
-      <div className="px-3 py-2 border-t border-surface-border shrink-0">
-        <p className="text-[10px] text-text-muted leading-relaxed">
-          문서를 선택하면 해당 내용을<br />참고해서 답변합니다.
-        </p>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        {sources.length === 0 ? (
+          <div className="flex h-full min-h-48 flex-col items-center justify-center gap-2 text-center">
+            <BookOpen className="size-6 ui-text-muted" />
+            <p className="text-sm font-semibold ui-text-secondary">
+              아직 검색 근거가 없습니다.
+            </p>
+            <p className="max-w-56 text-xs leading-5 ui-text-muted">
+              질문을 보내면 선택한 범위의 chunk 검색 결과와 원문 링크가 표시됩니다.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {sources.map((source, index) => (
+              <article
+                key={source.chunkId}
+                className="rounded-md border border-surface-border-soft bg-surface-muted p-3"
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="rounded-sm border border-brand-border bg-brand-glass px-1.5 py-0.5 text-[10px] font-semibold text-brand-primary">
+                    {source.channelLabel}
+                  </span>
+                  <span className="ml-auto text-[10px] ui-text-muted">
+                    score {formatScore(source.score)}
+                  </span>
+                </div>
+                <h4 className="line-clamp-2 text-sm font-semibold ui-text-primary">
+                  {index + 1}. {source.title}
+                </h4>
+                {source.summary && (
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 ui-text-secondary">
+                    {source.summary}
+                  </p>
+                )}
+                <p className="mt-2 max-h-44 overflow-y-auto whitespace-pre-wrap rounded-sm border border-surface-border-soft bg-surface-raised p-3 text-xs leading-6 ui-text-muted">
+                  {source.snippet}
+                </p>
+                <a
+                  href={source.documentUrl}
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-primary hover:underline"
+                >
+                  원문 열기
+                  <ExternalLink className="size-3" />
+                </a>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+    </aside>
   )
 }
 
 export function ChatbotKnowledgePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [selectedChannels, setSelectedChannels] = useState<KnowledgeChannel[]>([])
 
   const {
     sessions,
@@ -140,7 +133,19 @@ export function ChatbotKnowledgePage() {
     handleSend,
     handleRegenerate,
     handleKeyDown,
-  } = useFilesChat()
+    knowledgeSources,
+  } = useFilesChat({
+    mode: 'knowledge',
+    channels: selectedChannels,
+  })
+
+  function toggleChannel(channel: KnowledgeChannel) {
+    setSelectedChannels((current) =>
+      current.includes(channel)
+        ? current.filter((item) => item !== channel)
+        : [...current, channel],
+    )
+  }
 
   return (
     <div className="flex h-[calc(100vh-120px)] gap-4 relative overflow-hidden">
@@ -171,19 +176,53 @@ export function ChatbotKnowledgePage() {
 
       {/* 채팅 영역 */}
       <div className="flex flex-1 flex-col min-w-0 rounded-lg border border-surface-border bg-surface-raised overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-2 bg-surface-strong border-b border-surface-border shrink-0">
-          <button
-            className="md:hidden p-1 rounded ui-icon-button mr-1"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="size-4" />
-          </button>
-          <span className="text-sm font-semibold ui-text-primary truncate">
-            {activeSession.title}
-          </span>
-          <span className="ml-auto text-[11px] ui-text-muted shrink-0">
-            {messages.length}개 메시지
-          </span>
+        <div className="shrink-0 border-b border-surface-border bg-surface-strong px-4 py-2">
+          <div className="flex items-center gap-2">
+            <button
+              className="md:hidden p-1 rounded ui-icon-button mr-1"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="size-4" />
+            </button>
+            <Bot className="size-4 text-brand-primary" />
+            <span className="text-sm font-semibold ui-text-primary truncate">
+              {activeSession.title}
+            </span>
+            <span className="ml-auto text-[11px] ui-text-muted shrink-0">
+              {messages.length}개 메시지
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSelectedChannels([])}
+              className={`rounded-sm border px-2.5 py-1 text-xs font-semibold transition ${
+                selectedChannels.length === 0
+                  ? 'border-brand-border bg-brand-glass text-brand-primary'
+                  : 'border-surface-border-soft bg-surface-muted ui-text-secondary hover:border-surface-border'
+              }`}
+            >
+              전체
+            </button>
+            {CHANNEL_OPTIONS.map(({ value, label, Icon }) => {
+              const selected = selectedChannels.includes(value)
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggleChannel(value)}
+                  className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-xs font-semibold transition ${
+                    selected
+                      ? 'border-brand-border bg-brand-glass text-brand-primary'
+                      : 'border-surface-border-soft bg-surface-muted ui-text-secondary hover:border-surface-border'
+                  }`}
+                >
+                  <Icon className="size-3" />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
@@ -222,8 +261,10 @@ export function ChatbotKnowledgePage() {
         </div>
       </div>
 
-      {/* 오른쪽 지식 트리 사이드바 */}
-      <KnowledgeTreeSidebar />
+      <KnowledgeSourcePanel
+        sources={knowledgeSources}
+        selectedChannels={selectedChannels}
+      />
     </div>
   )
 }

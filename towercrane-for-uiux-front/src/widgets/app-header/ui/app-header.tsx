@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { type ElementType, useMemo, useRef, useState } from 'react'
+import { MiniFlow } from './chatbot-mini-flows'
 import * as LucideIcons from 'lucide-react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { HeaderAuthButtons } from '../../../features/auth/ui/inline-auth-bar'
@@ -24,7 +25,7 @@ function sectionIdToPath(sectionId: string): string {
     knowledge_faq: '/chatbot/knowledge/faq',
     knowledge_ai: '/chatbot/knowledge/ai',
     knowledge_dev: '/chatbot/knowledge/dev',
-    ai_service_request: '/chatbot/knowledge',
+    ai_service_request: '/ai-service-request',
     ai_evaluation: '/ai-evaluation',
     api_doc: '/api-doc',
     sql: '/sql',
@@ -56,6 +57,11 @@ function sectionIdToPath(sectionId: string): string {
     chatbot_flow: '/chatbot/flow',
     chatbot_files: '/chatbot/files',
     chatbot_knowledge: '/chatbot/knowledge',
+    chatbot_basic_guide: '/chatbot/guide',
+    chatbot_streaming_guide: '/chatbot/streaming/guide',
+    chatbot_history_guide: '/chatbot/history/guide',
+    chatbot_files_guide: '/chatbot/files/guide',
+    chatbot_knowledge_guide: '/chatbot/knowledge/guide',
   }
   return map[sectionId] ?? '/prototype'
 }
@@ -117,14 +123,105 @@ function normalizeSectionId(sectionId: string | null | undefined): string {
   return sectionId ?? ''
 }
 
-function getIcon(iconName: string | null): React.ElementType {
+function getIcon(iconName: string | null): ElementType {
   if (!iconName) return LucideIcons.FileText
-  const icons = LucideIcons as unknown as Record<string, React.ElementType>
+  const icons = LucideIcons as unknown as Record<string, ElementType>
   const Icon = icons[iconName]
   return Icon || LucideIcons.FileText
 }
 
-function NavDropdown({
+const SECTION_META: Record<string, { description: string; badge?: string }> = {
+  chatbot_basic: {
+    description: 'GPT 기반 기본 채팅 인터페이스입니다. 간단한 질문·답변을 테스트해볼 수 있습니다.',
+    badge: 'GPT-4o',
+  },
+  chatbot_streaming: {
+    description: '토큰이 생성되는 즉시 화면에 출력되는 스트리밍 응답을 체험할 수 있습니다.',
+    badge: 'SSE',
+  },
+  chatbot_history: {
+    description: '세션별 대화 기록을 저장하고 불러옵니다. 히스토리 관리 흐름을 확인하세요.',
+    badge: 'History',
+  },
+  chatbot_files: {
+    description: '이미지·문서 파일을 첨부해 GPT-4o Vision으로 분석하는 멀티모달 채팅입니다.',
+    badge: 'Vision',
+  },
+  chatbot_flow: {
+    description: 'React Flow로 대화 흐름과 분기 로직을 노드·엣지로 시각화합니다.',
+    badge: 'Flow',
+  },
+  chatbot_basic_guide: {
+    description: 'GPT-4o-mini 호출부터 Markdown 렌더링까지 기본 채팅의 내부 프로세스를 React Flow로 설명합니다.',
+    badge: 'Guide',
+  },
+  chatbot_streaming_guide: {
+    description: 'SSE 연결 수립 → 토큰 청크 수신 → 실시간 렌더링까지 스트리밍 흐름을 시각화합니다.',
+    badge: 'Guide',
+  },
+  chatbot_history_guide: {
+    description: '세션 생성 · 메시지 DB 저장 · 히스토리 복원 전체 흐름을 React Flow로 설명합니다.',
+    badge: 'Guide',
+  },
+  chatbot_files_guide: {
+    description: 'S3 업로드 → GPT-4o Vision 멀티모달 분석 파이프라인을 시각화합니다.',
+    badge: 'Guide',
+  },
+  chatbot_knowledge_guide: {
+    description: '임베딩 → 벡터 검색 → RAG 기반 GPT 답변 생성 전체 흐름을 React Flow로 설명합니다.',
+    badge: 'Guide',
+  },
+  chatbot_knowledge: {
+    description: '사내 공지·FAQ 문서를 벡터 검색해 RAG 방식으로 답변을 생성합니다.',
+    badge: 'RAG',
+  },
+  knowledge_channel: {
+    description: '사내 공지·FAQ 문서를 벡터 검색해 RAG 방식으로 답변을 생성합니다.',
+    badge: 'RAG',
+  },
+  knowledge_notice: {
+    description: '공지사항 문서만을 범위로 지정해 질문할 수 있습니다.',
+  },
+  knowledge_faq: {
+    description: 'FAQ 문서만을 범위로 지정해 자주 묻는 질문에 답변합니다.',
+  },
+  knowledge_ai: {
+    description: 'AI 관련 사내 자료를 검색해 답변합니다.',
+  },
+  knowledge_dev: {
+    description: '개발 관련 사내 자료를 검색해 답변합니다.',
+  },
+  sql: {
+    description: 'SQL 학습 문제를 풀고 실력을 점검할 수 있습니다.',
+  },
+  sql_personal: {
+    description: '개인 SQL 문제 풀이 현황을 확인합니다.',
+  },
+  sql_team: {
+    description: '팀 전체의 SQL 학습 현황을 비교·분석합니다.',
+  },
+  sql_examples: {
+    description: '예제 쿼리를 보며 SQL 패턴을 학습합니다.',
+  },
+  boards: {
+    description: '공지·문의·QnA·자유 게시판을 통해 소통합니다.',
+  },
+  board_notice: { description: '팀 공지사항을 확인합니다.' },
+  board_inquiry: { description: '관리자에게 문의를 남깁니다.' },
+  board_qna: { description: 'Q&A를 통해 궁금한 점을 해결합니다.' },
+  board_free: { description: '자유롭게 글을 남기는 게시판입니다.' },
+  task_all: { description: '전체 태스크 목록을 조회하고 관리합니다.' },
+  task_my: { description: '나에게 할당된 태스크만 필터링해 확인합니다.' },
+  task_issues: { description: '이슈 트래커에서 버그·개선사항을 관리합니다.' },
+  project_issues: { description: '프로젝트별 이슈를 모아 볼 수 있습니다.' },
+  users: { description: '사용자 계정과 권한을 관리합니다.' },
+  menu_admin: { description: '헤더 메뉴 구조를 수정합니다.' },
+  readme_admin: { description: '온보딩 문서를 편집합니다.' },
+  admin_board_configs: { description: '게시판 설정을 관리합니다.' },
+  admin_boards: { description: '게시판 목록을 관리합니다.' },
+}
+
+function MegaNavDropdown({
   item,
   activeSection,
   handleNavigation,
@@ -134,19 +231,33 @@ function NavDropdown({
   handleNavigation: (id: string) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const Icon = getIcon(item.icon)
+
+  const cancelClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+  }
+  const scheduleClose = () => {
+    closeTimer.current = setTimeout(() => setIsOpen(false), 120)
+  }
 
   const isActive =
     item.children.some((child) => normalizeSectionId(child.sectionId) === activeSection) ||
     normalizeSectionId(item.sectionId) === activeSection
 
+  // 가이드 항목(_guide suffix)과 메인 항목 분리
+  const mainItems = item.children.filter((c) => !c.sectionId?.endsWith('_guide'))
+  const guideItems = item.children.filter((c) => c.sectionId?.endsWith('_guide'))
+  const isPaired = guideItems.length > 0
+
   return (
-    <div className="relative">
+    <div className="relative" onMouseLeave={scheduleClose} onMouseEnter={cancelClose}>
       <HeaderPill
         icon={Icon}
         variant={isActive ? 'active' : 'default'}
         onClick={() => setIsOpen(!isOpen)}
-        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+        onMouseEnter={() => { cancelClose(); setIsOpen(true) }}
         labelClassName="hidden sm:inline"
         trailingIcon={
           <LucideIcons.ChevronDown
@@ -158,24 +269,93 @@ function NavDropdown({
       </HeaderPill>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-44 origin-top-left animate-in zoom-in rounded-md border border-surface-border bg-surface-raised p-1.5 shadow-2xl duration-200 fade-in">
-          {item.children.map((child) => {
-            const ChildIcon = getIcon(child.icon)
-            return (
-              <button
-                key={child.id}
-                onClick={() => {
-                  if (child.sectionId) handleNavigation(child.sectionId)
-                  setIsOpen(false)
-                }}
-                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-[13px] transition-all ui-text-secondary hover:bg-brand-glass hover:text-brand-primary hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <ChildIcon className="size-3.5" />
-                {child.name}
-              </button>
-            )
-          })}
-        </div>
+        <>
+          {/* 투명 브릿지 */}
+          <div className="absolute left-0 top-full z-50 h-2 w-full" />
+          <div
+            className="absolute left-0 top-full z-50 mt-2 origin-top-left animate-in zoom-in-95 rounded-xl border border-surface-border bg-surface-raised shadow-2xl duration-150 fade-in overflow-hidden"
+          >
+            {isPaired ? (
+              /* 좌우 페어링 레이아웃 (챗봇) */
+              <div className="grid p-2" style={{ gridTemplateColumns: '1fr 1px 1fr', minWidth: 360 }}>
+                {/* 왼쪽: 메인 채팅 메뉴 */}
+                <div className="flex flex-col gap-0.5 pr-2">
+                  {mainItems.map((child) => {
+                    const ChildIcon = getIcon(child.icon)
+                    const isChildActive = normalizeSectionId(child.sectionId) === activeSection
+                    return (
+                      <button
+                        key={child.id}
+                        onClick={() => { if (child.sectionId) handleNavigation(child.sectionId); setIsOpen(false) }}
+                        style={!isChildActive ? { color: 'var(--foreground)' } : undefined}
+                        onMouseEnter={e => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--foreground) 7%, transparent)' } }}
+                        onMouseLeave={e => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = '' } }}
+                        className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
+                          isChildActive ? 'bg-brand-glass text-brand-primary' : ''
+                        }`}
+                      >
+                        <ChildIcon className={`size-3.5 shrink-0 ${isChildActive ? 'text-brand-primary' : ''}`} />
+                        <span className="truncate">{child.name}</span>
+                        {isChildActive && <span className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-primary" />}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* 구분선 */}
+                <div className="bg-surface-border mx-1" />
+
+                {/* 오른쪽: 가이드 메뉴 */}
+                <div className="flex flex-col gap-0.5 pl-2">
+                  {guideItems.map((guide) => {
+                    const GuideIcon = getIcon(guide.icon)
+                    const isGuideActive = normalizeSectionId(guide.sectionId) === activeSection
+                    return (
+                      <button
+                        key={guide.id}
+                        onClick={() => { if (guide.sectionId) handleNavigation(guide.sectionId); setIsOpen(false) }}
+                        style={!isGuideActive ? { color: 'var(--foreground)' } : undefined}
+                        onMouseEnter={e => { if (!isGuideActive) { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--primary) 10%, transparent)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--primary)' } }}
+                        onMouseLeave={e => { if (!isGuideActive) { (e.currentTarget as HTMLButtonElement).style.background = ''; (e.currentTarget as HTMLButtonElement).style.color = 'var(--foreground)' } }}
+                        className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
+                          isGuideActive ? 'bg-brand-glass text-brand-primary' : ''
+                        }`}
+                      >
+                        <GuideIcon className="size-3.5 shrink-0 text-brand-primary opacity-70" />
+                        <span className="truncate">{guide.name}</span>
+                        <LucideIcons.ArrowUpRight className="ml-auto size-3 shrink-0 opacity-40" />
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* 일반 단일 컬럼 */
+              <div className="flex flex-col gap-0.5 p-2" style={{ minWidth: 160 }}>
+                {item.children.map((child) => {
+                  const ChildIcon = getIcon(child.icon)
+                  const isChildActive = normalizeSectionId(child.sectionId) === activeSection
+                  return (
+                    <button
+                      key={child.id}
+                      onClick={() => { if (child.sectionId) handleNavigation(child.sectionId); setIsOpen(false) }}
+                      style={!isChildActive ? { color: 'var(--foreground)' } : undefined}
+                      onMouseEnter={e => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--foreground) 7%, transparent)' } }}
+                      onMouseLeave={e => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = '' } }}
+                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
+                        isChildActive ? 'bg-brand-glass text-brand-primary' : ''
+                      }`}
+                    >
+                      <ChildIcon className={`size-3.5 shrink-0 ${isChildActive ? 'text-brand-primary' : ''}`} />
+                      <span className="truncate">{child.name}</span>
+                      {isChildActive && <span className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-primary" />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   )
@@ -244,7 +424,7 @@ export function AppHeader() {
           {menuTree.map((item) => {
             if (item.children && item.children.length > 0) {
               return (
-                <NavDropdown
+                <MegaNavDropdown
                   key={item.id}
                   item={item}
                   activeSection={activeSection}

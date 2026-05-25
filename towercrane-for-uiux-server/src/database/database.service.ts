@@ -51,6 +51,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.sqlite = new Database(databaseFile);
     this.sqlite.pragma('foreign_keys = ON');
     this.sqlite.pragma('journal_mode = WAL');
+    this.sqlite.pragma('busy_timeout = 5000');
     this.db = drizzle(this.sqlite, { schema });
 
     this.sqlite.exec(`
@@ -1330,6 +1331,50 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         content TEXT NOT NULL,
         created_at TEXT NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS knowledge_documents (
+        id TEXT PRIMARY KEY,
+        channel TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT,
+        content_markdown TEXT NOT NULL DEFAULT '',
+        content_json TEXT,
+        tags_json TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'draft',
+        visibility TEXT NOT NULL DEFAULT 'all',
+        owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+        owner_name TEXT NOT NULL,
+        effective_from TEXT,
+        effective_to TEXT,
+        metadata_json TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        published_at TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_knowledge_documents_channel_status_updated
+        ON knowledge_documents(channel, status, updated_at);
+
+      CREATE INDEX IF NOT EXISTS idx_knowledge_documents_owner
+        ON knowledge_documents(owner_id, updated_at);
+
+      CREATE TABLE IF NOT EXISTS knowledge_chunks (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL REFERENCES knowledge_documents(id) ON DELETE CASCADE,
+        channel TEXT NOT NULL,
+        chunk_index INTEGER NOT NULL DEFAULT 0,
+        heading_path TEXT,
+        chunk_text TEXT NOT NULL,
+        token_estimate INTEGER,
+        metadata_json TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_document
+        ON knowledge_chunks(document_id, chunk_index);
+
+      CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_channel
+        ON knowledge_chunks(channel, created_at);
     `);
 
     this.migrateLegacySchema();
@@ -1794,11 +1839,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           .run();
       }
     };
-    ensureChatbotChild('지식 검색', 'chatbot_knowledge', 'Search', 4);
+    ensureChatbotChild('지식 검색',        'chatbot_knowledge',       'Search',         4);
+    ensureChatbotChild('기본 채팅 가이드',  'chatbot_basic_guide',     'BookOpen',        10);
+    ensureChatbotChild('스트리밍 가이드',   'chatbot_streaming_guide', 'BookOpen',        11);
+    ensureChatbotChild('히스토리 가이드',   'chatbot_history_guide',   'BookOpen',        12);
+    ensureChatbotChild('파일 첨부 가이드',  'chatbot_files_guide',     'BookOpen',        13);
+    ensureChatbotChild('지식 검색 가이드',  'chatbot_knowledge_guide', 'BookOpen',        14);
 
     // 루트 메뉴 표시 순서 고정:
     // 0:AI Native, 1:회의실, 2:업무관리, 3:Postman, 4:학습 일지,
-    // 5:게시판, 6:SQL Prac, 7:Challenge, 8:Prototype, 9:챗봇, 10:Admin
+    // 5:게시판, 6:SQL Prac, 7:Challenge, 8:Prototype, 9:지식채널, 10:챗봇, 11:Admin
     const rootMenuOrder: Array<{
       sectionId: string | string[];
       displayOrder: number;
@@ -1807,11 +1857,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { sectionId: 'api_doc', displayOrder: 1 },
       { sectionId: 'meeting', displayOrder: 2 },
       { sectionId: 'study_diary', displayOrder: 3 },
-      { sectionId: 'knowledge_channel', displayOrder: 4 },
-      { sectionId: 'boards', displayOrder: 5 },
-      { sectionId: 'sql_group', displayOrder: 6 },
-      { sectionId: 'dev_challenge', displayOrder: 7 },
-      { sectionId: 'prototype', displayOrder: 8 },
+      { sectionId: 'boards', displayOrder: 4 },
+      { sectionId: 'sql_group', displayOrder: 5 },
+      { sectionId: 'dev_challenge', displayOrder: 6 },
+      { sectionId: 'prototype', displayOrder: 7 },
+      { sectionId: 'knowledge_channel', displayOrder: 8 },
       { sectionId: 'chatbot_pilot', displayOrder: 9 },
       { sectionId: 'admin_dropdown', displayOrder: 10 },
     ];
@@ -2310,6 +2360,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'workspace_id',
       'ALTER TABLE dev_challenge_categories ADD COLUMN workspace_id TEXT',
     );
+    this.ensureColumn(
+      'knowledge_documents',
+      'content_json',
+      'ALTER TABLE knowledge_documents ADD COLUMN content_json TEXT',
+    );
     this.sqlite.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user
         ON study_diaries(user_id);
@@ -2784,27 +2839,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     ensureChild('AI 자료', 'knowledge_ai',    'Sparkles',   2);
     ensureChild('개발 자료','knowledge_dev',  'Code2',      3);
 
-    // ── AI 서비스 신청 → 챗봇 하위 ───────────────────────────────────────
-    const chatbotParent = this.sqlite
-      .prepare(`SELECT id FROM menus WHERE section_id = 'chatbot_pilot' LIMIT 1`)
-      .get() as { id: string } | undefined;
-
-    if (chatbotParent) {
-      const svc = this.sqlite
-        .prepare(`SELECT id FROM menus WHERE section_id = 'ai_service_request' LIMIT 1`)
-        .get() as { id: string } | undefined;
-      if (!svc) {
-        this.db.insert(menusTable).values({
-          id: randomUUID(), name: 'AI 서비스 신청', sectionId: 'ai_service_request',
-          icon: 'FilePlus2', displayOrder: 5, isVisible: true, requiredRole: null,
-          parentId: chatbotParent.id, createdAt: now, updatedAt: now,
-        }).run();
-      } else {
-        this.sqlite
-          .prepare(`UPDATE menus SET name='AI 서비스 신청', icon='FilePlus2', parent_id=?, display_order=5, is_visible=1, updated_at=? WHERE id=?`)
-          .run(chatbotParent.id, now, svc.id);
-      }
-    }
+    // AI 서비스 신청은 챗봇 하위에서 제거 (별도 메뉴로 관리)
+    this.sqlite
+      .prepare(`UPDATE menus SET is_visible=0, updated_at=? WHERE section_id='ai_service_request'`)
+      .run(now);
 
     // ── AI 활용 능력 평가 → 업무 관리 하위 ──────────────────────────────
     const taskParent = this.sqlite
@@ -3362,7 +3400,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           sectionId: 'boards',
           icon: 'MessageSquareText',
           displayOrder,
-          isVisible: true,
+          isVisible: false,
           requiredRole: null,
           parentId: null,
           createdAt: now,
@@ -3376,7 +3414,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             UPDATE menus
             SET name = '게시판',
                 icon = 'MessageSquareText',
-                is_visible = 1,
+                is_visible = 0,
                 required_role = NULL,
                 updated_at = ?
             WHERE id = ?

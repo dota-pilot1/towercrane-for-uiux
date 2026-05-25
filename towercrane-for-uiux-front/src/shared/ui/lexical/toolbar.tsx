@@ -72,6 +72,7 @@ import { extractYouTubeId } from './nodes/youtube-node'
 type Props = {
   className?: string
   onImageUpload?: (file: File) => Promise<string>
+  variant?: 'full' | 'simple'
 }
 
 const FONT_SIZES = ['12px', '13px', '14px', '15px', '16px', '18px', '20px', '24px', '28px', '32px', '40px']
@@ -103,7 +104,7 @@ const HIGHLIGHT_COLORS: { label: string; value: string }[] = [
   { label: '주황', value: '#fed7aa' },
 ]
 
-export function LexicalToolbar({ className, onImageUpload }: Props) {
+export function LexicalToolbar({ className, onImageUpload, variant = 'full' }: Props) {
   const [editor] = useLexicalComposerContext()
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
@@ -213,6 +214,58 @@ export function LexicalToolbar({ className, onImageUpload }: Props) {
 
   const align = (alignment: ElementFormatType) => {
     editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, alignment)
+  }
+
+  if (variant === 'simple') {
+    return (
+      <div
+        className={`flex flex-wrap items-center gap-1 border-b border-surface-border-soft bg-surface-muted px-3 py-2 ${className ?? ''}`}
+      >
+        <ToolbarButton onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)} disabled={!canUndo} title="실행 취소">
+          <Undo className="size-3.5" />
+        </ToolbarButton>
+        <ToolbarButton onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)} disabled={!canRedo} title="다시 실행">
+          <Redo className="size-3.5" />
+        </ToolbarButton>
+
+        <Divider />
+
+        <ToolbarButton onClick={formatParagraph} title="본문">
+          <span className="px-1 text-[11px] font-semibold">P</span>
+        </ToolbarButton>
+        <ToolbarButton onClick={() => formatHeading('h1')} title="Heading 1">
+          <Heading1 className="size-3.5" />
+        </ToolbarButton>
+        <ToolbarButton onClick={() => formatHeading('h2')} title="Heading 2">
+          <Heading2 className="size-3.5" />
+        </ToolbarButton>
+
+        <Divider />
+
+        <ToolbarButton onClick={() => format('bold')} active={activeFormats.bold} title="Bold (⌘B)">
+          <Bold className="size-3.5" />
+        </ToolbarButton>
+        <ToolbarButton onClick={() => format('italic')} active={activeFormats.italic} title="Italic (⌘I)">
+          <Italic className="size-3.5" />
+        </ToolbarButton>
+        <ToolbarButton onClick={() => format('underline')} active={activeFormats.underline} title="Underline (⌘U)">
+          <Underline className="size-3.5" />
+        </ToolbarButton>
+
+        <Divider />
+
+        <ToolbarButton onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)} title="Bulleted list">
+          <List className="size-3.5" />
+        </ToolbarButton>
+        <ToolbarButton onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)} title="Numbered list">
+          <ListOrdered className="size-3.5" />
+        </ToolbarButton>
+        <ToolbarButton onClick={formatQuote} title="인용">
+          <Quote className="size-3.5" />
+        </ToolbarButton>
+        <LinkInsertButton />
+      </div>
+    )
   }
 
   return (

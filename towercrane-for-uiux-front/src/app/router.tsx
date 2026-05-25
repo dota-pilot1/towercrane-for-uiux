@@ -24,6 +24,11 @@ import { ChatbotKnowledgeNoticePage } from '../pages/chatbot/ui/chatbot-knowledg
 import { ChatbotKnowledgeFaqPage } from '../pages/chatbot/ui/chatbot-knowledge-faq-page'
 import { ChatbotKnowledgeAiPage } from '../pages/chatbot/ui/chatbot-knowledge-ai-page'
 import { ChatbotKnowledgeDevPage } from '../pages/chatbot/ui/chatbot-knowledge-dev-page'
+import { ChatbotBasicGuidePage } from '../pages/chatbot/ui/chatbot-basic-guide-page'
+import { ChatbotStreamingGuidePage } from '../pages/chatbot/ui/chatbot-streaming-guide-page'
+import { ChatbotHistoryGuidePage } from '../pages/chatbot/ui/chatbot-history-guide-page'
+import { ChatbotFilesGuidePage } from '../pages/chatbot/ui/chatbot-files-guide-page'
+import { ChatbotKnowledgeGuidePage } from '../pages/chatbot/ui/chatbot-knowledge-guide-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-workspace-home-page'
@@ -377,6 +382,36 @@ const chatbotKnowledgeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot/knowledge',
   component: ChatbotKnowledgePage,
+})
+
+const chatbotBasicGuideRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/guide',
+  component: ChatbotBasicGuidePage,
+})
+
+const chatbotStreamingGuideRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/streaming/guide',
+  component: ChatbotStreamingGuidePage,
+})
+
+const chatbotHistoryGuideRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/history/guide',
+  component: ChatbotHistoryGuidePage,
+})
+
+const chatbotFilesGuideRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/files/guide',
+  component: ChatbotFilesGuidePage,
+})
+
+const chatbotKnowledgeGuideRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/knowledge/guide',
+  component: ChatbotKnowledgeGuidePage,
 })
 
 const chatbotKnowledgeNoticeRoute = createRoute({
@@ -824,6 +859,11 @@ export const router = createRouter({
       chatbotKnowledgeFaqRoute,
       chatbotKnowledgeAiRoute,
       chatbotKnowledgeDevRoute,
+      chatbotBasicGuideRoute,
+      chatbotStreamingGuideRoute,
+      chatbotHistoryGuideRoute,
+      chatbotFilesGuideRoute,
+      chatbotKnowledgeGuideRoute,
       meetingRoute,
       meetingWorkspaceRoute,
       docuRoute,

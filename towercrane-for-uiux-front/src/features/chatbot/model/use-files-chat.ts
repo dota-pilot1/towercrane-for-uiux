@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { useChatSessionStore } from './chat-session-store'
 import { API_BASE_URL } from '../../../shared/api/http'
 import { useSessionStore } from '../../../shared/store/session-store'
+import type { KnowledgeChannel } from '../../../entities/knowledge-base/model/types'
+import type { KnowledgeSource } from './use-chat-messages'
 
 export type { Session } from './chat-session-store'
 
@@ -26,9 +28,19 @@ type StreamDone = {
     content: string
     createdAt: string
   }
+  knowledgeSources?: KnowledgeSource[]
 }
 
 type StreamChunk = { text: string }
+type StreamKnowledgeSources = {
+  type: 'knowledge_sources'
+  items: KnowledgeSource[]
+}
+
+type UseFilesChatOptions = {
+  mode?: 'general' | 'knowledge'
+  channels?: KnowledgeChannel[]
+}
 
 import { uploadFile } from '../../../shared/api/upload'
 
@@ -37,7 +49,7 @@ async function uploadFiles(files: File[]): Promise<string[]> {
   return Promise.all(files.map((f) => uploadFile(f)))
 }
 
-export function useFilesChat() {
+export function useFilesChat(options: UseFilesChatOptions = {}) {
   const {
     sessions,
     activeId,
@@ -51,6 +63,7 @@ export function useFilesChat() {
     appendLocalMessage,
     updateLocalChunk,
     replaceLocalMessage,
+    setMessageSources,
     removeLastAssistantMessage,
     setSessionTitle,
   } = useChatSessionStore()
@@ -58,6 +71,7 @@ export function useFilesChat() {
   const [input, setInput] = useState('')
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
+  const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -82,6 +96,7 @@ export function useFilesChat() {
     const currentActiveId = activeId
     const tempUserId = `temp-user-${Date.now()}`
     const tempAssistantId = `temp-assistant-${Date.now()}`
+    const isKnowledgeMode = options.mode === 'knowledge'
 
     // 파일 업로드 먼저
     const fileUrls = await uploadFiles(attachedFiles)
@@ -101,6 +116,7 @@ export function useFilesChat() {
     })
     setInput('')
     setAttachedFiles([])
+    if (isKnowledgeMode) setKnowledgeSources([])
     setIsStreaming(true)
 
     try {
@@ -111,17 +127,26 @@ export function useFilesChat() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ sessionId: currentActiveId, message: text, fileUrls }),
+        body: JSON.stringify({
+          sessionId: currentActiveId,
+          message: text,
+          fileUrls,
+          mode: options.mode,
+          channels: options.channels,
+        }),
       })
 
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
+      let buffer = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
-        const lines = decoder.decode(value).split('\n')
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const payload = line.slice(6).trim()
@@ -130,7 +155,11 @@ export function useFilesChat() {
             return
           }
           try {
-            const parsed = JSON.parse(payload) as StreamMeta | StreamDone | StreamChunk
+            const parsed = JSON.parse(payload) as
+              | StreamMeta
+              | StreamDone
+              | StreamChunk
+              | StreamKnowledgeSources
 
             if ('type' in parsed && parsed.type === 'meta') {
               replaceLocalMessage(currentActiveId, tempUserId, {
@@ -146,8 +175,12 @@ export function useFilesChat() {
                 id: parsed.assistantMessage.id,
                 role: 'assistant',
                 content: parsed.assistantMessage.content,
+                sources: parsed.knowledgeSources,
                 timestamp: new Date(parsed.assistantMessage.createdAt),
               })
+            } else if ('type' in parsed && parsed.type === 'knowledge_sources') {
+              setKnowledgeSources(parsed.items)
+              setMessageSources(currentActiveId, tempAssistantId, parsed.items)
             } else if ('text' in parsed) {
               updateLocalChunk(currentActiveId, tempAssistantId, parsed.text)
             }
@@ -174,6 +207,7 @@ export function useFilesChat() {
     const currentActiveId = activeId
     const tempAssistantId = `temp-assistant-${Date.now()}`
     const fileUrls = lastUserMsg.fileUrls ?? []
+    const isKnowledgeMode = options.mode === 'knowledge'
 
     appendLocalMessage(currentActiveId, {
       id: tempAssistantId,
@@ -181,6 +215,7 @@ export function useFilesChat() {
       content: '',
       timestamp: new Date(),
     })
+    if (isKnowledgeMode) setKnowledgeSources([])
     setIsStreaming(true)
 
     try {
@@ -191,29 +226,46 @@ export function useFilesChat() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ sessionId: currentActiveId, message: lastUserMsg.content, fileUrls }),
+        body: JSON.stringify({
+          sessionId: currentActiveId,
+          message: lastUserMsg.content,
+          fileUrls,
+          mode: options.mode,
+          channels: options.channels,
+        }),
       })
 
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
+      let buffer = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const lines = decoder.decode(value).split('\n')
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const payload = line.slice(6).trim()
           if (payload === '[DONE]') { setIsStreaming(false); return }
           try {
-            const parsed = JSON.parse(payload) as StreamMeta | StreamDone | StreamChunk
+            const parsed = JSON.parse(payload) as
+              | StreamMeta
+              | StreamDone
+              | StreamChunk
+              | StreamKnowledgeSources
             if ('type' in parsed && parsed.type === 'done') {
               replaceLocalMessage(currentActiveId, tempAssistantId, {
                 id: parsed.assistantMessage.id,
                 role: 'assistant',
                 content: parsed.assistantMessage.content,
+                sources: parsed.knowledgeSources,
                 timestamp: new Date(parsed.assistantMessage.createdAt),
               })
+            } else if ('type' in parsed && parsed.type === 'knowledge_sources') {
+              setKnowledgeSources(parsed.items)
+              setMessageSources(currentActiveId, tempAssistantId, parsed.items)
             } else if ('text' in parsed) {
               updateLocalChunk(currentActiveId, tempAssistantId, parsed.text)
             }
@@ -244,10 +296,16 @@ export function useFilesChat() {
     attachedFiles,
     setAttachedFiles,
     isStreaming,
+    knowledgeSources,
     bottomRef,
     addSession: () => void addSession(),
     deleteSession: (id: string) => void deleteSession(id),
-    switchSession: (id: string) => { switchSession(id); setInput(''); setAttachedFiles([]) },
+    switchSession: (id: string) => {
+      switchSession(id)
+      setInput('')
+      setAttachedFiles([])
+      setKnowledgeSources([])
+    },
     renameSession: (id: string, title: string) => void renameSession(id, title),
     handleSend: () => void handleSend(),
     handleRegenerate: () => void handleRegenerate(),

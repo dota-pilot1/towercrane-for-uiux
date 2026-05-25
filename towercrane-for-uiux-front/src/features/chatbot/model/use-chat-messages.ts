@@ -1,11 +1,31 @@
 import { useState, useRef, useEffect } from "react";
 
+import type { KnowledgeChannel } from '../../../entities/knowledge-base/model/types'
+
+export type KnowledgeSource = {
+  chunkId: string
+  documentId: string
+  channel: KnowledgeChannel
+  channelLabel: string
+  chunkIndex: number
+  headingPath: string | null
+  chunkText: string
+  title: string
+  summary: string | null
+  tags: string[]
+  updatedAt: string
+  score: number
+  snippet: string
+  documentUrl: string
+}
+
 export type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
   fileUrls?: string[];
+  sources?: KnowledgeSource[];
 };
 
 const MOCK_RESPONSES = [

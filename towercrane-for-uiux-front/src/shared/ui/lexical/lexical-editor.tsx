@@ -35,6 +35,7 @@ type LexicalEditorProps = {
   placeholder?: string
   minHeight?: string
   readOnly?: boolean
+  toolbarVariant?: 'full' | 'simple'
 }
 
 function CodeHighlightPlugin() {
@@ -66,6 +67,7 @@ export function LexicalEditor({
   placeholder = '내용을 입력하세요...',
   minHeight = '200px',
   readOnly = false,
+  toolbarVariant = 'full',
 }: LexicalEditorProps) {
   const handleChange = useCallback(
     (editorState: EditorState) => {
@@ -108,7 +110,12 @@ export function LexicalEditor({
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <div className="flex flex-col bg-surface-raised">
-        {readOnly ? null : <LexicalToolbar onImageUpload={uploadImageToS3} />}
+        {readOnly ? null : (
+          <LexicalToolbar
+            onImageUpload={toolbarVariant === 'full' ? uploadImageToS3 : undefined}
+            variant={toolbarVariant}
+          />
+        )}
         <div className="relative">
           <RichTextPlugin
             contentEditable={

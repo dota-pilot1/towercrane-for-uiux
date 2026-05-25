@@ -14,6 +14,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthService } from '../auth/auth.service';
 import { ChatbotService } from './chatbot.service';
+import type { KnowledgeChannel } from '../database/schema';
 
 type User = ReturnType<AuthService['getSessionUser']>;
 
@@ -54,13 +55,24 @@ export class ChatbotController {
   @Post('stream')
   async stream(
     @CurrentUser() user: User,
-    @Body() body: { sessionId: string; message: string; fileUrls?: string[] },
+    @Body()
+    body: {
+      sessionId: string;
+      message: string;
+      fileUrls?: string[];
+      mode?: 'general' | 'knowledge';
+      channels?: KnowledgeChannel[];
+    },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    await this.chatbotService.streamGpt(body.sessionId, body.message, user.id, res, body.fileUrls);
+    await this.chatbotService.streamGpt(body.sessionId, body.message, user, res, {
+      fileUrls: body.fileUrls,
+      mode: body.mode,
+      channels: body.channels,
+    });
   }
 }

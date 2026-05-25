@@ -13,7 +13,39 @@ import { DatabaseService } from '../database/database.service';
 import {
   chatMessagesTable,
   chatSessionsTable,
+  type KnowledgeChannel,
 } from '../database/schema';
+import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service';
+
+type ChatbotUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'user';
+};
+
+type KnowledgeSource = {
+  chunkId: string;
+  documentId: string;
+  channel: KnowledgeChannel;
+  channelLabel: string;
+  chunkIndex: number;
+  headingPath: string | null;
+  chunkText: string;
+  title: string;
+  summary: string | null;
+  tags: string[];
+  updatedAt: string;
+  score: number;
+  snippet: string;
+  documentUrl: string;
+};
+
+type StreamOptions = {
+  fileUrls?: string[];
+  mode?: 'general' | 'knowledge';
+  channels?: KnowledgeChannel[];
+};
 
 const CHATBOT_SYSTEM_PROMPT = `당신은 친절하고 실용적인 AI 어시스턴트입니다.
 
@@ -26,6 +58,16 @@ const CHATBOT_SYSTEM_PROMPT = `당신은 친절하고 실용적인 AI 어시스�
 
 사용자가 HTML을 요청하지 않는 한 raw HTML은 출력하지 않습니다.`;
 
+const KNOWLEDGE_SYSTEM_PROMPT = `${CHATBOT_SYSTEM_PROMPT}
+
+당신은 농협 사내 AX 지식 검색 챗봇입니다.
+- 제공된 사내 지식 문서만 근거로 답변합니다.
+- 문서에 없는 정책, 날짜, 담당자, 비용, 절차는 만들지 않습니다.
+- 근거가 부족하면 "제공된 문서에서 확인되지 않습니다"라고 명확히 말합니다.
+- 공지사항은 적용일, 만료일, 중요도처럼 날짜와 상태를 분명히 표시합니다.
+- FAQ는 사용자가 바로 실행할 수 있게 짧고 확정적으로 답합니다.
+- 답변 마지막에는 "참고 문서" 섹션을 만들고 사용한 문서 제목을 나열합니다.`;
+
 @Injectable()
 export class ChatbotService {
   private openai: OpenAI | null;
@@ -33,6 +75,7 @@ export class ChatbotService {
   constructor(
     private configService: ConfigService,
     private readonly databaseService: DatabaseService,
+    private readonly knowledgeBaseService: KnowledgeBaseService,
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     this.openai = apiKey ? new OpenAI({ apiKey }) : null;
@@ -202,20 +245,83 @@ export class ChatbotService {
     })
   }
 
-  async streamGpt(sessionId: string, message: string, userId: string, res: Response, fileUrls: string[] = []) {
+  private buildKnowledgeContext(sources: KnowledgeSource[]) {
+    if (sources.length === 0) {
+      return `검색된 사내 지식 문서가 없습니다.
+
+이 경우 답변에는 "관련 지식 문서를 찾지 못했습니다. 질문을 더 구체적으로 입력하거나 검색 범위를 변경해보세요."라고 안내하세요.`;
+    }
+
+    return [
+      '아래 사내 지식 문서만 근거로 답변하세요.',
+      '문서에 없는 내용은 추측하지 마세요.',
+      '',
+      ...sources.map((source, index) =>
+        [
+          `[문서 ${index + 1}]`,
+          `채널: ${source.channelLabel}`,
+          `제목: ${source.title}`,
+          source.summary ? `요약: ${source.summary}` : '',
+          `원문: ${source.documentUrl}`,
+          '내용:',
+          source.chunkText,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      ),
+    ].join('\n\n');
+  }
+
+  private searchKnowledgeSources(
+    query: string,
+    user: ChatbotUser,
+    channels?: KnowledgeChannel[],
+  ): KnowledgeSource[] {
+    if (!query.trim()) return [];
+    const result = this.knowledgeBaseService.search(
+      {
+        query,
+        channels: channels && channels.length > 0 ? channels : undefined,
+        limit: 5,
+      },
+      user,
+    );
+    return result.items;
+  }
+
+  async streamGpt(
+    sessionId: string,
+    message: string,
+    user: ChatbotUser,
+    res: Response,
+    options: StreamOptions = {},
+  ) {
     if (!this.openai) {
       throw new ServiceUnavailableException(
         'OpenAI API key is not configured.',
       );
     }
 
-    this.assertOwnership(sessionId, userId);
+    const fileUrls = options.fileUrls ?? [];
+    const isKnowledgeMode = options.mode === 'knowledge';
+
+    this.assertOwnership(sessionId, user.id);
     const meta = this.touchSession(sessionId, message || '파일 첨부');
     const userMessage = this.insertMessage(sessionId, 'user', message, fileUrls);
 
     res.write(
       `data: ${JSON.stringify({ type: 'meta', userMessage, sessionTitle: meta.title })}\n\n`,
     );
+
+    const knowledgeSources = isKnowledgeMode
+      ? this.searchKnowledgeSources(message, user, options.channels)
+      : [];
+
+    if (isKnowledgeMode) {
+      res.write(
+        `data: ${JSON.stringify({ type: 'knowledge_sources', items: knowledgeSources })}\n\n`,
+      );
+    }
 
     const content = this.buildUserContent(message, fileUrls)
 
@@ -229,7 +335,18 @@ export class ChatbotService {
     // 이전 대화 히스토리 로드 (현재 메시지 제외 — insertMessage 이후라 이미 포함됨)
     const history = this.buildHistory(sessionId)
     const messages: OpenAI.ChatCompletionMessageParam[] = [
-      { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
+      {
+        role: 'system',
+        content: isKnowledgeMode ? KNOWLEDGE_SYSTEM_PROMPT : CHATBOT_SYSTEM_PROMPT,
+      },
+      ...(isKnowledgeMode
+        ? [
+            {
+              role: 'system',
+              content: this.buildKnowledgeContext(knowledgeSources),
+            } as OpenAI.ChatCompletionMessageParam,
+          ]
+        : []),
       ...history.slice(0, -1), // 마지막은 방금 insert한 현재 메시지 → content로 교체
       { role: 'user', content },
     ]
@@ -255,7 +372,7 @@ export class ChatbotService {
       assistantContent,
     );
     res.write(
-      `data: ${JSON.stringify({ type: 'done', assistantMessage })}\n\n`,
+      `data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources })}\n\n`,
     );
     res.write('data: [DONE]\n\n');
     res.end();

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { apiRequest } from '../../../shared/api/http'
-import type { Message } from './use-chat-messages'
+import type { KnowledgeSource, Message } from './use-chat-messages'
 
 export type Session = {
   id: string
@@ -60,6 +60,11 @@ type ChatSessionState = {
   appendLocalMessage: (sessionId: string, message: Message) => void
   updateLocalChunk: (sessionId: string, messageId: string, chunk: string) => void
   replaceLocalMessage: (sessionId: string, oldId: string, message: Message) => void
+  setMessageSources: (
+    sessionId: string,
+    messageId: string,
+    sources: KnowledgeSource[],
+  ) => void
   removeLastAssistantMessage: (sessionId: string) => void
   setSessionTitle: (sessionId: string, title: string) => void
   resetStore: () => void
@@ -171,6 +176,17 @@ export const useChatSessionStore = create<ChatSessionState>()((set, get) => ({
         ...state.messagesBySession,
         [sessionId]: (state.messagesBySession[sessionId] ?? []).map((m) =>
           m.id === oldId ? message : m,
+        ),
+      },
+    }))
+  },
+
+  setMessageSources: (sessionId, messageId, sources) => {
+    set((state) => ({
+      messagesBySession: {
+        ...state.messagesBySession,
+        [sessionId]: (state.messagesBySession[sessionId] ?? []).map((m) =>
+          m.id === messageId ? { ...m, sources } : m,
         ),
       },
     }))
