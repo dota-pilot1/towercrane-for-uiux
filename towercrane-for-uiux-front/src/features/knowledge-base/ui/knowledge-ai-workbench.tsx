@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   AlertCircle,
-  Bell,
-  FileText,
+  Bot,
+  Brain,
   Plus,
   RefreshCw,
   Save,
+  Sparkles,
   Trash2,
 } from 'lucide-react'
 import { Button } from '../../../shared/ui/button'
@@ -32,32 +33,40 @@ import {
   useUpdateKnowledgeDocument,
 } from '../model/use-knowledge-documents'
 
-type NoticeFormState = {
+type AiFormState = {
   title: string
   summary: string
   contentJson: string
   contentMarkdown: string
   tags: string[]
   status: KnowledgeStatus
-  effectiveFrom: string
-  effectiveTo: string
-  noticeType: string
-  priority: string
-  target: string
+  aiDocType: string
+  difficulty: string
+  targetRole: string
+  businessDomain: string
+  toolNames: string[]
+  hasPromptTemplate: boolean
+  hasExample: boolean
+  policyLevel: string
+  ownerTeam: string
 }
 
-const DEFAULT_FORM: NoticeFormState = {
+const DEFAULT_FORM: AiFormState = {
   title: '',
   summary: '',
   contentJson: createLexicalJsonFromText(''),
   contentMarkdown: '',
   tags: [],
   status: 'draft',
-  effectiveFrom: '',
-  effectiveTo: '',
-  noticeType: 'general',
-  priority: 'normal',
-  target: '전 직원',
+  aiDocType: 'usage_guide',
+  difficulty: 'basic',
+  targetRole: '',
+  businessDomain: '',
+  toolNames: [],
+  hasPromptTemplate: false,
+  hasExample: true,
+  policyLevel: 'none',
+  ownerTeam: 'AX 운영팀',
 }
 
 const STATUS_LABELS: Record<KnowledgeStatus, string> = {
@@ -66,12 +75,49 @@ const STATUS_LABELS: Record<KnowledgeStatus, string> = {
   archived: '보관',
 }
 
+const AI_DOC_TYPE_LABELS: Record<string, string> = {
+  usage_guide: 'AI 활용 가이드',
+  prompt_template: '프롬프트 템플릿',
+  case_study: '적용 사례',
+  policy: '보안/정책',
+  rag_guide: 'AI 개발/RAG 자료',
+  tool_intro: 'AI 도구 소개',
+}
+
+const DIFFICULTY_LABELS: Record<string, string> = {
+  basic: '기초',
+  normal: '일반',
+  advanced: '심화',
+}
+
+const POLICY_LEVEL_LABELS: Record<string, string> = {
+  none: '일반',
+  recommended: '권장',
+  required: '필수 준수',
+}
+
 function metadataString(metadata: KnowledgeDocumentMetadata, key: string) {
   const value = metadata[key]
   return typeof value === 'string' ? value : ''
 }
 
-function toFormState(document: KnowledgeDocumentDetail): NoticeFormState {
+function metadataBoolean(metadata: KnowledgeDocumentMetadata, key: string) {
+  const value = metadata[key]
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') return value === 'true'
+  return false
+}
+
+function metadataStringArray(metadata: KnowledgeDocumentMetadata, key: string) {
+  const value = metadata[key]
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string')
+  if (typeof value === 'string' && value) {
+    return value.split(',').map((item) => item.trim()).filter(Boolean)
+  }
+  return []
+}
+
+function toFormState(document: KnowledgeDocumentDetail): AiFormState {
   const contentJson =
     document.contentJson ?? createLexicalJsonFromText(document.contentMarkdown)
   return {
@@ -81,11 +127,15 @@ function toFormState(document: KnowledgeDocumentDetail): NoticeFormState {
     contentMarkdown: lexicalJsonToMarkdown(contentJson) || document.contentMarkdown,
     tags: document.tags,
     status: document.status,
-    effectiveFrom: document.effectiveFrom ?? '',
-    effectiveTo: document.effectiveTo ?? '',
-    noticeType: metadataString(document.metadata, 'noticeType') || 'general',
-    priority: metadataString(document.metadata, 'priority') || 'normal',
-    target: metadataString(document.metadata, 'target') || '전 직원',
+    aiDocType: metadataString(document.metadata, 'aiDocType') || 'usage_guide',
+    difficulty: metadataString(document.metadata, 'difficulty') || 'basic',
+    targetRole: metadataString(document.metadata, 'targetRole'),
+    businessDomain: metadataString(document.metadata, 'businessDomain'),
+    toolNames: metadataStringArray(document.metadata, 'toolNames'),
+    hasPromptTemplate: metadataBoolean(document.metadata, 'hasPromptTemplate'),
+    hasExample: metadataBoolean(document.metadata, 'hasExample'),
+    policyLevel: metadataString(document.metadata, 'policyLevel') || 'none',
+    ownerTeam: metadataString(document.metadata, 'ownerTeam') || 'AX 운영팀',
   }
 }
 
@@ -99,16 +149,28 @@ function formatDateTime(value: string | null) {
   }).format(new Date(value))
 }
 
-function buildChunkPreview(form: NoticeFormState) {
+function booleanLabel(value: boolean) {
+  return value ? '예' : '아니오'
+}
+
+function buildChunkPreview(form: AiFormState) {
+  const docTypeLabel = AI_DOC_TYPE_LABELS[form.aiDocType] ?? form.aiDocType
+  const difficultyLabel = DIFFICULTY_LABELS[form.difficulty] ?? form.difficulty
+  const policyLevelLabel = POLICY_LEVEL_LABELS[form.policyLevel] ?? form.policyLevel
+
   return [
-    '[공지사항]',
+    '[AI 자료]',
     `제목: ${form.title || '(제목 미입력)'}`,
     form.summary ? `요약: ${form.summary}` : '',
-    form.noticeType ? `공지 유형: ${form.noticeType}` : '',
-    form.priority ? `중요도: ${form.priority}` : '',
-    form.effectiveFrom ? `적용일: ${form.effectiveFrom}` : '',
-    form.effectiveTo ? `만료일: ${form.effectiveTo}` : '만료일: 없음',
-    form.target ? `대상: ${form.target}` : '',
+    form.aiDocType ? `자료 유형: ${docTypeLabel}` : '',
+    form.difficulty ? `난이도: ${difficultyLabel}` : '',
+    form.targetRole ? `대상 역할: ${form.targetRole}` : '',
+    form.businessDomain ? `업무 영역: ${form.businessDomain}` : '',
+    form.toolNames.length > 0 ? `사용 도구: ${form.toolNames.join(', ')}` : '',
+    `프롬프트 템플릿 포함: ${booleanLabel(form.hasPromptTemplate)}`,
+    `예시 포함: ${booleanLabel(form.hasExample)}`,
+    form.policyLevel ? `정책 중요도: ${policyLevelLabel}` : '',
+    form.ownerTeam ? `담당: ${form.ownerTeam}` : '',
     form.tags.length > 0 ? `태그: ${form.tags.join(', ')}` : '',
     '',
     '내용:',
@@ -138,13 +200,16 @@ function replaceDocumentIdInUrl(documentId: string | null) {
   window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
 }
 
-type NoticeListItemProps = {
+type AiListItemProps = {
   document: KnowledgeDocumentSummary
   selected: boolean
   onSelect: () => void
 }
 
-function NoticeListItem({ document, selected, onSelect }: NoticeListItemProps) {
+function AiListItem({ document, selected, onSelect }: AiListItemProps) {
+  const aiDocType = metadataString(document.metadata, 'aiDocType')
+  const aiDocTypeLabel = AI_DOC_TYPE_LABELS[aiDocType] ?? aiDocType
+
   return (
     <button
       type="button"
@@ -156,7 +221,7 @@ function NoticeListItem({ document, selected, onSelect }: NoticeListItemProps) {
       }`}
     >
       <div className="flex items-start gap-2">
-        <FileText className="mt-0.5 size-4 shrink-0 text-brand-primary" />
+        <Sparkles className="mt-0.5 size-4 shrink-0 text-brand-primary" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-semibold ui-text-primary">
@@ -173,7 +238,12 @@ function NoticeListItem({ document, selected, onSelect }: NoticeListItemProps) {
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] ui-text-muted">
             <span>{formatDateTime(document.updatedAt)}</span>
-            {document.tags.slice(0, 3).map((tag) => (
+            {aiDocTypeLabel && (
+              <span className="rounded-sm bg-surface-raised px-1.5 py-0.5 text-text-secondary">
+                {aiDocTypeLabel}
+              </span>
+            )}
+            {document.tags.slice(0, 2).map((tag) => (
               <span
                 key={tag}
                 className="rounded-sm bg-surface-raised px-1.5 py-0.5 text-text-secondary"
@@ -203,15 +273,16 @@ function Field({ label, children, className = '' }: FieldProps) {
   )
 }
 
-export function KnowledgeNoticeWorkbench() {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+export function KnowledgeAiWorkbench() {
+  const [selectedId, setSelectedId] = useState<string | null>(() => getDocumentIdFromUrl())
   const [query, setQuery] = useState('')
-  const [form, setForm] = useState<NoticeFormState>(DEFAULT_FORM)
-  const [isNew, setIsNew] = useState(true)
+  const [draftForm, setDraftForm] = useState<AiFormState | null>(() =>
+    getDocumentIdFromUrl() ? null : DEFAULT_FORM,
+  )
   const [editorRevision, setEditorRevision] = useState(0)
 
   const listQuery = useKnowledgeDocuments({
-    channel: 'notice',
+    channel: 'ai',
     q: query.trim() || undefined,
     page: 1,
     pageSize: 50,
@@ -222,47 +293,44 @@ export function KnowledgeNoticeWorkbench() {
   const deleteMutation = useDeleteKnowledgeDocument()
 
   const selectedDocument = detailQuery.data
-  const savedChunkText = selectedDocument?.chunks[0]?.chunkText
-  const chunkPreview = savedChunkText || buildChunkPreview(form)
   const isSaving = createMutation.isPending || updateMutation.isPending
+  const isNew = !selectedId
 
   const documents = useMemo(
     () => listQuery.data?.items ?? [],
     [listQuery.data?.items],
   )
 
-  useEffect(() => {
-    const documentId = getDocumentIdFromUrl()
-    if (!documentId) return
-    setSelectedId(documentId)
-    setIsNew(false)
-  }, [])
+  const baseForm = useMemo(
+    () => (selectedDocument ? toFormState(selectedDocument) : DEFAULT_FORM),
+    [selectedDocument],
+  )
+  const form = draftForm ?? baseForm
+  const savedChunkText = selectedDocument?.chunks[0]?.chunkText
+  const chunkPreview = draftForm
+    ? buildChunkPreview(form)
+    : savedChunkText || buildChunkPreview(form)
 
-  useEffect(() => {
-    if (!selectedDocument) return
-    setForm(toFormState(selectedDocument))
-    setIsNew(false)
-    setEditorRevision((revision) => revision + 1)
-  }, [selectedDocument])
-
-  function updateForm<K extends keyof NoticeFormState>(
+  function updateForm<K extends keyof AiFormState>(
     key: K,
-    value: NoticeFormState[K],
+    value: AiFormState[K],
   ) {
-    setForm((current) => ({ ...current, [key]: value }))
+    setDraftForm((current) => ({ ...(current ?? baseForm), [key]: value }))
   }
 
   function handleNew() {
     setSelectedId(null)
-    setForm(DEFAULT_FORM)
-    setIsNew(true)
+    setDraftForm(DEFAULT_FORM)
     setEditorRevision((revision) => revision + 1)
     replaceDocumentIdInUrl(null)
   }
 
   async function handleSubmit() {
+    const aiDocTypeLabel = AI_DOC_TYPE_LABELS[form.aiDocType] ?? form.aiDocType
+    const difficultyLabel = DIFFICULTY_LABELS[form.difficulty] ?? form.difficulty
+    const policyLevelLabel = POLICY_LEVEL_LABELS[form.policyLevel] ?? form.policyLevel
     const payload = {
-      channel: 'notice' as const,
+      channel: 'ai' as const,
       title: form.title,
       summary: form.summary,
       contentMarkdown: form.contentMarkdown,
@@ -270,30 +338,38 @@ export function KnowledgeNoticeWorkbench() {
       tags: form.tags,
       status: form.status,
       visibility: 'all' as const,
-      effectiveFrom: form.effectiveFrom,
-      effectiveTo: form.effectiveTo,
       metadata: {
-        noticeType: form.noticeType,
-        priority: form.priority,
-        target: form.target,
+        aiDocType: form.aiDocType,
+        aiDocTypeLabel,
+        difficulty: form.difficulty,
+        difficultyLabel,
+        targetRole: form.targetRole,
+        businessDomain: form.businessDomain,
+        toolNames: form.toolNames,
+        hasPromptTemplate: form.hasPromptTemplate,
+        hasExample: form.hasExample,
+        policyLevel: form.policyLevel,
+        policyLevelLabel,
+        ownerTeam: form.ownerTeam,
       },
     }
 
     if (isNew || !selectedId) {
       const document = await createMutation.mutateAsync(payload)
       setSelectedId(document.id)
-      setIsNew(false)
+      setDraftForm(null)
       replaceDocumentIdInUrl(document.id)
       return
     }
 
     await updateMutation.mutateAsync({ id: selectedId, payload })
+    setDraftForm(null)
     replaceDocumentIdInUrl(selectedId)
   }
 
   async function handleDelete() {
     if (!selectedId) return
-    if (!window.confirm('공지사항을 삭제할까요?')) return
+    if (!window.confirm('AI 자료를 삭제할까요?')) return
     await deleteMutation.mutateAsync(selectedId)
     handleNew()
   }
@@ -303,14 +379,14 @@ export function KnowledgeNoticeWorkbench() {
       <div className="flex shrink-0 items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <div className="ui-icon-button-brand rounded-md p-2">
-            <Bell className="size-4" />
+            <Brain className="size-4" />
           </div>
           <div className="flex min-w-0 items-baseline gap-2">
             <h2 className="shrink-0 text-lg font-bold ui-text-primary">
-              공지사항 지식 채널
+              AI 자료 지식 채널
             </h2>
             <p className="truncate text-xs ui-text-secondary">
-              원문 저장 후 검색용 chunk 자동 생성
+              AI 활용 가이드·프롬프트·정책 자료 기반 chunk 자동 생성
             </p>
           </div>
         </div>
@@ -325,18 +401,18 @@ export function KnowledgeNoticeWorkbench() {
             새로고침
           </Button>
           <Button size="sm" onClick={handleNew}>
-            <Plus className="mr-1.5 size-3.5" />새 공지
+            <Plus className="mr-1.5 size-3.5" />새 AI 자료
           </Button>
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)_380px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)_420px]">
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-muted shadow-sm">
           <div className="border-b border-surface-border bg-surface-raised px-3 py-2.5">
             <SearchField
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="제목, 내용, 태그 검색"
+              placeholder="제목, 내용, 도구, 태그 검색"
               wrapperClassName="h-9"
             />
           </div>
@@ -347,19 +423,19 @@ export function KnowledgeNoticeWorkbench() {
               <div className="flex h-full min-h-48 flex-col items-center justify-center gap-2 text-center">
                 <AlertCircle className="size-6 ui-text-muted" />
                 <p className="text-sm font-semibold ui-text-secondary">
-                  등록된 공지사항이 없습니다.
+                  등록된 AI 자료가 없습니다.
                 </p>
-                <p className="text-xs ui-text-muted">새 공지를 눌러 첫 데이터를 넣으세요.</p>
+                <p className="text-xs ui-text-muted">새 AI 자료를 눌러 첫 데이터를 넣으세요.</p>
               </div>
             ) : (
               documents.map((document) => (
-                <NoticeListItem
+                <AiListItem
                   key={document.id}
                   document={document}
                   selected={document.id === selectedId}
                   onSelect={() => {
                     setSelectedId(document.id)
-                    setIsNew(false)
+                    setDraftForm(null)
                     replaceDocumentIdInUrl(document.id)
                   }}
                 />
@@ -372,9 +448,11 @@ export function KnowledgeNoticeWorkbench() {
           <div className="flex shrink-0 items-center justify-between border-b border-surface-border bg-brand-glass px-4 py-3">
             <div>
               <h3 className="text-sm font-semibold ui-text-primary">
-                {isNew ? '공지 등록' : '공지 수정'}
+                {isNew ? 'AI 자료 등록' : 'AI 자료 수정'}
               </h3>
-              <p className="text-xs ui-text-muted">이 폼의 값이 원본 문서로 저장됩니다.</p>
+              <p className="text-xs ui-text-muted">
+                AI 활용법과 정책 자료가 챗봇 답변 근거로 저장됩니다.
+              </p>
             </div>
             <span
               className={`rounded-sm border px-2 py-1 text-xs font-semibold ${statusBadgeClass(form.status)}`}
@@ -389,10 +467,9 @@ export function KnowledgeNoticeWorkbench() {
                 <Input
                   value={form.title}
                   onChange={(event) => updateForm('title', event.target.value)}
-                  placeholder="예: AX 플랫폼 정기 점검 안내"
+                  placeholder="예: ChatGPT로 회의록 요약하기"
                 />
               </Field>
-
               <Field label="요약">
                 <Input
                   value={form.summary}
@@ -402,7 +479,7 @@ export function KnowledgeNoticeWorkbench() {
               </Field>
             </div>
 
-            <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
               <Field label="상태">
                 <Select
                   value={form.status}
@@ -415,47 +492,93 @@ export function KnowledgeNoticeWorkbench() {
                   <option value="archived">보관</option>
                 </Select>
               </Field>
-              <Field label="유형">
+              <Field label="자료 유형">
                 <Select
-                  value={form.noticeType}
-                  onChange={(event) => updateForm('noticeType', event.target.value)}
+                  value={form.aiDocType}
+                  onChange={(event) => updateForm('aiDocType', event.target.value)}
                 >
-                  <option value="general">일반</option>
-                  <option value="inspection">점검</option>
-                  <option value="policy">정책</option>
-                  <option value="release">오픈/배포</option>
+                  <option value="usage_guide">AI 활용 가이드</option>
+                  <option value="prompt_template">프롬프트 템플릿</option>
+                  <option value="case_study">적용 사례</option>
+                  <option value="policy">보안/정책</option>
+                  <option value="rag_guide">AI 개발/RAG 자료</option>
+                  <option value="tool_intro">AI 도구 소개</option>
                 </Select>
               </Field>
-              <Field label="중요도">
+              <Field label="난이도">
                 <Select
-                  value={form.priority}
-                  onChange={(event) => updateForm('priority', event.target.value)}
+                  value={form.difficulty}
+                  onChange={(event) => updateForm('difficulty', event.target.value)}
                 >
+                  <option value="basic">기초</option>
                   <option value="normal">일반</option>
-                  <option value="important">중요</option>
-                  <option value="urgent">긴급</option>
+                  <option value="advanced">심화</option>
                 </Select>
               </Field>
-              <Field label="적용일">
+              <Field label="정책 중요도">
+                <Select
+                  value={form.policyLevel}
+                  onChange={(event) => updateForm('policyLevel', event.target.value)}
+                >
+                  <option value="none">일반</option>
+                  <option value="recommended">권장</option>
+                  <option value="required">필수 준수</option>
+                </Select>
+              </Field>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-3">
+              <Field label="대상 역할">
                 <Input
-                  type="date"
-                  value={form.effectiveFrom}
-                  onChange={(event) => updateForm('effectiveFrom', event.target.value)}
+                  value={form.targetRole}
+                  onChange={(event) => updateForm('targetRole', event.target.value)}
+                  placeholder="예: 기획자, 개발자, 운영자"
                 />
               </Field>
-              <Field label="만료일">
+              <Field label="업무 영역">
                 <Input
-                  type="date"
-                  value={form.effectiveTo}
-                  onChange={(event) => updateForm('effectiveTo', event.target.value)}
+                  value={form.businessDomain}
+                  onChange={(event) => updateForm('businessDomain', event.target.value)}
+                  placeholder="예: 문서 작성, 코드 리뷰, CS"
                 />
               </Field>
-              <Field label="대상">
+              <Field label="담당">
                 <Input
-                  value={form.target}
-                  onChange={(event) => updateForm('target', event.target.value)}
-                  placeholder="전 직원"
+                  value={form.ownerTeam}
+                  onChange={(event) => updateForm('ownerTeam', event.target.value)}
+                  placeholder="AX 운영팀"
                 />
+              </Field>
+            </div>
+
+            <Field label="사용 도구">
+              <TagInput
+                value={form.toolNames}
+                onChange={(toolNames) => updateForm('toolNames', toolNames)}
+                placeholder="예: ChatGPT, Gemini, Claude, Copilot"
+              />
+            </Field>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="프롬프트 템플릿 포함">
+                <Select
+                  value={String(form.hasPromptTemplate)}
+                  onChange={(event) =>
+                    updateForm('hasPromptTemplate', event.target.value === 'true')
+                  }
+                >
+                  <option value="false">아니오</option>
+                  <option value="true">예</option>
+                </Select>
+              </Field>
+              <Field label="예시 포함">
+                <Select
+                  value={String(form.hasExample)}
+                  onChange={(event) => updateForm('hasExample', event.target.value === 'true')}
+                >
+                  <option value="true">예</option>
+                  <option value="false">아니오</option>
+                </Select>
               </Field>
             </div>
 
@@ -463,17 +586,17 @@ export function KnowledgeNoticeWorkbench() {
               <TagInput
                 value={form.tags}
                 onChange={(tags) => updateForm('tags', tags)}
-                placeholder="예: 점검, AX, 권한"
+                placeholder="예: 프롬프트, 회의록, 보안, RAG"
               />
             </Field>
 
             <Field label="본문">
               <div className="overflow-hidden rounded-md border border-surface-border bg-surface-raised">
                 <LexicalEditor
-                  key={`${selectedId ?? 'new-notice'}-${editorRevision}`}
+                  key={`${selectedId ?? 'new-ai'}-${selectedDocument?.updatedAt ?? 'empty'}-${editorRevision}`}
                   initialState={form.contentJson}
-                  minHeight="220px"
-                  placeholder="공지 본문을 입력하세요..."
+                  minHeight="260px"
+                  placeholder="AI 활용 방법, 프롬프트 예시, 정책 기준, 적용 사례를 입력하세요..."
                   toolbarVariant="simple"
                   onChange={(contentJson) => {
                     updateForm('contentJson', contentJson)
@@ -486,7 +609,7 @@ export function KnowledgeNoticeWorkbench() {
 
           <div className="flex shrink-0 flex-col gap-2 border-t border-surface-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs ui-text-muted">
-              게시 상태인 공지만 챗봇 검색 대상에 포함됩니다.
+              게시 상태인 AI 자료만 지식 검색 챗봇의 답변 근거에 포함됩니다.
             </p>
             <div className="flex justify-end gap-2">
               {!isNew && (
@@ -515,9 +638,12 @@ export function KnowledgeNoticeWorkbench() {
 
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-muted shadow-sm">
           <div className="shrink-0 border-b border-surface-border bg-surface-raised px-4 py-3">
-            <h3 className="text-sm font-semibold ui-text-primary">검색 chunk preview</h3>
+            <div className="flex items-center gap-2">
+              <Bot className="size-4 text-brand-primary" />
+              <h3 className="text-sm font-semibold ui-text-primary">검색 chunk preview</h3>
+            </div>
             <p className="text-xs ui-text-muted">
-              백엔드가 GPT 없이 생성하는 검색 대상 텍스트입니다.
+              챗봇이 AI 자료를 검색할 때 참고하는 텍스트입니다.
             </p>
           </div>
           <div className="flex-1 overflow-y-auto p-4">

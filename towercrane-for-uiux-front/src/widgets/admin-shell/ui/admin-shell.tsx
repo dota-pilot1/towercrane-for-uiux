@@ -2,6 +2,7 @@ import { ArrowLeft, GitBranch } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useAdminShell } from '../model/use-admin-shell'
 import { Card } from '../../../shared/ui/card'
+import { Button } from '../../../shared/ui/button'
 import { PrototypeDetailPage } from '../../../features/prototype-review/ui/prototype-detail-page'
 import { AdminShellCategoryHeader } from './admin-shell-category-header'
 import { AdminShellEmptyState } from './admin-shell-empty-state'
@@ -56,25 +57,34 @@ export function AdminShell({ workspaceId, categoryId, prototypeId }: AdminShellP
 
   return (
     <div className="w-full min-w-0 ui-page-bg space-y-3">
-      <div className="flex min-w-0 items-center gap-2 rounded-md bg-text-primary px-4 py-2">
-        {workspaceId ? (
-          <button
-            type="button"
-            onClick={() => navigate({ to: '/prototype' })}
-            className="mr-1 inline-flex size-7 items-center justify-center rounded-sm border border-background/15 text-background transition-colors hover:bg-background/10"
-            aria-label="워크스페이스 목록으로"
-            title="워크스페이스 목록으로"
-          >
-            <ArrowLeft className="size-4" />
-          </button>
-        ) : null}
-        <GitBranch className="size-3.5 shrink-0 text-background/70" />
-        <h1 className="text-sm font-black text-background">Prototype</h1>
-        <span className="hidden text-xs text-background/50 sm:block">
-          {selectedWorkspace
-            ? `${selectedWorkspace.name} 워크스페이스의 프로토타입과 설계 문서를 관리합니다.`
-            : '카테고리별 프로토타입과 설계 문서를 관리합니다.'}
-        </span>
+      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+        <div className="flex min-w-0 items-start gap-3">
+          {workspaceId ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate({ to: '/prototype' })}
+              aria-label="워크스페이스 목록으로"
+              title="워크스페이스 목록으로"
+              className="mr-1 px-2 h-9"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+          ) : null}
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary text-primary-foreground shadow-sm">
+            <GitBranch className="size-5" />
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <h1 className="text-lg font-bold tracking-tight text-text-primary">
+              Prototype
+            </h1>
+            <p className="text-xs ui-text-secondary">
+              {selectedWorkspace
+                ? `${selectedWorkspace.name} 워크스페이스의 프로토타입과 설계 문서를 관리합니다.`
+                : '카테고리별 프로토타입과 설계 문서를 관리합니다.'}
+            </p>
+          </div>
+        </div>
       </div>
       <div className="grid h-[calc(100dvh-160px)] min-w-0 gap-3 overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)]">
         <AdminShellSidebar

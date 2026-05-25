@@ -36,15 +36,15 @@ export function SqlTeamPracticePage() {
 
   return (
     <section className="space-y-4 pb-16">
-      <div className="flex flex-col gap-3 rounded-md border border-surface-border bg-surface-strong px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 flex-col lg:flex-row lg:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="ui-icon-button-brand size-9 rounded-md">
-            <UsersRound className="size-4" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-glass border border-brand-border shadow-xs">
+            <UsersRound className="size-5 text-brand-primary" />
           </div>
           <div className="min-w-0">
             <h1 className="truncate text-base font-black text-text-primary">SQL 연습장(팀)</h1>
             <p className="mt-1 text-xs font-semibold text-text-muted">
-              팀 워크스페이스 안에서 개인 SQL 연습장 구조를 같이 씁니다.
+              팀 워크스페이스 안에서 개인 SQL 연습장 구조를 같이 사용하고 멤버들과 협업하세요.
             </p>
           </div>
         </div>

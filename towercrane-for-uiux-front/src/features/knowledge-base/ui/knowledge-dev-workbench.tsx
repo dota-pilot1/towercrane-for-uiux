@@ -7,11 +7,11 @@ import {
   Plus,
   RefreshCw,
   Save,
-  Search,
   Trash2,
 } from 'lucide-react'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
+import { SearchField } from '../../../shared/ui/search-field'
 import { Select } from '../../../shared/ui/select'
 import { LexicalEditor } from '../../../shared/ui/lexical/lexical-editor'
 import { TagInput } from '../../../shared/ui/tag-input'
@@ -183,10 +183,10 @@ function DevListItem({ document, selected, onSelect }: DevListItemProps) {
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-md border px-3 py-3 text-left transition ${
+      className={`w-full rounded-md border px-3 py-3 text-left transition-all duration-200 ${
         selected
-          ? 'border-brand-border bg-brand-glass'
-          : 'border-surface-border-soft bg-surface-muted hover:border-surface-border'
+          ? 'border-brand-border bg-brand-glass shadow-xs ring-1 ring-brand-border/10'
+          : 'border-surface-border-soft bg-surface-raised shadow-2xs hover:-translate-y-[1px] hover:border-brand-border/30 hover:shadow-xs hover:bg-surface-raised/90'
       }`}
     >
       <div className="flex items-start gap-2">
@@ -378,15 +378,12 @@ export function KnowledgeDevWorkbench() {
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)_420px]">
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-muted shadow-sm">
           <div className="border-b border-surface-border bg-surface-raised px-3 py-2.5">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 ui-text-muted" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="제목, 내용, 스택, 태그 검색"
-                className="pl-9"
-              />
-            </div>
+            <SearchField
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="제목, 내용, 스택, 태그 검색"
+              wrapperClassName="h-9"
+            />
           </div>
           <div className="flex-1 space-y-2 overflow-y-auto p-3">
             {listQuery.isLoading ? (

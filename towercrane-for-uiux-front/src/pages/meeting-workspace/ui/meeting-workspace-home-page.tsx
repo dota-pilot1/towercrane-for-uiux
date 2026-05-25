@@ -21,26 +21,35 @@ export function MeetingWorkspaceHomePage() {
   const workspaces = workspacesQuery.data ?? []
 
   return (
-    <div className="w-full min-w-0 ui-page-bg space-y-3">
-      <div className="flex min-w-0 items-center justify-between gap-3 rounded-md bg-text-primary px-4 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Hash className="size-3.5 shrink-0 text-background/70" />
-          <h1 className="text-sm font-black text-background">Meeting Workspaces</h1>
-          <span className="hidden text-xs text-background/50 sm:block">
-            팀별 회의 채널을 워크스페이스로 분리해 관리합니다.
-          </span>
+    <div className="w-full min-w-0 ui-page-bg space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
+            <Hash className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-widest text-brand-primary">
+              Meeting Workspaces
+            </p>
+            <h2 className="mt-1 text-2xl font-black leading-tight text-text-primary">
+              화상 및 채널 회의 공간
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              팀별 회의 채널을 워크스페이스로 분리해 화상 통화 및 대화를 화기애애하게 진행합니다.
+            </p>
+          </div>
         </div>
         {isAuthenticated && userRole === 'admin' ? <CreateWorkspaceDialog /> : null}
       </div>
 
-      <div className="min-h-[calc(100dvh-160px)] rounded-md border border-surface-border bg-surface-raised p-5">
+      <div className="min-h-[calc(100dvh-180px)] rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm">
         {workspacesQuery.isLoading ? (
           <div className="flex min-h-[320px] items-center justify-center text-sm ui-text-muted">
             <LoaderCircle className="mr-2 size-4 animate-spin" />
             워크스페이스 불러오는 중...
           </div>
         ) : workspaces.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {workspaces.map((workspace) => (
               <MeetingWorkspaceCard
                 key={workspace.id}
@@ -55,8 +64,17 @@ export function MeetingWorkspaceHomePage() {
             ))}
           </div>
         ) : (
-          <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-md border border-dashed border-surface-border bg-surface-muted text-sm ui-text-muted">
-            <p>생성된 워크스페이스가 없습니다.</p>
+          <div className="flex min-h-[320px] flex-col items-center justify-center text-center rounded-2xl border border-dashed border-surface-border-soft bg-surface-raised/40 p-12">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-brand-glass border border-brand-border text-brand-primary mb-4">
+              <Hash className="size-7" />
+            </div>
+            <h3 className="text-base font-bold ui-text-primary mb-1">
+              회의 워크스페이스가 없습니다
+            </h3>
+            <p className="text-xs ui-text-muted max-w-sm leading-relaxed mb-4">
+              생성된 화상 및 채널 회의 공간이 비어 있습니다.<br />
+              관리자 권한이 있는 경우 새로운 워크스페이스를 생성하실 수 있습니다.
+            </p>
             {isAuthenticated && userRole === 'admin' ? <CreateWorkspaceDialog /> : null}
           </div>
         )}
@@ -75,15 +93,15 @@ function MeetingWorkspaceCard({ workspace, onOpen }: MeetingWorkspaceCardProps) 
     <button
       type="button"
       onClick={onOpen}
-      className="group min-h-[168px] rounded-md border border-surface-border bg-surface-muted p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-border hover:bg-surface-strong hover:shadow-[0_12px_28px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+      className="group flex min-h-[176px] flex-col justify-between rounded-xl border border-surface-border bg-surface-raised p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:bg-brand-glass hover:shadow-[0_12px_24px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 w-full">
         <div className="flex min-w-0 items-start gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
             <Hash className="size-4" />
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-base font-black text-text-primary">
+            <h2 className="truncate text-base font-black text-text-primary group-hover:text-brand-primary transition-colors">
               {workspace.name}
             </h2>
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-text-secondary">
@@ -91,23 +109,23 @@ function MeetingWorkspaceCard({ workspace, onOpen }: MeetingWorkspaceCardProps) 
             </p>
           </div>
         </div>
-        <ArrowRight className="mt-1 size-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-brand-primary" />
+        <ArrowRight className="mt-1 size-4 shrink-0 text-text-muted transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-brand-primary" />
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-2">
-        <div className="rounded-sm border border-surface-border bg-surface-raised px-3 py-2">
+      <div className="mt-6 grid grid-cols-2 gap-3 w-full">
+        <div className="rounded-xl border border-surface-border-soft bg-surface-raised px-4 py-3 transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">
             전체 채널
           </div>
-          <div className="mt-1 text-xl font-black text-text-primary">
+          <div className="mt-1 text-2xl font-black text-text-primary">
             {workspace.channelCount}
           </div>
         </div>
-        <div className="rounded-sm border border-surface-border bg-surface-raised px-3 py-2">
+        <div className="rounded-xl border border-surface-border-soft bg-surface-raised px-4 py-3 transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">
             활성 채널
           </div>
-          <div className="mt-1 text-xl font-black text-brand-primary">
+          <div className="mt-1 text-2xl font-black text-brand-primary">
             {workspace.activeChannelCount}
           </div>
         </div>

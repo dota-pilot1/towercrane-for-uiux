@@ -310,7 +310,7 @@ function ApiWorkspaceHome({
   return (
     <section className="ui-page-bg min-h-[calc(100vh-8rem)] pb-10">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-1 sm:px-2">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-surface-border-soft bg-surface-muted px-5 py-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-widest text-brand-primary">
               Postman Workspaces
@@ -336,7 +336,7 @@ function ApiWorkspaceHome({
         </div>
 
         {adding ? (
-          <div className="ui-panel-soft p-4">
+          <div className="ui-panel p-5 bg-surface-raised border border-brand-border shadow-md rounded-xl animate-fade-in">
             <div className="grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] md:items-end">
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-text-secondary">
@@ -412,38 +412,39 @@ function ApiWorkspaceHome({
               : "접근 가능한 워크스페이스가 없습니다."}
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {teams.map((team) => (
               <button
                 key={team.id}
                 type="button"
                 onClick={() => onOpenWorkspace(team.id)}
-                className="group flex min-h-40 flex-col justify-between rounded-md border border-surface-border-soft bg-surface-raised p-4 text-left shadow-sm transition hover:border-brand-border hover:bg-brand-glass"
+                className="group flex min-h-[176px] flex-col justify-between rounded-xl border border-surface-border bg-surface-raised p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:bg-brand-glass hover:shadow-[0_12px_24px_color-mix(in_srgb,var(--primary)_8%,transparent)]"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-3 w-full">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
                     <FileJson className="size-5" />
                   </span>
-                  <span className="rounded-md border border-surface-border-soft bg-surface-muted px-2 py-1 text-[11px] font-bold text-text-muted">
+                  <span className="rounded-full bg-brand-glass border border-brand-border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-brand-primary">
                     Workspace
                   </span>
                 </div>
-                <div className="mt-5 min-w-0">
-                  <h3 className="truncate text-lg font-black text-text-primary">
+                <div className="mt-5 min-w-0 flex-1">
+                  <h3 className="truncate text-lg font-black text-text-primary group-hover:text-brand-primary transition-colors">
                     {team.name}
                   </h3>
-                  <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-text-secondary">
+                  <p className="mt-1 line-clamp-2 text-sm leading-5 text-text-secondary">
                     {team.description || "팀 API 요청 컬렉션"}
                   </p>
                 </div>
-                <div className="mt-4 flex items-center justify-between gap-3 border-t border-surface-border-soft pt-3">
-                  <div className="flex flex-wrap gap-2 text-xs font-bold text-text-secondary">
+                <div className="mt-5 flex items-center justify-between gap-3 border-t border-surface-border-soft pt-3.5 w-full">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-text-muted">
                     <span>{team.categoryCount ?? 0} collections</span>
+                    <span className="opacity-45 text-[10px]">•</span>
                     <span>{team.endpointCount ?? 0} requests</span>
                   </div>
-                  <span className="flex items-center gap-1 text-xs font-black text-brand-primary">
+                  <span className="flex items-center gap-1 text-xs font-black text-brand-primary bg-brand-glass border border-brand-border rounded-lg px-2.5 py-1.5 transition-all group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-[0_2px_8px_color-mix(in_srgb,var(--primary)_20%,transparent)]">
                     Open
-                    <Send className="size-3.5 transition group-hover:translate-x-0.5" />
+                    <Send className="size-3 transition-transform group-hover:translate-x-0.5" />
                   </span>
                 </div>
               </button>

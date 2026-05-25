@@ -22,21 +22,25 @@ export function DevChallengeWorkspaceHomePage() {
   const workspaces = workspacesQuery.data ?? []
 
   return (
-    <div className="w-full min-w-0 ui-page-bg space-y-3">
-      <div className="flex min-w-0 items-center justify-between gap-3 rounded-md bg-text-primary px-4 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Trophy className="size-3.5 shrink-0 text-background/70" />
-          <h1 className="text-sm font-black text-background">
-            Challenge Workspaces
-          </h1>
-          <span className="hidden text-xs text-background/50 sm:block">
-            팀과 코스별 개발 챌린지를 워크스페이스로 관리합니다.
-          </span>
+    <div className="w-full min-w-0 ui-page-bg space-y-4">
+      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary text-primary-foreground shadow-sm">
+            <Trophy className="size-5" />
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <h1 className="text-lg font-bold tracking-tight text-text-primary">
+              Challenge Workspaces
+            </h1>
+            <p className="text-xs ui-text-secondary">
+              팀과 코스별 개발 챌린지를 워크스페이스로 관리합니다.
+            </p>
+          </div>
         </div>
         {canCreateWorkspace ? <CreateWorkspaceDialog /> : null}
       </div>
 
-      <div className="min-h-[calc(100dvh-160px)] rounded-md border border-surface-border bg-surface-raised p-5">
+      <div className="min-h-[calc(100dvh-180px)] rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm">
         {workspacesQuery.isLoading ? (
           <div className="flex min-h-[320px] items-center justify-center text-sm ui-text-muted">
             <LoaderCircle className="mr-2 size-4 animate-spin" />
@@ -81,31 +85,33 @@ function DevChallengeWorkspaceCard({
     <button
       type="button"
       onClick={onOpen}
-      className="group min-h-[184px] rounded-md border border-surface-border bg-surface-muted p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-border hover:bg-surface-strong hover:shadow-[0_12px_28px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+      className="group flex flex-col justify-between min-h-[190px] rounded-2xl border border-surface-border-soft bg-surface-raised p-5 text-left shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:shadow-[0_12px_24px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
-            <Trophy className="size-4" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-center gap-2">
-              <h2 className="truncate text-base font-black text-text-primary">
-                {workspace.name}
-              </h2>
-              <span className="shrink-0 rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-bold uppercase text-text-muted">
-                {workspace.myRole}
-              </span>
+      <div className="w-full">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-brand-border bg-brand-glass text-brand-primary transition-all duration-300 group-hover:scale-105 group-hover:bg-brand-primary group-hover:text-primary-foreground group-hover:shadow-[0_4px_12px_color-mix(in_srgb,var(--primary)_25%,transparent)]">
+              <Trophy className="size-4.5" />
             </div>
-            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-text-secondary">
-              {workspace.description || '개발 챌린지 워크스페이스'}
-            </p>
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 className="truncate text-base font-black text-text-primary">
+                  {workspace.name}
+                </h2>
+                <span className="shrink-0 rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-bold uppercase text-text-muted">
+                  {workspace.myRole}
+                </span>
+              </div>
+              <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-text-secondary">
+                {workspace.description || '개발 챌린지 워크스페이스'}
+              </p>
+            </div>
           </div>
+          <ArrowRight className="mt-1 size-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-brand-primary" />
         </div>
-        <ArrowRight className="mt-1 size-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-brand-primary" />
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-2">
+      <div className="mt-5 w-full grid grid-cols-3 gap-2">
         <Metric label="1차 주제" value={workspace.categoryCount} />
         <Metric label="과제" value={workspace.assignmentCount} brand />
         <Metric label="멤버" value={workspace.memberCount} />
@@ -124,15 +130,15 @@ function Metric({
   brand?: boolean
 }) {
   return (
-    <div className="rounded-sm border border-surface-border bg-surface-raised px-3 py-2">
-      <div className="truncate text-[10px] font-black uppercase tracking-[0.12em] text-text-muted">
+    <div className="rounded-xl border border-surface-border-soft bg-surface-raised p-3 transition-all duration-300 group-hover:bg-surface-muted/30">
+      <div className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
         {label}
       </div>
       <div
         className={
           brand
-            ? 'mt-1 text-xl font-black text-brand-primary'
-            : 'mt-1 text-xl font-black text-text-primary'
+            ? 'mt-1 text-lg font-extrabold text-brand-primary'
+            : 'mt-1 text-lg font-extrabold text-text-primary'
         }
       >
         {value}
@@ -173,7 +179,7 @@ function CreateWorkspaceDialog() {
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 ui-overlay" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-md border border-surface-border bg-surface-raised p-5 shadow-2xl">
+        <Dialog.Content className="fixed left-1/2 top-1/2 w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-surface-border bg-surface-raised p-6 shadow-2xl">
           <Dialog.Title className="text-lg font-black text-text-primary">
             워크스페이스 생성
           </Dialog.Title>

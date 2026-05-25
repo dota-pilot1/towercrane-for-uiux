@@ -2,6 +2,7 @@ import {
   sqliteTable,
   text,
   integer,
+  real,
   AnySQLiteColumn,
 } from 'drizzle-orm/sqlite-core';
 
@@ -12,6 +13,7 @@ export const usersTable = sqliteTable('users', {
   name: text('name').notNull(),
   profileImageUrl: text('profile_image_url'),
   role: text('role').$type<'admin' | 'user'>().notNull(),
+  aiAccess: integer('ai_access').notNull().default(0),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
@@ -1895,3 +1897,42 @@ export type EvalCategoryRow = typeof evalCategoriesTable.$inferSelect;
 export type EvalItemRow = typeof evalItemsTable.$inferSelect;
 export type EvalItemInsert = typeof evalItemsTable.$inferInsert;
 export type EvalScoreRow = typeof evalScoresTable.$inferSelect;
+
+// ─── AI 사용량 로그 ───────────────────────────────────────────────────────────
+
+export const usageLogsTable = sqliteTable('usage_logs', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id),
+  userName: text('user_name').notNull(),
+  sessionId: text('session_id').notNull(),
+  model: text('model').notNull(),
+  promptTokens: integer('prompt_tokens').notNull().default(0),
+  completionTokens: integer('completion_tokens').notNull().default(0),
+  totalTokens: integer('total_tokens').notNull().default(0),
+  estimatedCostUsd: real('estimated_cost_usd').notNull().default(0),
+  isError: integer('is_error').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});
+
+export type UsageLogRow = typeof usageLogsTable.$inferSelect;
+export type UsageLogInsert = typeof usageLogsTable.$inferInsert;
+
+// ─── AI 서비스 신청 ───────────────────────────────────────────────────────────
+
+export const aiServiceRequestsTable = sqliteTable('ai_service_requests', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id),
+  userName: text('user_name').notNull(),
+  serviceType: text('service_type').notNull(),
+  purpose: text('purpose').notNull(),
+  estimatedUsage: text('estimated_usage').notNull(),
+  securityLevel: text('security_level').notNull(),
+  status: text('status').notNull().default('pending'),
+  // pending | manager_approved | admin_approved | active | rejected | revision_requested
+  rejectReason: text('reject_reason'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type AiServiceRequestRow = typeof aiServiceRequestsTable.$inferSelect;
+export type AiServiceRequestInsert = typeof aiServiceRequestsTable.$inferInsert;

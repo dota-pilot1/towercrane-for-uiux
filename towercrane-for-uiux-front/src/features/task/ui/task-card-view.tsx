@@ -59,13 +59,15 @@ function DropGroup({
 }) {
   return (
     <section
-      className="min-h-[420px] rounded-md border border-surface-border-soft bg-surface-muted p-4"
+      className="min-h-[420px] rounded-md border border-surface-border-soft bg-surface-muted overflow-hidden shadow-sm transition-all"
     >
-      <div className="mb-4">
-        <h3 className="text-base font-black text-text-primary">{title}</h3>
-        <p className="mt-1 text-xs text-text-secondary">{description}</p>
+      <div className="border-b border-surface-border-soft bg-surface-raised/60 px-4 py-3.5">
+        <h3 className="text-sm font-black text-text-primary tracking-tight">{title}</h3>
+        <p className="mt-1 text-[11px] text-text-secondary leading-relaxed">{description}</p>
       </div>
-      {children}
+      <div className="p-4">
+        {children}
+      </div>
     </section>
   )
 }
@@ -156,20 +158,41 @@ export function TaskCardView({
             >
               <button
                 type="button"
-                className="flex w-full items-center justify-between px-3 py-2 text-left"
+                className={clsx(
+                  "flex w-full items-center justify-between px-4 py-3 text-left transition-colors rounded-t-md bg-surface-raised",
+                  status === 'IN_PROGRESS'
+                    ? "text-brand-primary font-bold"
+                    : "text-text-primary hover:bg-surface-muted"
+                )}
                 onClick={() =>
                   setCollapsed((prev) => ({ ...prev, [status]: !prev[status] }))
                 }
               >
-                <span className="text-sm font-bold text-text-primary">
-                  {TASK_STATUS_LABELS[status]}
-                </span>
-                <span className="flex items-center gap-2 text-xs text-text-muted">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={clsx(
+                      "size-1.5 rounded-full",
+                      status === 'TODO' && "bg-text-secondary",
+                      status === 'IN_PROGRESS' && "bg-brand-primary animate-pulse",
+                      status === 'REVIEW' && "bg-text-primary",
+                      status === 'HOLD' && "bg-text-muted"
+                    )}
+                  />
+                  <span className="text-xs font-black tracking-tight">
+                    {TASK_STATUS_LABELS[status]}
+                  </span>
+                </div>
+                <span
+                  className={clsx(
+                    "flex items-center gap-1.5 text-xs font-black",
+                    status === 'IN_PROGRESS' ? "text-brand-primary" : "text-text-muted"
+                  )}
+                >
                   {tasksByStatus[status].length}
                   {collapsed[status] ? (
-                    <ChevronRight className="size-4" />
+                    <ChevronRight className="size-3.5" />
                   ) : (
-                    <ChevronDown className="size-4" />
+                    <ChevronDown className="size-3.5" />
                   )}
                 </span>
               </button>

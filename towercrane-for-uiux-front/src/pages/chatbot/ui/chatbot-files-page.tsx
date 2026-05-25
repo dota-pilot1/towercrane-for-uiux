@@ -1,11 +1,18 @@
 import { useState } from 'react'
-import { Menu } from 'lucide-react'
+import { Menu, ShieldOff, Bot } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { useFilesChat } from '../../../features/chatbot/model/use-files-chat'
 import { ChatSessionSidebar } from '../../../features/chatbot/ui/chat-session-sidebar'
 import { ChatMessage } from '../../../features/chatbot/ui/chat-message'
 import { ChatInputWithFiles } from '../../../features/chatbot/ui/chat-input-with-files'
+import { useSessionStore } from '../../../shared/store/session-store'
+import { useRefreshSession } from '../../../shared/model/use-refresh-session'
 
 export function ChatbotFilesPage() {
+  useRefreshSession()
+  const aiAccess = useSessionStore((s) => s.aiAccess)
+  const userRole = useSessionStore((s) => s.userRole)
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const {
@@ -27,6 +34,30 @@ export function ChatbotFilesPage() {
     handleRegenerate,
     handleKeyDown,
   } = useFilesChat()
+
+  if (!aiAccess && userRole !== 'admin') {
+    return (
+      <div className="flex h-[calc(100vh-120px)] items-center justify-center">
+        <div className="ui-panel rounded-2xl p-10 flex flex-col items-center gap-4 text-center max-w-md">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-surface-muted border border-surface-border">
+            <ShieldOff className="size-7 ui-text-muted" />
+          </div>
+          <div>
+            <p className="text-base font-bold ui-text-primary">AI 서비스 접근 권한이 없습니다</p>
+            <p className="mt-1.5 text-sm ui-text-muted leading-relaxed">
+              챗봇 사용을 위해 AI 서비스 신청 후 승인을 받아야 합니다.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate({ to: '/ai-service-request' })}
+            className="mt-2 inline-flex items-center gap-2 rounded-lg border border-brand-border bg-brand-glass px-4 py-2 text-sm font-bold text-brand-primary hover:bg-brand-glass/80 transition-colors"
+          >
+            서비스 신청하기
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-[calc(100vh-120px)] gap-4 relative overflow-hidden">
@@ -56,7 +87,7 @@ export function ChatbotFilesPage() {
       </aside>
 
       <div className="flex flex-1 flex-col min-w-0 rounded-lg border border-surface-border bg-surface-raised overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-2 bg-surface-strong border-b border-surface-border shrink-0">
+        <div className="flex items-center gap-2 px-4 py-3 bg-brand-glass border-b border-surface-border shrink-0">
           {/* 모바일 햄버거 */}
           <button
             className="md:hidden p-1 rounded ui-icon-button mr-1"
@@ -64,12 +95,17 @@ export function ChatbotFilesPage() {
           >
             <Menu className="size-4" />
           </button>
-          <span className="text-sm font-semibold ui-text-primary truncate">
-            {activeSession.title}
-          </span>
-          <span className="ml-auto text-[11px] ui-text-muted shrink-0">
-            {messages.length}개 메시지
-          </span>
+          <div className="bg-brand-glass border border-brand-border rounded-md p-1.5 shrink-0 flex items-center justify-center">
+            <Bot className="size-3.5 text-brand-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-sm font-semibold ui-text-primary block truncate">
+              {activeSession.title}
+            </span>
+            <span className="text-[10px] ui-text-muted block leading-none mt-0.5">
+              {messages.length}개 메시지
+            </span>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">

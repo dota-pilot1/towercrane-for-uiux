@@ -99,21 +99,28 @@ export function SqlPublicPersonalPracticePage() {
   return (
     <div className="min-h-screen bg-background px-4 py-6 text-text-primary sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4">
-        <Card className="flex items-center justify-between rounded-md border border-surface-border bg-surface-strong px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <Database className="size-4 shrink-0 text-brand-primary" />
+        <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-glass border border-brand-border shadow-xs">
+              <Database className="size-5 text-brand-primary" />
+            </div>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-black text-text-primary">
-                {data?.workspace.title ?? '공개 SQL 문제'}
-              </h1>
-              <p className="mt-0.5 text-xs font-semibold text-text-muted">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate text-base font-black text-text-primary">
+                  {data?.workspace.title ?? '공개 SQL 문제'}
+                </h1>
+                <span className="shrink-0 rounded-md border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-black text-text-muted">
+                  {data ? `v${data.schemaVersion.version}` : 'Public DB'}
+                </span>
+              </div>
+              <p className="mt-1 text-xs font-semibold text-text-muted">
                 {data
-                  ? `schema v${data.schemaVersion.version} · ${data.schemaVersion.title}`
-                  : '공유 링크로 공개된 SQL 문제입니다.'}
+                  ? `${data.schemaVersion.title} 스키마 기반의 공유 풀이 환경입니다.`
+                  : '공유 링크로 공개된 SQL 문제 풀이 환경입니다.'}
               </p>
             </div>
           </div>
-        </Card>
+        </div>
 
         <div className="grid h-[calc(100dvh-150px)] min-h-0 gap-4 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)_320px]">
           <Card className="flex min-h-0 flex-col overflow-hidden rounded-md border border-surface-border-soft p-0">

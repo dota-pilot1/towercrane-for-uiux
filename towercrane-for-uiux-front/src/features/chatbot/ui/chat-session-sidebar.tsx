@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Plus, Trash2, MoreHorizontal, Pencil, Clock } from 'lucide-react'
 import type { Session } from '../model/use-history-chat'
 import { useSessionStore } from '../../../shared/store/session-store'
+import { useUiStore } from '../../../shared/store/ui-store'
 
 type Props = {
   sessions: Session[]
@@ -39,6 +40,31 @@ export function ChatSessionSidebar({ sessions, activeId, onAdd, onSwitch, onDele
   const userEmail = useSessionStore((s) => s.userEmail)
   const initial = userName ? userName[0].toUpperCase() : '?'
 
+  const width = useUiStore((s) => s.chatbotSidebarWidth)
+  const setWidth = useUiStore((s) => s.setChatbotSidebarWidth)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startWidth = width
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX
+      const newWidth = Math.max(200, Math.min(480, startWidth + deltaX))
+      setWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    document.body.style.cursor = 'col-resize'
+  }
+
   useEffect(() => {
     if (editingId) inputRef.current?.focus()
   }, [editingId])
@@ -69,22 +95,30 @@ export function ChatSessionSidebar({ sessions, activeId, onAdd, onSwitch, onDele
   }
 
   return (
-    <div className="flex w-56 shrink-0 flex-col rounded-lg border border-surface-border bg-surface-raised overflow-hidden">
+    <div
+      style={{ width: `${width}px`, maxWidth: '85vw' }}
+      className="relative flex h-full shrink-0 flex-col rounded-lg border border-surface-border bg-surface-raised overflow-hidden"
+    >
 
       {/* 섹션 헤더 */}
-      <div className="flex items-center gap-1.5 px-3 py-2 bg-surface-strong border-b border-surface-border">
-        <div className="size-5 rounded-full bg-brand-glass border border-brand-border flex items-center justify-center shrink-0">
-          <span className="text-[9px] font-bold text-brand-primary">{initial}</span>
+      <div className="flex items-center gap-2 px-3 py-3 bg-brand-glass border-b border-surface-border">
+        <div className="size-6 rounded-full bg-brand-glass border border-brand-border flex items-center justify-center shrink-0">
+          <span className="text-[10px] font-bold text-brand-primary">{initial}</span>
         </div>
-        <span className="text-xs font-semibold ui-text-secondary truncate">
-          {userName || '사용자'}님
-        </span>
+        <div className="min-w-0 flex-1">
+          <span className="text-xs font-semibold ui-text-primary block truncate">
+            {userName || '사용자'}님
+          </span>
+          <span className="text-[10px] ui-text-muted block leading-none mt-0.5">
+            대화 세션
+          </span>
+        </div>
         <button
           onClick={onAdd}
-          className="ml-auto size-5 flex items-center justify-center rounded ui-icon-button-brand"
+          className="size-6 flex items-center justify-center rounded-md ui-icon-button-brand shrink-0"
           title="새 대화"
         >
-          <Plus className="size-3" />
+          <Plus className="size-3.5" />
         </button>
       </div>
 
@@ -160,6 +194,11 @@ export function ChatSessionSidebar({ sessions, activeId, onAdd, onSwitch, onDele
         </div>,
         document.body,
       )}
+      {/* Resizable drag handle (desktop only) */}
+      <div
+        className="hidden md:block absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-brand-primary/40 active:bg-brand-primary/60 transition-colors z-[100]"
+        onMouseDown={handleMouseDown}
+      />
     </div>
   )
 }

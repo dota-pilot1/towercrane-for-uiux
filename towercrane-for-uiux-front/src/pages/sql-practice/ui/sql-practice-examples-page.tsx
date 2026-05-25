@@ -116,49 +116,49 @@ export function SqlPracticeExamplesPage() {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="ui-panel overflow-hidden rounded-md p-0">
-        <div className="flex flex-col gap-4 border-b border-surface-border px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="ui-icon-button-brand size-10 shrink-0">
-              <BookOpenCheck className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-xl font-black text-text-primary">SQL 예제</h1>
-              <p className="mt-1 text-xs text-text-secondary">
-                현재 seed의 ERD와 난이도별 실습 문제를 함께 봅니다.
-              </p>
-            </div>
+    <section className="space-y-4 ui-page-bg pb-4">
+      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary text-primary-foreground shadow-sm">
+            <BookOpenCheck className="size-5" />
           </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <CompactSelect
-              wrapperClassName="min-w-[260px]"
-              value={activeSeed ? `${activeSeed.source}|${activeSeed.fileName}` : ''}
-              onChange={(event) => handleSeedChange(event.target.value)}
-              disabled={seedsQuery.isLoading || activateSeedMutation.isPending}
-              aria-label="SQL 연습 파일 선택"
-            >
-              {seeds.map((seed) => (
-                <option key={`${seed.source}-${seed.fileName}`} value={`${seed.source}|${seed.fileName}`}>
-                  {seed.title} · {seed.fileName}
-                </option>
-              ))}
-            </CompactSelect>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => navigate({ to: '/sql' })}
-            >
-              <ArrowLeft className="size-4" />
-              SQL 연습장
-            </Button>
+          <div className="min-w-0 space-y-0.5">
+            <h1 className="text-lg font-bold tracking-tight text-text-primary">SQL 예제</h1>
+            <p className="text-xs ui-text-secondary">
+              현재 seed의 ERD와 난이도별 실습 문제를 함께 봅니다.
+            </p>
           </div>
         </div>
 
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="min-w-0 p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <CompactSelect
+            wrapperClassName="min-w-[260px]"
+            value={activeSeed ? `${activeSeed.source}|${activeSeed.fileName}` : ''}
+            onChange={(event) => handleSeedChange(event.target.value)}
+            disabled={seedsQuery.isLoading || activateSeedMutation.isPending}
+            aria-label="SQL 연습 파일 선택"
+          >
+            {seeds.map((seed) => (
+              <option key={`${seed.source}-${seed.fileName}`} value={`${seed.source}|${seed.fileName}`}>
+                {seed.title} · {seed.fileName}
+              </option>
+            ))}
+          </CompactSelect>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => navigate({ to: '/sql' })}
+          >
+            <ArrowLeft className="size-4" />
+            SQL 연습장
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm">
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0">
             <div className="grid gap-3 sm:grid-cols-3">
               <SummaryItem
                 icon={Database}
@@ -181,9 +181,9 @@ export function SqlPracticeExamplesPage() {
             </div>
           </div>
 
-          <div className="border-t border-surface-border p-5 lg:border-l lg:border-t-0">
+          <div className="rounded-xl border border-surface-border-soft bg-surface-raised p-4">
             <p className="text-xs font-bold text-text-primary">설명</p>
-            <p className="mt-2 text-xs leading-5 text-text-secondary">
+            <p className="mt-2 text-xs leading-relaxed text-text-secondary">
               {activeSeed?.description ??
                 '현재 SQL 연습 파일 정보를 불러오는 중입니다.'}
             </p>
@@ -192,8 +192,8 @@ export function SqlPracticeExamplesPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ExampleTab)}>
-        <div className="ui-panel overflow-hidden rounded-md p-0">
-          <div className="border-b border-surface-border px-4 py-3">
+        <div className="rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm">
+          <div className="mb-4">
             <TabsList>
               {exampleTabs.map((tab) => (
                 <TabsTrigger key={tab.value} value={tab.value}>
@@ -203,27 +203,29 @@ export function SqlPracticeExamplesPage() {
             </TabsList>
           </div>
 
-          <TabsContent value="erd" className="p-4">
-            <ErdPanel
-              seedFileName={currentSeedFile}
-              mmd={erdQuery.data?.mmd}
-              isLoading={erdQuery.isLoading || metaQuery.isLoading}
-            />
-          </TabsContent>
-
-          {(['beginner', 'intermediate', 'advanced'] as SqlExampleLevel[]).map((level) => (
-            <TabsContent key={level} value={level}>
-              <ExampleLevelPanel
-                level={level}
-                examples={exampleSet[level]}
-                selectedExample={activeTab === level ? selectedExample : undefined}
-                visibleAnswerIds={visibleAnswerIds}
-                onSelectExample={setSelectedExampleId}
-                onToggleAnswer={toggleAnswer}
-                onCopyAnswer={handleCopyAnswer}
+          <div className="rounded-xl border border-surface-border-soft bg-surface-raised p-5 shadow-2xs min-h-[420px] overflow-hidden">
+            <TabsContent value="erd" className="p-0 m-0">
+              <ErdPanel
+                seedFileName={currentSeedFile}
+                mmd={erdQuery.data?.mmd}
+                isLoading={erdQuery.isLoading || metaQuery.isLoading}
               />
             </TabsContent>
-          ))}
+
+            {(['beginner', 'intermediate', 'advanced'] as SqlExampleLevel[]).map((level) => (
+              <TabsContent key={level} value={level} className="p-0 m-0">
+                <ExampleLevelPanel
+                  level={level}
+                  examples={exampleSet[level]}
+                  selectedExample={activeTab === level ? selectedExample : undefined}
+                  visibleAnswerIds={visibleAnswerIds}
+                  onSelectExample={setSelectedExampleId}
+                  onToggleAnswer={toggleAnswer}
+                  onCopyAnswer={handleCopyAnswer}
+                />
+              </TabsContent>
+            ))}
+          </div>
         </div>
       </Tabs>
     </section>
@@ -242,13 +244,13 @@ function SummaryItem({
   meta: string
 }) {
   return (
-    <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
-      <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
-        <Icon className="size-3.5 text-brand-primary" />
+    <div className="rounded-xl border border-surface-border-soft bg-surface-raised p-4 transition-all duration-300 hover:shadow-2xs">
+      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+        <Icon className="size-4 text-brand-primary" />
         {label}
       </div>
-      <p className="mt-2 truncate text-sm font-black text-text-primary">{value}</p>
-      <p className="mt-1 truncate text-[11px] text-text-muted">{meta}</p>
+      <p className="mt-2 truncate text-base font-extrabold text-text-primary">{value}</p>
+      <p className="mt-1 truncate text-[11px] font-medium text-text-muted">{meta}</p>
     </div>
   )
 }
@@ -338,10 +340,10 @@ function ExampleLevelPanel({
               <button
                 key={example.id}
                 type="button"
-                className={`flex w-full items-start gap-3 rounded-lg border px-3 py-3 text-left transition-all ${
+                className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-all duration-200 ${
                   isSelected
-                    ? 'border-brand-border bg-brand-glass shadow-sm'
-                    : 'border-transparent hover:border-surface-border-soft hover:bg-surface-muted'
+                    ? 'border-brand-border bg-brand-glass shadow-xs ring-1 ring-brand-border/10'
+                    : 'border-transparent bg-transparent hover:border-surface-border-soft hover:bg-surface-muted/50 hover:shadow-2xs'
                 }`}
                 onClick={() => onSelectExample(example.id)}
               >

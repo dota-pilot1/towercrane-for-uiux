@@ -14,6 +14,7 @@ type SessionStoreState = {
   userName: string
   profileImageUrl: string | null
   userRole: string
+  aiAccess: boolean
   hasHydrated: boolean
   setAuthMode: (mode: AuthMode) => void
   hydrateSession: () => void
@@ -33,6 +34,7 @@ export const useSessionStore = create<SessionStoreState>()(
       userName: '',
       profileImageUrl: null,
       userRole: '',
+      aiAccess: false,
       hasHydrated: false,
       setAuthMode: (authMode) => set({ authMode }),
       hydrateSession: () => set({ hasHydrated: true }),
@@ -45,6 +47,7 @@ export const useSessionStore = create<SessionStoreState>()(
           userName: user.name,
           profileImageUrl: user.profileImageUrl ?? null,
           userRole: user.role,
+          aiAccess: user.aiAccess ?? false,
           authMode: 'login',
         }),
       syncUser: (user) =>
@@ -55,6 +58,7 @@ export const useSessionStore = create<SessionStoreState>()(
           userName: user.name,
           profileImageUrl: user.profileImageUrl ?? null,
           userRole: user.role,
+          aiAccess: user.aiAccess ?? false,
         }),
       clearSession: () => {
         useChatSessionStore.getState().resetStore()
@@ -66,6 +70,7 @@ export const useSessionStore = create<SessionStoreState>()(
           userName: '',
           profileImageUrl: null,
           userRole: '',
+          aiAccess: false,
           authMode: 'login',
         })
       },

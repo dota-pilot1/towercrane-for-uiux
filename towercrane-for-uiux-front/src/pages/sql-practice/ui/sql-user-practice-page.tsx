@@ -264,18 +264,28 @@ function SqlUserPracticeWorkspace() {
 
   return (
     <section className="space-y-4 pb-16">
-      <div className="flex items-center justify-between rounded-md border border-surface-border bg-surface-strong px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Database className="size-4 text-brand-primary" />
-          <h1 className="text-sm font-black">SQL 연습장(유저)</h1>
-          <span className="text-xs font-semibold text-text-muted">
-            {schema ? `v${schema.version} · 커머스 운영 DB` : '커머스 운영 DB'}
-          </span>
+      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-glass border border-brand-border shadow-xs">
+            <Database className="size-5 text-brand-primary" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-base font-black text-text-primary">SQL 연습장(유저)</h1>
+              <span className="shrink-0 rounded-md border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-black text-text-muted">
+                {schema ? `v${schema.version} · 커머스 운영 DB` : '커머스 운영 DB'}
+              </span>
+            </div>
+            <p className="mt-1 text-xs font-semibold text-text-muted">
+              공동 운영 데이터를 조회하고 제공된 문제들을 풀어보세요.
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="ui-icon-button h-8 gap-1.5 px-3 text-xs"
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1.5 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
             onClick={handleRefresh}
             disabled={metaQuery.isFetching || tablesQuery.isFetching || problemsQuery.isFetching}
           >
@@ -287,16 +297,18 @@ function SqlUserPracticeWorkspace() {
               }`}
             />
             새로고침
-          </button>
-          <button
-            type="button"
-            className="ui-icon-button h-8 gap-1.5 px-3 text-xs"
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            tone="danger"
+            className="gap-1.5 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
             onClick={handleReset}
             disabled={resetMutation.isPending}
           >
             <RotateCcw className={`size-3.5 ${resetMutation.isPending ? 'animate-spin' : ''}`} />
             DB 리셋
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -1117,19 +1129,29 @@ function SqlPersonalPracticeWorkspace() {
 
   return (
     <section className="space-y-4 pb-16">
-      <div className="flex items-center justify-between rounded-md border border-surface-border bg-surface-strong px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <Database className="size-4 shrink-0 text-brand-primary" />
-          <h1 className="truncate text-sm font-black">
-            {workspaceQuery.data?.title ?? '개인 SQL 연습장'}
-          </h1>
-          <span className="shrink-0 text-xs font-semibold text-text-muted">
-            {schemaVersion ? `v${schemaVersion.version} · ${schemaVersion.title}` : '개인 DB'}
-          </span>
+      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-glass border border-brand-border shadow-xs">
+            <Database className="size-5 text-brand-primary" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-base font-black text-text-primary">
+                {workspaceQuery.data?.title ?? '개인 SQL 연습장'}
+              </h1>
+              <span className="shrink-0 rounded-md border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-black text-text-muted">
+                {schemaVersion ? `v${schemaVersion.version} · ${schemaVersion.title}` : '개인 DB'}
+              </span>
+            </div>
+            <p className="mt-1 text-xs font-semibold text-text-muted">
+              SQL 학습 문제를 풀고 나만의 쿼리를 자유롭게 연습하세요.
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          className="ui-icon-button h-8 gap-1.5 px-3 text-xs"
+        <Button
+          variant="secondary"
+          size="sm"
+          className="gap-1.5 self-start md:self-auto shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
           onClick={handleRefresh}
           disabled={workspaceQuery.isFetching || metaQuery.isFetching || problemsQuery.isFetching}
         >
@@ -1141,7 +1163,7 @@ function SqlPersonalPracticeWorkspace() {
             }`}
           />
           새로고침
-        </button>
+        </Button>
       </div>
 
       <div className="grid h-[calc(100dvh-220px)] min-h-0 gap-4 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)_320px]">

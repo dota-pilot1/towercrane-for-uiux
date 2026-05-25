@@ -37,7 +37,9 @@ export async function apiRequest<T>(input: string, init?: RequestOptions) {
       // Ignore non-JSON error bodies and keep the fallback message.
     }
 
-    throw new Error(message)
+    const err = new Error(message) as Error & { status: number }
+    err.status = response.status
+    throw err
   }
 
   if (response.status === 204) {

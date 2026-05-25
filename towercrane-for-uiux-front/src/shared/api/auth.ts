@@ -7,6 +7,7 @@ export type SessionUser = {
   name: string
   profileImageUrl?: string | null
   role: 'admin' | 'user'
+  aiAccess: boolean
   createdAt: string
   updatedAt: string
 }

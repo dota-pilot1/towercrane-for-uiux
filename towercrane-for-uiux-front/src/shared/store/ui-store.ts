@@ -12,11 +12,13 @@ type UiStoreState = {
   activeWorkspace: 'overview' | 'prototypes' | 'backend'
   themeColor: 'default' | 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light'
   filters: WorkbenchFilters
+  chatbotSidebarWidth: number
   setActiveWorkspace: (workspace: 'overview' | 'prototypes' | 'backend') => void
   setThemeColor: (
     color: 'default' | 'emerald' | 'blue' | 'violet' | 'rose' | 'amber' | 'light',
   ) => void
   applyFilters: (filters: WorkbenchFilters) => void
+  setChatbotSidebarWidth: (width: number) => void
 }
 
 export const defaultFilters: WorkbenchFilters = {
@@ -31,9 +33,11 @@ export const useUiStore = create<UiStoreState>()(
       activeWorkspace: 'overview',
       themeColor: 'default',
       filters: defaultFilters,
+      chatbotSidebarWidth: 280,
       setActiveWorkspace: (activeWorkspace) => set({ activeWorkspace }),
       setThemeColor: (themeColor) => set({ themeColor }),
       applyFilters: (filters) => set({ filters }),
+      setChatbotSidebarWidth: (chatbotSidebarWidth) => set({ chatbotSidebarWidth }),
     }),
     {
       name: 'towercrane-workbench-store',

@@ -65,6 +65,7 @@ export class AuthService {
       name: input.name,
       profileImageUrl: null,
       role: (userCount === 0 ? 'admin' : 'user') as 'admin' | 'user',
+      aiAccess: 0,
       createdAt: now,
       updatedAt: now,
     };
@@ -237,6 +238,7 @@ export class AuthService {
       name: user.name,
       profileImageUrl: user.profileImageUrl,
       role: user.role,
+      aiAccess: user.aiAccess === 1,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

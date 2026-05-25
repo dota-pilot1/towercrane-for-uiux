@@ -319,26 +319,40 @@ export function SqlTeamWorkspacePage() {
 
   return (
     <section className="space-y-4 pb-16">
-      <div className="flex flex-col gap-3 rounded-md border border-surface-border bg-surface-strong px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 items-center gap-2">
-          <Button variant="ghost" size="sm-icon" onClick={() => navigate({ to: '/sql/team' })}>
-            <ArrowLeft className="size-4" />
+      <div className="flex min-w-0 flex-col lg:flex-row lg:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm-icon"
+            className="shrink-0 transition-transform hover:scale-105 active:scale-95"
+            onClick={() => navigate({ to: '/sql/team' })}
+          >
+            <ArrowLeft className="size-4 text-text-primary" />
           </Button>
-          <Database className="size-4 shrink-0 text-brand-primary" />
-          <h1 className="truncate text-sm font-black text-text-primary">
-            {workspace?.title ?? '팀 SQL 연습장'}
-          </h1>
-          <span className="shrink-0 text-xs font-semibold text-text-muted">
-            {schemaVersion ? `v${schemaVersion.version} · ${schemaVersion.title}` : '팀 DB'}
-          </span>
-          <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-1 text-[11px] font-black text-brand-primary">
-            {workspace?.myRole ?? 'member'}
-          </span>
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-glass border border-brand-border shadow-xs">
+            <Database className="size-5 text-brand-primary" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-base font-black text-text-primary">
+                {workspace?.title ?? '팀 SQL 연습장'}
+              </h1>
+              <span className="shrink-0 rounded-md border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-black text-text-muted">
+                {schemaVersion ? `v${schemaVersion.version} · ${schemaVersion.title}` : '팀 DB'}
+              </span>
+              <span className="shrink-0 rounded-md border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-black text-brand-primary">
+                {workspace?.myRole ?? 'member'}
+              </span>
+            </div>
+            <p className="mt-1 text-xs font-semibold text-text-muted">
+              팀원들과 함께 SQL 문제를 공유하고 협업하며 실력을 키워보세요.
+            </p>
+          </div>
         </div>
         <Button
           variant="secondary"
           size="sm"
-          className="gap-1.5"
+          className="gap-1.5 self-start lg:self-auto shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
           onClick={handleRefresh}
           disabled={
             workspaceQuery.isFetching ||
@@ -347,7 +361,16 @@ export function SqlTeamWorkspacePage() {
             problemsQuery.isFetching
           }
         >
-          <RefreshCw className="size-3.5" />
+          <RefreshCw
+            className={`size-3.5 ${
+              workspaceQuery.isFetching ||
+              metaQuery.isFetching ||
+              tablesQuery.isFetching ||
+              problemsQuery.isFetching
+                ? 'animate-spin'
+                : ''
+            }`}
+          />
           새로고침
         </Button>
       </div>

@@ -1,17 +1,36 @@
 import { useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useSessionStore } from '../../../shared/store/session-store'
 import {
   Bot,
+  BookOpen,
   CheckCircle2,
+  Code2,
+  FileImage,
   XCircle,
   Undo2,
   ClipboardList,
   ShieldCheck,
   KeyRound,
   Sparkles,
-  ChevronRight,
   ExternalLink,
+  AlertCircle,
+  Ban,
 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
+import { AnimatePresence, motion } from 'motion/react'
+import { cn } from '../../../shared/lib/utils'
+import { apiRequest } from '../../../shared/api/http'
+import { Button } from '../../../shared/ui/button'
+
+async function submitRequest(body: {
+  serviceType: string; purpose: string; estimatedUsage: string; securityLevel: string
+}) {
+  return apiRequest('/ai-service-requests', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
 
 type StepStatus = 'completed' | 'current' | 'pending' | 'rejected'
 
@@ -38,10 +57,9 @@ const STEPS = [
 ]
 
 const SERVICE_TYPES = [
-  { value: 'chatbot', label: '사내 AI Chatbot', desc: 'FAQ · 개발 자료 기반 질의응답' },
-  { value: 'knowledge', label: '지식채널 검색', desc: '공지 · FAQ · AI 자료 RAG 검색' },
-  { value: 'files', label: '파일 분석 (Vision)', desc: '이미지 · 문서 GPT-4o 분석' },
-  { value: 'api', label: 'LLM API 직접 연동', desc: '개발 목적 API Key 발급' },
+  { value: 'chatbot', label: '사내 AI 챗봇', desc: 'FAQ · 개발 자료 기반 내부 질의응답', icon: Bot },
+  { value: 'api', label: 'API Key 발급', desc: 'LLM API 직접 연동 · 개발 목적', icon: Code2 },
+  { value: 'account', label: '아이디 발급', desc: 'Claude Max · Copilot 등 외부 AI 계정', icon: KeyRound },
 ]
 
 const USAGE_OPTIONS = [
@@ -64,182 +82,358 @@ function StepHeader({
   stepStatuses: StepStatus[]
   onStepClick: (step: number) => void
 }) {
-  return (
-    <div className="flex items-center gap-0">
-      {STEPS.map((step, idx) => {
-        const status = stepStatuses[idx]
-        const isClickable = status === 'completed'
-        const Icon = step.icon
+  const progressPct = ((currentStep - 1) / (STEPS.length - 1)) * 100
 
-        return (
-          <div key={step.id} className="flex items-center">
-            <button
-              onClick={() => isClickable && onStepClick(step.id)}
-              disabled={!isClickable}
-              className={`flex items-center gap-2.5 px-4 py-3 transition-colors ${
-                status === 'current'
-                  ? 'bg-brand-glass border-b-2 border-brand-border'
-                  : status === 'completed'
-                  ? 'hover:bg-surface-muted cursor-pointer'
-                  : 'opacity-40 cursor-default'
-              }`}
-            >
-              <div
-                className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${
-                  status === 'completed'
-                    ? 'bg-brand-primary text-background'
-                    : status === 'current'
-                    ? 'bg-brand-glass border-2 border-brand-border text-brand-primary'
-                    : status === 'rejected'
-                    ? 'bg-destructive/10 text-destructive border border-destructive/30'
-                    : 'bg-surface-muted border border-surface-border text-text-muted'
-                }`}
-              >
-                {status === 'completed' ? (
-                  <CheckCircle2 className="size-3.5" />
-                ) : status === 'rejected' ? (
-                  <XCircle className="size-3.5" />
-                ) : (
-                  <Icon className="size-3" />
+  return (
+    <div className="min-w-[640px] px-2 py-4">
+      <div className="relative grid grid-cols-4">
+        {/* Background progress track */}
+        <div className="pointer-events-none absolute left-[12.5%] right-[12.5%] top-5 h-1 overflow-hidden rounded-full bg-surface-border-soft">
+          <div
+            className="h-full bg-brand-primary transition-all duration-500 ease-out shadow-[0_0_8px_var(--brand-primary)]"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+        
+        {STEPS.map((step, idx) => {
+          const status = stepStatuses[idx]
+          const isClickable = status === 'completed'
+          const Icon = step.icon
+
+          return (
+            <div key={step.id} className="relative">
+              <button
+                onClick={() => isClickable && onStepClick(step.id)}
+                disabled={!isClickable}
+                aria-current={currentStep === step.id ? 'step' : undefined}
+                className={cn(
+                  'group relative flex w-full min-w-0 flex-col items-center gap-2 px-2 py-1.5 text-center transition-all',
+                  isClickable ? 'cursor-pointer hover:-translate-y-0.5' : 'cursor-default',
                 )}
-              </div>
-              <div className="text-left">
-                <p className="text-[10px] font-bold uppercase tracking-wider ui-text-muted">
-                  Step {step.id}
-                </p>
-                <p
-                  className={`text-xs font-semibold ${
-                    status === 'current'
-                      ? 'text-brand-primary'
-                      : status === 'completed'
-                      ? 'ui-text-primary'
-                      : 'ui-text-muted'
-                  }`}
+              >
+                <div
+                  className={cn(
+                    'relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border-2 text-xs font-black shadow-sm transition-all duration-300',
+                    status === 'completed'
+                      ? 'border-brand-primary bg-brand-glass text-brand-primary shadow-2xs hover:scale-105'
+                      : status === 'current'
+                        ? 'border-brand-border bg-surface-raised text-brand-primary ring-4 ring-brand-border/10 scale-105 shadow-[0_8px_20px_color-mix(in_srgb,var(--brand-primary)_15%,transparent)]'
+                        : status === 'rejected'
+                          ? 'border-destructive bg-danger-glass text-destructive'
+                          : 'border-surface-border-soft bg-surface-muted/50 text-text-muted',
+                    isClickable && 'group-hover:border-brand-border group-hover:bg-brand-glass group-hover:text-brand-primary',
+                  )}
                 >
-                  {step.label}
-                </p>
-              </div>
-            </button>
-            {idx < STEPS.length - 1 && (
-              <ChevronRight className="size-4 ui-text-muted shrink-0" />
-            )}
-          </div>
-        )
-      })}
+                  {status === 'completed' ? (
+                    <CheckCircle2 className="size-4 text-brand-primary" />
+                  ) : status === 'rejected' ? (
+                    <XCircle className="size-4 text-destructive" />
+                  ) : (
+                    <Icon className="size-4" />
+                  )}
+                </div>
+                <div
+                  className={cn(
+                    'min-w-0 rounded-lg px-3 py-1.5 transition-all duration-200',
+                    status === 'current' && 'bg-brand-glass/40 border border-brand-border/10',
+                    isClickable && 'group-hover:bg-surface-muted group-hover:border border-transparent',
+                  )}
+                >
+                  <p
+                    className={cn(
+                      'text-[9px] font-black uppercase tracking-widest text-text-muted transition-colors',
+                      status === 'current' && 'text-brand-primary',
+                    )}
+                  >
+                    Step {step.id}
+                  </p>
+                  <p
+                    className={cn(
+                      'truncate text-xs font-extrabold transition-colors',
+                      status === 'current'
+                        ? 'text-brand-primary'
+                        : status === 'completed'
+                          ? 'text-text-primary font-bold'
+                          : 'text-text-muted',
+                    )}
+                  >
+                    {step.label}
+                  </p>
+                </div>
+              </button>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
+
+const ACTIVE_STATUSES = ['pending', 'manager_approved', 'admin_approved', 'active']
 
 function Step1Form({
   form,
   onChange,
   onSubmit,
+  isLoading,
+  activeServiceTypes = [],
 }: {
   form: FormData
   onChange: (f: FormData) => void
   onSubmit: () => void
+  isLoading?: boolean
+  activeServiceTypes?: string[]
 }) {
-  const isValid = form.serviceType && form.purpose.trim().length >= 10 && form.estimatedUsage && form.securityLevel
+  const [submitted, setSubmitted] = useState(false)
+
+  const errors = {
+    serviceType: !form.serviceType ? '서비스를 선택해주세요.' : '',
+    purpose: form.purpose.trim().length < 5 ? '사용 목적을 5자 이상 입력해주세요.' : '',
+    estimatedUsage: !form.estimatedUsage ? '예상 사용량을 선택해주세요.' : '',
+    securityLevel: !form.securityLevel ? '보안 등급을 선택해주세요.' : '',
+  }
+  const isValid = !Object.values(errors).some(Boolean)
+
+  function handleSubmitClick() {
+    setSubmitted(true)
+    if (isValid) onSubmit()
+  }
+
+  const showErr = (key: keyof typeof errors) => submitted && errors[key]
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-7 p-6">
+      {/* 서비스 선택 */}
       <div>
-        <p className="text-xs font-bold ui-text-secondary mb-3">신청 서비스 선택 *</p>
-        <div className="grid grid-cols-2 gap-2">
-          {SERVICE_TYPES.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              onClick={() => onChange({ ...form, serviceType: s.value })}
-              className={`rounded-lg border p-3 text-left transition-all ${
-                form.serviceType === s.value
-                  ? 'border-brand-border bg-brand-glass'
-                  : 'border-surface-border-soft bg-surface-muted hover:border-surface-border'
-              }`}
-            >
-              <p className={`text-sm font-semibold ${form.serviceType === s.value ? 'text-brand-primary' : 'ui-text-primary'}`}>
-                {s.label}
-              </p>
-              <p className="mt-0.5 text-[11px] ui-text-muted">{s.desc}</p>
-            </button>
-          ))}
+        <p className="text-xs font-bold ui-text-secondary mb-3">신청 서비스 선택 <span className="text-destructive">*</span></p>
+        <div className="grid grid-cols-3 gap-3">
+          {SERVICE_TYPES.map((s) => {
+            const Icon = s.icon
+            const selected = form.serviceType === s.value
+            const alreadyApplied = activeServiceTypes.includes(s.value)
+            return (
+              <button
+                key={s.value}
+                type="button"
+                onClick={() => !alreadyApplied && onChange({ ...form, serviceType: s.value })}
+                disabled={alreadyApplied}
+                className={cn(
+                  'relative rounded-xl border-2 p-4 text-left transition-all duration-150',
+                  alreadyApplied
+                    ? 'border-surface-border bg-surface-muted opacity-60 cursor-not-allowed'
+                    : selected
+                    ? 'border-brand-border bg-brand-glass shadow-[0_4px_16px_color-mix(in_srgb,var(--brand-primary)_18%,transparent)] hover:-translate-y-0.5'
+                    : 'border-surface-border bg-surface-raised shadow-sm hover:border-brand-border/40 hover:shadow-md hover:-translate-y-0.5',
+                )}
+              >
+                {alreadyApplied ? (
+                  <span className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full bg-surface-strong px-2 py-0.5 text-[10px] font-bold ui-text-muted">
+                    <Ban className="size-2.5" /> 신청 완료
+                  </span>
+                ) : selected ? (
+                  <span className="absolute right-2.5 top-2.5 flex size-4 items-center justify-center rounded-full bg-brand-primary">
+                    <CheckCircle2 className="size-3 text-background" />
+                  </span>
+                ) : null}
+                <div className={cn(
+                  'mb-2.5 flex size-9 items-center justify-center rounded-lg border transition-colors',
+                  alreadyApplied
+                    ? 'border-surface-border bg-surface-muted ui-text-muted'
+                    : selected
+                    ? 'border-brand-border bg-brand-primary/10 text-brand-primary'
+                    : 'border-surface-border bg-surface-muted ui-text-muted',
+                )}>
+                  <Icon className="size-4" />
+                </div>
+                <p className={cn('text-sm font-bold leading-tight', selected && !alreadyApplied ? 'text-brand-primary' : 'ui-text-primary')}>
+                  {s.label}
+                </p>
+                <p className="mt-1 text-[11px] ui-text-muted leading-relaxed">{s.desc}</p>
+              </button>
+            )
+          })}
         </div>
+        {showErr('serviceType') && (
+          <p className="mt-1.5 flex items-center gap-1 text-[11px] text-destructive">
+            <AlertCircle className="size-3 shrink-0" />{errors.serviceType}
+          </p>
+        )}
       </div>
 
+      {/* 사용 목적 */}
       <div>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-bold ui-text-secondary">사용 목적 * <span className="font-normal ui-text-muted">(최소 10자)</span></span>
+          <span className="text-xs font-bold ui-text-secondary">
+            사용 목적 <span className="text-destructive">*</span>
+            <span className="ml-1 font-normal ui-text-muted">(최소 5자)</span>
+          </span>
           <textarea
             value={form.purpose}
             onChange={(e) => onChange({ ...form, purpose: e.target.value })}
             placeholder="AI 서비스를 어떤 업무에 활용할 계획인지 구체적으로 입력하세요."
             rows={4}
-            className="w-full rounded-md border border-surface-border bg-background px-3 py-2.5 text-sm leading-relaxed ui-text-primary placeholder:ui-text-muted outline-none resize-none transition-all focus:border-brand-border focus:ring-2 focus:ring-brand-border/5"
+            className={cn(
+              'w-full rounded-lg border bg-surface-raised px-3 py-2.5 text-sm leading-relaxed ui-text-primary placeholder:ui-text-muted outline-none resize-none transition-all',
+              showErr('purpose')
+                ? 'border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/10'
+                : 'border-surface-border focus:border-brand-border focus:ring-2 focus:ring-brand-border/10',
+            )}
           />
-          <span className={`text-right text-[10px] ${form.purpose.length < 10 ? 'text-destructive' : 'ui-text-muted'}`}>
-            {form.purpose.length}자
-          </span>
+          <div className="flex items-center justify-between">
+            {showErr('purpose') ? (
+              <p className="flex items-center gap-1 text-[11px] text-destructive">
+                <AlertCircle className="size-3 shrink-0" />{errors.purpose}
+              </p>
+            ) : <span />}
+            <span className={`text-[10px] ${form.purpose.length < 5 ? 'text-destructive' : 'ui-text-muted'}`}>
+              {form.purpose.length}자
+            </span>
+          </div>
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* 예상 사용량 + 보안 등급 */}
+      <div className="grid grid-cols-2 gap-5">
         <div>
-          <p className="text-xs font-bold ui-text-secondary mb-2">예상 사용량 *</p>
-          <div className="space-y-1.5">
-            {USAGE_OPTIONS.map((u) => (
-              <button
-                key={u.value}
-                type="button"
-                onClick={() => onChange({ ...form, estimatedUsage: u.value })}
-                className={`w-full rounded-md border px-3 py-2 text-left transition-all ${
-                  form.estimatedUsage === u.value
-                    ? 'border-brand-border bg-brand-glass'
-                    : 'border-surface-border-soft hover:border-surface-border'
-                }`}
-              >
-                <p className={`text-xs font-semibold ${form.estimatedUsage === u.value ? 'text-brand-primary' : 'ui-text-primary'}`}>
-                  {u.label}
-                </p>
-                <p className="text-[10px] ui-text-muted">{u.desc}</p>
-              </button>
-            ))}
+          <p className="text-xs font-bold ui-text-secondary mb-2.5">
+            예상 사용량 <span className="text-destructive">*</span>
+          </p>
+          <div className="space-y-2">
+            {USAGE_OPTIONS.map((u) => {
+              const selected = form.estimatedUsage === u.value
+              return (
+                <button
+                  key={u.value}
+                  type="button"
+                  onClick={() => onChange({ ...form, estimatedUsage: u.value })}
+                  className={cn(
+                    'w-full rounded-lg border-2 px-3.5 py-2.5 text-left transition-all duration-100 hover:-translate-y-px',
+                    selected
+                      ? 'border-brand-border bg-brand-glass shadow-[0_2px_8px_color-mix(in_srgb,var(--brand-primary)_15%,transparent)]'
+                      : 'border-surface-border bg-surface-raised shadow-sm hover:border-brand-border/40 hover:shadow',
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className={cn('text-xs font-bold', selected ? 'text-brand-primary' : 'ui-text-primary')}>{u.label}</p>
+                    {selected && <CheckCircle2 className="size-3.5 text-brand-primary shrink-0" />}
+                  </div>
+                  <p className="mt-0.5 text-[10px] ui-text-muted">{u.desc}</p>
+                </button>
+              )
+            })}
           </div>
+          {showErr('estimatedUsage') && (
+            <p className="mt-1.5 flex items-center gap-1 text-[11px] text-destructive">
+              <AlertCircle className="size-3 shrink-0" />{errors.estimatedUsage}
+            </p>
+          )}
         </div>
 
         <div>
-          <p className="text-xs font-bold ui-text-secondary mb-2">보안 등급 *</p>
-          <div className="space-y-1.5">
-            {SECURITY_LEVELS.map((s) => (
-              <button
-                key={s.value}
-                type="button"
-                onClick={() => onChange({ ...form, securityLevel: s.value })}
-                className={`w-full rounded-md border px-3 py-2 text-left transition-all ${
-                  form.securityLevel === s.value
-                    ? 'border-brand-border bg-brand-glass'
-                    : 'border-surface-border-soft hover:border-surface-border'
-                }`}
-              >
-                <p className={`text-xs font-semibold ${form.securityLevel === s.value ? 'text-brand-primary' : 'ui-text-primary'}`}>
-                  {s.label}
-                </p>
-                <p className="text-[10px] ui-text-muted">{s.desc}</p>
-              </button>
-            ))}
+          <p className="text-xs font-bold ui-text-secondary mb-2.5">
+            보안 등급 <span className="text-destructive">*</span>
+          </p>
+          <div className="space-y-2">
+            {SECURITY_LEVELS.map((s) => {
+              const selected = form.securityLevel === s.value
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => onChange({ ...form, securityLevel: s.value })}
+                  className={cn(
+                    'w-full rounded-lg border-2 px-3.5 py-2.5 text-left transition-all duration-100 hover:-translate-y-px',
+                    selected
+                      ? 'border-brand-border bg-brand-glass shadow-[0_2px_8px_color-mix(in_srgb,var(--brand-primary)_15%,transparent)]'
+                      : 'border-surface-border bg-surface-raised shadow-sm hover:border-brand-border/40 hover:shadow',
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className={cn('text-xs font-bold', selected ? 'text-brand-primary' : 'ui-text-primary')}>{s.label}</p>
+                    {selected && <CheckCircle2 className="size-3.5 text-brand-primary shrink-0" />}
+                  </div>
+                  <p className="mt-0.5 text-[10px] ui-text-muted">{s.desc}</p>
+                </button>
+              )
+            })}
           </div>
+          {showErr('securityLevel') && (
+            <p className="mt-1.5 flex items-center gap-1 text-[11px] text-destructive">
+              <AlertCircle className="size-3 shrink-0" />{errors.securityLevel}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="flex justify-end pt-2">
+      <div className="flex items-center justify-end pt-1">
         <button
-          onClick={onSubmit}
-          disabled={!isValid}
+          onClick={handleSubmitClick}
+          disabled={isLoading}
           className="inline-flex items-center gap-2 rounded-lg border border-brand-border bg-brand-glass px-5 py-2.5 text-sm font-bold text-brand-primary transition-all hover:bg-brand-glass/80 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ClipboardList className="size-4" />
-          신청서 제출
+          {isLoading ? '제출 중...' : '신청서 제출'}
         </button>
       </div>
+
+      {/* 위에서 정중앙으로 떨어지는 유효성 경고 다이어로그 */}
+      <AnimatePresence>
+        {submitted && !isValid && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none">
+            <motion.div
+              key="validation-dialog"
+              initial={{ y: -480, opacity: 0, scale: 0.88 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -480, opacity: 0, scale: 0.88 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 22, mass: 1.2 }}
+              className="pointer-events-auto w-[420px] rounded-3xl border border-destructive/25 bg-surface-raised shadow-[0_24px_64px_rgba(0,0,0,0.28)] overflow-hidden"
+            >
+              {/* 상단 컬러 바 */}
+              <div className="h-1.5 w-full bg-destructive/80" />
+
+              <div className="px-8 py-7 flex flex-col items-center text-center gap-5">
+                {/* 아이콘 */}
+                <motion.div
+                  initial={{ scale: 0.5, rotate: -10 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 20, delay: 0.08 }}
+                  className="flex size-16 items-center justify-center rounded-full bg-destructive/10 border-2 border-destructive/20"
+                >
+                  <AlertCircle className="size-8 text-destructive" />
+                </motion.div>
+
+                {/* 텍스트 */}
+                <div className="space-y-1.5">
+                  <p className="text-xl font-black text-destructive">필수 항목 미입력</p>
+                  <p className="text-sm ui-text-secondary leading-relaxed">
+                    아래 빨간색으로 표시된 항목을 모두 채워야<br />신청서를 제출할 수 있습니다.
+                  </p>
+                </div>
+
+                {/* 에러 목록 */}
+                <div className="w-full rounded-xl border border-destructive/15 bg-destructive/5 px-4 py-3 space-y-1.5">
+                  {(Object.entries(errors) as [keyof typeof errors, string][])
+                    .filter(([, msg]) => msg)
+                    .map(([key, msg]) => (
+                      <div key={key} className="flex items-center gap-2 text-xs text-destructive">
+                        <AlertCircle className="size-3 shrink-0" />
+                        {msg}
+                      </div>
+                    ))}
+                </div>
+
+                {/* 닫기 버튼 */}
+                <button
+                  onClick={() => setSubmitted(false)}
+                  className="w-full rounded-xl bg-destructive/10 border border-destructive/20 py-2.5 text-sm font-bold text-destructive hover:bg-destructive/15 transition-colors active:scale-95"
+                >
+                  확인 후 수정하기
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -458,8 +652,10 @@ function RejectedContent({ onReset }: { onReset: () => void }) {
 
 export function AiServiceRequestPage() {
   const navigate = useNavigate()
+  const user = useSessionStore((s) => s.user)
   const [currentStep, setCurrentStep] = useState(1)
   const [rejected, setRejected] = useState(false)
+  const [duplicateService, setDuplicateService] = useState<string | null>(null)
   const [form, setForm] = useState<FormData>({
     serviceType: '',
     purpose: '',
@@ -471,10 +667,38 @@ export function AiServiceRequestPage() {
       id: 'h0',
       title: '신청 페이지 접속',
       time: '방금',
-      actor: 'Seed User',
+      actor: user?.name ?? 'User',
       status: 'current',
     },
   ])
+
+  const { data: myRequests } = useQuery({
+    queryKey: ['my-ai-requests-check'],
+    queryFn: () => apiRequest<{ serviceType: string; status: string }[]>('/ai-service-requests/my'),
+  })
+
+  const activeServiceTypes = (myRequests ?? [])
+    .filter((r) => ACTIVE_STATUSES.includes(r.status))
+    .map((r) => r.serviceType)
+
+  const submitMutation = useMutation({
+    mutationFn: submitRequest,
+    onSuccess: () => {
+      addHistory('신청서 제출 완료', user?.name ?? 'User', 'completed')
+      addHistory('팀장 승인 대기', '팀장', 'current')
+      setCurrentStep(2)
+      setRejected(false)
+    },
+    onError: (err: unknown) => {
+      const status = (err as { status?: number })?.status
+      if (status === 409) {
+        const label = SERVICE_TYPES.find((s) => s.value === form.serviceType)?.label ?? form.serviceType
+        setDuplicateService(label)
+      } else {
+        alert('신청서 제출에 실패했습니다. 다시 시도해주세요.')
+      }
+    },
+  })
 
   const stepStatuses: StepStatus[] = STEPS.map((step) => {
     if (rejected && step.id === currentStep) return 'rejected'
@@ -492,10 +716,12 @@ export function AiServiceRequestPage() {
   }
 
   function handleSubmit() {
-    addHistory('신청서 제출 완료', 'Seed User', 'completed')
-    addHistory('팀장 승인 대기', '팀장', 'current')
-    setCurrentStep(2)
-    setRejected(false)
+    submitMutation.mutate({
+      serviceType: form.serviceType,
+      purpose: form.purpose,
+      estimatedUsage: form.estimatedUsage,
+      securityLevel: form.securityLevel,
+    })
   }
 
   function handleStep2Action(action: '승인' | '반려' | '보완 요청') {
@@ -534,32 +760,34 @@ export function AiServiceRequestPage() {
   return (
     <div className="space-y-4">
       {/* 페이지 헤더 */}
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-border bg-surface-raised px-5 py-4">
+      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="ui-icon-button-brand size-10 shrink-0 rounded-lg">
-            <Bot className="size-5" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-glass border border-brand-border shadow-xs">
+            <Bot className="size-5 text-brand-primary" />
           </div>
-          <div>
-            <h1 className="text-xl font-black ui-text-primary">AI 서비스 신청</h1>
-            <p className="mt-0.5 text-xs ui-text-secondary">
-              AI Chatbot, LLM API, 지식채널 검색 권한을 신청하고 승인 흐름을 확인합니다.
+          <div className="min-w-0">
+            <h1 className="text-lg font-black text-text-primary">AI 서비스 신청</h1>
+            <p className="mt-1 text-xs font-semibold text-text-muted">
+              사내 AI Chatbot, LLM API, 지식채널 권한을 안전하게 신청하고 간편하게 승인 상태를 확인하세요.
             </p>
           </div>
         </div>
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
+          className="gap-1.5 self-start md:self-auto shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
           onClick={handleReset}
-          className="inline-flex items-center gap-2 rounded-lg border border-surface-border px-3 py-2 text-xs font-bold ui-text-secondary transition-all hover:bg-surface-muted active:scale-95"
         >
           <ClipboardList className="size-3.5" />
           초기화 / 신규 신청
-        </button>
-      </section>
+        </Button>
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
         {/* 메인 카드 */}
         <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
           {/* 스텝 헤더 */}
-          <div className="border-b border-surface-border bg-surface-strong px-2 py-1 overflow-x-auto">
+          <div className="border-b border-surface-border-soft bg-surface-raised px-3 py-1 overflow-x-auto">
             <StepHeader
               currentStep={currentStep}
               stepStatuses={stepStatuses}
@@ -571,7 +799,13 @@ export function AiServiceRequestPage() {
           {rejected ? (
             <RejectedContent onReset={handleReset} />
           ) : currentStep === 1 ? (
-            <Step1Form form={form} onChange={setForm} onSubmit={handleSubmit} />
+            <Step1Form
+              form={form}
+              onChange={setForm}
+              onSubmit={handleSubmit}
+              isLoading={submitMutation.isPending}
+              activeServiceTypes={activeServiceTypes}
+            />
           ) : currentStep === 2 ? (
             <Step2Content form={form} onAction={handleStep2Action} />
           ) : currentStep === 3 ? (
@@ -620,6 +854,59 @@ export function AiServiceRequestPage() {
           </div>
         </aside>
       </div>
+
+      {/* 중복 신청 방지 다이어로그 */}
+      <AnimatePresence>
+        {duplicateService && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none">
+            <motion.div
+              key="duplicate-dialog"
+              initial={{ y: -480, opacity: 0, scale: 0.88 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -480, opacity: 0, scale: 0.88 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 22, mass: 1.2 }}
+              className="pointer-events-auto w-[420px] rounded-3xl border border-surface-border bg-surface-raised shadow-[0_24px_64px_rgba(0,0,0,0.28)] overflow-hidden"
+            >
+              <div className="h-1.5 w-full bg-brand-primary/60" />
+              <div className="px-8 py-7 flex flex-col items-center text-center gap-5">
+                <motion.div
+                  initial={{ scale: 0.5, rotate: -10 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 20, delay: 0.08 }}
+                  className="flex size-16 items-center justify-center rounded-full bg-brand-glass border-2 border-brand-border"
+                >
+                  <Ban className="size-8 text-brand-primary" />
+                </motion.div>
+                <div className="space-y-1.5">
+                  <p className="text-xl font-black ui-text-primary">중복 신청 불가</p>
+                  <p className="text-sm ui-text-secondary leading-relaxed">
+                    <span className="font-bold text-brand-primary">{duplicateService}</span>에 대한<br />
+                    진행 중인 신청이 이미 존재합니다.
+                  </p>
+                </div>
+                <div className="w-full rounded-xl border border-surface-border bg-surface-muted px-4 py-3 text-xs ui-text-secondary leading-relaxed">
+                  신청 취소 또는 반려 처리 후 재신청할 수 있습니다.<br />
+                  현재 신청 상태는 <span className="font-bold ui-text-primary">내 신청 현황</span>에서 확인하세요.
+                </div>
+                <div className="flex w-full gap-2">
+                  <button
+                    onClick={() => setDuplicateService(null)}
+                    className="flex-1 rounded-xl border border-surface-border py-2.5 text-sm font-bold ui-text-secondary hover:bg-surface-muted transition-colors active:scale-95"
+                  >
+                    닫기
+                  </button>
+                  <button
+                    onClick={() => navigate({ to: '/ai-service-my' })}
+                    className="flex-1 rounded-xl border border-brand-border bg-brand-glass py-2.5 text-sm font-bold text-brand-primary hover:bg-brand-glass/80 transition-colors active:scale-95"
+                  >
+                    내 신청 현황 →
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

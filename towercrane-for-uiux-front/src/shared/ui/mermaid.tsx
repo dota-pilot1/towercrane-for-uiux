@@ -46,6 +46,13 @@ export function Mermaid({ chart, className = '' }: MermaidProps) {
             </div>
           `
         }
+        
+        // Mermaid가 렌더링 실패 시 document.body 하단에 에러 노드를 강제로 주입하고 방치하는 SPA의 고질적 버그 방어 코드
+        setTimeout(() => {
+          const badNodes = document.querySelectorAll('div[id^="dmermaid"], div[id^="mermaid-"], svg[id^="mermaid-"]');
+          badNodes.forEach((node) => node.remove());
+        }, 50);
+
         setIsRendering(false)
       }
     }
