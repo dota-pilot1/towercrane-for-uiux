@@ -8,11 +8,16 @@ import {
   FileQuestion,
   Menu,
   Search,
+  ShieldOff,
+  Sparkles,
 } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { useFilesChat } from '../../../features/chatbot/model/use-files-chat'
 import { ChatSessionSidebar } from '../../../features/chatbot/ui/chat-session-sidebar'
 import { ChatMessage } from '../../../features/chatbot/ui/chat-message'
 import { ChatInputWithFiles } from '../../../features/chatbot/ui/chat-input-with-files'
+import { useSessionStore } from '../../../shared/store/session-store'
+import { useRefreshSession } from '../../../shared/model/use-refresh-session'
 import type { KnowledgeChannel } from '../../../entities/knowledge-base/model/types'
 import type { KnowledgeSource } from '../../../features/chatbot/model/use-chat-messages'
 
@@ -24,6 +29,7 @@ const CHANNEL_OPTIONS: Array<{
   { value: 'notice', label: '공지사항', Icon: Bell },
   { value: 'faq', label: 'FAQ', Icon: FileQuestion },
   { value: 'dev', label: '개발 자료', Icon: Code2 },
+  { value: 'ai', label: 'AI 자료', Icon: Sparkles },
 ]
 
 function formatScore(score: number) {
@@ -46,14 +52,14 @@ function KnowledgeSourcePanel({
 
   return (
     <aside className="hidden min-h-0 w-[420px] shrink-0 flex-col rounded-lg border border-surface-border bg-surface-raised xl:flex">
-      <div className="shrink-0 border-b border-surface-border px-4 py-3">
+      <div className="shrink-0 border-b border-surface-border bg-brand-glass px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="ui-icon-button-brand rounded-md p-1.5">
-            <Search className="size-3.5" />
+          <div className="bg-brand-glass border border-brand-border rounded-md p-1.5 shrink-0 flex items-center justify-center">
+            <Search className="size-3.5 text-brand-primary" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold ui-text-primary">검색 근거</h3>
-            <p className="truncate text-xs ui-text-muted">범위: {scopeLabel}</p>
+            <p className="truncate text-[10px] ui-text-muted leading-none mt-0.5">범위: {scopeLabel}</p>
           </div>
         </div>
       </div>
@@ -112,6 +118,10 @@ function KnowledgeSourcePanel({
 }
 
 export function ChatbotKnowledgePage() {
+  useRefreshSession()
+  const aiAccess = useSessionStore((s) => s.aiAccess)
+  const userRole = useSessionStore((s) => s.userRole)
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [selectedChannels, setSelectedChannels] = useState<KnowledgeChannel[]>([])
 
@@ -147,6 +157,30 @@ export function ChatbotKnowledgePage() {
     )
   }
 
+  if (!aiAccess && userRole !== 'admin') {
+    return (
+      <div className="flex h-[calc(100vh-120px)] items-center justify-center">
+        <div className="ui-panel rounded-2xl p-10 flex flex-col items-center gap-4 text-center max-w-md">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-surface-muted border border-surface-border">
+            <ShieldOff className="size-7 ui-text-muted" />
+          </div>
+          <div>
+            <p className="text-base font-bold ui-text-primary">AI 서비스 접근 권한이 없습니다</p>
+            <p className="mt-1.5 text-sm ui-text-muted leading-relaxed">
+              챗봇 사용을 위해 AI 서비스 신청 후 승인을 받아야 합니다.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate({ to: '/ai-service-request' })}
+            className="mt-2 inline-flex items-center gap-2 rounded-lg border border-brand-border bg-brand-glass px-4 py-2 text-sm font-bold text-brand-primary hover:bg-brand-glass/80 transition-colors"
+          >
+            서비스 신청하기
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-[calc(100vh-120px)] gap-4 relative overflow-hidden">
 
@@ -176,7 +210,7 @@ export function ChatbotKnowledgePage() {
 
       {/* 채팅 영역 */}
       <div className="flex flex-1 flex-col min-w-0 rounded-lg border border-surface-border bg-surface-raised overflow-hidden">
-        <div className="shrink-0 border-b border-surface-border bg-surface-strong px-4 py-2">
+        <div className="shrink-0 border-b border-surface-border bg-brand-glass px-4 py-3">
           <div className="flex items-center gap-2">
             <button
               className="md:hidden p-1 rounded ui-icon-button mr-1"
@@ -184,45 +218,51 @@ export function ChatbotKnowledgePage() {
             >
               <Menu className="size-4" />
             </button>
-            <Bot className="size-4 text-brand-primary" />
-            <span className="text-sm font-semibold ui-text-primary truncate">
-              {activeSession.title}
-            </span>
-            <span className="ml-auto text-[11px] ui-text-muted shrink-0">
-              {messages.length}개 메시지
-            </span>
+            <div className="bg-brand-glass border border-brand-border rounded-md p-1.5 shrink-0 flex items-center justify-center">
+              <Bot className="size-3.5 text-brand-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-sm font-semibold ui-text-primary block truncate">
+                {activeSession.title}
+              </span>
+              <span className="text-[10px] ui-text-muted block leading-none mt-0.5">
+                {messages.length}개 메시지
+              </span>
+            </div>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setSelectedChannels([])}
-              className={`rounded-sm border px-2.5 py-1 text-xs font-semibold transition ${
-                selectedChannels.length === 0
-                  ? 'border-brand-border bg-brand-glass text-brand-primary'
-                  : 'border-surface-border-soft bg-surface-muted ui-text-secondary hover:border-surface-border'
-              }`}
-            >
-              전체
-            </button>
-            {CHANNEL_OPTIONS.map(({ value, label, Icon }) => {
-              const selected = selectedChannels.includes(value)
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => toggleChannel(value)}
-                  className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-xs font-semibold transition ${
-                    selected
-                      ? 'border-brand-border bg-brand-glass text-brand-primary'
-                      : 'border-surface-border-soft bg-surface-muted ui-text-secondary hover:border-surface-border'
-                  }`}
-                >
-                  <Icon className="size-3" />
-                  {label}
-                </button>
-              )
-            })}
-          </div>
+        </div>
+
+        {/* 채널 필터 바 (헤더 아래 격리) */}
+        <div className="shrink-0 border-b border-surface-border bg-surface-muted/30 px-4 py-2 flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSelectedChannels([])}
+            className={`rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition ${
+              selectedChannels.length === 0
+                ? 'border-brand-border bg-brand-glass text-brand-primary'
+                : 'border-surface-border-soft bg-surface-raised ui-text-secondary hover:border-surface-border'
+            }`}
+          >
+            전체
+          </button>
+          {CHANNEL_OPTIONS.map(({ value, label, Icon }) => {
+            const selected = selectedChannels.includes(value)
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => toggleChannel(value)}
+                className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition ${
+                  selected
+                    ? 'border-brand-border bg-brand-glass text-brand-primary'
+                    : 'border-surface-border-soft bg-surface-raised ui-text-secondary hover:border-surface-border'
+                }`}
+              >
+                <Icon className="size-3" />
+                {label}
+              </button>
+            )
+          })}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
