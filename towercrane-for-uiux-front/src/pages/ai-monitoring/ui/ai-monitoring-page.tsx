@@ -170,32 +170,27 @@ export function AiMonitoringPage() {
       </div>
 
       {/* GPT 모델 목록 */}
-      <div className="ui-panel-soft rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-surface-border flex items-center gap-2">
+      <div className="ui-panel-soft rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-2">
           <Bot className="size-4 text-brand-primary" />
           <p className="text-sm font-semibold text-text-primary">사용 가능한 GPT 모델 <span className="text-xs text-text-muted font-normal ml-1">(현재 API 키 기준)</span></p>
         </div>
         {modelsQ.isLoading ? (
-          <div className="py-10 text-center text-sm text-text-muted">모델 목록 조회 중...</div>
+          <p className="text-xs text-text-muted py-2">모델 목록 조회 중...</p>
         ) : modelsQ.data?.error ? (
-          <div className="py-10 text-center text-sm text-text-muted">{modelsQ.data.error}</div>
+          <p className="text-xs text-text-muted py-2">{modelsQ.data.error}</p>
         ) : !modelsQ.data?.models.length ? (
-          <div className="py-10 text-center text-sm text-text-muted">모델 정보를 불러올 수 없습니다</div>
+          <p className="text-xs text-text-muted py-2">모델 정보를 불러올 수 없습니다</p>
         ) : (
-          <div className="divide-y divide-surface-border-soft">
+          <div className="flex flex-wrap gap-1.5">
             {modelsQ.data.models.map((m) => (
-              <div key={m.id} className="flex items-center justify-between px-4 py-3 hover:bg-surface-muted/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand-glass border border-brand-border">
-                    <Bot className="size-3.5 text-brand-primary" />
-                  </div>
-                  <span className="text-sm font-medium text-text-primary font-mono">{m.id}</span>
-                </div>
-                <div className="flex items-center gap-4 text-right">
-                  <span className="text-xs text-text-muted hidden sm:block">출시 {fmtDate(m.created)}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-brand-glass border border-brand-border text-brand-primary">{m.ownedBy}</span>
-                </div>
-              </div>
+              <span
+                key={m.id}
+                title={`출시 ${fmtDate(m.created)}`}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-surface-muted border border-surface-border-soft text-[11px] font-mono text-text-secondary hover:border-brand-border hover:text-brand-primary transition-colors cursor-default"
+              >
+                {m.id}
+              </span>
             ))}
           </div>
         )}
