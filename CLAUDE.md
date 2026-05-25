@@ -49,3 +49,32 @@
 | `text-emerald-400` | `text-brand-primary` |
 | `bg-emerald-500/10` | `bg-brand-glass` |
 | `border-emerald-400` | `border-brand-border` |
+
+---
+
+## 메뉴 추가 방법
+
+헤더 메뉴는 **DB-driven** 구조. 서버 부팅 시 `DatabaseService`가 upsert 실행. 새 메뉴 추가 시 **세 파일을 동시에 수정**해야 함.
+
+### 수정 파일
+
+| 파일 | 역할 |
+|---|---|
+| `towercrane-for-uiux-server/src/database/database.service.ts` | DB upsert — 서버 재시작 시 메뉴 생성 |
+| `towercrane-for-uiux-front/src/widgets/app-header/ui/app-header.tsx` | sectionId ↔ 라우트 경로 매핑 |
+| `towercrane-for-uiux-front/src/app/router.tsx` | 실제 페이지 라우트 등록 |
+
+### 적용 절차
+
+1. `database.service.ts` upsert 블록 추가 + `rootMenuOrder` 업데이트
+2. `app-header.tsx` `sectionIdToPath` 맵 + `getSectionIdFromPath` 분기 추가
+3. `router.tsx` import + createRoute + addChildren 추가
+4. 페이지 파일 생성 (`src/pages/xxx/ui/xxx-page.tsx`)
+5. **서버 재시작** → DB upsert 실행됨
+
+### 주의사항
+
+- `sectionId`는 전역 고유값 — 기존 것과 절대 중복 금지
+- `getSectionIdFromPath`에서 `/a/b`가 `/a`보다 앞에 와야 함 (구체적인 경로 먼저)
+- DB upsert는 **서버 재시작 시에만** 실행됨
+- 자세한 예시: `docs-for-배포/메뉴 추가 방법에 대해.md`

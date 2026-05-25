@@ -2836,8 +2836,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     ensureChild('공지사항', 'knowledge_notice', 'Bell', 0);
     ensureChild('FAQ',    'knowledge_faq',    'HelpCircle', 1);
-    ensureChild('AI 자료', 'knowledge_ai',    'Sparkles',   2);
-    ensureChild('개발 자료','knowledge_dev',  'Code2',      3);
+    ensureChild('개발 자료','knowledge_dev',  'Code2',      2);
+    ensureChild('AI 자료', 'knowledge_ai',    'Sparkles',   3);
 
     // AI 서비스 신청은 챗봇 하위에서 제거 (별도 메뉴로 관리)
     this.sqlite
