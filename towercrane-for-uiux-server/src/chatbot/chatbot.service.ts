@@ -14,6 +14,8 @@ import {
   chatMessagesTable,
   chatSessionsTable,
   usageLogsTable,
+  tasksTable,
+  aiServiceRequestsTable,
   type KnowledgeChannel,
 } from '../database/schema';
 import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service';
@@ -77,6 +79,30 @@ function executeSelfIntroduce() {
     description: '세계 최고 수준의 멀티모달 AI 모델. 텍스트와 이미지를 동시에 이해하고, 복잡한 추론과 창의적 작업 모두 수행합니다.',
   };
 }
+
+// check_ai_service_request 툴 스키마 — 내 AI 서비스 신청 현황 조회
+const CHECK_AI_SERVICE_REQUEST_TOOL: OpenAI.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'check_ai_service_request',
+    description: '현재 로그인한 사용자의 AI 서비스 신청 현황을 조회할 때 사용한다. "AI 서비스 신청 상태", "내 신청 현황", "챗봇 신청 됐어?", "AI 사용 신청 확인" 같은 요청에 발동한다.',
+    parameters: { type: 'object', properties: {}, required: [] },
+  },
+};
+
+// get_my_tasks 툴 스키마 — 담당자 기준 업무 목록 조회
+const GET_MY_TASKS_TOOL: OpenAI.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'get_my_tasks',
+    description: '현재 로그인한 사용자가 담당자로 지정된 업무 목록을 조회할 때 사용한다. "내 업무", "내 할일", "담당 업무", "나한테 배정된 업무" 같은 요청에 발동한다.',
+    parameters: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+};
 
 const CHATBOT_SYSTEM_PROMPT = `당신은 친절하고 실용적인 AI 어시스턴트입니다.
 
@@ -392,7 +418,7 @@ export class ChatbotService {
         model,
         stream: false,
         messages,
-        tools: [SELF_INTRODUCE_TOOL],
+        tools: [SELF_INTRODUCE_TOOL, GET_MY_TASKS_TOOL, CHECK_AI_SERVICE_REQUEST_TOOL],
         tool_choice: 'auto', // AI가 툴 쓸지 말지 스스로 판단
       });
 
@@ -404,8 +430,40 @@ export class ChatbotService {
         const toolName = toolCall.function.name;
         const toolInput = JSON.parse(toolCall.function.arguments) as Record<string, unknown>;
 
-        // STEP 3-C: 실제 함수 실행 (Hello World — 파라미터 없는 고정 자기소개)
-        const toolResult = executeSelfIntroduce();
+        // STEP 3-C: 툴 이름별 실행 분기
+        let toolResult: Record<string, unknown>;
+        if (toolName === 'get_my_tasks') {
+          const tasks = this.db
+            .select({
+              id: tasksTable.id,
+              title: tasksTable.title,
+              status: tasksTable.status,
+              priority: tasksTable.priority,
+              taskType: tasksTable.taskType,
+              dueDate: tasksTable.dueDate,
+            })
+            .from(tasksTable)
+            .where(eq(tasksTable.assigneeId, user.id))
+            .all();
+          toolResult = { tasks };
+        } else if (toolName === 'check_ai_service_request') {
+          const requests = this.db
+            .select({
+              id: aiServiceRequestsTable.id,
+              serviceType: aiServiceRequestsTable.serviceType,
+              purpose: aiServiceRequestsTable.purpose,
+              status: aiServiceRequestsTable.status,
+              rejectReason: aiServiceRequestsTable.rejectReason,
+              createdAt: aiServiceRequestsTable.createdAt,
+              updatedAt: aiServiceRequestsTable.updatedAt,
+            })
+            .from(aiServiceRequestsTable)
+            .where(eq(aiServiceRequestsTable.userId, user.id))
+            .all();
+          toolResult = { requests };
+        } else {
+          toolResult = executeSelfIntroduce();
+        }
 
         // STEP 3-D: 프론트 오른쪽 패널용 SSE 이벤트 전송
         // 프론트에서 type === 'tool_call' 로 파싱해서 도구 호출 로그에 표시

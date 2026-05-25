@@ -50,6 +50,7 @@ type UseFilesChatOptions = {
   // STEP 6-B: mode에 'tools' 추가
   mode?: 'general' | 'knowledge' | 'tools'
   channels?: KnowledgeChannel[]
+  onToolCall?: () => void
 }
 
 import { uploadFile } from '../../../shared/api/upload'
@@ -180,11 +181,18 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
             // STEP 6-F: tool_call 이벤트 처리 — 오른쪽 패널 상태에 누적
             if ('type' in parsed && parsed.type === 'tool_call') {
               setToolCalls((prev) => [...prev, parsed])
+              options.onToolCall?.()
               // 툴 이름별 다이얼로그 트리거 — 스토어에 직접 쓰므로 콜백 불필요
               if (parsed.name === 'self_introduce') {
                 useToolDialogStore.getState().setIntroDialog(
                   parsed.result as import('./tool-dialog-store').GptProfile
                 )
+              } else if (parsed.name === 'get_my_tasks') {
+                const { tasks } = parsed.result as { tasks: import('./tool-dialog-store').TaskItem[] }
+                useToolDialogStore.getState().setTasksDialog(tasks)
+              } else if (parsed.name === 'check_ai_service_request') {
+                const { requests } = parsed.result as { requests: import('./tool-dialog-store').AiRequestItem[] }
+                useToolDialogStore.getState().setAiRequestDialog(requests)
               }
             } else if ('type' in parsed && parsed.type === 'meta') {
               replaceLocalMessage(currentActiveId, tempUserId, {
