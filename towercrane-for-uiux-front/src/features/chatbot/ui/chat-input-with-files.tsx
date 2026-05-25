@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useState } from 'react'
-import { Paperclip, X, FileText, File, Send, HelpCircle, Bell, Code2, Sparkles } from 'lucide-react'
+import { Paperclip, X, FileText, File, Send, HelpCircle, Bell, Code2, Sparkles, ChevronRight } from 'lucide-react'
 
 const RAG_SAMPLE_TABS = [
   {
@@ -183,66 +183,80 @@ export function ChatInputWithFiles({
       {/* 샘플 질문 다이어로그 */}
       {showSuggestions && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[1px] transition-all"
           onClick={() => setShowSuggestions(false)}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-surface-border bg-surface-raised shadow-xl mx-4"
+            className="glass-panel w-full max-w-[500px] rounded-2xl mx-4 overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 헤더 */}
-            <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
+            <div className="flex items-center justify-between px-6 py-5 bg-surface-strong border-b border-surface-border">
               <div>
-                <p className="text-sm font-semibold ui-text-primary">RAG 테스트 샘플 질문</p>
-                <p className="text-xs ui-text-muted">클릭하면 입력창에 바로 채워집니다</p>
+                <h3 className="text-base font-bold ui-text-primary flex items-center gap-2">
+                  <Sparkles className="size-4 text-brand-primary animate-pulse" />
+                  <span>RAG 테스트 샘플 질문</span>
+                </h3>
+                <p className="text-xs ui-text-muted mt-1">클릭하면 입력창에 자동으로 채워집니다</p>
               </div>
               <button
                 onClick={() => setShowSuggestions(false)}
-                className="rounded-md p-1 text-text-muted hover:text-brand-primary hover:bg-surface-muted transition-colors"
+                className="flex size-8 items-center justify-center rounded-lg text-text-secondary transition-all hover:bg-surface-muted hover:text-text-primary active:scale-95 cursor-pointer"
+                aria-label="닫기"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            {/* 탭 */}
-            <div className="flex border-b border-surface-border px-2 pt-1 gap-0.5">
-              {RAG_SAMPLE_TABS.map((tab, i) => {
-                const TabIcon = tab.Icon
-                const isActive = activeTab === i
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(i)}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-md border-b-2 transition-colors ${
-                      isActive
-                        ? 'border-brand-primary text-brand-primary'
-                        : 'border-transparent text-text-muted hover:text-text-primary'
-                    }`}
-                  >
-                    <TabIcon className="size-3.5 shrink-0" />
-                    {tab.label}
-                  </button>
-                )
-              })}
+            {/* 탭 (Segmented Control) */}
+            <div className="px-6 py-3 bg-surface-muted border-b border-surface-border">
+              <div className="bg-surface-muted/65 p-1 rounded-xl flex gap-1 border border-surface-border-soft">
+                {RAG_SAMPLE_TABS.map((tab, i) => {
+                  const TabIcon = tab.Icon
+                  const isActive = activeTab === i
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveTab(i)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 text-xs font-semibold rounded-lg border transition-all duration-200 cursor-pointer ${
+                        isActive
+                          ? 'bg-brand-glass text-brand-primary border-brand-border shadow-sm'
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted/40 border-transparent'
+                      }`}
+                    >
+                      <TabIcon className={`size-3.5 shrink-0 transition-transform ${isActive ? 'scale-110' : ''}`} />
+                      <span>{tab.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             {/* 질문 목록 */}
-            <ul className="p-2">
-              {RAG_SAMPLE_TABS[activeTab].questions.map((q) => (
-                <li key={q}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange(q)
-                      setShowSuggestions(false)
-                    }}
-                    className="w-full rounded-lg px-3 py-2.5 text-left text-sm ui-text-primary hover:bg-brand-glass hover:text-brand-primary transition-colors"
-                  >
-                    {q}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="h-[420px] overflow-y-auto px-6 py-5 bg-surface-raised scrollbar-thin">
+              <ul className="flex flex-col gap-2.5 m-0 p-0 list-none">
+                {RAG_SAMPLE_TABS[activeTab].questions.map((q) => (
+                  <li key={q} className="list-none m-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange(q)
+                        setShowSuggestions(false)
+                      }}
+                      className="w-full flex items-center justify-between gap-3 text-left text-sm ui-text-primary bg-surface-muted/30 border border-surface-border-soft rounded-xl px-4 py-3.5 transition-all duration-200 hover:bg-brand-glass hover:border-brand-border hover:text-brand-primary hover:shadow-sm cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-surface-raised border border-surface-border-soft text-text-muted group-hover:bg-brand-glass group-hover:border-brand-border group-hover:text-brand-primary transition-all">
+                          <HelpCircle className="size-3.5" />
+                        </div>
+                        <span className="truncate font-medium">{q}</span>
+                      </div>
+                      <ChevronRight className="size-4 text-text-muted/70 group-hover:text-brand-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       )}

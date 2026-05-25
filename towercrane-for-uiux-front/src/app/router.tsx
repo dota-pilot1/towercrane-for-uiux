@@ -29,11 +29,16 @@ import { ChatbotStreamingGuidePage } from '../pages/chatbot/ui/chatbot-streaming
 import { ChatbotHistoryGuidePage } from '../pages/chatbot/ui/chatbot-history-guide-page'
 import { ChatbotFilesGuidePage } from '../pages/chatbot/ui/chatbot-files-guide-page'
 import { ChatbotKnowledgeGuidePage } from '../pages/chatbot/ui/chatbot-knowledge-guide-page'
+import { ChatbotToolsPage } from '../pages/chatbot/ui/chatbot-tools-page'
+import { ChatbotToolsGuidePage } from '../pages/chatbot/ui/chatbot-tools-guide-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-workspace-home-page'
 import { HomePage } from '../pages/home/ui/home-page'
 import { AiServiceRequestPage } from '../pages/ai-service-request/ui/ai-service-request-page'
+import { AiServiceMyPage } from '../pages/ai-service-my/ui/ai-service-my-page'
+import { AiServiceAdminPage } from '../pages/ai-service-admin/ui/ai-service-admin-page'
+import { AiMonitoringPage } from '../pages/ai-monitoring/ui/ai-monitoring-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
 import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
@@ -416,6 +421,18 @@ const chatbotKnowledgeGuideRoute = createRoute({
   component: ChatbotKnowledgeGuidePage,
 })
 
+const chatbotToolsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/tools',
+  component: ChatbotToolsPage,
+})
+
+const chatbotToolsGuideRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/tools/guide',
+  component: ChatbotToolsGuidePage,
+})
+
 const chatbotKnowledgeNoticeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot/knowledge/notice',
@@ -487,6 +504,24 @@ const aiServiceRequestRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/ai-service-request',
   component: AiServiceRequestPage,
+})
+
+const aiServiceMyRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/ai-service-request/my',
+  component: AiServiceMyPage,
+})
+
+const aiServiceAdminRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/admin/ai-service-requests',
+  component: AiServiceAdminPage,
+})
+
+const aiMonitoringRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/admin/ai-monitoring',
+  component: AiMonitoringPage,
 })
 
 const aiMethodologyRoute = createRoute({
@@ -872,10 +907,15 @@ export const router = createRouter({
       chatbotHistoryGuideRoute,
       chatbotFilesGuideRoute,
       chatbotKnowledgeGuideRoute,
+      chatbotToolsRoute,
+      chatbotToolsGuideRoute,
       meetingRoute,
       meetingWorkspaceRoute,
       docuRoute,
       aiServiceRequestRoute,
+      aiServiceMyRoute,
+      aiServiceAdminRoute,
+      aiMonitoringRoute,
       aiMethodologyRoute,
       aiEvaluationRoute,
       apiDocRoute,

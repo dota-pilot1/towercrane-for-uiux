@@ -1881,11 +1881,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       }
     };
     ensureChatbotChild('지식 검색',        'chatbot_knowledge',       'Search',         4);
+    ensureChatbotChild('도구 호출',        'chatbot_tools',           'Wrench',          5);
     ensureChatbotChild('기본 채팅 가이드',  'chatbot_basic_guide',     'BookOpen',        10);
     ensureChatbotChild('스트리밍 가이드',   'chatbot_streaming_guide', 'BookOpen',        11);
     ensureChatbotChild('히스토리 가이드',   'chatbot_history_guide',   'BookOpen',        12);
     ensureChatbotChild('파일 첨부 가이드',  'chatbot_files_guide',     'BookOpen',        13);
     ensureChatbotChild('지식 검색 가이드',  'chatbot_knowledge_guide', 'BookOpen',        14);
+    ensureChatbotChild('도구 호출 가이드',  'chatbot_tools_guide',     'BookOpen',        15);
 
     // 루트 메뉴 표시 순서 고정:
     // 0:업무관리, 1:AI 서비스 신청, 2:API Doc, 3:회의실,
@@ -2468,6 +2470,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     const now = new Date().toISOString();
     const demoUser = this.ensureDemoUser(now);
+    this.ensureKnowledgeAiSamples(now, demoUser.id, demoUser.name || demoUser.email);
     this.ensurePrototypeDefaultWorkspace(now, demoUser.id);
     this.ensureTaskDefaultWorkspace(now, demoUser.id);
     this.ensureMeetingDefaultWorkspace(now, demoUser.id);
@@ -2496,6 +2499,194 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `,
       )
       .run();
+  }
+
+  private ensureKnowledgeAiSamples(now: string, ownerId: string, ownerName: string) {
+    const existing = this.sqlite
+      .prepare("SELECT COUNT(*) as count FROM knowledge_documents WHERE channel = 'ai'")
+      .get() as { count: number } | undefined;
+
+    if (Number(existing?.count ?? 0) > 0) {
+      return;
+    }
+
+    const samples = [
+      {
+        id: 'knowledge-ai-sample-meeting-summary',
+        title: 'ChatGPT로 회의록 요약하기',
+        summary: '회의 내용을 핵심 결정사항, 할 일, 리스크로 정리하는 AI 활용 가이드',
+        tags: ['회의록', '요약', '프롬프트'],
+        metadata: {
+          aiDocType: 'usage_guide',
+          aiDocTypeLabel: 'AI 활용 가이드',
+          difficulty: 'basic',
+          difficultyLabel: '기초',
+          targetRole: '기획자, 운영자, 개발 리더',
+          businessDomain: '회의 정리',
+          toolNames: ['ChatGPT', 'Gemini', 'Claude'],
+          hasPromptTemplate: true,
+          hasExample: true,
+          policyLevel: 'recommended',
+          policyLevelLabel: '권장',
+          ownerTeam: 'AX 운영팀',
+        },
+        contentMarkdown: [
+          '# 활용 목적',
+          '회의록 원문을 그대로 저장하기보다 핵심 결정사항, 담당자별 할 일, 일정 리스크를 빠르게 정리할 때 사용한다.',
+          '',
+          '# 추천 프롬프트',
+          '아래 회의 내용을 결정사항, 할 일, 이슈, 다음 회의 안건으로 나눠 요약해줘. 할 일은 담당자와 마감일이 보이면 함께 적어줘.',
+          '',
+          '# 주의사항',
+          '고객 개인정보, 계약 금액, 내부 보안 정보가 포함된 회의록은 사내 정책에 맞게 비식별 처리한 뒤 사용한다.',
+        ].join('\n'),
+      },
+      {
+        id: 'knowledge-ai-sample-code-review-prompt',
+        title: '코드 리뷰 요청 프롬프트 템플릿',
+        summary: 'PR 리뷰 전에 변경 의도, 위험 지점, 테스트 관점을 정리하는 프롬프트 템플릿',
+        tags: ['코드리뷰', '프롬프트', '개발'],
+        metadata: {
+          aiDocType: 'prompt_template',
+          aiDocTypeLabel: '프롬프트 템플릿',
+          difficulty: 'normal',
+          difficultyLabel: '일반',
+          targetRole: '개발자',
+          businessDomain: '코드 리뷰',
+          toolNames: ['ChatGPT', 'Claude', 'Copilot'],
+          hasPromptTemplate: true,
+          hasExample: true,
+          policyLevel: 'recommended',
+          policyLevelLabel: '권장',
+          ownerTeam: '개발팀',
+        },
+        contentMarkdown: [
+          '# 템플릿',
+          '다음 변경사항을 코드 리뷰 관점에서 봐줘. 특히 런타임 오류 가능성, 권한/데이터 검증 누락, 기존 UX 회귀, 테스트 누락을 우선순위로 지적해줘.',
+          '',
+          '# 함께 넣을 정보',
+          '- 변경 목적',
+          '- 주요 파일',
+          '- 재현 또는 검증 방법',
+          '- 걱정되는 부분',
+          '',
+          '# 답변 형식',
+          '중요도 순서로 문제를 먼저 정리하고, 파일과 라인 기준으로 설명하게 한다.',
+        ].join('\n'),
+      },
+      {
+        id: 'knowledge-ai-sample-privacy-policy',
+        title: '개인정보를 AI에 입력하면 안 되는 이유',
+        summary: 'AI 도구 사용 시 개인정보와 민감정보를 입력하지 않아야 하는 기준',
+        tags: ['보안', '개인정보', '정책'],
+        metadata: {
+          aiDocType: 'policy',
+          aiDocTypeLabel: '보안/정책',
+          difficulty: 'basic',
+          difficultyLabel: '기초',
+          targetRole: '전 직원',
+          businessDomain: 'AI 보안',
+          toolNames: ['ChatGPT', 'Gemini', 'Claude', 'Copilot'],
+          hasPromptTemplate: false,
+          hasExample: true,
+          policyLevel: 'required',
+          policyLevelLabel: '필수 준수',
+          ownerTeam: '보안/AX 운영팀',
+        },
+        contentMarkdown: [
+          '# 원칙',
+          '이름, 전화번호, 이메일, 고객 식별자, 계정 정보, 계약 정보 같은 개인정보와 민감정보는 외부 AI 도구에 입력하지 않는다.',
+          '',
+          '# 허용되는 방식',
+          '필요한 경우 홍길동, user@example.com, 고객 A처럼 예시 값으로 치환하거나 식별 가능한 정보를 제거한 뒤 질문한다.',
+          '',
+          '# 챗봇 답변 기준',
+          '사용자가 개인정보 입력 가능 여부를 묻는 경우 가능하다고 답하지 말고, 비식별 처리 후 사용하라고 안내한다.',
+        ].join('\n'),
+      },
+    ];
+
+    const insertDocument = this.sqlite.prepare(`
+      INSERT OR IGNORE INTO knowledge_documents (
+        id,
+        channel,
+        title,
+        summary,
+        content_markdown,
+        content_json,
+        tags_json,
+        status,
+        visibility,
+        owner_id,
+        owner_name,
+        effective_from,
+        effective_to,
+        metadata_json,
+        created_at,
+        updated_at,
+        published_at
+      )
+      VALUES (?, 'ai', ?, ?, ?, NULL, ?, 'published', 'all', ?, ?, NULL, NULL, ?, ?, ?, ?)
+    `);
+    const insertChunk = this.sqlite.prepare(`
+      INSERT OR IGNORE INTO knowledge_chunks (
+        id,
+        document_id,
+        channel,
+        chunk_index,
+        heading_path,
+        chunk_text,
+        token_estimate,
+        metadata_json,
+        created_at
+      )
+      VALUES (?, ?, 'ai', 0, 'AI 자료', ?, ?, ?, ?)
+    `);
+
+    for (const sample of samples) {
+      const tagsJson = JSON.stringify(sample.tags);
+      const metadataJson = JSON.stringify(sample.metadata);
+      const chunkText = [
+        '[AI 자료]',
+        `제목: ${sample.title}`,
+        `요약: ${sample.summary}`,
+        `자료 유형: ${sample.metadata.aiDocTypeLabel}`,
+        `난이도: ${sample.metadata.difficultyLabel}`,
+        `대상 역할: ${sample.metadata.targetRole}`,
+        `업무 영역: ${sample.metadata.businessDomain}`,
+        `사용 도구: ${sample.metadata.toolNames.join(', ')}`,
+        `프롬프트 템플릿 포함: ${sample.metadata.hasPromptTemplate ? '예' : '아니오'}`,
+        `예시 포함: ${sample.metadata.hasExample ? '예' : '아니오'}`,
+        `정책 중요도: ${sample.metadata.policyLevelLabel}`,
+        `담당: ${sample.metadata.ownerTeam}`,
+        `태그: ${sample.tags.join(', ')}`,
+        '',
+        '내용:',
+        sample.contentMarkdown,
+      ].join('\n');
+
+      insertDocument.run(
+        sample.id,
+        sample.title,
+        sample.summary,
+        sample.contentMarkdown,
+        tagsJson,
+        ownerId,
+        ownerName,
+        metadataJson,
+        now,
+        now,
+        now,
+      );
+      insertChunk.run(
+        `${sample.id}-chunk-0`,
+        sample.id,
+        chunkText,
+        Math.ceil(chunkText.length / 4),
+        metadataJson,
+        now,
+      );
+    }
   }
 
   private ensureApiDocDefaultTeam(now: string, userId: string) {

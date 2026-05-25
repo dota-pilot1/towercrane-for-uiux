@@ -63,11 +63,13 @@ function sectionIdToPath(sectionId: string): string {
     chatbot_flow: '/chatbot/flow',
     chatbot_files: '/chatbot/files',
     chatbot_knowledge: '/chatbot/knowledge',
+    chatbot_tools: '/chatbot/tools',
     chatbot_basic_guide: '/chatbot/guide',
     chatbot_streaming_guide: '/chatbot/streaming/guide',
     chatbot_history_guide: '/chatbot/history/guide',
     chatbot_files_guide: '/chatbot/files/guide',
     chatbot_knowledge_guide: '/chatbot/knowledge/guide',
+    chatbot_tools_guide: '/chatbot/tools/guide',
   }
   return map[sectionId] ?? '/prototype'
 }
@@ -116,6 +118,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/chatbot/knowledge/ai')) return 'knowledge_ai'
   if (pathname.startsWith('/chatbot/knowledge/dev')) return 'knowledge_dev'
   if (pathname.startsWith('/chatbot/knowledge')) return 'chatbot_knowledge'
+  if (pathname.startsWith('/chatbot/tools')) return 'chatbot_tools'
   if (pathname.startsWith('/chatbot')) return 'chatbot_basic'
   return 'prototype'
 }
@@ -184,6 +187,14 @@ const SECTION_META: Record<string, { description: string; badge?: string }> = {
   chatbot_knowledge: {
     description: '사내 공지·FAQ 문서를 벡터 검색해 RAG 방식으로 답변을 생성합니다.',
     badge: 'RAG',
+  },
+  chatbot_tools: {
+    description: 'AI가 외부 함수를 직접 호출하고 결과를 답변에 통합하는 Tool Use 패턴을 실습합니다.',
+    badge: 'Tool Use',
+  },
+  chatbot_tools_guide: {
+    description: 'Tool 정의 → tool_use 감지 → 함수 실행 → tool_result 재전달 흐름을 설명합니다.',
+    badge: 'Guide',
   },
   knowledge_channel: {
     description: '사내 공지·FAQ 문서를 벡터 검색해 RAG 방식으로 답변을 생성합니다.',

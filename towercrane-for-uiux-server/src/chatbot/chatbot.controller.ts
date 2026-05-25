@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -60,11 +61,16 @@ export class ChatbotController {
       sessionId: string;
       message: string;
       fileUrls?: string[];
-      mode?: 'general' | 'knowledge';
+      // STEP 5: body에 tools 모드 추가
+      mode?: 'general' | 'knowledge' | 'tools';
       channels?: KnowledgeChannel[];
     },
     @Res() res: Response,
   ) {
+    if (!user.aiAccess && user.role !== 'admin') {
+      throw new ForbiddenException('AI 서비스 사용 권한이 없습니다. 서비스 신청 후 승인을 받아주세요.');
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');

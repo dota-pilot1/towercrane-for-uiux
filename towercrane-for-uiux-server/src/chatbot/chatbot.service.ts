@@ -13,6 +13,7 @@ import { DatabaseService } from '../database/database.service';
 import {
   chatMessagesTable,
   chatSessionsTable,
+  usageLogsTable,
   type KnowledgeChannel,
 } from '../database/schema';
 import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service';
@@ -43,9 +44,32 @@ type KnowledgeSource = {
 
 type StreamOptions = {
   fileUrls?: string[];
-  mode?: 'general' | 'knowledge';
+  // STEP 1-A: mode에 'tools' 추가 — tools 모드일 때 Function Calling 흐름 사용
+  mode?: 'general' | 'knowledge' | 'tools';
   channels?: KnowledgeChannel[];
 };
+
+// STEP 1-B: self_introduce 툴 스키마 정의
+// "넌 누구야", "자기소개해줘" 같은 질문에 발동 — 파라미터 없음
+const SELF_INTRODUCE_TOOL: OpenAI.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'self_introduce',
+    description: '사용자가 명시적으로 자기소개를 요청할 때만 사용한다. "자기소개해줘", "넌 누구야", "너에 대해 알려줘", "who are you" 처럼 AI의 정체나 소개를 직접 물을 때만 발동한다. 단순 인사("안녕", "hello")에는 절대 사용하지 않는다.',
+    parameters: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+};
+
+// STEP 1-C: 툴 실행 함수 — 고정 자기소개 반환 (Hello World)
+function executeSelfIntroduce() {
+  return {
+    message: '나는 지구를 지키는 슈퍼 최강 천재 GPT입니다. Welcome to GPT World! 🌍⚡',
+  };
+}
 
 const CHATBOT_SYSTEM_PROMPT = `당신은 친절하고 실용적인 AI 어시스턴트입니다.
 
@@ -304,6 +328,8 @@ export class ChatbotService {
 
     const fileUrls = options.fileUrls ?? [];
     const isKnowledgeMode = options.mode === 'knowledge';
+    // STEP 2: tools 모드 여부 판단
+    const isToolsMode = options.mode === 'tools';
 
     this.assertOwnership(sessionId, user.id);
     const meta = this.touchSession(sessionId, message || '파일 첨부');
@@ -351,19 +377,103 @@ export class ChatbotService {
       { role: 'user', content },
     ]
 
+    // STEP 3: tools 모드 분기 — 기존 스트리밍 흐름과 완전히 분리
+    if (isToolsMode) {
+      // STEP 3-A: 1차 요청 — stream: false (tool_calls JSON 완성본이 필요하므로)
+      // stream: true 로 하면 tool_calls 인자가 청크로 쪼개져서 파싱이 복잡해짐
+      const firstResponse = await this.openai.chat.completions.create({
+        model,
+        stream: false,
+        messages,
+        tools: [SELF_INTRODUCE_TOOL],
+        tool_choice: 'auto', // AI가 툴 쓸지 말지 스스로 판단
+      });
+
+      const choice = firstResponse.choices[0];
+
+      // STEP 3-B: AI가 tool_calls를 반환했는지 확인
+      if (choice.finish_reason === 'tool_calls' && choice.message.tool_calls?.length) {
+        const toolCall = choice.message.tool_calls[0] as OpenAI.ChatCompletionMessageFunctionToolCall;
+        const toolName = toolCall.function.name;
+        const toolInput = JSON.parse(toolCall.function.arguments) as Record<string, unknown>;
+
+        // STEP 3-C: 실제 함수 실행 (Hello World — 파라미터 없는 고정 자기소개)
+        const toolResult = executeSelfIntroduce();
+
+        // STEP 3-D: 프론트 오른쪽 패널용 SSE 이벤트 전송
+        // 프론트에서 type === 'tool_call' 로 파싱해서 도구 호출 로그에 표시
+        res.write(
+          `data: ${JSON.stringify({
+            type: 'tool_call',
+            name: toolName,
+            input: toolInput,
+            result: toolResult,
+          })}\n\n`,
+        );
+
+        // STEP 3-E: 2차 요청 — 실행 결과를 포함해서 최종 답변 생성
+        // messages에 (assistant의 tool_calls) + (tool 역할의 실행 결과) 추가
+        const messagesWithResult: OpenAI.ChatCompletionMessageParam[] = [
+          ...messages,
+          choice.message, // assistant: { tool_calls: [...] }
+          {
+            role: 'tool',
+            tool_call_id: toolCall.id, // 1차 응답의 id와 반드시 일치해야 함
+            content: JSON.stringify(toolResult),
+          },
+        ];
+
+        // STEP 3-F: 최종 답변은 stream: true — 기존과 동일하게 SSE 청크 전송
+        const finalStream = await this.openai.chat.completions.create({
+          model,
+          stream: true,
+          messages: messagesWithResult,
+        });
+
+        let assistantContent = '';
+        for await (const chunk of finalStream) {
+          const text = chunk.choices[0]?.delta?.content ?? '';
+          if (text) {
+            assistantContent += text;
+            res.write(`data: ${JSON.stringify({ text })}\n\n`);
+          }
+        }
+
+        // STEP 3-G: 기존과 동일하게 done 이벤트 + 종료
+        const assistantMessage = this.insertMessage(sessionId, 'assistant', assistantContent);
+        res.write(`data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources: [] })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return; // 이 아래 기존 흐름 실행 안 함
+      }
+
+      // STEP 3-H: tool_calls 없이 일반 답변으로 판단된 경우 — 텍스트 그대로 반환
+      const directContent = choice.message.content ?? '';
+      const assistantMessage = this.insertMessage(sessionId, 'assistant', directContent);
+      res.write(`data: ${JSON.stringify({ text: directContent })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources: [] })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
+
+    // STEP 4: 기존 general / knowledge 흐름 — 변경 없음
     const stream = await this.openai.chat.completions.create({
       model,
       stream: true,
+      stream_options: { include_usage: true },
       messages,
     });
 
     let assistantContent = '';
+    let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | null = null;
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content ?? '';
       if (text) {
         assistantContent += text;
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
+      if (chunk.usage) usage = chunk.usage;
     }
 
     const assistantMessage = this.insertMessage(
@@ -376,5 +486,34 @@ export class ChatbotService {
     );
     res.write('data: [DONE]\n\n');
     res.end();
+
+    // usage 기록 (비동기 — 응답 후 처리)
+    if (usage) {
+      const COST_PER_1K: Record<string, { prompt: number; completion: number }> = {
+        'gpt-4o':           { prompt: 0.005,   completion: 0.015 },
+        'gpt-4o-mini':      { prompt: 0.00015, completion: 0.0006 },
+        'gpt-4.1':          { prompt: 0.002,   completion: 0.008 },
+        'gpt-4.1-mini':     { prompt: 0.0004,  completion: 0.0016 },
+        'gpt-4.1-nano':     { prompt: 0.0001,  completion: 0.0004 },
+      };
+      const rate = COST_PER_1K[model] ?? { prompt: 0.00015, completion: 0.0006 };
+      const estimatedCostUsd =
+        (usage.prompt_tokens / 1000) * rate.prompt +
+        (usage.completion_tokens / 1000) * rate.completion;
+
+      this.db.insert(usageLogsTable).values({
+        id: randomUUID(),
+        userId: user.id,
+        userName: user.name,
+        sessionId,
+        model,
+        promptTokens: usage.prompt_tokens,
+        completionTokens: usage.completion_tokens,
+        totalTokens: usage.total_tokens,
+        estimatedCostUsd,
+        isError: 0,
+        createdAt: new Date().toISOString(),
+      }).run();
+    }
   }
 }

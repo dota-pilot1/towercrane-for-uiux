@@ -37,12 +37,23 @@ type StreamKnowledgeSources = {
   items: KnowledgeSource[]
 }
 
+// STEP 6-A: tool_call SSE 이벤트 타입 추가
+// 백엔드 STEP 3-D에서 전송하는 이벤트를 여기서 수신
+export type ToolCallLog = {
+  type: 'tool_call'
+  name: string
+  input: Record<string, unknown>
+  result: Record<string, unknown>
+}
+
 type UseFilesChatOptions = {
-  mode?: 'general' | 'knowledge'
+  // STEP 6-B: mode에 'tools' 추가
+  mode?: 'general' | 'knowledge' | 'tools'
   channels?: KnowledgeChannel[]
 }
 
 import { uploadFile } from '../../../shared/api/upload'
+import { useToolDialogStore } from './tool-dialog-store'
 
 async function uploadFiles(files: File[]): Promise<string[]> {
   if (files.length === 0) return []
@@ -72,6 +83,8 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>([])
+  // STEP 6-C: 도구 호출 로그 상태 — 오른쪽 패널에 전달
+  const [toolCalls, setToolCalls] = useState<ToolCallLog[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -97,6 +110,8 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
     const tempUserId = `temp-user-${Date.now()}`
     const tempAssistantId = `temp-assistant-${Date.now()}`
     const isKnowledgeMode = options.mode === 'knowledge'
+    // STEP 6-D: tools 모드 시작 시 이전 로그 초기화
+    if (options.mode === 'tools') setToolCalls([])
 
     // 파일 업로드 먼저
     const fileUrls = await uploadFiles(attachedFiles)
@@ -160,8 +175,17 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
               | StreamDone
               | StreamChunk
               | StreamKnowledgeSources
+              | ToolCallLog // STEP 6-E: tool_call 이벤트 타입 추가
 
-            if ('type' in parsed && parsed.type === 'meta') {
+            // STEP 6-F: tool_call 이벤트 처리 — 오른쪽 패널 상태에 누적
+            if ('type' in parsed && parsed.type === 'tool_call') {
+              setToolCalls((prev) => [...prev, parsed])
+              // 툴 이름별 다이얼로그 트리거 — 스토어에 직접 쓰므로 콜백 불필요
+              if (parsed.name === 'self_introduce') {
+                const msg = (parsed.result as { message?: string }).message ?? ''
+                useToolDialogStore.getState().setIntroDialog(msg)
+              }
+            } else if ('type' in parsed && parsed.type === 'meta') {
               replaceLocalMessage(currentActiveId, tempUserId, {
                 id: parsed.userMessage.id,
                 role: 'user',
@@ -297,6 +321,8 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
     setAttachedFiles,
     isStreaming,
     knowledgeSources,
+    // STEP 6-G: toolCalls 반환 — 페이지의 오른쪽 패널에 전달
+    toolCalls,
     bottomRef,
     addSession: () => void addSession(),
     deleteSession: (id: string) => void deleteSession(id),
