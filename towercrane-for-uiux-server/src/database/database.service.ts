@@ -1847,16 +1847,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     ensureChatbotChild('지식 검색 가이드',  'chatbot_knowledge_guide', 'BookOpen',        14);
 
     // 루트 메뉴 표시 순서 고정:
-    // 0:AI Native, 1:회의실, 2:업무관리, 3:Postman, 4:학습 일지,
-    // 5:게시판, 6:SQL Prac, 7:Challenge, 8:Prototype, 9:지식채널, 10:챗봇, 11:Admin
+    // 0:업무관리(학습일지 하위 포함), 1:AI 서비스 신청, 2:API Doc, 3:회의실,
+    // 4:게시판, 5:SQL Prac, 6:Challenge, 7:Prototype, 8:지식채널, 9:챗봇, 10:Admin
     const rootMenuOrder: Array<{
       sectionId: string | string[];
       displayOrder: number;
     }> = [
       { sectionId: ['task_group', 'task'], displayOrder: 0 },
-      { sectionId: 'api_doc', displayOrder: 1 },
-      { sectionId: 'meeting', displayOrder: 2 },
-      { sectionId: 'study_diary', displayOrder: 3 },
+      { sectionId: 'ai_service_request', displayOrder: 1 },
+      { sectionId: 'api_doc', displayOrder: 2 },
+      { sectionId: 'meeting', displayOrder: 3 },
       { sectionId: 'boards', displayOrder: 4 },
       { sectionId: 'sql_group', displayOrder: 5 },
       { sectionId: 'dev_challenge', displayOrder: 6 },
@@ -2782,9 +2782,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
 
   private reconcileAiNativeMenus(now: string) {
-    // ── AI Native 그룹 + 하위 항목 전부 숨김 ─────────────────────────────
+    // ── AI Native 그룹 + 구 하위 항목 숨김 (ai_service_request는 별도 루트 메뉴로 관리)
     this.sqlite
-      .prepare(`UPDATE menus SET is_visible = 0, updated_at = ? WHERE section_id IN ('ai_native_group','ai_service_request','ai_methodology','ai_evaluation')`)
+      .prepare(`UPDATE menus SET is_visible = 0, updated_at = ? WHERE section_id IN ('ai_native_group','ai_methodology','ai_evaluation')`)
       .run(now);
 
     // ── 지식채널 루트 메뉴 보장 ───────────────────────────────────────────
@@ -2839,10 +2839,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     ensureChild('개발 자료','knowledge_dev',  'Code2',      2);
     ensureChild('AI 자료', 'knowledge_ai',    'Sparkles',   3);
 
-    // AI 서비스 신청은 챗봇 하위에서 제거 (별도 메뉴로 관리)
-    this.sqlite
-      .prepare(`UPDATE menus SET is_visible=0, updated_at=? WHERE section_id='ai_service_request'`)
-      .run(now);
+    // ── AI 서비스 신청 → 루트 메뉴로 보장 ───────────────────────────────
+    const existingAiServiceRequest = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'ai_service_request' LIMIT 1`)
+      .get() as { id: string } | undefined;
+    if (!existingAiServiceRequest) {
+      this.db.insert(menusTable).values({
+        id: randomUUID(), name: 'AI 서비스 신청', sectionId: 'ai_service_request',
+        icon: 'ClipboardList', displayOrder: 10, isVisible: true, requiredRole: null,
+        parentId: null, createdAt: now, updatedAt: now,
+      }).run();
+    } else {
+      this.sqlite
+        .prepare(`UPDATE menus SET name='AI 서비스 신청', icon='ClipboardList', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`)
+        .run(now, existingAiServiceRequest.id);
+    }
 
     // ── AI 활용 능력 평가 → 업무 관리 하위 ──────────────────────────────
     const taskParent = this.sqlite
@@ -3692,6 +3703,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         sectionId: 'project_issues',
         icon: 'ShieldAlert',
         displayOrder: 2,
+      },
+      {
+        name: '학습 일지',
+        sectionId: 'study_diary',
+        icon: 'BookOpen',
+        displayOrder: 3,
       },
     ];
 

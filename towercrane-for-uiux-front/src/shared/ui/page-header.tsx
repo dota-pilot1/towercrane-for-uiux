@@ -14,18 +14,18 @@ export function PageHeader({ icon: Icon, title, description, actions, className 
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center gap-3 rounded-md bg-text-primary px-5 py-4',
+        'flex min-w-0 items-center gap-4 rounded-md border border-brand-border bg-brand-glass backdrop-blur-[2px] px-5 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]',
         actions && 'flex-wrap justify-between',
         className,
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-background/20 bg-background/10 text-background">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border/40 bg-surface-raised text-brand-primary shadow-sm shadow-brand-primary/5">
           <Icon className="size-5" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-xl font-black text-background">{title}</h2>
-          {description && <p className="mt-1 text-xs text-background/60">{description}</p>}
+          <h2 className="text-base font-extrabold text-text-primary tracking-tight">{title}</h2>
+          {description && <p className="mt-0.5 text-xs text-text-secondary">{description}</p>}
         </div>
       </div>
       {actions && <div className="shrink-0">{actions}</div>}

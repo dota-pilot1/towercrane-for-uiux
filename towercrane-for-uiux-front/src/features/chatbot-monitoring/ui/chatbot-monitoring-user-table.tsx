@@ -30,7 +30,7 @@ export function ChatbotMonitoringUserTable({
       description="챗봇에 질문을 보낸 사용자 기준으로 집계합니다."
       bodyClassName="p-0"
     >
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto px-4 py-4">
         <table className="w-full min-w-[820px] border-separate border-spacing-0 text-left">
           <colgroup>
             <col className="w-[22%]" />
@@ -40,20 +40,20 @@ export function ChatbotMonitoringUserTable({
             <col className="w-[16%]" />
           </colgroup>
           <thead>
-            <tr className="bg-surface-muted">
-              <th className="border-b border-r border-surface-border-soft px-5 py-3 text-[11px] font-black uppercase tracking-widest text-text-muted">
+            <tr>
+              <th className="border-b border-surface-border-soft px-4 pb-3 text-[11px] font-black uppercase tracking-widest text-text-muted">
                 사용자
               </th>
-              <th className="border-b border-r border-surface-border-soft px-5 py-3 text-[11px] font-black uppercase tracking-widest text-text-muted">
+              <th className="border-b border-surface-border-soft px-4 pb-3 text-[11px] font-black uppercase tracking-widest text-text-muted">
                 이메일
               </th>
-              <th className="border-b border-r border-surface-border-soft px-5 py-3 text-right text-[11px] font-black uppercase tracking-widest text-text-muted">
+              <th className="border-b border-surface-border-soft px-4 pb-3 text-right text-[11px] font-black uppercase tracking-widest text-text-muted">
                 질문 수
               </th>
-              <th className="border-b border-r border-surface-border-soft px-5 py-3 text-right text-[11px] font-black uppercase tracking-widest text-text-muted">
+              <th className="border-b border-surface-border-soft px-4 pb-3 text-right text-[11px] font-black uppercase tracking-widest text-text-muted">
                 세션 수
               </th>
-              <th className="border-b border-surface-border-soft px-5 py-3 text-right text-[11px] font-black uppercase tracking-widest text-text-muted">
+              <th className="border-b border-surface-border-soft px-4 pb-3 text-right text-[11px] font-black uppercase tracking-widest text-text-muted">
                 마지막 질문
               </th>
             </tr>
@@ -74,7 +74,7 @@ export function ChatbotMonitoringUserTable({
             ) : (
               users.map((user) => (
                 <tr key={user.userId} className="group transition-colors hover:bg-surface-muted">
-                  <td className="border-b border-r border-surface-border-soft px-5 py-3.5 align-middle">
+                  <td className="border-b border-surface-border-soft px-4 py-4 align-middle group-last:border-b-0">
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-xs font-black text-brand-primary">
                         {user.name.charAt(0)}
@@ -84,22 +84,22 @@ export function ChatbotMonitoringUserTable({
                       </span>
                     </div>
                   </td>
-                  <td className="border-b border-r border-surface-border-soft px-5 py-3.5 align-middle">
+                  <td className="border-b border-surface-border-soft px-4 py-4 align-middle group-last:border-b-0">
                     <span className="block truncate text-sm text-text-secondary">
                       {user.email}
                     </span>
                   </td>
-                  <td className="border-b border-r border-surface-border-soft px-5 py-3.5 text-right align-middle">
+                  <td className="border-b border-surface-border-soft px-4 py-4 text-right align-middle group-last:border-b-0">
                     <span className="inline-flex min-w-10 justify-center rounded-md border border-brand-border bg-brand-glass px-2.5 py-1 text-sm font-black text-brand-primary">
                       {formatNumber(user.questionCount)}
                     </span>
                   </td>
-                  <td className="border-b border-r border-surface-border-soft px-5 py-3.5 text-right align-middle">
+                  <td className="border-b border-surface-border-soft px-4 py-4 text-right align-middle group-last:border-b-0">
                     <span className="font-mono text-sm font-semibold text-text-secondary">
                       {formatNumber(user.sessionCount)}
                     </span>
                   </td>
-                  <td className="border-b border-surface-border-soft px-5 py-3.5 text-right align-middle text-sm text-text-muted">
+                  <td className="border-b border-surface-border-soft px-4 py-4 text-right align-middle text-sm text-text-muted group-last:border-b-0">
                     {formatDateTime(user.lastQuestionAt)}
                   </td>
                 </tr>

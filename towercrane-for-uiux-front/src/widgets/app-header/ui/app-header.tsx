@@ -193,6 +193,10 @@ const SECTION_META: Record<string, { description: string; badge?: string }> = {
   knowledge_dev: {
     description: '개발 관련 사내 자료를 검색해 답변합니다.',
   },
+  ai_service_request: {
+    description: 'AI Chatbot, LLM API 등 AI 서비스 사용 권한을 신청하고 승인 흐름을 확인합니다.',
+    badge: 'NEW',
+  },
   sql: {
     description: 'SQL 학습 문제를 풀고 실력을 점검할 수 있습니다.',
   },

@@ -491,22 +491,7 @@ export function TaskPage({
 
   return (
     <section className={`space-y-4 ui-page-bg ${tasks.length > 0 ? 'pb-20' : 'pb-8'}`}>
-      {workspaceId ? (
-        <div className="flex items-center gap-2 text-sm">
-          <button
-            type="button"
-            onClick={() => navigate({ to: '/task' })}
-            className="flex items-center gap-1 rounded-sm text-text-muted transition-colors hover:text-brand-primary"
-          >
-            <ChevronLeft className="size-3.5" />
-            Workspaces
-          </button>
-          <span className="text-text-muted">/</span>
-          <span className="font-semibold text-text-primary">
-            {currentWorkspace?.name ?? workspaceId}
-          </span>
-        </div>
-      ) : null}
+
       <PageHeader
         icon={CheckSquare}
         title={scopeTitle}
@@ -530,10 +515,10 @@ export function TaskPage({
           <button
             type="button"
             onClick={() => setFilters((f) => ({ ...f, status: undefined, page: 1 }))}
-            className={`inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-md border px-3 text-xs font-bold transition-colors ${
+            className={`inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-md border px-3 text-xs font-bold transition-all ${
               !normalizedFilters.status
-                ? 'bg-text-primary text-background border-text-primary'
-                : 'bg-background text-text-secondary border-surface-border hover:bg-surface-muted'
+                ? 'bg-brand-primary text-text-on-brand border-brand-primary shadow-sm shadow-brand-primary/10'
+                : 'bg-surface-raised text-text-secondary border-surface-border-soft hover:bg-brand-glass hover:text-brand-primary hover:border-brand-border'
             }`}
           >
             전체 {total}
@@ -549,14 +534,16 @@ export function TaskPage({
                   page: 1,
                 }))
               }
-              className={`inline-flex h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-3 text-xs transition-colors ${
+              className={`inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-xs transition-all ${
                 normalizedFilters.status === status
-                  ? 'bg-text-primary text-background border-text-primary font-bold'
-                  : 'bg-background text-text-secondary border-surface-border hover:bg-surface-muted'
+                  ? 'bg-brand-primary text-text-on-brand border-brand-primary font-bold shadow-sm shadow-brand-primary/10'
+                  : 'bg-surface-raised text-text-secondary border-surface-border-soft hover:bg-brand-glass hover:text-brand-primary hover:border-brand-border'
               }`}
             >
               {TASK_STATUS_LABELS[status]}
-              <span className="font-black">{statusCounts[status]}</span>
+              <span className={normalizedFilters.status === status ? 'text-text-on-brand font-black' : 'text-text-muted font-black'}>
+                {statusCounts[status]}
+              </span>
             </button>
           ))}
           <div className="ml-1 border-l border-surface-border-soft pl-3">

@@ -28,6 +28,8 @@ import {
   TASK_PRIORITY_ORDER,
   TASK_STATUS_LABELS,
   TASK_STATUS_ORDER,
+  TASK_STATUS_BADGE_CLASS,
+  TASK_PRIORITY_BADGE_CLASS,
 } from '../../../entities/task/model/constants'
 import type { Task, TaskPriority, TaskStatus } from '../../../entities/task/model/types'
 import type { AssignableUser } from '../../../shared/api/users'
@@ -196,7 +198,10 @@ export function TaskTableView({
           <div onClick={(event) => event.stopPropagation()}>
             <CompactSelect
               value={row.original.status}
-              className="h-8 min-h-8 pl-2.5 pr-7 text-sm font-medium"
+              className={clsx(
+                'h-8 min-h-8 pl-2.5 pr-7 text-xs font-black rounded-md border transition-all',
+                TASK_STATUS_BADGE_CLASS[row.original.status]
+              )}
               onChange={(event) =>
                 updateStatus.mutate({
                   id: row.original.id,
@@ -206,7 +211,7 @@ export function TaskTableView({
               aria-label="상태 변경"
             >
               {TASK_STATUS_ORDER.map((status) => (
-                <option key={status} value={status}>
+                <option key={status} value={status} className="bg-background text-text-primary">
                   {TASK_STATUS_LABELS[status]}
                 </option>
               ))}
@@ -221,7 +226,10 @@ export function TaskTableView({
           <div onClick={(event) => event.stopPropagation()}>
             <CompactSelect
               value={row.original.priority}
-              className="h-8 min-h-8 pl-2.5 pr-7 text-sm font-medium"
+              className={clsx(
+                'h-8 min-h-8 pl-2.5 pr-7 text-xs font-black rounded-md border transition-all',
+                TASK_PRIORITY_BADGE_CLASS[row.original.priority]
+              )}
               onChange={(event) =>
                 updatePriority.mutate({
                   id: row.original.id,
@@ -231,7 +239,7 @@ export function TaskTableView({
               aria-label="우선순위 변경"
             >
               {TASK_PRIORITY_ORDER.map((priority) => (
-                <option key={priority} value={priority}>
+                <option key={priority} value={priority} className="bg-background text-text-primary">
                   {TASK_PRIORITY_LABELS[priority]}
                 </option>
               ))}
