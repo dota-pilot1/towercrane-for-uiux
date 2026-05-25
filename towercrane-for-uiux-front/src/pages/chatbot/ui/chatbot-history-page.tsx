@@ -51,13 +51,12 @@ export function ChatbotHistoryPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {messages.map((msg) => (
+              {messages.map((msg, i) => (
                 <ChatMessage
                   key={msg.id}
                   message={msg}
-                  isStreaming={
-                    isStreaming && msg.id === messages[messages.length - 1].id
-                  }
+                  isStreaming={isStreaming && msg.id === messages[messages.length - 1].id}
+                  isLast={i === messages.length - 1 && msg.role === 'assistant'}
                 />
               ))}
               <div ref={bottomRef} />

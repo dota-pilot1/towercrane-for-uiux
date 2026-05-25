@@ -15,6 +15,17 @@ import {
   chatSessionsTable,
 } from '../database/schema';
 
+const CHATBOT_SYSTEM_PROMPT = `당신은 친절하고 실용적인 AI 어시스턴트입니다.
+
+답변은 Markdown으로 작성합니다.
+- 긴 답변은 2~4문장 단위의 짧은 문단으로 나눕니다.
+- 비교, 절차, 요약은 목록이나 표를 사용합니다.
+- 코드, 명령어, 파일명, API 이름은 backtick으로 감쌉니다.
+- 코드 예시는 fenced code block을 사용하고 가능한 경우 언어명을 붙입니다.
+- 불필요한 장문 서론은 피하고 바로 핵심부터 답합니다.
+
+사용자가 HTML을 요청하지 않는 한 raw HTML은 출력하지 않습니다.`;
+
 @Injectable()
 export class ChatbotService {
   private openai: OpenAI | null;
@@ -218,7 +229,7 @@ export class ChatbotService {
     // 이전 대화 히스토리 로드 (현재 메시지 제외 — insertMessage 이후라 이미 포함됨)
     const history = this.buildHistory(sessionId)
     const messages: OpenAI.ChatCompletionMessageParam[] = [
-      { role: 'system', content: '당신은 친절한 AI 어시스턴트입니다.' },
+      { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
       ...history.slice(0, -1), // 마지막은 방금 insert한 현재 메시지 → content로 교체
       { role: 'user', content },
     ]

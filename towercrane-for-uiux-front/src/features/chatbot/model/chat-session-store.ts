@@ -60,6 +60,7 @@ type ChatSessionState = {
   appendLocalMessage: (sessionId: string, message: Message) => void
   updateLocalChunk: (sessionId: string, messageId: string, chunk: string) => void
   replaceLocalMessage: (sessionId: string, oldId: string, message: Message) => void
+  removeLastAssistantMessage: (sessionId: string) => void
   setSessionTitle: (sessionId: string, title: string) => void
   resetStore: () => void
 }
@@ -173,6 +174,20 @@ export const useChatSessionStore = create<ChatSessionState>()((set, get) => ({
         ),
       },
     }))
+  },
+
+  removeLastAssistantMessage: (sessionId) => {
+    set((state) => {
+      const msgs = state.messagesBySession[sessionId] ?? []
+      const last = msgs[msgs.length - 1]
+      if (!last || last.role !== 'assistant') return state
+      return {
+        messagesBySession: {
+          ...state.messagesBySession,
+          [sessionId]: msgs.slice(0, -1),
+        },
+      }
+    })
   },
 
   setSessionTitle: (sessionId, title) => {
