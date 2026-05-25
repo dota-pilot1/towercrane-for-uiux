@@ -67,7 +67,7 @@ export function AiServiceMyPage() {
         </Button>
       </div>
 
-      <div className="min-h-[calc(100dvh-180px)] rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm space-y-4">
+      <div className="rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm space-y-4">
         {isLoading ? (
           <div className="py-16 text-center text-sm ui-text-muted animate-pulse">불러오는 중...</div>
         ) : !data || data.length === 0 ? (

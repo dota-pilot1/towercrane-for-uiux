@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { ArrowRight, CheckSquare, LoaderCircle, Plus } from 'lucide-react'
+import { ArrowRight, CheckSquare, LoaderCircle, Plus, ClipboardList, Activity } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
@@ -70,53 +70,94 @@ export function TaskWorkspaceHomePage() {
   )
 }
 
-type TaskWorkspaceCardProps = {
-  workspace: TaskWorkspace
-  onOpen: () => void
-}
-
 function TaskWorkspaceCard({ workspace, onOpen }: TaskWorkspaceCardProps) {
+  const completedCount = Math.max(0, workspace.taskCount - workspace.openTaskCount)
+  const progressPct = workspace.taskCount > 0 ? (completedCount / workspace.taskCount) * 100 : 0
+
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="group flex flex-col justify-between min-h-[190px] rounded-2xl border border-surface-border-soft bg-surface-raised p-5 text-left shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:shadow-[0_12px_24px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+      style={{
+        '--accent-color': 'var(--color-brand-primary)',
+        '--accent-glass': 'var(--color-brand-glass)',
+        '--accent-glass-strong': 'color-mix(in srgb, var(--color-brand-primary) 18%, transparent)',
+        '--accent-border': 'var(--color-brand-border)',
+        '--accent-border-hover': 'color-mix(in srgb, var(--color-brand-primary) 55%, transparent)',
+      } as React.CSSProperties}
+      className="group relative overflow-hidden flex flex-col justify-between min-h-[200px] rounded-2xl border border-surface-border bg-surface-raised text-left shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-[var(--accent-border-hover)] hover:shadow-md hover:shadow-text-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-color)] p-0"
     >
-      <div className="w-full">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-brand-border bg-brand-glass text-brand-primary transition-all duration-300 group-hover:scale-105 group-hover:bg-brand-primary group-hover:text-primary-foreground group-hover:shadow-[0_4px_12px_color-mix(in_srgb,var(--primary)_25%,transparent)]">
-              <CheckSquare className="size-4.5" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="truncate text-base font-black text-text-primary">
-                {workspace.name}
-              </h2>
-              <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-text-secondary">
-                {workspace.description ?? '팀 업무 워크스페이스'}
-              </p>
-            </div>
+
+      {/* 1. Header Panel - Clearly divided area */}
+      <div className="w-full px-5 py-3.5 border-b border-surface-border-soft/60 bg-surface-raised flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          {/* Accent-colored squircle icon wrapper */}
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--accent-border)] bg-[var(--accent-glass)] text-[var(--accent-color)] transition-all duration-500 group-hover:scale-105 group-hover:bg-[var(--accent-color)] group-hover:text-background group-hover:shadow-[0_4px_12px_color-mix(in_srgb,var(--accent-color)_25%,transparent)]">
+            <CheckSquare className="size-4.5" />
           </div>
-          <ArrowRight className="mt-1 size-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-brand-primary" />
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-black text-text-primary group-hover:text-[var(--accent-color)] transition-colors leading-tight">
+              {workspace.name}
+            </h2>
+            <p className="mt-1 line-clamp-1 text-[11px] text-text-muted">
+              {workspace.description ?? '팀 업무 워크스페이스'}
+            </p>
+          </div>
+        </div>
+
+        {/* Small compact chevron on the right */}
+        <div className="flex size-6 shrink-0 items-center justify-center rounded-full border border-surface-border-soft bg-surface-muted/30 text-text-muted transition-all duration-300 group-hover:translate-x-0.5 group-hover:border-[var(--accent-border)] group-hover:bg-[var(--accent-glass)] group-hover:text-[var(--accent-color)]">
+          <ArrowRight className="size-3" />
         </div>
       </div>
 
-      <div className="mt-5 w-full grid grid-cols-2 gap-2">
-        <div className="rounded-xl border border-surface-border-soft bg-surface-raised p-3 transition-all duration-300 group-hover:bg-surface-muted/30">
-          <div className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-            전체 업무
+      {/* 2. Middle Body Panel - Compact statistics inside tinted container */}
+      <div className="w-full px-5 py-3.5 bg-surface-muted/10 flex-1 flex flex-col justify-center">
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Total Tasks Box */}
+          <div className="rounded-xl border border-surface-border-soft/60 bg-surface-raised/50 p-2.5 transition-all duration-300 group-hover:bg-surface-raised/90 group-hover:border-surface-border-soft">
+            <div className="flex items-center gap-1.5 truncate text-[9px] font-bold uppercase tracking-[0.12em] text-text-muted">
+              <ClipboardList className="size-3 text-text-muted" />
+              전체 업무
+            </div>
+            <div className="mt-0.5 text-lg font-black text-text-primary">
+              {workspace.taskCount}
+            </div>
           </div>
-          <div className="mt-1 text-lg font-extrabold text-text-primary">
-            {workspace.taskCount}
+
+          {/* Active Tasks Box */}
+          <div className="rounded-xl border border-surface-border-soft/60 bg-surface-raised/50 p-2.5 transition-all duration-300 group-hover:bg-surface-raised/90 group-hover:border-surface-border-soft">
+            <div className="flex items-center gap-1.5 justify-between">
+              <div className="flex items-center gap-1.5 truncate text-[9px] font-bold uppercase tracking-[0.12em] text-text-muted">
+                <Activity className="size-3 text-[var(--accent-color)]" />
+                진행 중
+              </div>
+              {/* Pulsing Active Dot with accent color */}
+              {workspace.openTaskCount > 0 && (
+                <span className="relative flex size-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--accent-border)] opacity-75"></span>
+                  <span className="relative inline-flex size-2 rounded-full bg-[var(--accent-color)]"></span>
+                </span>
+              )}
+            </div>
+            <div className="mt-0.5 text-lg font-black text-[var(--accent-color)]">
+              {workspace.openTaskCount}
+            </div>
           </div>
         </div>
-        <div className="rounded-xl border border-surface-border-soft bg-surface-raised p-3 transition-all duration-300 group-hover:bg-surface-muted/30">
-          <div className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-            진행 중
-          </div>
-          <div className="mt-1 text-lg font-extrabold text-brand-primary">
-            {workspace.openTaskCount}
-          </div>
+      </div>
+
+      {/* 3. Bottom Footer Panel - Integrated progress bar */}
+      <div className="w-full px-5 py-3 border-t border-surface-border-soft bg-surface-muted/20">
+        <div className="flex items-center justify-between text-[9px] font-bold text-text-muted mb-1.5">
+          <span>워크스페이스 완료율</span>
+          <span className="text-[var(--accent-color)]">{Math.round(progressPct)}% ({completedCount}/{workspace.taskCount})</span>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-surface-muted overflow-hidden">
+          <div
+            className="h-full bg-[var(--accent-color)] rounded-full transition-all duration-500 ease-out shadow-[0_0_6px_var(--accent-color)]"
+            style={{ width: `${progressPct}%` }}
+          />
         </div>
       </div>
     </button>

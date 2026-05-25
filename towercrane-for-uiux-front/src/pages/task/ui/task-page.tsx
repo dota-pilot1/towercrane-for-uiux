@@ -496,6 +496,17 @@ export function TaskPage({
         icon={CheckSquare}
         title={scopeTitle}
         description={scopeDescription}
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate({ to: '/task' })}
+            className="gap-1.5 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <ChevronLeft className="size-3.5" />
+            워크스페이스 목록
+          </Button>
+        }
       />
 
       <TaskToolbar

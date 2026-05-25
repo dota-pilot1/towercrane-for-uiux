@@ -16,6 +16,7 @@ import {
   ExternalLink,
   AlertCircle,
   Ban,
+  ChevronRight,
 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'motion/react'
@@ -82,78 +83,71 @@ function StepHeader({
   stepStatuses: StepStatus[]
   onStepClick: (step: number) => void
 }) {
-  const progressPct = ((currentStep - 1) / (STEPS.length - 1)) * 100
-
   return (
-    <div className="min-w-[640px] px-2 py-4">
-      <div className="relative grid grid-cols-4">
-        {/* Background progress track */}
-        <div className="pointer-events-none absolute left-[12.5%] right-[12.5%] top-5 h-1 overflow-hidden rounded-full bg-surface-border-soft">
-          <div
-            className="h-full bg-brand-primary transition-all duration-500 ease-out shadow-[0_0_8px_var(--brand-primary)]"
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
-        
+    <div className="max-w-3xl mx-auto min-w-[600px] p-1">
+      <div className="flex items-center justify-between w-full gap-2">
         {STEPS.map((step, idx) => {
           const status = stepStatuses[idx]
           const isClickable = status === 'completed'
           const Icon = step.icon
 
           return (
-            <div key={step.id} className="relative">
+            <div key={step.id} className="flex-1 min-w-0 flex items-center gap-2">
               <button
                 onClick={() => isClickable && onStepClick(step.id)}
                 disabled={!isClickable}
                 aria-current={currentStep === step.id ? 'step' : undefined}
                 className={cn(
-                  'group relative flex w-full min-w-0 flex-col items-center gap-2 px-2 py-1.5 text-center transition-all',
-                  isClickable ? 'cursor-pointer hover:-translate-y-0.5' : 'cursor-default',
+                  'group flex-1 min-w-0 flex items-center gap-3 rounded-2xl border p-3.5 text-left transition-all duration-300',
+                  status === 'current'
+                    ? 'border-brand-border bg-brand-glass shadow-[0_6px_20px_color-mix(in_srgb,var(--color-brand-primary)_12%,transparent)] ring-1 ring-brand-border/15'
+                    : status === 'completed'
+                      ? 'border-brand-border/20 bg-brand-glass/5'
+                      : status === 'rejected'
+                        ? 'border-destructive/30 bg-danger-glass/50 shadow-[0_4px_16px_rgba(239,68,68,0.08)]'
+                        : 'border-surface-border-soft bg-surface-muted/30 opacity-70',
+                  isClickable ? 'cursor-pointer hover:border-brand-border/40 hover:bg-brand-glass/10 hover:-translate-y-0.5' : 'cursor-default',
                 )}
               >
+                {/* Step Icon Box - Squircle */}
                 <div
                   className={cn(
-                    'relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border-2 text-xs font-black shadow-sm transition-all duration-300',
+                    'flex size-10 shrink-0 items-center justify-center rounded-xl border text-xs font-black shadow-2xs transition-all duration-300',
                     status === 'completed'
-                      ? 'border-brand-primary bg-brand-glass text-brand-primary shadow-2xs hover:scale-105'
+                      ? 'border-brand-primary bg-brand-glass text-brand-primary'
                       : status === 'current'
-                        ? 'border-brand-border bg-surface-raised text-brand-primary ring-4 ring-brand-border/10 scale-105 shadow-[0_8px_20px_color-mix(in_srgb,var(--brand-primary)_15%,transparent)]'
+                        ? 'border-brand-primary bg-brand-primary text-background shadow-[0_0_12px_color-mix(in_srgb,var(--color-brand-primary)_50%,transparent)]'
                         : status === 'rejected'
                           ? 'border-destructive bg-danger-glass text-destructive'
-                          : 'border-surface-border-soft bg-surface-muted/50 text-text-muted',
-                    isClickable && 'group-hover:border-brand-border group-hover:bg-brand-glass group-hover:text-brand-primary',
+                          : 'border-surface-border-soft bg-surface-raised text-text-muted',
                   )}
                 >
                   {status === 'completed' ? (
-                    <CheckCircle2 className="size-4 text-brand-primary" />
+                    <CheckCircle2 className="size-5 text-brand-primary" />
                   ) : status === 'rejected' ? (
-                    <XCircle className="size-4 text-destructive" />
+                    <XCircle className="size-5 text-destructive" />
                   ) : (
-                    <Icon className="size-4" />
+                    <Icon className="size-5" />
                   )}
                 </div>
-                <div
-                  className={cn(
-                    'min-w-0 rounded-lg px-3 py-1.5 transition-all duration-200',
-                    status === 'current' && 'bg-brand-glass/40 border border-brand-border/10',
-                    isClickable && 'group-hover:bg-surface-muted group-hover:border border-transparent',
-                  )}
-                >
+
+                {/* Step Info */}
+                <div className="min-w-0 flex-1">
                   <p
                     className={cn(
-                      'text-[9px] font-black uppercase tracking-widest text-text-muted transition-colors',
-                      status === 'current' && 'text-brand-primary',
+                      'text-[9px] font-black uppercase tracking-wider text-text-muted transition-colors',
+                      status === 'current' && 'text-brand-primary/80',
                     )}
                   >
-                    Step {step.id}
+                    Step 0{step.id}
                   </p>
                   <p
                     className={cn(
-                      'truncate text-xs font-extrabold transition-colors',
+                      'truncate text-xs font-black transition-colors mt-0.5',
                       status === 'current'
                         ? 'text-brand-primary'
                         : status === 'completed'
-                          ? 'text-text-primary font-bold'
+                          ? 'text-text-primary'
                           : 'text-text-muted',
                     )}
                   >
@@ -161,6 +155,13 @@ function StepHeader({
                   </p>
                 </div>
               </button>
+
+              {/* Chevron arrow in between steps */}
+              {idx < STEPS.length - 1 && (
+                <div className="flex shrink-0 items-center justify-center text-text-muted/40 px-1">
+                  <ChevronRight className="size-4.5" />
+                </div>
+              )}
             </div>
           )
         })}
@@ -758,7 +759,7 @@ export function AiServiceRequestPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-5xl w-full space-y-4 pb-32">
       {/* 페이지 헤더 */}
       <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
         <div className="flex min-w-0 items-center gap-3">
@@ -784,10 +785,9 @@ export function AiServiceRequestPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-        {/* 메인 카드 */}
-        <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
+        <div className="rounded-xl border border-surface-border bg-surface-raised">
           {/* 스텝 헤더 */}
-          <div className="border-b border-surface-border-soft bg-surface-raised px-3 py-1 overflow-x-auto">
+          <div className="border-b border-surface-border-soft bg-surface-raised px-4 py-3 overflow-x-auto">
             <StepHeader
               currentStep={currentStep}
               stepStatuses={stepStatuses}
