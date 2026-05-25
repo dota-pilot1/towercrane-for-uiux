@@ -115,7 +115,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/chatbot/knowledge/faq')) return 'knowledge_faq'
   if (pathname.startsWith('/chatbot/knowledge/ai')) return 'knowledge_ai'
   if (pathname.startsWith('/chatbot/knowledge/dev')) return 'knowledge_dev'
-  if (pathname.startsWith('/chatbot/knowledge')) return 'knowledge_channel'
+  if (pathname.startsWith('/chatbot/knowledge')) return 'chatbot_knowledge'
   if (pathname.startsWith('/chatbot')) return 'chatbot_basic'
   return 'prototype'
 }
