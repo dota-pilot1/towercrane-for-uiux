@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
 @theme {
   --color-background: var(--background);
@@ -407,6 +408,7 @@ body {
     font-size: 0.84em;
     line-height: 1.6;
     background: var(--code-surface);
+    font-family: 'JetBrains Mono', ui-monospace, 'Menlo', 'Consolas', monospace;
   }
 
   .chat-code-block code {
@@ -435,12 +437,12 @@ body {
 
   /* inline code (코드블록 밖) */
   .chat-markdown code:not(.hljs) {
-    background: var(--surface-muted);
-    border: 1px solid var(--surface-border-soft);
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
     border-radius: 0.25rem;
     padding: 0.1em 0.4em;
     font-size: 0.85em;
-    font-family: var(--font-mono, ui-monospace, monospace);
-    color: var(--primary);
+    font-family: 'JetBrains Mono', ui-monospace, 'Menlo', 'Consolas', monospace;
+    color: #cf222e;
   }
 }
