@@ -477,11 +477,39 @@ export class ChatbotService {
         );
 
         // STEP 3-E: 다이얼로그 전용 툴은 채팅창 응답 없이 바로 종료
-        // 결과가 다이얼로그로 표시되므로 2차 GPT 스트림 불필요 — 빈 메시지로 done 이벤트만 전송
         const assistantMessage = this.insertMessage(sessionId, 'assistant', '');
         res.write(`data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources: [] })}\n\n`);
         res.write('data: [DONE]\n\n');
         res.end();
+
+        // STEP 3-F: tools 모드 usage 기록 — firstResponse.usage 사용
+        const toolUsage = firstResponse.usage;
+        if (toolUsage) {
+          const COST_PER_1K: Record<string, { prompt: number; completion: number }> = {
+            'gpt-4o':       { prompt: 0.005,   completion: 0.015 },
+            'gpt-4o-mini':  { prompt: 0.00015, completion: 0.0006 },
+            'gpt-4.1':      { prompt: 0.002,   completion: 0.008 },
+            'gpt-4.1-mini': { prompt: 0.0004,  completion: 0.0016 },
+            'gpt-4.1-nano': { prompt: 0.0001,  completion: 0.0004 },
+          };
+          const rate = COST_PER_1K[model] ?? { prompt: 0.00015, completion: 0.0006 };
+          const estimatedCostUsd =
+            (toolUsage.prompt_tokens / 1000) * rate.prompt +
+            (toolUsage.completion_tokens / 1000) * rate.completion;
+          this.db.insert(usageLogsTable).values({
+            id: randomUUID(),
+            userId: user.id,
+            userName: user.name,
+            sessionId,
+            model,
+            promptTokens: toolUsage.prompt_tokens,
+            completionTokens: toolUsage.completion_tokens,
+            totalTokens: toolUsage.total_tokens,
+            estimatedCostUsd,
+            isError: 0,
+            createdAt: new Date().toISOString(),
+          }).run();
+        }
         return;
       }
 

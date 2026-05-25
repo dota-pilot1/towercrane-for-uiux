@@ -203,7 +203,7 @@ function Step1Form({
   const showErr = (key: keyof typeof errors) => submitted && errors[key]
 
   return (
-    <div className="space-y-7 p-6">
+    <div className="space-y-4 p-4">
       {/* 서비스 선택 */}
       <div>
         <p className="text-xs font-bold ui-text-secondary mb-3">신청 서비스 선택 <span className="text-destructive">*</span></p>
@@ -219,7 +219,7 @@ function Step1Form({
                 onClick={() => !alreadyApplied && onChange({ ...form, serviceType: s.value })}
                 disabled={alreadyApplied}
                 className={cn(
-                  'relative rounded-xl border-2 p-4 text-left transition-all duration-150',
+                  'relative rounded-xl border-2 p-3 text-left transition-all duration-150',
                   alreadyApplied
                     ? 'border-surface-border bg-surface-muted opacity-60 cursor-not-allowed'
                     : selected
@@ -237,7 +237,7 @@ function Step1Form({
                   </span>
                 ) : null}
                 <div className={cn(
-                  'mb-2.5 flex size-9 items-center justify-center rounded-lg border transition-colors',
+                  'mb-1.5 flex size-8 items-center justify-center rounded-lg border transition-colors',
                   alreadyApplied
                     ? 'border-surface-border bg-surface-muted ui-text-muted'
                     : selected
@@ -272,7 +272,7 @@ function Step1Form({
             value={form.purpose}
             onChange={(e) => onChange({ ...form, purpose: e.target.value })}
             placeholder="AI 서비스를 어떤 업무에 활용할 계획인지 구체적으로 입력하세요."
-            rows={4}
+            rows={3}
             className={cn(
               'w-full rounded-lg border bg-surface-raised px-3 py-2.5 text-sm leading-relaxed ui-text-primary placeholder:ui-text-muted outline-none resize-none transition-all',
               showErr('purpose')
@@ -308,7 +308,7 @@ function Step1Form({
                   type="button"
                   onClick={() => onChange({ ...form, estimatedUsage: u.value })}
                   className={cn(
-                    'w-full rounded-lg border-2 px-3.5 py-2.5 text-left transition-all duration-100 hover:-translate-y-px',
+                    'w-full rounded-lg border-2 px-3 py-2 text-left transition-all duration-100 hover:-translate-y-px',
                     selected
                       ? 'border-brand-border bg-brand-glass shadow-[0_2px_8px_color-mix(in_srgb,var(--brand-primary)_15%,transparent)]'
                       : 'border-surface-border bg-surface-raised shadow-sm hover:border-brand-border/40 hover:shadow',
@@ -343,7 +343,7 @@ function Step1Form({
                   type="button"
                   onClick={() => onChange({ ...form, securityLevel: s.value })}
                   className={cn(
-                    'w-full rounded-lg border-2 px-3.5 py-2.5 text-left transition-all duration-100 hover:-translate-y-px',
+                    'w-full rounded-lg border-2 px-3 py-2 text-left transition-all duration-100 hover:-translate-y-px',
                     selected
                       ? 'border-brand-border bg-brand-glass shadow-[0_2px_8px_color-mix(in_srgb,var(--brand-primary)_15%,transparent)]'
                       : 'border-surface-border bg-surface-raised shadow-sm hover:border-brand-border/40 hover:shadow',
@@ -759,24 +759,18 @@ export function AiServiceRequestPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl w-full space-y-4 pb-32">
-      {/* 페이지 헤더 */}
-      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-glass border border-brand-border shadow-xs">
-            <Bot className="size-5 text-brand-primary" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-lg font-black text-text-primary">AI 서비스 신청</h1>
-            <p className="mt-1 text-xs font-semibold text-text-muted">
-              사내 AI Chatbot, LLM API, 지식채널 권한을 안전하게 신청하고 간편하게 승인 상태를 확인하세요.
-            </p>
-          </div>
+    <div className="mx-auto max-w-5xl w-full space-y-4 pb-10">
+      {/* 페이지 헤더 — 한 줄 */}
+      <div className="flex items-center gap-3 rounded-xl border border-brand-border bg-brand-glass px-4 py-3 shadow-sm">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand-glass border border-brand-border">
+          <Bot className="size-4 text-brand-primary" />
         </div>
+        <h1 className="text-sm font-black text-text-primary flex-1">AI 서비스 신청</h1>
+        <p className="hidden md:block text-xs ui-text-muted flex-1 truncate">사내 AI Chatbot, LLM API, 지식채널 권한 신청</p>
         <Button
           variant="secondary"
           size="sm"
-          className="gap-1.5 self-start md:self-auto shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="gap-1.5 shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
           onClick={handleReset}
         >
           <ClipboardList className="size-3.5" />
@@ -785,7 +779,7 @@ export function AiServiceRequestPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="rounded-xl border border-surface-border bg-surface-raised">
+        <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
           {/* 스텝 헤더 */}
           <div className="border-b border-surface-border-soft bg-surface-raised px-4 py-3 overflow-x-auto">
             <StepHeader
