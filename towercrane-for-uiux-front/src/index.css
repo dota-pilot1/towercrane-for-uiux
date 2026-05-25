@@ -71,10 +71,10 @@
 
   font-family: "Pretendard Variable", "Inter", sans-serif;
 
-  /* 코드블록 전용 — 라이트/다크 불문 항상 어두운 배경 (GPT·Claude.ai 방식) */
-  --code-surface: oklch(0.15 0 0);
-  --code-surface-header: oklch(0.20 0 0);
-  --code-foreground: oklch(0.88 0 0);
+  /* 코드블록 전용 — GitHub 라이트 스타일 */
+  --code-surface: #f6f8fa;
+  --code-surface-header: #eaeef2;
+  --code-foreground: #24292f;
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -369,7 +369,7 @@ body {
   .chat-code-block {
     margin: 0.85rem 0;
     border-radius: 0.5rem;
-    border: 1px solid oklch(0.28 0 0);
+    border: 1px solid #d0d7de;
     overflow: hidden;
     background: var(--code-surface);
   }
@@ -380,22 +380,22 @@ body {
     gap: 0.4rem;
     padding: 0.3rem 0.75rem;
     background: var(--code-surface-header);
-    border-bottom: 1px solid oklch(0.28 0 0);
+    border-bottom: 1px solid #d0d7de;
     min-height: 2rem;
   }
 
   .chat-code-block-header button {
-    color: oklch(0.6 0 0);
+    color: #57606a;
   }
 
   .chat-code-block-header button:hover {
-    color: oklch(0.85 0 0);
+    color: #24292f;
   }
 
   .chat-code-block-lang {
     font-size: 11px;
     font-family: var(--font-mono, ui-monospace, monospace);
-    color: oklch(0.65 0 0);
+    color: #57606a;
     font-weight: 600;
     letter-spacing: 0.02em;
   }
@@ -416,19 +416,20 @@ body {
     font-size: inherit;
   }
 
-  /* ── highlight.js 토큰 색상 (어두운 배경 고정) ── */
-  .hljs { background: transparent; color: var(--code-foreground); }
-  .hljs-keyword, .hljs-selector-tag { color: #7dd3fc; }
-  .hljs-string, .hljs-attr                { color: #86efac; }
-  .hljs-number, .hljs-literal             { color: #fca5a5; }
-  .hljs-comment { color: oklch(0.5 0 0); font-style: italic; }
-  .hljs-title, .hljs-name                 { color: #f9a8d4; }
-  .hljs-type, .hljs-class                 { color: #fde68a; }
-  .hljs-built_in, .hljs-builtin-name      { color: #93c5fd; }
-  .hljs-variable, .hljs-template-variable { color: var(--code-foreground); }
-  .hljs-tag                               { color: #7dd3fc; }
-  .hljs-symbol, .hljs-bullet              { color: #fca5a5; }
-  .hljs-meta { color: oklch(0.5 0 0); }
+  /* ── highlight.js 토큰 색상 — GitHub 라이트 테마 ── */
+  .hljs { background: transparent; color: #24292f; }
+  .hljs-keyword, .hljs-selector-tag       { color: #cf222e; font-weight: 600; }
+  .hljs-string, .hljs-attr                { color: #0a3069; }
+  .hljs-number, .hljs-literal             { color: #0550ae; }
+  .hljs-comment                           { color: #6e7781; font-style: italic; }
+  .hljs-title, .hljs-title.function_      { color: #8250df; }
+  .hljs-name                              { color: #116329; }
+  .hljs-type, .hljs-class                 { color: #953800; }
+  .hljs-built_in, .hljs-builtin-name      { color: #0550ae; }
+  .hljs-variable, .hljs-template-variable { color: #24292f; }
+  .hljs-tag                               { color: #116329; }
+  .hljs-symbol, .hljs-bullet              { color: #0550ae; }
+  .hljs-meta                              { color: #6e7781; }
   .hljs-emphasis  { font-style: italic; }
   .hljs-strong    { font-weight: 700; }
 
