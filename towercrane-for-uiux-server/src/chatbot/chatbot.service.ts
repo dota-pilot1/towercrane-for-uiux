@@ -159,7 +159,7 @@ const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
     type: 'function',
     name: 'get_my_tasks',
     description:
-      '현재 로그인한 사용자가 담당자로 지정된 업무 목록을 조회한다. 내 업무, 내 할일, 담당 업무, 배정된 업무 요청에 사용한다.',
+      '현재 로그인한 사용자가 담당자로 지정된 업무 목록을 조회한다. 사용자가 명시적으로 "내 업무", "내 할일", "담당 업무", "업무 목록", "업무 조회", "어떤 일 있어?" 처럼 본인의 업무를 직접 물어볼 때만 사용한다. 일반 대화나 다른 주제의 질문에는 절대 사용하지 않는다.',
     parameters: {
       type: 'object',
       properties: {
@@ -197,6 +197,17 @@ const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
         },
       },
       required: ['query'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'open_ai_service_form',
+    description:
+      'AI 서비스 신청 폼을 화면에 표시한다. 사용자가 AI 서비스 신청, API 키 발급, 챗봇 사용 신청 등을 요청할 때 사용한다.',
+    parameters: {
+      type: 'object',
+      properties: {},
+      required: [],
     },
   },
 ];
@@ -463,6 +474,7 @@ export class ChatbotService {
       '당신은 Towercrane Prototype Console의 실시간 음성 업무 도우미입니다.',
       '한국어로 짧고 명확하게 답하세요.',
       '업무 데이터, 신청 상태, 담당 업무처럼 현재 시스템 정보가 필요한 경우 등록된 도구를 호출하세요.',
+      '사용자가 AI 서비스 신청, API 키 발급, 챗봇 신청, 아이디 발급 등을 요청하면 반드시 open_ai_service_form 도구를 호출하세요. 직접 신청을 받을 수 없다고 답하지 마세요.',
       '도구 호출 결과에 근거해 답하고, 확인되지 않은 내용은 추측하지 마세요.',
       '민감한 정보는 사용자가 권한을 가진 범위에서만 답하세요.',
       extra?.trim() ? `추가 지시: ${extra.trim()}` : '',
