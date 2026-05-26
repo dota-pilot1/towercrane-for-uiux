@@ -662,10 +662,12 @@ export class DevManagementService {
   private buildPrototypeSearchReply(userContent: string) {
     const query = this.stripBotMention(userContent);
     const terms = this.extractSearchTerms(userContent);
+    const phrase = this.extractPrimarySearchPhrase(terms);
     const toolCall = {
       name: 'search_internal_prototypes',
       arguments: {
         query,
+        phrase,
         terms,
         limit: 5,
       },
@@ -688,6 +690,7 @@ export class DevManagementService {
         '',
         lines.join('\n') || '검색어를 조금 바꿔 다시 물어보거나 새 프로토타입을 등록해 주세요.',
         '',
+        `검색 기준: ${toolResult.phrase || toolResult.terms.join(' ') || '없음'}`,
         `검색어 후보: ${toolResult.terms.join(', ') || '없음'}`,
       ].join('\n'),
       messageType: 'PROTOTYPE_SEARCH_RESULT' as const,
@@ -696,6 +699,7 @@ export class DevManagementService {
         searchFields: ['title', 'summary'],
         toolCall,
         toolResult,
+        phrase: toolResult.phrase,
         terms: toolResult.terms,
         sourceCount: toolResult.items.length,
         results: toolResult.items,
@@ -706,6 +710,7 @@ export class DevManagementService {
 
   private executePrototypeSearchTool(input: {
     query: string;
+    phrase?: string;
     terms: string[];
     limit: number;
   }) {
@@ -717,14 +722,34 @@ export class DevManagementService {
       .all();
     const terms =
       input.terms.length > 0 ? input.terms : this.extractSearchTerms(input.query);
+    const phrase = input.phrase ?? this.extractPrimarySearchPhrase(terms);
     const limit = Math.min(Math.max(input.limit, 1), 10);
 
     const scored = prototypes
       .map((prototype) => ({
         prototype,
-        score: this.scorePrototype(prototype, terms),
+        score: this.scorePrototype(prototype, terms, phrase),
       }))
-      .filter((item) => item.score > 0)
+      .filter((item) => item.score > 0);
+    const phraseScored = phrase
+      ? scored.filter((item) =>
+          this.prototypeMatchesPhrase(item.prototype, phrase),
+        )
+      : [];
+    const strictScored =
+      terms.length > 1
+        ? scored.filter((item) =>
+            this.prototypeMatchesAllTerms(item.prototype, terms),
+          )
+        : scored;
+    const matched =
+      phraseScored.length > 0
+        ? phraseScored
+        : terms.length > 1
+          ? strictScored
+          : scored;
+
+    const ranked = matched
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
 
@@ -735,9 +760,10 @@ export class DevManagementService {
             score: 0,
           }))
         : [];
-    const results = scored.length > 0 ? scored : fallback;
+    const results = ranked.length > 0 ? ranked : fallback;
 
     return {
+      phrase,
       terms,
       items: results.map(({ prototype, score }) => ({
         id: prototype.id,
@@ -942,7 +968,8 @@ export class DevManagementService {
           /(관련|프로토타입|프로토|타입|있나요|있나|있냐|있니|있어|있을까|있습니까|없나요|없나|없어|좀|중에|중에서|으로는|으로서|으로|대한|관한|것)+$/g,
           '',
         )
-        .replace(/[은는이가을를과와도만부터까지에서의]$/g, '');
+        .replace(/(에서|부터|까지)$/g, '')
+        .replace(/[은는이가을를과와도만에의]$/g, '');
     return Array.from(
       new Set(
         content
@@ -954,6 +981,12 @@ export class DevManagementService {
     ).slice(0, 8);
   }
 
+  private extractPrimarySearchPhrase(terms: string[]) {
+    if (terms.length === 0) return '';
+    if (terms.length === 1) return terms[0];
+    return terms.slice(0, 2).join(' ');
+  }
+
   private scorePrototype(
     prototype: {
       title: string;
@@ -962,16 +995,57 @@ export class DevManagementService {
       checklist: string[];
     },
     terms: string[],
+    phrase = '',
   ) {
     if (terms.length === 0) return 1;
     const title = prototype.title.toLowerCase();
     const summary = prototype.summary.toLowerCase();
+    const phraseScore = phrase
+      ? (this.textIncludesPhrase(title, phrase) ? 10 : 0) +
+        (this.textIncludesPhrase(summary, phrase) ? 7 : 0)
+      : 0;
 
     return terms.reduce((score, term) => {
       if (title.includes(term)) return score + 3;
       if (summary.includes(term)) return score + 2;
       return score;
-    }, 0);
+    }, phraseScore);
+  }
+
+  private prototypeMatchesPhrase(
+    prototype: {
+      title: string;
+      summary: string;
+    },
+    phrase: string,
+  ) {
+    return (
+      this.textIncludesPhrase(prototype.title, phrase) ||
+      this.textIncludesPhrase(prototype.summary, phrase)
+    );
+  }
+
+  private prototypeMatchesAllTerms(
+    prototype: {
+      title: string;
+      summary: string;
+    },
+    terms: string[],
+  ) {
+    const searchable = `${prototype.title} ${prototype.summary}`.toLowerCase();
+    return terms.every((term) => searchable.includes(term));
+  }
+
+  private textIncludesPhrase(text: string, phrase: string) {
+    const normalizedText = text.toLowerCase();
+    const normalizedPhrase = phrase.toLowerCase().trim();
+    if (!normalizedPhrase) return false;
+    return (
+      normalizedText.includes(normalizedPhrase) ||
+      normalizedText.replace(/\s+/g, '').includes(
+        normalizedPhrase.replace(/\s+/g, ''),
+      )
+    );
   }
 
   private formatDebtSection(
