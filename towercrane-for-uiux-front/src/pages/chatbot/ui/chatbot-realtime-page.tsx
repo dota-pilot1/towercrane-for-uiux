@@ -21,6 +21,7 @@ import {
   type RealtimeChatOptions,
 } from '../../../features/chatbot/model/use-realtime-chat'
 import { Select } from '../../../shared/ui/select'
+import { ActionIconButton } from '../../../shared/ui/action-icon-button'
 import { AiServiceFormForToolCall } from './ai-service-form-for-tool-call'
 
 const modelOptions = ['gpt-realtime-2', 'gpt-realtime-1.5', 'gpt-realtime', 'gpt-realtime-mini']
@@ -42,7 +43,7 @@ const statusLabels: Record<string, string> = {
 
 function StatusPill({ label, active }: { label: string; active?: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold ${
+    <span className={`inline-flex h-7 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold ${
       active
         ? 'border-brand-border bg-brand-glass text-brand-primary'
         : 'border-surface-border-soft bg-surface-muted ui-text-muted'
@@ -123,7 +124,7 @@ export function ChatbotRealtimePage() {
           <button
             type="button"
             onClick={() => setOptionsOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-surface-border bg-surface-raised px-3 py-1.5 text-xs font-semibold ui-text-primary hover:bg-surface-muted"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-surface-border bg-surface-raised px-3 text-xs font-semibold ui-text-primary hover:bg-surface-muted"
           >
             <Settings2 className="size-3.5" />
             Options
@@ -139,17 +140,15 @@ export function ChatbotRealtimePage() {
               <p className="mt-1 text-xs ui-text-muted">텍스트와 음성 transcript가 같은 목록에 누적됩니다.</p>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
+              <ActionIconButton
+                icon={Trash2}
                 onClick={realtime.clearMessages}
                 disabled={realtime.messages.length === 0 && !realtime.errorMessage}
-                className="ui-icon-button rounded-md p-2 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="대화 내용 지우기"
                 title="대화 내용 지우기"
-              >
-                <Trash2 className="size-4" />
-              </button>
-              <div className={`relative flex size-8 items-center justify-center rounded-md border ${
+                className="rounded-md"
+              />
+              <div className={`relative flex size-9 items-center justify-center rounded-md border ${
                 realtime.isConnected
                   ? 'border-emerald-400/50 bg-emerald-50/50 dark:bg-emerald-900/10'
                   : 'border-surface-border bg-surface-muted'
