@@ -203,7 +203,7 @@ const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
     type: 'function',
     name: 'open_ai_service_form',
     description:
-      'AI 서비스 신청 폼을 화면에 표시한다. 사용자가 AI 서비스 신청, API 키 발급, 챗봇 사용 신청 등을 요청할 때 사용한다.',
+      'AI 서비스 신청 폼을 화면에 표시한다. 사용자가 "AI 서비스 신청하고 싶어", "API 키 발급해줘", "챗봇 사용 신청할게", "아이디 발급 부탁해" 처럼 명시적으로 신청 의사를 밝힐 때만 사용한다. 일반 대화, 인사, 질문에는 절대 사용하지 않는다.',
     parameters: {
       type: 'object',
       properties: {},
@@ -474,7 +474,7 @@ export class ChatbotService {
       '당신은 Towercrane Prototype Console의 실시간 음성 업무 도우미입니다.',
       '한국어로 짧고 명확하게 답하세요.',
       '업무 데이터, 신청 상태, 담당 업무처럼 현재 시스템 정보가 필요한 경우 등록된 도구를 호출하세요.',
-      '사용자가 AI 서비스 신청, API 키 발급, 챗봇 신청, 아이디 발급 등을 요청하면 반드시 open_ai_service_form 도구를 호출하세요. 직접 신청을 받을 수 없다고 답하지 마세요.',
+      '사용자가 "신청하고 싶어", "발급해줘", "신청할게" 처럼 명시적으로 AI 서비스 신청 의사를 밝히면 open_ai_service_form 도구를 호출하세요. 단순 질문이나 일반 대화에는 호출하지 마세요.',
       '도구 호출 결과에 근거해 답하고, 확인되지 않은 내용은 추측하지 마세요.',
       '민감한 정보는 사용자가 권한을 가진 범위에서만 답하세요.',
       extra?.trim() ? `추가 지시: ${extra.trim()}` : '',
