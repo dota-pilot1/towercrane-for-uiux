@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useSessionStore } from '../../../shared/store/session-store'
 import {
   Bot,
   BookOpen,
@@ -17,6 +16,7 @@ import {
   AlertCircle,
   Ban,
   ChevronRight,
+  X,
 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'motion/react'
@@ -34,14 +34,6 @@ async function submitRequest(body: {
 }
 
 type StepStatus = 'completed' | 'current' | 'pending' | 'rejected'
-
-type HistoryItem = {
-  id: string
-  title: string
-  time: string
-  actor: string
-  status: 'completed' | 'current' | 'rejected'
-}
 
 type FormData = {
   serviceType: string
@@ -651,9 +643,8 @@ function RejectedContent({ onReset }: { onReset: () => void }) {
   )
 }
 
-export function AiServiceRequestPage() {
+export function AiServiceRequestPage({ onSubmitSuccess, onClose }: { onSubmitSuccess?: () => void; onClose?: () => void } = {}) {
   const navigate = useNavigate()
-  const user = useSessionStore((s) => s.user)
   const [currentStep, setCurrentStep] = useState(1)
   const [rejected, setRejected] = useState(false)
   const [duplicateService, setDuplicateService] = useState<string | null>(null)
@@ -663,15 +654,6 @@ export function AiServiceRequestPage() {
     estimatedUsage: '',
     securityLevel: '',
   })
-  const [history, setHistory] = useState<HistoryItem[]>([
-    {
-      id: 'h0',
-      title: '신청 페이지 접속',
-      time: '방금',
-      actor: user?.name ?? 'User',
-      status: 'current',
-    },
-  ])
 
   const { data: myRequests } = useQuery({
     queryKey: ['my-ai-requests-check'],
@@ -685,10 +667,12 @@ export function AiServiceRequestPage() {
   const submitMutation = useMutation({
     mutationFn: submitRequest,
     onSuccess: () => {
-      addHistory('신청서 제출 완료', user?.name ?? 'User', 'completed')
-      addHistory('팀장 승인 대기', '팀장', 'current')
-      setCurrentStep(2)
-      setRejected(false)
+      if (onSubmitSuccess) {
+        onSubmitSuccess()
+      } else {
+        setCurrentStep(2)
+        setRejected(false)
+      }
     },
     onError: (err: unknown) => {
       const status = (err as { status?: number })?.status
@@ -708,14 +692,6 @@ export function AiServiceRequestPage() {
     return 'pending'
   })
 
-  function addHistory(title: string, actor: string, status: HistoryItem['status']) {
-    const time = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-    setHistory((prev) => [
-      ...prev.map((h) => (h.status === 'current' ? { ...h, status: 'completed' as const, time } : h)),
-      { id: `h-${Date.now()}`, title, time: status === 'current' ? '진행 중' : time, actor, status },
-    ])
-  }
-
   function handleSubmit() {
     submitMutation.mutate({
       serviceType: form.serviceType,
@@ -727,26 +703,18 @@ export function AiServiceRequestPage() {
 
   function handleStep2Action(action: '승인' | '반려' | '보완 요청') {
     if (action === '승인') {
-      addHistory('팀장 승인 완료', '팀장', 'completed')
-      addHistory('AI 관리자 검토 중', 'AI 관리자', 'current')
       setCurrentStep(3)
     } else if (action === '반려') {
-      addHistory('팀장 반려 처리', '팀장', 'rejected')
       setRejected(true)
     } else {
-      addHistory('보완 요청 — 신청서 수정 필요', '팀장', 'rejected')
-      addHistory('신청서 수정 대기', 'Seed User', 'current')
       setCurrentStep(1)
     }
   }
 
   function handleStep3Action(action: '승인' | '반려') {
     if (action === '승인') {
-      addHistory('AI 관리자 검토 승인', 'AI 관리자', 'completed')
-      addHistory('권한 발급 완료', '시스템', 'completed')
       setCurrentStep(4)
     } else {
-      addHistory('AI 관리자 반려 처리', 'AI 관리자', 'rejected')
       setRejected(true)
     }
   }
@@ -755,7 +723,6 @@ export function AiServiceRequestPage() {
     setCurrentStep(1)
     setRejected(false)
     setForm({ serviceType: '', purpose: '', estimatedUsage: '', securityLevel: '' })
-    setHistory([{ id: 'h0', title: '신청 페이지 접속', time: '방금', actor: 'Seed User', status: 'current' }])
   }
 
   return (
@@ -767,86 +734,56 @@ export function AiServiceRequestPage() {
         </div>
         <h1 className="text-sm font-black text-text-primary flex-1">AI 서비스 신청</h1>
         <p className="hidden md:block text-xs ui-text-muted flex-1 truncate">사내 AI Chatbot, LLM API, 지식채널 권한 신청</p>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="gap-1.5 shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
-          onClick={handleReset}
-        >
-          <ClipboardList className="size-3.5" />
-          초기화 / 신규 신청
-        </Button>
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="ui-icon-button rounded-md p-1.5 shrink-0"
+            aria-label="닫기"
+          >
+            <X className="size-4" />
+          </button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1.5 shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+            onClick={handleReset}
+          >
+            <ClipboardList className="size-3.5" />
+            초기화 / 신규 신청
+          </Button>
+        )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
-          {/* 스텝 헤더 */}
-          <div className="border-b border-surface-border-soft bg-surface-raised px-4 py-3 overflow-x-auto">
-            <StepHeader
-              currentStep={currentStep}
-              stepStatuses={stepStatuses}
-              onStepClick={setCurrentStep}
-            />
-          </div>
-
-          {/* 스텝 콘텐츠 */}
-          {rejected ? (
-            <RejectedContent onReset={handleReset} />
-          ) : currentStep === 1 ? (
-            <Step1Form
-              form={form}
-              onChange={setForm}
-              onSubmit={handleSubmit}
-              isLoading={submitMutation.isPending}
-              activeServiceTypes={activeServiceTypes}
-            />
-          ) : currentStep === 2 ? (
-            <Step2Content form={form} onAction={handleStep2Action} />
-          ) : currentStep === 3 ? (
-            <Step3Content form={form} onAction={handleStep3Action} />
-          ) : (
-            <Step4Content form={form} onNavigate={() => navigate({ to: '/chatbot/knowledge' })} />
-          )}
+      <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
+        {/* 스텝 헤더 */}
+        <div className="border-b border-surface-border-soft bg-surface-raised px-4 py-3 overflow-x-auto">
+          <StepHeader
+            currentStep={currentStep}
+            stepStatuses={stepStatuses}
+            onStepClick={setCurrentStep}
+          />
         </div>
 
-        {/* 처리 이력 사이드바 */}
-        <aside className="rounded-xl border border-surface-border bg-surface-raised p-4">
-          <p className="text-xs font-black uppercase tracking-widest ui-text-muted mb-4">처리 이력</p>
-          <div className="space-y-3">
-            {history.map((item, idx) => {
-              const isRejected = item.status === 'rejected'
-              const isCurrent = item.status === 'current'
-              return (
-                <div key={item.id} className="flex gap-2.5">
-                  <div className="mt-0.5 flex flex-col items-center">
-                    <div
-                      className={`flex size-4 shrink-0 items-center justify-center rounded-full text-[9px] font-black ${
-                        isRejected
-                          ? 'bg-destructive/10 text-destructive'
-                          : isCurrent
-                          ? 'bg-brand-primary/10 text-brand-primary animate-pulse'
-                          : 'bg-brand-primary text-background'
-                      }`}
-                    >
-                      {isRejected ? '✕' : isCurrent ? '●' : '✓'}
-                    </div>
-                    {idx < history.length - 1 && (
-                      <div className="mt-1 h-full w-px bg-surface-border-soft min-h-3" />
-                    )}
-                  </div>
-                  <div className="pb-3">
-                    <p className={`text-xs font-semibold ${isRejected ? 'text-destructive' : 'ui-text-primary'}`}>
-                      {item.title}
-                    </p>
-                    <p className="mt-0.5 text-[10px] ui-text-muted">
-                      {item.actor} · {item.time}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </aside>
+        {/* 스텝 콘텐츠 */}
+        {rejected ? (
+          <RejectedContent onReset={handleReset} />
+        ) : currentStep === 1 ? (
+          <Step1Form
+            form={form}
+            onChange={setForm}
+            onSubmit={handleSubmit}
+            isLoading={submitMutation.isPending}
+            activeServiceTypes={activeServiceTypes}
+          />
+        ) : currentStep === 2 ? (
+          <Step2Content form={form} onAction={handleStep2Action} />
+        ) : currentStep === 3 ? (
+          <Step3Content form={form} onAction={handleStep3Action} />
+        ) : (
+          <Step4Content form={form} onNavigate={() => navigate({ to: '/chatbot/knowledge' })} />
+        )}
       </div>
 
       {/* 중복 신청 방지 다이어로그 */}

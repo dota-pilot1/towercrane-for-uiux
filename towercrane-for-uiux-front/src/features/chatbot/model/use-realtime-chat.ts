@@ -81,7 +81,7 @@ const defaultOptions: RealtimeChatOptions = {
   difficulty: 'intermediate',
   responseLength: 'default',
   instructions: '',
-  enabledTools: ['get_my_tasks', 'check_ai_service_request', 'search_knowledge'],
+  enabledTools: ['get_my_tasks', 'check_ai_service_request', 'search_knowledge', 'open_ai_service_form'],
 }
 
 function makeId(prefix: string) {
@@ -168,7 +168,8 @@ export function useRealtimeChat() {
   const [options, setOptions] = useState<RealtimeChatOptions>(defaultOptions)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [sessionModel, setSessionModel] = useState<string | null>(null)
-
+  const [activePanelTool, setActivePanelTool] = useState<RealtimeToolName | null>(null)
+  const [panelData, setPanelData] = useState<unknown>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const dcRef = useRef<RTCDataChannel | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
@@ -384,6 +385,25 @@ export function useRealtimeChat() {
         ...prev,
       ])
 
+      if (name === 'open_ai_service_form') {
+        const syntheticResult: RealtimeToolExecuteResponse = {
+          callId,
+          name,
+          result: {},
+          summary: 'AI 서비스 신청 폼을 화면에 표시했습니다.',
+        }
+        updateToolLog(logId, {
+          status: 'success',
+          result: syntheticResult,
+          resultSummary: syntheticResult.summary,
+          completedAt: nowIso(),
+        })
+        setActivePanelTool('open_ai_service_form')
+        injectToolResult(syntheticResult)
+        setTurnStatus('idle')
+        return
+      }
+
       try {
         const result = await realtimeApi.executeTool({
           callId,
@@ -397,6 +417,10 @@ export function useRealtimeChat() {
           resultSummary: result.summary,
           completedAt: nowIso(),
         })
+        if (name === 'check_ai_service_request') {
+          setActivePanelTool('check_ai_service_request')
+          setPanelData(result.result)
+        }
         injectToolResult(result)
       } catch (error) {
         const message = error instanceof Error ? error.message : '도구 실행에 실패했습니다.'
@@ -745,6 +769,8 @@ export function useRealtimeChat() {
       errorMessage,
       sessionModel,
       isConnected,
+      activePanelTool,
+      panelData,
       connect,
       disconnect,
       sendText,
@@ -753,8 +779,12 @@ export function useRealtimeChat() {
       executeManualTool,
       injectToolResult,
       clearMessages,
+      closePanel: () => { setActivePanelTool(null); setPanelData(null) },
+      openPanel: (tool: RealtimeToolName, data: unknown) => { setActivePanelTool(tool); setPanelData(data) },
     }),
     [
+      activePanelTool,
+      panelData,
       clearMessages,
       connect,
       disconnect,
@@ -767,6 +797,7 @@ export function useRealtimeChat() {
       options,
       sendText,
       sessionModel,
+      setActivePanelTool,
       setAudioElement,
       status,
       toolLogs,
