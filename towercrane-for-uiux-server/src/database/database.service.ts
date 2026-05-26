@@ -655,6 +655,65 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_meeting_dm_pairs_users
         ON meeting_dm_pairs(user_a_id, user_b_id);
 
+      CREATE TABLE IF NOT EXISTS dev_management_rooms (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        room_type TEXT NOT NULL,
+        description TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_management_rooms_order
+        ON dev_management_rooms(archived, order_idx, created_at);
+
+      CREATE TABLE IF NOT EXISTS dev_management_messages (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        sender_id TEXT,
+        sender_type TEXT NOT NULL DEFAULT 'USER',
+        sender_name TEXT NOT NULL,
+        sender_role TEXT,
+        content TEXT NOT NULL,
+        message_type TEXT NOT NULL DEFAULT 'TEXT',
+        payload TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(room_id) REFERENCES dev_management_rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_management_messages_room_created
+        ON dev_management_messages(room_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS dev_management_bot_settings (
+        room_id TEXT PRIMARY KEY,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        response_mode TEXT NOT NULL DEFAULT 'MENTION_ONLY',
+        updated_by TEXT,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(room_id) REFERENCES dev_management_rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS dev_management_dm_pairs (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        user_a_id TEXT NOT NULL,
+        user_b_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(room_id) REFERENCES dev_management_rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_a_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_b_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(user_a_id, user_b_id)
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_dev_management_dm_pairs_users
+        ON dev_management_dm_pairs(user_a_id, user_b_id);
+
       CREATE TABLE IF NOT EXISTS challenge_categories (
         id TEXT PRIMARY KEY,
         diary_id TEXT,
@@ -1924,23 +1983,110 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     ensureChatbotChild('도구 호출 가이드',  'chatbot_tools_guide',     'BookOpen',        15);
     ensureChatbotChild('실시간 음성 가이드', 'chatbot_realtime_guide',  'BookOpen',        16);
 
+    let existingDevManagement = this.sqlite
+      .prepare(
+        "SELECT id FROM menus WHERE section_id = 'dev_management' AND parent_id IS NULL LIMIT 1",
+      )
+      .get() as { id: string } | undefined;
+
+    if (!existingDevManagement) {
+      const devManagementId = randomUUID();
+      this.db
+        .insert(menusTable)
+        .values({
+          id: devManagementId,
+          name: '개발 도구',
+          sectionId: 'dev_management',
+          icon: 'Wrench',
+          displayOrder: 1,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      existingDevManagement = { id: devManagementId };
+    } else {
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET name = '개발 도구',
+                icon = 'Wrench',
+                is_visible = 1,
+                required_role = NULL,
+                updated_at = ?
+            WHERE id = ?
+          `,
+        )
+        .run(now, existingDevManagement.id);
+    }
+
+    this.upsertMenuBySectionId({
+      sectionId: 'task_group',
+      name: '업무 관리',
+      icon: 'CheckSquare',
+      displayOrder: 0,
+      parentId: null,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'api_doc',
+      name: 'Postman',
+      icon: 'Send',
+      displayOrder: 0,
+      parentId: existingDevManagement.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'prototype',
+      name: 'Prototype',
+      icon: 'GitBranch',
+      displayOrder: 1,
+      parentId: existingDevManagement.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'dev_management_chat',
+      name: '개발 채팅',
+      icon: 'MessageSquareText',
+      displayOrder: 2,
+      parentId: existingDevManagement.id,
+      requiredRole: null,
+      now,
+    });
+    this.sqlite
+      .prepare(
+        `
+          UPDATE menus
+          SET is_visible = 0,
+              parent_id = NULL,
+              updated_at = ?
+          WHERE section_id = 'task'
+        `,
+      )
+      .run(now);
+
     // 루트 메뉴 표시 순서 고정:
-    // 0:업무관리, 1:AI 서비스 신청, 2:API Doc, 3:회의실,
-    // 4:게시판, 5:Dev Study(Challenge+SQL+학습일지), 6:Prototype, 7:지식채널, 8:챗봇, 9:Admin
+    // 0:업무관리, 1:개발도구(Postman+Prototype+개발채팅), 2:AI 서비스 신청,
+    // 3:회의실, 4:게시판, 5:Dev Study(Challenge+SQL+학습일지), 6:지식채널, 7:챗봇, 8:Admin
     const rootMenuOrder: Array<{
       sectionId: string | string[];
       displayOrder: number;
     }> = [
       { sectionId: ['task_group', 'task'], displayOrder: 0 },
-      { sectionId: 'ai_service_group', displayOrder: 1 },
-      { sectionId: 'api_doc', displayOrder: 2 },
+      { sectionId: 'dev_management', displayOrder: 1 },
+      { sectionId: 'ai_service_group', displayOrder: 2 },
       { sectionId: 'meeting', displayOrder: 3 },
       { sectionId: 'boards', displayOrder: 4 },
       { sectionId: 'dev_study', displayOrder: 5 },
-      { sectionId: 'prototype', displayOrder: 6 },
-      { sectionId: 'knowledge_channel', displayOrder: 7 },
-      { sectionId: 'chatbot_pilot', displayOrder: 8 },
-      { sectionId: 'admin_dropdown', displayOrder: 9 },
+      { sectionId: 'knowledge_channel', displayOrder: 6 },
+      { sectionId: 'chatbot_pilot', displayOrder: 7 },
+      { sectionId: 'admin_dropdown', displayOrder: 8 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
@@ -2023,6 +2169,94 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         ...room,
         createdBy: demoUser.id,
         createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    const defaultDevManagementRooms = [
+      {
+        id: 'dev-management-general',
+        name: '일반',
+        roomType: 'GENERAL',
+        description: '개발 논의와 진행 상황',
+        orderIdx: 0,
+      },
+      {
+        id: 'dev-management-prototype',
+        name: '프로토타입',
+        roomType: 'PROTOTYPE',
+        description: '참고 화면과 구현 후보',
+        orderIdx: 1,
+      },
+      {
+        id: 'dev-management-issues',
+        name: '이슈',
+        roomType: 'ISSUE',
+        description: '버그, 장애, 의사결정 필요 항목',
+        orderIdx: 2,
+      },
+      {
+        id: 'dev-management-decision',
+        name: '결정사항',
+        roomType: 'DECISION',
+        description: '확정된 개발 방향과 스펙',
+        orderIdx: 3,
+      },
+      {
+        id: 'dev-management-tech-debt',
+        name: '기술 부채',
+        roomType: 'TECH_DEBT',
+        description: '리팩토링과 구조 개선 후보',
+        orderIdx: 4,
+      },
+      {
+        id: 'dev-management-resources',
+        name: '자료',
+        roomType: 'RESOURCE',
+        description: '문서, 링크, 운영 참고',
+        orderIdx: 5,
+      },
+    ];
+
+    const upsertDevManagementRoom = this.sqlite.prepare(`
+      INSERT INTO dev_management_rooms (
+        id, name, room_type, description, order_idx, archived, created_by, created_at, updated_at
+      ) VALUES (
+        @id, @name, @roomType, @description, @orderIdx, 0, @createdBy, @createdAt, @updatedAt
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        room_type = excluded.room_type,
+        description = excluded.description,
+        order_idx = excluded.order_idx,
+        archived = 0,
+        updated_at = excluded.updated_at
+      WHERE dev_management_rooms.name IS NOT excluded.name
+        OR dev_management_rooms.room_type IS NOT excluded.room_type
+        OR dev_management_rooms.description IS NOT excluded.description
+        OR dev_management_rooms.order_idx IS NOT excluded.order_idx
+        OR dev_management_rooms.archived IS NOT 0
+    `);
+
+    const upsertDevManagementBotSettings = this.sqlite.prepare(`
+      INSERT INTO dev_management_bot_settings (
+        room_id, enabled, response_mode, updated_by, updated_at
+      ) VALUES (
+        @roomId, 1, 'MENTION_ONLY', @updatedBy, @updatedAt
+      )
+      ON CONFLICT(room_id) DO NOTHING
+    `);
+
+    for (const room of defaultDevManagementRooms) {
+      upsertDevManagementRoom.run({
+        ...room,
+        createdBy: demoUser.id,
+        createdAt: now,
+        updatedAt: now,
+      });
+      upsertDevManagementBotSettings.run({
+        roomId: room.id,
+        updatedBy: demoUser.id,
         updatedAt: now,
       });
     }
@@ -3934,11 +4168,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     requiredRole: string | null;
     now: string;
   }) {
-    const existing = this.sqlite
-      .prepare('SELECT id FROM menus WHERE section_id = ? LIMIT 1')
-      .get(input.sectionId) as { id: string } | undefined;
+    const existingRows = this.sqlite
+      .prepare(
+        `
+          SELECT id, parent_id as parentId
+          FROM menus
+          WHERE section_id = ?
+          ORDER BY rowid ASC
+        `,
+      )
+      .all(input.sectionId) as Array<{ id: string; parentId: string | null }>;
 
-    if (existing) {
+    if (existingRows.length > 0) {
+      const existing =
+        existingRows.find((row) => row.parentId === input.parentId) ??
+        existingRows[0];
+
       this.db
         .update(menusTable)
         .set({
@@ -3952,6 +4197,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         })
         .where(eq(menusTable.id, existing.id))
         .run();
+
+      for (const duplicate of existingRows.filter((row) => row.id !== existing.id)) {
+        this.sqlite
+          .prepare(`UPDATE menus SET parent_id = ?, updated_at = ? WHERE parent_id = ?`)
+          .run(existing.id, input.now, duplicate.id);
+        this.sqlite.prepare(`DELETE FROM menus WHERE id = ?`).run(duplicate.id);
+      }
       return;
     }
 

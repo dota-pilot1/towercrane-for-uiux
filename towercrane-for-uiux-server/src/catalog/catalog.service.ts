@@ -262,20 +262,7 @@ export class CatalogService {
   }
 
   getCategory(userId: string, userRole: string, categoryId: string) {
-    const categoryQuery = this.databaseService.db
-      .select()
-      .from(categoriesTable);
-
-    const category = (userRole === 'admin' || userRole === 'guest'
-      ? categoryQuery.where(eq(categoriesTable.id, categoryId))
-      : categoryQuery.where(
-          and(eq(categoriesTable.id, categoryId), eq(categoriesTable.userId, userId)),
-        )
-    ).get();
-
-    if (!category) {
-      throw new NotFoundException(`Category not found: ${categoryId}`);
-    }
+    const category = this.ensureCategory(userId, userRole, categoryId);
 
     const prototypes = this.databaseService.db
       .select()
@@ -835,6 +822,10 @@ export class CatalogService {
     }
 
     const workspaceId = category.workspaceId ?? this.getDefaultWorkspaceId();
+    if (workspaceId === this.getDefaultWorkspaceId() && userId) {
+      return category;
+    }
+
     if (this.getWorkspaceRole(userId, userRole, workspaceId)) {
       return category;
     }

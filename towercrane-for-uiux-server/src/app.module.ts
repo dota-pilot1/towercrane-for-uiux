@@ -26,6 +26,7 @@ import { ChatbotMonitoringModule } from './chatbot-monitoring/chatbot-monitoring
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
 import { AiMonitoringModule } from './ai-monitoring/ai-monitoring.module';
 import { AiServiceRequestModule } from './ai-service-request/ai-service-request.module';
+import { DevManagementModule } from './dev-management/dev-management.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { AiServiceRequestModule } from './ai-service-request/ai-service-request.
     KnowledgeBaseModule,
     AiMonitoringModule,
     AiServiceRequestModule,
+    DevManagementModule,
   ],
   controllers: [AppController],
   providers: [AppService],

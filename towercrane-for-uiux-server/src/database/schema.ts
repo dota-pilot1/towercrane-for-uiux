@@ -720,6 +720,97 @@ export const meetingDmPairsTable = sqliteTable('meeting_dm_pairs', {
   createdAt: text('created_at').notNull(),
 });
 
+export type DevManagementRoomType =
+  | 'GENERAL'
+  | 'PROTOTYPE'
+  | 'ISSUE'
+  | 'DECISION'
+  | 'TECH_DEBT'
+  | 'RESOURCE'
+  | 'DM';
+export type DevManagementSenderType = 'USER' | 'BOT' | 'SYSTEM' | 'TOOL';
+export type DevManagementMessageType =
+  | 'TEXT'
+  | 'SYSTEM'
+  | 'BOT_REPLY'
+  | 'SUMMARY'
+  | 'PROTOTYPE_SEARCH_RESULT'
+  | 'TECH_DEBT_ANALYSIS'
+  | 'TOOL_RESULT';
+export type DevManagementBotResponseMode =
+  | 'MENTION_ONLY'
+  | 'DIRECT_ONLY'
+  | 'MENTION_OR_DIRECT';
+
+export const devManagementRoomsTable = sqliteTable('dev_management_rooms', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  roomType: text('room_type').$type<DevManagementRoomType>().notNull(),
+  description: text('description'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const devManagementMessagesTable = sqliteTable('dev_management_messages', {
+  id: text('id').primaryKey(),
+  roomId: text('room_id')
+    .notNull()
+    .references(() => devManagementRoomsTable.id, { onDelete: 'cascade' }),
+  senderId: text('sender_id').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  senderType: text('sender_type').$type<DevManagementSenderType>().notNull(),
+  senderName: text('sender_name').notNull(),
+  senderRole: text('sender_role'),
+  content: text('content').notNull(),
+  messageType: text('message_type')
+    .$type<DevManagementMessageType>()
+    .notNull()
+    .default('TEXT'),
+  payload: text('payload', { mode: 'json' }).$type<Record<
+    string,
+    unknown
+  > | null>(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const devManagementBotSettingsTable = sqliteTable(
+  'dev_management_bot_settings',
+  {
+    roomId: text('room_id')
+      .primaryKey()
+      .references(() => devManagementRoomsTable.id, { onDelete: 'cascade' }),
+    enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+    responseMode: text('response_mode')
+      .$type<DevManagementBotResponseMode>()
+      .notNull()
+      .default('MENTION_ONLY'),
+    updatedBy: text('updated_by').references(() => usersTable.id, {
+      onDelete: 'set null',
+    }),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const devManagementDmPairsTable = sqliteTable('dev_management_dm_pairs', {
+  id: text('id').primaryKey(),
+  roomId: text('room_id')
+    .notNull()
+    .references(() => devManagementRoomsTable.id, { onDelete: 'cascade' }),
+  userAId: text('user_a_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  userBId: text('user_b_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+});
+
 export type IssueType =
   | 'BUG'
   | 'FEATURE'
@@ -1597,6 +1688,10 @@ export const schema = {
   meetingRoomsTable,
   meetingMessagesTable,
   meetingDmPairsTable,
+  devManagementRoomsTable,
+  devManagementMessagesTable,
+  devManagementBotSettingsTable,
+  devManagementDmPairsTable,
   issuesTable,
   issueCommentsTable,
   challengeCategoriesTable,
@@ -1737,6 +1832,22 @@ export type MeetingMessageRow = typeof meetingMessagesTable.$inferSelect;
 export type MeetingMessageInsert = typeof meetingMessagesTable.$inferInsert;
 export type MeetingDmPairRow = typeof meetingDmPairsTable.$inferSelect;
 export type MeetingDmPairInsert = typeof meetingDmPairsTable.$inferInsert;
+export type DevManagementRoomRow =
+  typeof devManagementRoomsTable.$inferSelect;
+export type DevManagementRoomInsert =
+  typeof devManagementRoomsTable.$inferInsert;
+export type DevManagementMessageRow =
+  typeof devManagementMessagesTable.$inferSelect;
+export type DevManagementMessageInsert =
+  typeof devManagementMessagesTable.$inferInsert;
+export type DevManagementBotSettingsRow =
+  typeof devManagementBotSettingsTable.$inferSelect;
+export type DevManagementBotSettingsInsert =
+  typeof devManagementBotSettingsTable.$inferInsert;
+export type DevManagementDmPairRow =
+  typeof devManagementDmPairsTable.$inferSelect;
+export type DevManagementDmPairInsert =
+  typeof devManagementDmPairsTable.$inferInsert;
 export type IssueRow = typeof issuesTable.$inferSelect;
 export type IssueInsert = typeof issuesTable.$inferInsert;
 export type IssueCommentRow = typeof issueCommentsTable.$inferSelect;

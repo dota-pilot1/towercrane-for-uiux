@@ -36,6 +36,7 @@ import { ChatbotRealtimeGuidePage } from '../pages/chatbot/ui/chatbot-realtime-g
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-workspace-home-page'
+import { DevManagementPage } from '../pages/dev-management/ui/dev-management-page'
 import { HomePage } from '../pages/home/ui/home-page'
 import { AiServiceRequestPage } from '../pages/ai-service-request/ui/ai-service-request-page'
 import { AiServiceMyPage } from '../pages/ai-service-my/ui/ai-service-my-page'
@@ -500,6 +501,14 @@ function MeetingWorkspaceRoute() {
   return <MeetingPage workspaceId={workspaceId} />
 }
 
+// ─── /dev-management ───────────────────────────────────────────────────────
+
+const devManagementRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-management',
+  component: DevManagementPage,
+})
+
 // ─── /docu ───────────────────────────────────────────────────────────────────
 
 export const docuRoute = createRoute({
@@ -927,6 +936,7 @@ export const router = createRouter({
       chatbotRealtimeGuideRoute,
       meetingRoute,
       meetingWorkspaceRoute,
+      devManagementRoute,
       docuRoute,
       aiServiceRequestRoute,
       aiServiceMyRoute,

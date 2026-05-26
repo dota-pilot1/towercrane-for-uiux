@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { DevManagementGateway } from './dev-management/dev-management.gateway';
 import { MeetingGateway } from './meeting/meeting.gateway';
 
 async function bootstrap() {
@@ -20,5 +21,6 @@ async function bootstrap() {
   });
   await app.listen(process.env.PORT ?? 3000);
   app.get(MeetingGateway).attach(app.getHttpServer());
+  app.get(DevManagementGateway).attach(app.getHttpServer());
 }
 void bootstrap();
