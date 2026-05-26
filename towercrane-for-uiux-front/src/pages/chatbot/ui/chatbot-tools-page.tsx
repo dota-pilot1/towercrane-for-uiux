@@ -385,34 +385,40 @@ export function ChatbotToolsPage() {
       <aside className="hidden min-h-0 w-[420px] shrink-0 flex-col rounded-lg border border-surface-border bg-surface-raised xl:flex">
 
         {/* 탭 헤더 */}
-        <div className="shrink-0 border-b border-surface-border bg-brand-glass px-3 py-2 flex gap-1">
-          <button
-            onClick={() => setRightTab('tools')}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-              rightTab === 'tools'
-                ? 'bg-brand-glass border border-brand-border text-brand-primary'
-                : 'ui-text-muted hover:ui-text-secondary'
-            }`}
-          >
-            <ListChecks className="size-3.5" />
-            사용 가능한 툴
-          </button>
-          <button
-            onClick={() => setRightTab('logs')}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-              rightTab === 'logs'
-                ? 'bg-brand-glass border border-brand-border text-brand-primary'
-                : 'ui-text-muted hover:ui-text-secondary'
-            }`}
-          >
-            <Hammer className="size-3.5" />
-            호출 로그
-            {toolCalls.length > 0 && (
-              <span className="ml-0.5 rounded-full bg-brand-primary text-surface-raised text-[10px] font-bold px-1.5 py-0.5 leading-none">
-                {toolCalls.length}
-              </span>
-            )}
-          </button>
+        <div className="shrink-0 border-b border-surface-border bg-brand-glass p-2">
+          <div className="grid grid-cols-2 gap-1 bg-surface-muted p-1 rounded-xl border border-surface-border-soft relative">
+            <button
+              onClick={() => setRightTab('tools')}
+              className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold transition-all duration-200 select-none cursor-pointer ${
+                rightTab === 'tools'
+                  ? 'bg-surface-raised border border-surface-border text-brand-primary shadow-sm scale-[1.01]'
+                  : 'text-text-secondary hover:text-text-primary border border-transparent hover:bg-surface-raised/40'
+              }`}
+            >
+              <ListChecks className={`size-4 transition-colors ${rightTab === 'tools' ? 'text-brand-primary' : 'text-text-muted'}`} />
+              <span>사용 가능한 툴</span>
+            </button>
+            <button
+              onClick={() => setRightTab('logs')}
+              className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold transition-all duration-200 select-none cursor-pointer ${
+                rightTab === 'logs'
+                  ? 'bg-surface-raised border border-surface-border text-brand-primary shadow-sm scale-[1.01]'
+                  : 'text-text-secondary hover:text-text-primary border border-transparent hover:bg-surface-raised/40'
+              }`}
+            >
+              <Hammer className={`size-4 transition-colors ${rightTab === 'logs' ? 'text-brand-primary' : 'text-text-muted'}`} />
+              <span>호출 로그</span>
+              {toolCalls.length > 0 && (
+                <span className={`ml-1 rounded-full text-[10px] font-extrabold px-1.5 py-0.5 leading-none transition-colors duration-200 ${
+                  rightTab === 'logs'
+                    ? 'bg-brand-primary text-primary-foreground'
+                    : 'bg-surface-border-soft text-text-secondary'
+                }`}>
+                  {toolCalls.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* 사용 가능한 툴 탭 */}

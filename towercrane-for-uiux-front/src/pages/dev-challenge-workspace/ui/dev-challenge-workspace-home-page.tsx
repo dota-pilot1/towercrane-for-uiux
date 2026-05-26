@@ -85,20 +85,25 @@ function DevChallengeWorkspaceCard({
     <button
       type="button"
       onClick={onOpen}
-      className="group flex flex-col justify-between min-h-[190px] rounded-2xl border border-surface-border-soft bg-surface-raised p-5 text-left shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:shadow-[0_12px_24px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+      className="group flex flex-col justify-between min-h-[195px] rounded-2xl border border-surface-border-soft bg-surface-raised p-5 text-left shadow-2xs relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:shadow-[0_12px_28px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border cursor-pointer select-none"
     >
+      {/* 상단 액센트 탑 라인 */}
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-brand-primary/30 via-brand-primary to-brand-primary/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      
       <div className="w-full">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-brand-border bg-brand-glass text-brand-primary transition-all duration-300 group-hover:scale-105 group-hover:bg-brand-primary group-hover:text-primary-foreground group-hover:shadow-[0_4px_12px_color-mix(in_srgb,var(--primary)_25%,transparent)]">
-              <Trophy className="size-4.5" />
+          <div className="flex min-w-0 items-start gap-3.5">
+            {/* 트로피 아이콘 컨테이너 */}
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-brand-border bg-brand-glass text-brand-primary transition-all duration-300 group-hover:scale-105 group-hover:bg-brand-primary group-hover:text-primary-foreground group-hover:shadow-[0_4px_12px_color-mix(in_srgb,var(--primary)_25%,transparent)]">
+              <Trophy className="size-5" />
             </div>
-            <div className="min-w-0">
+            
+            <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-2">
-                <h2 className="truncate text-base font-black text-text-primary">
+                <h2 className="truncate text-base font-black text-text-primary tracking-tight transition-colors group-hover:text-brand-primary">
                   {workspace.name}
                 </h2>
-                <span className="shrink-0 rounded-sm border border-surface-border-soft bg-surface-raised px-1.5 py-0.5 text-[10px] font-bold uppercase text-text-muted">
+                <span className="shrink-0 rounded-full bg-brand-glass border border-brand-border/40 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-brand-primary shadow-2xs">
                   {workspace.myRole}
                 </span>
               </div>
@@ -107,7 +112,7 @@ function DevChallengeWorkspaceCard({
               </p>
             </div>
           </div>
-          <ArrowRight className="mt-1 size-4 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-brand-primary" />
+          <ArrowRight className="mt-1.5 size-4 shrink-0 text-text-muted transition-transform duration-300 group-hover:translate-x-1 group-hover:text-brand-primary" />
         </div>
       </div>
 
@@ -130,18 +135,23 @@ function Metric({
   brand?: boolean
 }) {
   return (
-    <div className="rounded-xl border border-surface-border-soft bg-surface-raised p-3 transition-all duration-300 group-hover:bg-surface-muted/30">
-      <div className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+    <div className="rounded-xl border border-surface-border-soft/30 bg-surface-muted/30 p-3 transition-all duration-300 group-hover:bg-surface-muted/60 group-hover:border-brand-border/10">
+      <div className="truncate text-[10px] font-extrabold uppercase tracking-widest text-text-muted transition-colors group-hover:text-text-secondary">
         {label}
       </div>
-      <div
-        className={
-          brand
-            ? 'mt-1 text-lg font-extrabold text-brand-primary'
-            : 'mt-1 text-lg font-extrabold text-text-primary'
-        }
-      >
-        {value}
+      <div className="mt-1 flex items-baseline gap-1">
+        {brand ? (
+          <span className="inline-flex items-center gap-1">
+            <span className="text-xl font-black text-brand-primary tracking-tight">
+              {value}
+            </span>
+            <span className="size-1.5 rounded-full bg-brand-primary animate-pulse" />
+          </span>
+        ) : (
+          <span className="text-xl font-black text-text-primary tracking-tight transition-colors group-hover:text-brand-primary/80">
+            {value}
+          </span>
+        )}
       </div>
     </div>
   )

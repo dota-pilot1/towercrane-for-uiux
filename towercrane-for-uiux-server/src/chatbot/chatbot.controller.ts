@@ -81,4 +81,43 @@ export class ChatbotController {
       channels: body.channels,
     });
   }
+
+  @Post('realtime/session')
+  createRealtimeSession(
+    @CurrentUser() user: User,
+    @Body()
+    body: {
+      model?: string;
+      voice?: string;
+      language?: string;
+      turnMode?: 'server_vad' | 'push_to_talk';
+      responseMode?: 'text_audio' | 'text_only' | 'audio_only';
+      instructions?: string;
+      enabledTools?: string[];
+    },
+  ) {
+    if (!user.aiAccess && user.role !== 'admin') {
+      throw new ForbiddenException('AI 서비스 사용 권한이 없습니다. 서비스 신청 후 승인을 받아주세요.');
+    }
+
+    return this.chatbotService.createRealtimeClientSecret(user, body ?? {});
+  }
+
+  @Post('realtime/tools/execute')
+  executeRealtimeTool(
+    @CurrentUser() user: User,
+    @Body()
+    body: {
+      callId?: string;
+      name: string;
+      source?: 'realtime' | 'manual_test';
+      arguments?: Record<string, unknown>;
+    },
+  ) {
+    if (!user.aiAccess && user.role !== 'admin') {
+      throw new ForbiddenException('AI 서비스 사용 권한이 없습니다. 서비스 신청 후 승인을 받아주세요.');
+    }
+
+    return this.chatbotService.executeRealtimeTool(user, body);
+  }
 }

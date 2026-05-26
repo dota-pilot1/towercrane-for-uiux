@@ -1859,10 +1859,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       icon: string,
       displayOrder: number,
     ) => {
-      const exists = this.sqlite
-        .prepare(`SELECT id FROM menus WHERE section_id = ?`)
-        .get(sectionId);
-      if (!exists) {
+      const existingRows = this.sqlite
+        .prepare(
+          `
+            SELECT id
+            FROM menus
+            WHERE section_id = ?
+            ORDER BY
+              CASE WHEN parent_id = ? THEN 0 ELSE 1 END,
+              display_order,
+              created_at
+          `,
+        )
+        .all(sectionId, parentId) as Array<{ id: string }>;
+
+      if (existingRows.length === 0) {
         this.db
           .insert(menusTable)
           .values({
@@ -1878,16 +1889,40 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             updatedAt: now,
           })
           .run();
+        return;
+      }
+
+      const [primary, ...duplicates] = existingRows;
+      this.sqlite
+        .prepare(
+          `
+            UPDATE menus
+            SET name = ?,
+                icon = ?,
+                display_order = ?,
+                is_visible = 1,
+                required_role = NULL,
+                parent_id = ?,
+                updated_at = ?
+            WHERE id = ?
+          `,
+        )
+        .run(name, icon, displayOrder, parentId, now, primary.id);
+
+      for (const duplicate of duplicates) {
+        this.sqlite.prepare(`DELETE FROM menus WHERE id = ?`).run(duplicate.id);
       }
     };
     ensureChatbotChild('지식 검색',        'chatbot_knowledge',       'Search',         4);
     ensureChatbotChild('도구 호출',        'chatbot_tools',           'Wrench',          5);
+    ensureChatbotChild('실시간 음성',      'chatbot_realtime',        'Mic2',            6);
     ensureChatbotChild('기본 채팅 가이드',  'chatbot_basic_guide',     'BookOpen',        10);
     ensureChatbotChild('스트리밍 가이드',   'chatbot_streaming_guide', 'BookOpen',        11);
     ensureChatbotChild('히스토리 가이드',   'chatbot_history_guide',   'BookOpen',        12);
     ensureChatbotChild('파일 첨부 가이드',  'chatbot_files_guide',     'BookOpen',        13);
     ensureChatbotChild('지식 검색 가이드',  'chatbot_knowledge_guide', 'BookOpen',        14);
     ensureChatbotChild('도구 호출 가이드',  'chatbot_tools_guide',     'BookOpen',        15);
+    ensureChatbotChild('실시간 음성 가이드', 'chatbot_realtime_guide',  'BookOpen',        16);
 
     // 루트 메뉴 표시 순서 고정:
     // 0:업무관리, 1:AI 서비스 신청, 2:API Doc, 3:회의실,

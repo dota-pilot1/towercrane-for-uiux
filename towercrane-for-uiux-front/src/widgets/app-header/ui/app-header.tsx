@@ -64,12 +64,14 @@ function sectionIdToPath(sectionId: string): string {
     chatbot_files: '/chatbot/files',
     chatbot_knowledge: '/chatbot/knowledge',
     chatbot_tools: '/chatbot/tools',
+    chatbot_realtime: '/chatbot/realtime',
     chatbot_basic_guide: '/chatbot/guide',
     chatbot_streaming_guide: '/chatbot/streaming/guide',
     chatbot_history_guide: '/chatbot/history/guide',
     chatbot_files_guide: '/chatbot/files/guide',
     chatbot_knowledge_guide: '/chatbot/knowledge/guide',
     chatbot_tools_guide: '/chatbot/tools/guide',
+    chatbot_realtime_guide: '/chatbot/realtime/guide',
   }
   return map[sectionId] ?? '/prototype'
 }
@@ -119,6 +121,8 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/chatbot/knowledge/dev')) return 'knowledge_dev'
   if (pathname.startsWith('/chatbot/knowledge')) return 'chatbot_knowledge'
   if (pathname.startsWith('/chatbot/tools')) return 'chatbot_tools'
+  if (pathname.startsWith('/chatbot/realtime/guide')) return 'chatbot_realtime_guide'
+  if (pathname.startsWith('/chatbot/realtime')) return 'chatbot_realtime'
   if (pathname.startsWith('/chatbot')) return 'chatbot_basic'
   return 'prototype'
 }
@@ -194,6 +198,14 @@ const SECTION_META: Record<string, { description: string; badge?: string }> = {
   },
   chatbot_tools_guide: {
     description: 'Tool 정의 → tool_use 감지 → 함수 실행 → tool_result 재전달 흐름을 설명합니다.',
+    badge: 'Guide',
+  },
+  chatbot_realtime: {
+    description: 'Realtime API로 음성 입출력과 도구 호출을 결합하는 업무 챗봇 화면입니다.',
+    badge: 'Voice',
+  },
+  chatbot_realtime_guide: {
+    description: 'WebRTC 연결 → Realtime 이벤트 → function_call 결과 재전달 흐름을 설명합니다.',
     badge: 'Guide',
   },
   knowledge_channel: {

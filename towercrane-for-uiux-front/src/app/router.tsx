@@ -31,6 +31,8 @@ import { ChatbotFilesGuidePage } from '../pages/chatbot/ui/chatbot-files-guide-p
 import { ChatbotKnowledgeGuidePage } from '../pages/chatbot/ui/chatbot-knowledge-guide-page'
 import { ChatbotToolsPage } from '../pages/chatbot/ui/chatbot-tools-page'
 import { ChatbotToolsGuidePage } from '../pages/chatbot/ui/chatbot-tools-guide-page'
+import { ChatbotRealtimePage } from '../pages/chatbot/ui/chatbot-realtime-page'
+import { ChatbotRealtimeGuidePage } from '../pages/chatbot/ui/chatbot-realtime-guide-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-workspace-home-page'
@@ -431,6 +433,18 @@ const chatbotToolsGuideRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot/tools/guide',
   component: ChatbotToolsGuidePage,
+})
+
+const chatbotRealtimeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/realtime',
+  component: ChatbotRealtimePage,
+})
+
+const chatbotRealtimeGuideRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/chatbot/realtime/guide',
+  component: ChatbotRealtimeGuidePage,
 })
 
 const chatbotKnowledgeNoticeRoute = createRoute({
@@ -909,6 +923,8 @@ export const router = createRouter({
       chatbotKnowledgeGuideRoute,
       chatbotToolsRoute,
       chatbotToolsGuideRoute,
+      chatbotRealtimeRoute,
+      chatbotRealtimeGuideRoute,
       meetingRoute,
       meetingWorkspaceRoute,
       docuRoute,

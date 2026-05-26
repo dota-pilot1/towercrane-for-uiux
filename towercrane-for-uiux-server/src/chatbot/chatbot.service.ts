@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -7,7 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import type { Response } from 'express';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { asc, desc, eq } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import {
@@ -49,6 +50,34 @@ type StreamOptions = {
   // STEP 1-A: mode에 'tools' 추가 — tools 모드일 때 Function Calling 흐름 사용
   mode?: 'general' | 'knowledge' | 'tools';
   channels?: KnowledgeChannel[];
+};
+
+type RealtimeSessionRequest = {
+  model?: string;
+  voice?: string;
+  language?: string;
+  turnMode?: 'server_vad' | 'push_to_talk';
+  responseMode?: 'text_audio' | 'text_only' | 'audio_only';
+  instructions?: string;
+  enabledTools?: string[];
+};
+
+type RealtimeToolExecuteRequest = {
+  callId?: string;
+  name: string;
+  source?: 'realtime' | 'manual_test';
+  arguments?: Record<string, unknown>;
+};
+
+type RealtimeToolDefinition = {
+  type: 'function';
+  name: string;
+  description: string;
+  parameters: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required: string[];
+  };
 };
 
 // STEP 1-B: self_introduce 툴 스키마 정의
@@ -103,6 +132,74 @@ const GET_MY_TASKS_TOOL: OpenAI.ChatCompletionTool = {
     },
   },
 };
+
+const REALTIME_MODEL_FALLBACK = 'gpt-realtime-2';
+const ALLOWED_REALTIME_MODELS = new Set([
+  'gpt-realtime-2',
+  'gpt-realtime-1.5',
+  'gpt-realtime',
+  'gpt-realtime-mini',
+]);
+
+const ALLOWED_REALTIME_VOICES = new Set([
+  'alloy',
+  'ash',
+  'ballad',
+  'cedar',
+  'coral',
+  'echo',
+  'marin',
+  'sage',
+  'shimmer',
+  'verse',
+]);
+
+const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
+  {
+    type: 'function',
+    name: 'get_my_tasks',
+    description:
+      '현재 로그인한 사용자가 담당자로 지정된 업무 목록을 조회한다. 내 업무, 내 할일, 담당 업무, 배정된 업무 요청에 사용한다.',
+    parameters: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'HOLD'],
+          description: '선택 사항. 특정 업무 상태만 보고 싶을 때 사용한다.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    type: 'function',
+    name: 'check_ai_service_request',
+    description:
+      '현재 로그인한 사용자의 AI 서비스 신청 현황을 조회한다. 신청 상태, 승인 여부, 반려 사유 확인 요청에 사용한다.',
+    parameters: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    type: 'function',
+    name: 'search_knowledge',
+    description:
+      '사내 지식 문서에서 사용자의 질문과 관련된 문서를 검색한다. 정책, FAQ, 공지, 개발 지식 확인 요청에 사용한다.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: '검색할 질문 또는 키워드',
+        },
+      },
+      required: ['query'],
+    },
+  },
+];
 
 const CHATBOT_SYSTEM_PROMPT = `당신은 친절하고 실용적인 AI 어시스턴트입니다.
 
@@ -344,6 +441,241 @@ export class ChatbotService {
       user,
     );
     return result.items;
+  }
+
+  private normalizeRealtimeModel(model?: string) {
+    const configured =
+      this.configService.get<string>('OPENAI_REALTIME_MODEL') ??
+      REALTIME_MODEL_FALLBACK;
+    const requested = model?.trim() || configured;
+    return ALLOWED_REALTIME_MODELS.has(requested)
+      ? requested
+      : REALTIME_MODEL_FALLBACK;
+  }
+
+  private normalizeRealtimeVoice(voice?: string) {
+    const requested = voice?.trim().toLowerCase() || 'marin';
+    return ALLOWED_REALTIME_VOICES.has(requested) ? requested : 'marin';
+  }
+
+  private buildRealtimeInstructions(extra?: string) {
+    return [
+      '당신은 Towercrane Prototype Console의 실시간 음성 업무 도우미입니다.',
+      '한국어로 짧고 명확하게 답하세요.',
+      '업무 데이터, 신청 상태, 담당 업무처럼 현재 시스템 정보가 필요한 경우 등록된 도구를 호출하세요.',
+      '도구 호출 결과에 근거해 답하고, 확인되지 않은 내용은 추측하지 마세요.',
+      '민감한 정보는 사용자가 권한을 가진 범위에서만 답하세요.',
+      extra?.trim() ? `추가 지시: ${extra.trim()}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  private getRealtimeTools(enabledTools?: string[]) {
+    if (!enabledTools || enabledTools.length === 0) {
+      return REALTIME_TOOL_DEFINITIONS;
+    }
+
+    const enabled = new Set(enabledTools);
+    return REALTIME_TOOL_DEFINITIONS.filter((tool) => enabled.has(tool.name));
+  }
+
+  private buildSafetyIdentifier(userId: string) {
+    return createHash('sha256')
+      .update(`towercrane:${userId}`)
+      .digest('hex');
+  }
+
+  async createRealtimeClientSecret(
+    user: ChatbotUser,
+    request: RealtimeSessionRequest,
+  ) {
+    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    if (!apiKey) {
+      throw new ServiceUnavailableException(
+        'OpenAI API key is not configured.',
+      );
+    }
+
+    const model = this.normalizeRealtimeModel(request.model);
+    const voice = this.normalizeRealtimeVoice(request.voice);
+    const language =
+      request.language && request.language !== 'auto'
+        ? request.language
+        : undefined;
+    const responseMode = request.responseMode ?? 'text_audio';
+    const turnMode = request.turnMode ?? 'server_vad';
+    const tools = this.getRealtimeTools(request.enabledTools);
+    const outputModalities =
+      responseMode === 'text_only'
+        ? ['text']
+        : ['audio'];
+
+    const session: Record<string, unknown> = {
+      type: 'realtime',
+      model,
+      output_modalities: outputModalities,
+      instructions: this.buildRealtimeInstructions(request.instructions),
+      audio: {
+        input: {
+          turn_detection:
+            turnMode === 'server_vad' ? { type: 'server_vad' } : null,
+          transcription: {
+            model: 'gpt-4o-transcribe',
+            ...(language ? { language } : {}),
+          },
+        },
+        output: {
+          voice,
+        },
+      },
+      tools,
+      tool_choice: tools.length > 0 ? 'auto' : 'none',
+    };
+
+    const response = await fetch(
+      'https://api.openai.com/v1/realtime/client_secrets',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Safety-Identifier': this.buildSafetyIdentifier(user.id),
+        },
+        body: JSON.stringify({
+          expires_after: { anchor: 'created_at', seconds: 600 },
+          session,
+        }),
+      },
+    );
+
+    const rawBody = await response.text();
+    let data: Record<string, any> = {};
+    try {
+      data = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      data = {};
+    }
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException({
+        message: 'OpenAI Realtime client secret 생성에 실패했습니다.',
+        status: response.status,
+        details: data.error?.message ?? rawBody,
+      });
+    }
+
+    const token = data.value ?? data.client_secret?.value;
+    const expiresAt = data.expires_at ?? data.client_secret?.expires_at;
+    if (!token || typeof token !== 'string') {
+      throw new ServiceUnavailableException(
+        'OpenAI Realtime client secret 응답에 token이 없습니다.',
+      );
+    }
+
+    return {
+      type: 'client_secret',
+      token,
+      model,
+      voice,
+      expiresAt,
+      tools: tools.map((tool) => tool.name),
+    };
+  }
+
+  executeRealtimeTool(user: ChatbotUser, request: RealtimeToolExecuteRequest) {
+    const name = request.name?.trim();
+    const args = request.arguments ?? {};
+    const callId = request.callId?.trim() || `manual_${randomUUID()}`;
+
+    if (!name) {
+      throw new BadRequestException('tool name is required');
+    }
+
+    if (name === 'get_my_tasks') {
+      const status =
+        typeof args.status === 'string' && args.status.trim()
+          ? args.status.trim()
+          : undefined;
+      const tasks = this.db
+        .select({
+          id: tasksTable.id,
+          title: tasksTable.title,
+          status: tasksTable.status,
+          priority: tasksTable.priority,
+          taskType: tasksTable.taskType,
+          dueDate: tasksTable.dueDate,
+        })
+        .from(tasksTable)
+        .where(eq(tasksTable.assigneeId, user.id))
+        .all()
+        .filter((task) => !status || task.status === status);
+
+      return {
+        callId,
+        name,
+        result: {
+          count: tasks.length,
+          items: tasks.slice(0, 10),
+        },
+        summary: `담당 업무 ${tasks.length}건을 조회했습니다.`,
+      };
+    }
+
+    if (name === 'check_ai_service_request') {
+      const requests = this.db
+        .select({
+          id: aiServiceRequestsTable.id,
+          serviceType: aiServiceRequestsTable.serviceType,
+          purpose: aiServiceRequestsTable.purpose,
+          status: aiServiceRequestsTable.status,
+          rejectReason: aiServiceRequestsTable.rejectReason,
+          createdAt: aiServiceRequestsTable.createdAt,
+          updatedAt: aiServiceRequestsTable.updatedAt,
+        })
+        .from(aiServiceRequestsTable)
+        .where(eq(aiServiceRequestsTable.userId, user.id))
+        .all();
+
+      return {
+        callId,
+        name,
+        result: {
+          count: requests.length,
+          items: requests.slice(0, 10),
+        },
+        summary: `AI 서비스 신청 ${requests.length}건을 조회했습니다.`,
+      };
+    }
+
+    if (name === 'search_knowledge') {
+      const query = typeof args.query === 'string' ? args.query.trim() : '';
+      if (!query) {
+        throw new BadRequestException('search_knowledge query is required');
+      }
+
+      const sources = this.searchKnowledgeSources(query, user).map((source) => ({
+        documentId: source.documentId,
+        channel: source.channel,
+        title: source.title,
+        headingPath: source.headingPath,
+        snippet: source.snippet,
+        documentUrl: source.documentUrl,
+        score: source.score,
+      }));
+
+      return {
+        callId,
+        name,
+        result: {
+          count: sources.length,
+          items: sources,
+        },
+        summary: `사내 지식 문서 ${sources.length}건을 검색했습니다.`,
+      };
+    }
+
+    throw new BadRequestException(`unsupported realtime tool: ${name}`);
   }
 
   async streamGpt(
