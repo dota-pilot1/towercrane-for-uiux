@@ -83,6 +83,12 @@ function extractMermaidChart(value: string) {
   return (fenced?.[1] ?? value).trim()
 }
 
+function isMermaidChart(value: string) {
+  return /^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|mindmap|timeline|gitGraph)\b/i.test(
+    value.trim(),
+  )
+}
+
 function shouldRenderCodeBlock(category: CodeReviewFinding['category']) {
   return category === 'structure' || category === 'code'
 }
@@ -546,9 +552,19 @@ function FindingSection({ findings }: { findings: CodeReviewFinding[] }) {
 
 function FindingBody({ finding }: { finding: CodeReviewFinding }) {
   if (finding.category === 'diagram') {
+    const chart = extractMermaidChart(finding.body)
+
+    if (!isMermaidChart(chart)) {
+      return (
+        <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised px-3 py-3 font-mono text-xs leading-5 text-text-secondary">
+          {finding.body}
+        </pre>
+      )
+    }
+
     return (
       <div className="mt-3 rounded-md border border-surface-border-soft bg-surface-raised p-3">
-        <Mermaid chart={extractMermaidChart(finding.body)} className="min-h-36" />
+        <Mermaid chart={chart} className="min-h-36" />
       </div>
     )
   }

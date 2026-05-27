@@ -497,7 +497,7 @@ export class CodeReviewsService {
                 '주요 로직: 핵심 서비스, API, 프론트 상태/라우팅 코드의 계약과 책임 평가',
                 '주요 문법: TypeScript, React, NestJS, Zod/DB 사용 방식의 적절성 평가',
                 '아키텍처/클린코드 평가: 레이어 분리, 모듈 경계, 파일 크기, 중복, 명명, 유지보수성 평가',
-                'mmd 흐름도: 상태 관리나 외부 API/DB 저장 흐름이 복잡할 때만 Mermaid 문법으로 추가',
+                'mmd 흐름도: 선택된 경우 body는 반드시 flowchart TD로 시작하는 Mermaid 문법만 작성. 설명문, 권장문, 코드펜스는 넣지 않음',
               ],
               diff,
             }),
@@ -737,6 +737,7 @@ export class CodeReviewsService {
       excludedFiles,
     );
     findings = this.ensureStructureFinding(findings, reviewedFiles, sections);
+    findings = this.ensureDiagramFinding(findings, reviewedFiles, sections);
 
     return {
       title:
@@ -781,6 +782,30 @@ export class CodeReviewsService {
     );
 
     return [structureFinding, ...withoutStructure];
+  }
+
+  private ensureDiagramFinding(
+    findings: CodeReviewFinding[],
+    reviewedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[],
+  ): CodeReviewFinding[] {
+    if (!sections.includes('diagram')) return findings;
+
+    const diagramFinding: CodeReviewFinding = {
+      category: 'diagram',
+      severity: 'low',
+      title: '6. mmd 흐름도',
+      body: this.buildReviewMermaidFlowchart(reviewedFiles),
+      filePath: null,
+      lineNumber: null,
+      recommendation:
+        '이 흐름도를 기준으로 사용자 입력, API 처리, 저장, 화면 반영 단계의 책임 경계를 확인하세요.',
+    };
+    const withoutDiagram = findings.filter(
+      (finding) => finding.category !== 'diagram',
+    );
+
+    return [...withoutDiagram, diagramFinding];
   }
 
   private buildStructuralReviewFindings(
@@ -991,6 +1016,48 @@ export class CodeReviewsService {
     };
 
     return ['.', ...render(root)].join('\n');
+  }
+
+  private buildReviewMermaidFlowchart(files: ParsedDiffFile[]) {
+    const changedPaths = files.map((file) => file.path);
+    const hasFrontend = changedPaths.some((path) =>
+      path.includes('towercrane-for-uiux-front/src/'),
+    );
+    const hasServer = changedPaths.some((path) =>
+      path.includes('towercrane-for-uiux-server/src/'),
+    );
+    const hasDatabase = changedPaths.some((path) =>
+      path.includes('/database/') || path.includes('/data/'),
+    );
+
+    const lines = ['flowchart TD', '  A["GitHub URL 입력"] --> B["diff 수집"]'];
+
+    if (hasServer) {
+      lines.push(
+        '  B --> C["서버 분석 API"]',
+        '  C --> D["파일 제외 규칙 적용"]',
+        '  D --> E["선택 관점별 리뷰 생성"]',
+      );
+    } else {
+      lines.push('  B --> E["선택 관점별 리뷰 생성"]');
+    }
+
+    if (hasDatabase) {
+      lines.push('  E --> F["code_reviews 저장"]');
+    } else {
+      lines.push('  E --> F["리뷰 결과 구성"]');
+    }
+
+    if (hasFrontend) {
+      lines.push(
+        '  F --> G["목록/상세 화면 갱신"]',
+        '  G --> H["사용자 검토 및 삭제/수정"]',
+      );
+    } else {
+      lines.push('  F --> H["사용자 검토"]');
+    }
+
+    return lines.join('\n');
   }
 
   private extractAddedText(diff: string) {
