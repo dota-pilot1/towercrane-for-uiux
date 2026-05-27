@@ -2113,7 +2113,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     });
     this.upsertMenuBySectionId({
       sectionId: 'code_reviews',
-      name: '코드 리뷰 게시판',
+      name: '코드 리뷰',
       icon: 'Code2',
       displayOrder: 2,
       parentId: existingDevManagement.id,
