@@ -689,6 +689,58 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_dev_management_messages_room_created
         ON dev_management_messages(room_id, created_at);
 
+      CREATE TABLE IF NOT EXISTS dev_meeting_minutes (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        discussion_points TEXT NOT NULL DEFAULT '[]',
+        decisions TEXT NOT NULL DEFAULT '[]',
+        action_items TEXT NOT NULL DEFAULT '[]',
+        open_questions TEXT NOT NULL DEFAULT '[]',
+        source_message_ids TEXT NOT NULL DEFAULT '[]',
+        created_by TEXT,
+        created_by_name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(room_id) REFERENCES dev_management_rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_meeting_minutes_room_created
+        ON dev_meeting_minutes(room_id, created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_dev_meeting_minutes_created
+        ON dev_meeting_minutes(created_at);
+
+      CREATE TABLE IF NOT EXISTS code_reviews (
+        id TEXT PRIMARY KEY,
+        source_type TEXT NOT NULL,
+        source_url TEXT NOT NULL,
+        repository TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        risk_level TEXT NOT NULL,
+        findings TEXT NOT NULL DEFAULT '[]',
+        test_gaps TEXT NOT NULL DEFAULT '[]',
+        changed_files TEXT NOT NULL DEFAULT '[]',
+        excluded_files TEXT NOT NULL DEFAULT '[]',
+        diff_hash TEXT NOT NULL,
+        diff_snapshot TEXT,
+        model TEXT,
+        created_by TEXT,
+        created_by_name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_code_reviews_source_hash
+        ON code_reviews(source_url, diff_hash);
+
+      CREATE INDEX IF NOT EXISTS idx_code_reviews_repository_created
+        ON code_reviews(repository, created_at);
+
       CREATE TABLE IF NOT EXISTS dev_management_bot_settings (
         room_id TEXT PRIMARY KEY,
         enabled INTEGER NOT NULL DEFAULT 1,
@@ -2033,10 +2085,37 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       now,
     });
     this.upsertMenuBySectionId({
+      sectionId: 'dev_management_chat',
+      name: '개발 채팅',
+      icon: 'MessageSquareText',
+      displayOrder: 0,
+      parentId: existingDevManagement.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'dev_meeting_minutes',
+      name: '회의록 게시판',
+      icon: 'ClipboardList',
+      displayOrder: 1,
+      parentId: existingDevManagement.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
       sectionId: 'api_doc',
       name: 'Postman',
       icon: 'Send',
-      displayOrder: 0,
+      displayOrder: 3,
+      parentId: existingDevManagement.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'code_reviews',
+      name: '코드 리뷰 게시판',
+      icon: 'Code2',
+      displayOrder: 2,
       parentId: existingDevManagement.id,
       requiredRole: null,
       now,
@@ -2045,16 +2124,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       sectionId: 'prototype',
       name: 'Prototype',
       icon: 'GitBranch',
-      displayOrder: 1,
-      parentId: existingDevManagement.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
-      sectionId: 'dev_management_chat',
-      name: '개발 채팅',
-      icon: 'MessageSquareText',
-      displayOrder: 2,
+      displayOrder: 4,
       parentId: existingDevManagement.id,
       requiredRole: null,
       now,

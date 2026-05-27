@@ -27,6 +27,8 @@ import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
 import { AiMonitoringModule } from './ai-monitoring/ai-monitoring.module';
 import { AiServiceRequestModule } from './ai-service-request/ai-service-request.module';
 import { DevManagementModule } from './dev-management/dev-management.module';
+import { DevMeetingMinutesModule } from './dev-meeting-minutes/dev-meeting-minutes.module';
+import { CodeReviewsModule } from './code-reviews/code-reviews.module';
 
 @Module({
   imports: [
@@ -56,6 +58,8 @@ import { DevManagementModule } from './dev-management/dev-management.module';
     AiMonitoringModule,
     AiServiceRequestModule,
     DevManagementModule,
+    DevMeetingMinutesModule,
+    CodeReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

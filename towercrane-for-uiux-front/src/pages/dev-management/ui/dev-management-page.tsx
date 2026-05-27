@@ -10,6 +10,8 @@ import {
 import {
   BotMessageSquare,
   Brain,
+  ClipboardList,
+  Code2,
   FileSearch,
   Hash,
   MessageSquare,
@@ -86,6 +88,8 @@ function memberRoleLabel(member: DevManagementMember) {
 
 function messageTypeLabel(message: DevManagementMessage) {
   if (message.messageType === 'SUMMARY') return '회의 요약'
+  if (message.messageType === 'MEETING_MINUTES_SAVED') return '회의록 저장'
+  if (message.messageType === 'CODE_REVIEW_SAVED') return '코드 리뷰 저장'
   if (message.messageType === 'PROTOTYPE_SEARCH_RESULT') return '프로토타입 검색'
   if (message.messageType === 'TECH_DEBT_ANALYSIS') return '기술 부채 분석'
   if (message.messageType === 'TOOL_RESULT') return '도구 결과'
@@ -120,6 +124,288 @@ function prototypeSearchResults(message: DevManagementMessage) {
   })
 }
 
+type SavedMinutesCard = {
+  id: string
+  url: string
+  title: string
+  summary: string
+  decisionCount: number
+  actionItemCount: number
+}
+
+type SavedCodeReviewCard = {
+  id: string
+  url: string
+  title: string
+  repository: string
+  riskLevel: 'low' | 'medium' | 'high'
+  findingCount: number
+  highSeverityCount: number
+  testGapCount: number
+  changedFileCount: number
+  excludedFileCount: number
+}
+
+function savedMinutesCard(message: DevManagementMessage): SavedMinutesCard | null {
+  if (message.messageType !== 'MEETING_MINUTES_SAVED') return null
+  const minutes = message.payload?.minutes
+  if (!minutes || typeof minutes !== 'object') return null
+  const candidate = minutes as Record<string, unknown>
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.url !== 'string' ||
+    typeof candidate.title !== 'string'
+  ) {
+    return null
+  }
+
+  return {
+    id: candidate.id,
+    url: candidate.url,
+    title: candidate.title,
+    summary: typeof candidate.summary === 'string' ? candidate.summary : '',
+    decisionCount:
+      typeof candidate.decisionCount === 'number' ? candidate.decisionCount : 0,
+    actionItemCount:
+      typeof candidate.actionItemCount === 'number' ? candidate.actionItemCount : 0,
+  }
+}
+
+function savedCodeReviewCard(message: DevManagementMessage): SavedCodeReviewCard | null {
+  if (message.messageType !== 'CODE_REVIEW_SAVED') return null
+  const review = message.payload?.review
+  if (!review || typeof review !== 'object') return null
+  const candidate = review as Record<string, unknown>
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.url !== 'string' ||
+    typeof candidate.title !== 'string' ||
+    typeof candidate.repository !== 'string'
+  ) {
+    return null
+  }
+
+  const riskLevel =
+    candidate.riskLevel === 'high' || candidate.riskLevel === 'medium'
+      ? candidate.riskLevel
+      : 'low'
+
+  return {
+    id: candidate.id,
+    url: candidate.url,
+    title: candidate.title,
+    repository: candidate.repository,
+    riskLevel,
+    findingCount:
+      typeof candidate.findingCount === 'number' ? candidate.findingCount : 0,
+    highSeverityCount:
+      typeof candidate.highSeverityCount === 'number' ? candidate.highSeverityCount : 0,
+    testGapCount:
+      typeof candidate.testGapCount === 'number' ? candidate.testGapCount : 0,
+    changedFileCount:
+      typeof candidate.changedFileCount === 'number' ? candidate.changedFileCount : 0,
+    excludedFileCount:
+      typeof candidate.excludedFileCount === 'number' ? candidate.excludedFileCount : 0,
+  }
+}
+
+function codeReviewRiskLabel(riskLevel: SavedCodeReviewCard['riskLevel']) {
+  if (riskLevel === 'high') return '높음'
+  if (riskLevel === 'medium') return '중간'
+  return '낮음'
+}
+
+type SummaryRange = 'recent10' | 'recent30' | 'all'
+
+function messagesForRange(messages: DevManagementMessage[], range: SummaryRange) {
+  const userMessages = messages.filter(
+    (message) =>
+      message.senderType === 'USER' &&
+      message.content.replace(/@개발\s?관리봇/g, '').trim().length > 0,
+  )
+
+  if (range === 'recent10') return userMessages.slice(-10)
+  if (range === 'recent30') return userMessages.slice(-30)
+  return userMessages
+}
+
+function MeetingMinutesSummaryDialog({
+  messages,
+  isPending,
+  onSummarize,
+}: {
+  messages: DevManagementMessage[]
+  isPending: boolean
+  onSummarize: (sourceMessageIds: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [range, setRange] = useState<SummaryRange>('recent30')
+  const [rows, setRows] = useState<DevManagementMessage[]>([])
+
+  const userMessageCount = useMemo(
+    () => messagesForRange(messages, 'all').length,
+    [messages],
+  )
+
+  useEffect(() => {
+    if (!open) return
+    setRows(messagesForRange(messages, range))
+  }, [messages, open, range])
+
+  const changeRange = (nextRange: SummaryRange) => {
+    setRange(nextRange)
+    setRows(messagesForRange(messages, nextRange))
+  }
+
+  const removeRow = (messageId: string) => {
+    setRows((current) => current.filter((message) => message.id !== messageId))
+  }
+
+  const summarize = () => {
+    if (rows.length < 2) return
+    onSummarize(rows.map((message) => message.id))
+    setOpen(false)
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger asChild>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={userMessageCount === 0 || isPending}
+        >
+          <ClipboardList className="mr-1.5 size-3.5" />
+          회의록 요약
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 ui-overlay" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[min(720px,calc(100vh-2rem))] w-[min(920px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-md border border-surface-border bg-surface-raised shadow-2xl">
+          <div className="flex items-start justify-between gap-3 border-b border-surface-border-soft px-5 py-4">
+            <div>
+              <Dialog.Title className="text-lg font-black text-text-primary">
+                회의록 요약 범위 선택
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-text-secondary">
+                요약에 포함할 메시지만 남기고 필요 없는 행은 삭제하세요.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button type="button" className="ui-icon-button size-8" aria-label="닫기">
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-border-soft px-5 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                ['recent10', '최근 10개'],
+                ['recent30', '최근 30개'],
+                ['all', '전체'],
+              ].map(([value, label]) => (
+                <Button
+                  key={value}
+                  type="button"
+                  variant={range === value ? 'primary' : 'secondary'}
+                  size="sm"
+                  onClick={() => changeRange(value as SummaryRange)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs font-semibold text-text-muted">
+              선택 {rows.length}개 / 사용자 메시지 {userMessageCount}개
+            </p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-auto p-5">
+            <div className="overflow-hidden rounded-md border border-surface-border-soft">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="bg-surface-muted">
+                  <tr className="border-b border-surface-border-soft">
+                    <th className="w-28 px-3 py-2 text-xs font-black uppercase tracking-widest text-text-muted">
+                      시간
+                    </th>
+                    <th className="w-32 px-3 py-2 text-xs font-black uppercase tracking-widest text-text-muted">
+                      작성자
+                    </th>
+                    <th className="px-3 py-2 text-xs font-black uppercase tracking-widest text-text-muted">
+                      내용
+                    </th>
+                    <th className="w-16 px-3 py-2 text-right text-xs font-black uppercase tracking-widest text-text-muted">
+                      삭제
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--surface-border-soft)] bg-surface-raised">
+                  {rows.length > 0 ? (
+                    rows.map((message) => (
+                      <tr key={message.id} className="align-top">
+                        <td className="px-3 py-3 text-xs font-semibold text-text-muted">
+                          {formatMessageTime(message.createdAt)}
+                        </td>
+                        <td className="px-3 py-3 text-xs font-bold text-text-secondary">
+                          {message.senderName}
+                        </td>
+                        <td className="px-3 py-3 text-sm leading-6 text-text-primary">
+                          {message.content}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            className="ui-icon-button-danger size-7"
+                            onClick={() => removeRow(message.id)}
+                            aria-label="요약 대상에서 삭제"
+                            title="요약 대상에서 삭제"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-12 text-center text-sm text-text-muted">
+                        요약할 사용자 메시지가 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-surface-border-soft px-5 py-4">
+            <p className="text-xs text-text-muted">
+              회의록 저장은 사용자 메시지 2개 이상부터 가능합니다.
+            </p>
+            <div className="flex items-center gap-2">
+              <Dialog.Close asChild>
+                <Button type="button" variant="secondary" size="sm">
+                  취소
+                </Button>
+              </Dialog.Close>
+              <Button
+                type="button"
+                size="sm"
+                onClick={summarize}
+                disabled={rows.length < 2 || isPending}
+              >
+                <ClipboardList className="mr-1.5 size-3.5" />
+                요약
+              </Button>
+            </div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
 function MessageBubble({
   currentUserId,
   message,
@@ -132,6 +418,8 @@ function MessageBubble({
   const label = messageTypeLabel(message)
   const sources = sourceCount(message)
   const prototypeResults = prototypeSearchResults(message)
+  const minutesCard = savedMinutesCard(message)
+  const codeReviewCard = savedCodeReviewCard(message)
 
   return (
     <div className={`flex gap-3 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
@@ -206,6 +494,60 @@ function MessageBubble({
                 </div>
               )
             })}
+          </div>
+        ) : null}
+        {minutesCard ? (
+          <div className="w-full rounded-md border border-brand-border bg-brand-glass px-3 py-3 text-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-black text-text-primary">{minutesCard.title}</p>
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-text-secondary">
+                  {minutesCard.summary}
+                </p>
+              </div>
+              <a
+                href={minutesCard.url}
+                className="shrink-0 rounded-sm border border-brand-border bg-surface-raised px-2 py-1 text-[11px] font-bold text-brand-primary hover:bg-brand-glass"
+              >
+                열기
+              </a>
+            </div>
+            <div className="mt-2 text-[11px] font-bold text-brand-primary">
+              결정사항 {minutesCard.decisionCount}개 · 액션 아이템 {minutesCard.actionItemCount}개
+            </div>
+          </div>
+        ) : null}
+        {codeReviewCard ? (
+          <div className="w-full rounded-md border border-brand-border bg-brand-glass px-3 py-3 text-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <Code2 className="size-4 shrink-0 text-brand-primary" />
+                  <p className="truncate font-black text-text-primary">
+                    {codeReviewCard.title}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs font-semibold text-text-muted">
+                  {codeReviewCard.repository}
+                </p>
+              </div>
+              <a
+                href={codeReviewCard.url}
+                className="shrink-0 rounded-sm border border-brand-border bg-surface-raised px-2 py-1 text-[11px] font-bold text-brand-primary hover:bg-brand-glass"
+              >
+                열기
+              </a>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold text-brand-primary">
+              <span>위험도 {codeReviewRiskLabel(codeReviewCard.riskLevel)}</span>
+              <span>검토 {codeReviewCard.findingCount}개</span>
+              <span>높음 {codeReviewCard.highSeverityCount}개</span>
+              <span>테스트 공백 {codeReviewCard.testGapCount}개</span>
+              <span>파일 {codeReviewCard.changedFileCount}개</span>
+              {codeReviewCard.excludedFileCount > 0 ? (
+                <span>제외 {codeReviewCard.excludedFileCount}개</span>
+              ) : null}
+            </div>
           </div>
         ) : null}
         {label ? (
@@ -463,6 +805,16 @@ export function DevManagementPage() {
     })
   }
 
+  const summarizeSelectedMessages = (sourceMessageIds: string[]) => {
+    if (!roomId || sourceMessageIds.length < 2 || sendMessage.isPending) return
+    setBotSelected(true)
+    sendMessage.mutate({
+      content: '@개발관리봇 선택한 메시지 기준 회의록으로 저장해줘',
+      target: 'BOT',
+      payload: { sourceMessageIds },
+    })
+  }
+
   return (
     <div className="flex h-[calc(100vh-8.75rem)] min-h-0 flex-col gap-3">
       <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -679,6 +1031,13 @@ export function DevManagementPage() {
                 </button>
               </div>
             ) : null}
+            <div className="mb-2 flex items-center justify-between">
+              <MeetingMinutesSummaryDialog
+                messages={messages}
+                isPending={sendMessage.isPending}
+                onSummarize={summarizeSelectedMessages}
+              />
+            </div>
             <div className="flex gap-3">
               <Textarea
                 ref={textareaRef}
@@ -687,7 +1046,7 @@ export function DevManagementPage() {
                 onKeyDown={onKeyDown}
                 onCompositionStart={onCompositionStart}
                 onCompositionEnd={onCompositionEnd}
-                className="min-h-20 resize-none"
+                className="min-h-20 resize-none flex-1"
                 placeholder={
                   botSelected
                     ? '개발 관리 봇에게 물어볼 내용을 입력하세요.'

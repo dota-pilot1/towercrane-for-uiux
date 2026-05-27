@@ -37,6 +37,8 @@ import { DocuPage } from '../pages/docu/ui/docu-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-workspace-home-page'
 import { DevManagementPage } from '../pages/dev-management/ui/dev-management-page'
+import { DevMeetingMinutesPage } from '../pages/dev-meeting-minutes/ui/dev-meeting-minutes-page'
+import { CodeReviewsPage } from '../pages/code-reviews/ui/code-reviews-page'
 import { HomePage } from '../pages/home/ui/home-page'
 import { AiServiceRequestPage } from '../pages/ai-service-request/ui/ai-service-request-page'
 import { AiServiceMyPage } from '../pages/ai-service-my/ui/ai-service-my-page'
@@ -509,6 +511,40 @@ const devManagementRoute = createRoute({
   component: DevManagementPage,
 })
 
+const devMeetingMinutesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-meeting-minutes',
+  component: DevMeetingMinutesPage,
+})
+
+const devMeetingMinutesDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-meeting-minutes/$minutesId',
+  component: DevMeetingMinutesDetailRoute,
+})
+
+function DevMeetingMinutesDetailRoute() {
+  const { minutesId } = devMeetingMinutesDetailRoute.useParams()
+  return <DevMeetingMinutesPage minutesId={minutesId} />
+}
+
+const codeReviewsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/code-reviews',
+  component: CodeReviewsPage,
+})
+
+const codeReviewDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/code-reviews/$reviewId',
+  component: CodeReviewDetailRoute,
+})
+
+function CodeReviewDetailRoute() {
+  const { reviewId } = codeReviewDetailRoute.useParams()
+  return <CodeReviewsPage reviewId={reviewId} />
+}
+
 // ─── /docu ───────────────────────────────────────────────────────────────────
 
 export const docuRoute = createRoute({
@@ -937,6 +973,10 @@ export const router = createRouter({
       meetingRoute,
       meetingWorkspaceRoute,
       devManagementRoute,
+      devMeetingMinutesRoute,
+      devMeetingMinutesDetailRoute,
+      codeReviewsRoute,
+      codeReviewDetailRoute,
       docuRoute,
       aiServiceRequestRoute,
       aiServiceMyRoute,

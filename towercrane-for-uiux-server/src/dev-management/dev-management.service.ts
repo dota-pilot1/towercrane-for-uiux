@@ -8,14 +8,17 @@ import { ConfigService } from '@nestjs/config';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import OpenAI from 'openai';
+import { CodeReviewsService } from '../code-reviews/code-reviews.service';
 import { DatabaseService } from '../database/database.service';
 import {
   devManagementBotSettingsTable,
   devManagementDmPairsTable,
   devManagementMessagesTable,
   devManagementRoomsTable,
+  devMeetingMinutesTable,
   projectIssuesTable,
   prototypesTable,
+  type DevMeetingMinutesInsert,
   tasksTable,
   usersTable,
   type DevManagementBotSettingsRow,
@@ -40,6 +43,21 @@ export type DevManagementUser = {
   role: 'admin' | 'user';
 };
 
+type DevMeetingMinutesStructure = {
+  title: string;
+  summary: string;
+  discussionPoints: Array<{ text: string; sourceMessageIds: string[] }>;
+  decisions: Array<{ text: string; sourceMessageIds: string[] }>;
+  actionItems: Array<{
+    text: string;
+    assigneeName: string | null;
+    dueDate: string | null;
+    sourceMessageIds: string[];
+  }>;
+  openQuestions: Array<{ text: string; sourceMessageIds: string[] }>;
+  sourceMessageIds: string[];
+};
+
 @Injectable()
 export class DevManagementService {
   private readonly openai: OpenAI | null;
@@ -47,6 +65,7 @@ export class DevManagementService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly configService: ConfigService,
+    private readonly codeReviewsService: CodeReviewsService,
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     this.openai = apiKey ? new OpenAI({ apiKey }) : null;
@@ -230,7 +249,13 @@ export class DevManagementService {
     const botSettings = this.getBotSettings(roomId, user);
 
     if (this.shouldBotReply(input.content, botSettings, input.target)) {
-      const botMessage = await this.createBotReply(roomId, input.content, now);
+      const botMessage = await this.createBotReply(
+        roomId,
+        input.content,
+        now,
+        user,
+        input.payload ?? null,
+      );
       messages.push(this.toMessageDto(botMessage));
     }
 
@@ -457,8 +482,14 @@ export class DevManagementService {
     return content.includes('@개발관리봇') || content.includes('@개발 관리 봇');
   }
 
-  private async createBotReply(roomId: string, userContent: string, now: string) {
-    const reply = await this.buildBotReply(roomId, userContent);
+  private async createBotReply(
+    roomId: string,
+    userContent: string,
+    now: string,
+    user: DevManagementUser,
+    payload: Record<string, unknown> | null,
+  ) {
+    const reply = await this.buildBotReply(roomId, userContent, user, payload);
     const botMessage: DevManagementMessageInsert = {
       id: `dev-bot-${randomUUID().slice(0, 12)}`,
       roomId,
@@ -485,11 +516,19 @@ export class DevManagementService {
   private async buildBotReply(
     roomId: string,
     userContent: string,
+    user: DevManagementUser,
+    payload: Record<string, unknown> | null,
   ): Promise<{
     content: string;
     messageType: DevManagementMessageType;
     payload: Record<string, unknown>;
   }> {
+    if (this.isMeetingMinutesSaveRequest(userContent)) {
+      return this.buildMeetingMinutesSavedReply(roomId, user, payload);
+    }
+    if (this.isCodeReviewRequest(userContent)) {
+      return this.buildCodeReviewSavedReply(userContent, user);
+    }
     if (this.isSummaryRequest(userContent)) {
       return this.buildMeetingSummaryReply(roomId);
     }
@@ -507,6 +546,27 @@ export class DevManagementService {
       content.includes('회의') ||
       content.includes('요약') ||
       content.includes('정리')
+    );
+  }
+
+  private isMeetingMinutesSaveRequest(content: string) {
+    const normalized = content.replace(/\s+/g, '');
+    return (
+      normalized.includes('회의록저장') ||
+      normalized.includes('회의요약저장') ||
+      normalized.includes('회의록으로저장') ||
+      normalized.includes('요약해서저장') ||
+      normalized.includes('최근대화회의록') ||
+      normalized.includes('오늘대화회의록') ||
+      normalized.includes('회의록만들어') ||
+      normalized.includes('회의록으로남겨')
+    );
+  }
+
+  private isCodeReviewRequest(content: string) {
+    return (
+      /https?:\/\/github\.com\/[^\s<>)\]]+/i.test(content) &&
+      /코드\s?리뷰|리뷰|검토|분석|저장|diff/i.test(content)
     );
   }
 
@@ -613,50 +673,339 @@ export class DevManagementService {
   }
 
   private buildMeetingSummaryReply(roomId: string) {
-    const recentMessages = this.db
-      .select()
-      .from(devManagementMessagesTable)
-      .where(eq(devManagementMessagesTable.roomId, roomId))
-      .orderBy(desc(devManagementMessagesTable.createdAt))
-      .limit(30)
-      .all()
-      .reverse()
-      .filter((message) => message.senderType !== 'BOT');
-
-    const discussionMessages = recentMessages.filter((message) =>
-      message.content.replace(/@개발\s?관리봇/g, '').trim(),
-    );
-    const actionCandidates = discussionMessages.filter((message) =>
-      /해야|진행|확인|추가|수정|정리|검토|연결/.test(message.content),
-    );
-    const decisionCandidates = discussionMessages.filter((message) =>
-      /결정|확정|가자|진행하겠습니다|맞습니다|좋습니다/.test(message.content),
-    );
+    const minutes = this.summarizeDevMeeting(roomId, 30);
+    const sourceCount = minutes.sourceMessageIds.length;
 
     const content = [
       '회의 요약 초안입니다.',
       '',
-      `- 대화 범위: 최근 ${discussionMessages.length}개 사용자 메시지`,
-      `- 핵심 논의: ${this.pickMessageSummaries(discussionMessages, 3).join(' / ') || '아직 요약할 대화가 부족합니다.'}`,
-      `- 결정 후보: ${this.pickMessageSummaries(decisionCandidates, 3).join(' / ') || '명시적인 결정 후보가 없습니다.'}`,
-      `- 액션 아이템 후보: ${this.pickMessageSummaries(actionCandidates, 4).join(' / ') || '명시적인 액션 후보가 없습니다.'}`,
+      `- 대화 범위: 최근 ${sourceCount}개 사용자 메시지`,
+      `- 핵심 논의: ${minutes.discussionPoints.map((item) => item.text).join(' / ') || '아직 요약할 대화가 부족합니다.'}`,
+      `- 결정 후보: ${minutes.decisions.map((item) => item.text).join(' / ') || '명시적인 결정 후보가 없습니다.'}`,
+      `- 액션 아이템 후보: ${minutes.actionItems.map((item) => item.text).join(' / ') || '명시적인 액션 후보가 없습니다.'}`,
       '',
-      '다음 단계에서는 이 요약을 담당자/기한/근거 링크까지 분리해서 저장할 수 있습니다.',
+      '저장하려면 "최근 대화 회의록으로 저장해줘"처럼 요청하세요.',
     ].join('\n');
 
     return {
       content,
       messageType: 'SUMMARY' as const,
       payload: {
-        toolName: 'summarize_dev_discussion',
-        sourceCount: discussionMessages.length,
-        sources: discussionMessages.slice(-10).map((message) => ({
-          id: message.id,
-          senderName: message.senderName,
-          createdAt: message.createdAt,
-        })),
+        toolName: 'summarize_dev_meeting',
+        sourceCount,
+        minutes,
       },
     };
+  }
+
+  private buildMeetingMinutesSavedReply(
+    roomId: string,
+    user: DevManagementUser,
+    payload: Record<string, unknown> | null,
+  ) {
+    const selectedSourceMessageIds = this.getSelectedSourceMessageIds(payload);
+    const minutes = this.summarizeDevMeeting(
+      roomId,
+      80,
+      selectedSourceMessageIds,
+    );
+
+    if (minutes.sourceMessageIds.length < 2) {
+      return {
+        content:
+          '회의록 저장에 실패했습니다.\n\n사유: 최근 사용자 메시지가 2개 미만이라 회의록으로 저장할 대화가 부족합니다.',
+        messageType: 'TOOL_RESULT' as const,
+        payload: {
+          toolName: 'save_dev_meeting_minutes',
+          status: 'failed',
+          reason: 'INSUFFICIENT_MESSAGES',
+          sourceCount: minutes.sourceMessageIds.length,
+          selectedSourceMessageIds,
+        },
+      };
+    }
+
+    const duplicate = this.findDuplicateMeetingMinutes(
+      roomId,
+      minutes.sourceMessageIds,
+    );
+
+    if (duplicate) {
+      const url = `/dev-meeting-minutes/${duplicate.id}`;
+      return {
+        content: [
+          '이미 같은 대화 범위로 저장된 회의록이 있습니다.',
+          '',
+          `제목: ${duplicate.title}`,
+          `열기: ${url}`,
+        ].join('\n'),
+        messageType: 'MEETING_MINUTES_SAVED' as const,
+        payload: {
+          toolName: 'save_dev_meeting_minutes',
+          status: 'duplicate',
+          minutes: {
+            id: duplicate.id,
+            url,
+            title: duplicate.title,
+            summary: duplicate.summary,
+            decisionCount: duplicate.decisions.length,
+          actionItemCount: duplicate.actionItems.length,
+          },
+          sourceCount: minutes.sourceMessageIds.length,
+          selectedSourceMessageIds,
+        },
+      };
+    }
+
+    const saved = this.saveDevMeetingMinutes(roomId, minutes, user);
+    const url = `/dev-meeting-minutes/${saved.id}`;
+
+    return {
+      content: [
+        '회의록을 저장했습니다.',
+        '',
+        `제목: ${saved.title}`,
+        `요약: ${this.compactContent(saved.summary, 120)}`,
+        `결정사항: ${saved.decisions.length}개`,
+        `액션 아이템: ${saved.actionItems.length}개`,
+        '',
+        `열기: ${url}`,
+      ].join('\n'),
+      messageType: 'MEETING_MINUTES_SAVED' as const,
+      payload: {
+        toolName: 'save_dev_meeting_minutes',
+        status: 'saved',
+        minutes: {
+          id: saved.id,
+          url,
+          title: saved.title,
+          summary: saved.summary,
+          decisionCount: saved.decisions.length,
+          actionItemCount: saved.actionItems.length,
+        },
+        sourceCount: minutes.sourceMessageIds.length,
+        selectedSourceMessageIds,
+      },
+    };
+  }
+
+  private async buildCodeReviewSavedReply(
+    userContent: string,
+    user: DevManagementUser,
+  ): Promise<{
+    content: string;
+    messageType: DevManagementMessageType;
+    payload: Record<string, unknown>;
+  }> {
+    const sourceUrl = this.extractGithubUrl(userContent);
+    if (!sourceUrl) {
+      return {
+        content:
+          '코드 리뷰 저장에 실패했습니다.\n\n사유: GitHub commit, PR, compare, .diff URL을 찾지 못했습니다.',
+        messageType: 'TOOL_RESULT' as const,
+        payload: {
+          toolName: 'save_code_review',
+          status: 'failed',
+          reason: 'MISSING_GITHUB_URL',
+        },
+      };
+    }
+
+    try {
+      const review = await this.codeReviewsService.analyzeAndSave(user, {
+        sourceUrl,
+      });
+      const reviewUrl = `/code-reviews/${review.id}`;
+      const duplicate = Boolean(
+        (review as Record<string, unknown>).duplicate,
+      );
+      const content = [
+        duplicate
+          ? '이미 같은 diff로 저장된 코드 리뷰가 있습니다.'
+          : '코드 리뷰를 저장했습니다.',
+        '',
+        `제목: ${review.title}`,
+        `위험도: ${this.codeReviewRiskLabel(review.riskLevel)}`,
+        `검토 항목: ${review.findingCount}개`,
+        `테스트 공백: ${review.testGapCount}개`,
+        '',
+        `열기: ${reviewUrl}`,
+      ].join('\n');
+
+      return {
+        content,
+        messageType: 'CODE_REVIEW_SAVED' as const,
+        payload: {
+          toolName: 'save_code_review',
+          status: duplicate ? 'duplicate' : 'saved',
+          review: {
+            id: review.id,
+            url: reviewUrl,
+            title: review.title,
+            repository: review.repository,
+            sourceType: review.sourceType,
+            sourceUrl: review.sourceUrl,
+            riskLevel: review.riskLevel,
+            findingCount: review.findingCount,
+            highSeverityCount: review.highSeverityCount,
+            testGapCount: review.testGapCount,
+            changedFileCount: review.changedFileCount,
+            excludedFileCount: review.excludedFileCount,
+          },
+        },
+      };
+    } catch (error) {
+      const reason =
+        error instanceof Error ? error.message : '코드 리뷰 생성 중 오류가 발생했습니다.';
+      return {
+        content: `코드 리뷰 저장에 실패했습니다.\n\n사유: ${reason}`,
+        messageType: 'TOOL_RESULT' as const,
+        payload: {
+          toolName: 'save_code_review',
+          status: 'failed',
+          reason,
+          sourceUrl,
+        },
+      };
+    }
+  }
+
+  private extractGithubUrl(content: string) {
+    return (
+      content
+        .match(/https?:\/\/github\.com\/[^\s<>)\]]+/i)?.[0]
+        ?.replace(/[.,;!?]+$/g, '') ?? null
+    );
+  }
+
+  private codeReviewRiskLabel(riskLevel: string) {
+    if (riskLevel === 'high') return '높음';
+    if (riskLevel === 'medium') return '중간';
+    return '낮음';
+  }
+
+  private summarizeDevMeeting(
+    roomId: string,
+    limit: number,
+    selectedSourceMessageIds: string[] | null = null,
+  ): DevMeetingMinutesStructure {
+    const room = this.findRoom(roomId);
+    const selectedIdSet =
+      selectedSourceMessageIds && selectedSourceMessageIds.length > 0
+        ? new Set(selectedSourceMessageIds)
+        : null;
+    const recentMessages = this.db
+      .select()
+      .from(devManagementMessagesTable)
+      .where(eq(devManagementMessagesTable.roomId, roomId))
+      .orderBy(desc(devManagementMessagesTable.createdAt))
+      .limit(limit)
+      .all()
+      .reverse()
+      .filter((message) => message.senderType === 'USER')
+      .filter((message) => this.stripBotMention(message.content))
+      .filter((message) => !selectedIdSet || selectedIdSet.has(message.id));
+
+    const actionCandidates = recentMessages.filter((message) =>
+      /해야|진행|확인|추가|수정|정리|검토|연결|구현|배포/.test(message.content),
+    );
+    const decisionCandidates = recentMessages.filter((message) =>
+      /결정|확정|가자|진행하겠습니다|맞습니다|좋습니다|기준|완료/.test(
+        message.content,
+      ),
+    );
+    const unresolvedCandidates = recentMessages.filter((message) =>
+      /미해결|이슈|문제|리스크|막힘|블로커|장애|오류|버그|미정|보류|확인 필요|확인필요|검토 필요|검토필요|논의 필요|논의필요/.test(
+        message.content,
+      ),
+    );
+
+    const toTextItem = (message: DevManagementMessageRow) => ({
+      text: `${message.senderName}: ${this.compactContent(message.content, 90)}`,
+      sourceMessageIds: [message.id],
+    });
+
+    const discussionPoints = recentMessages.slice(-5).map(toTextItem);
+    const decisions = decisionCandidates.slice(-4).map(toTextItem);
+    const actionItems = actionCandidates.slice(-5).map((message) => ({
+      text: `${message.senderName}: ${this.compactContent(message.content, 90)}`,
+      assigneeName: message.senderName,
+      dueDate: null,
+      sourceMessageIds: [message.id],
+    }));
+    const openQuestions = unresolvedCandidates.slice(-4).map(toTextItem);
+    const sourceMessageIds = recentMessages.map((message) => message.id);
+
+    return {
+      title: `${room.name} 회의록`,
+      summary:
+        discussionPoints.length > 0
+          ? discussionPoints.map((item) => item.text).join('\n')
+          : '요약할 개발 채팅 메시지가 부족합니다.',
+      discussionPoints,
+      decisions,
+      actionItems,
+      openQuestions,
+      sourceMessageIds,
+    };
+  }
+
+  private getSelectedSourceMessageIds(payload: Record<string, unknown> | null) {
+    const value = payload?.sourceMessageIds;
+    if (!Array.isArray(value)) return null;
+    const ids = value.filter(
+      (item): item is string => typeof item === 'string' && item.trim().length > 0,
+    );
+    return ids.length > 0 ? [...new Set(ids)] : null;
+  }
+
+  private findDuplicateMeetingMinutes(roomId: string, sourceMessageIds: string[]) {
+    const rows = this.db
+      .select()
+      .from(devMeetingMinutesTable)
+      .where(eq(devMeetingMinutesTable.roomId, roomId))
+      .orderBy(desc(devMeetingMinutesTable.createdAt))
+      .limit(30)
+      .all();
+    const sourceKey = JSON.stringify(sourceMessageIds);
+
+    return rows.find((row) => JSON.stringify(row.sourceMessageIds) === sourceKey);
+  }
+
+  private saveDevMeetingMinutes(
+    roomId: string,
+    minutes: DevMeetingMinutesStructure,
+    user: DevManagementUser,
+  ) {
+    const now = new Date().toISOString();
+    const row: DevMeetingMinutesInsert = {
+      id: `dev-min-${randomUUID().slice(0, 12)}`,
+      roomId,
+      title: minutes.title,
+      summary: minutes.summary,
+      discussionPoints: minutes.discussionPoints,
+      decisions: minutes.decisions,
+      actionItems: minutes.actionItems,
+      openQuestions: minutes.openQuestions,
+      sourceMessageIds: minutes.sourceMessageIds,
+      createdBy: user.id,
+      createdByName: user.name || user.email,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.db.insert(devMeetingMinutesTable).values(row).run();
+    const saved = this.db
+      .select()
+      .from(devMeetingMinutesTable)
+      .where(eq(devMeetingMinutesTable.id, row.id))
+      .get();
+
+    if (!saved) {
+      throw new NotFoundException(`Saved meeting minutes not found: ${row.id}`);
+    }
+
+    return saved;
   }
 
   private buildPrototypeSearchReply(userContent: string) {

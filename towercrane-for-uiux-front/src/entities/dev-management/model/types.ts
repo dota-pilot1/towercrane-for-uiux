@@ -12,6 +12,8 @@ export type DevManagementMessageType =
   | 'SYSTEM'
   | 'BOT_REPLY'
   | 'SUMMARY'
+  | 'MEETING_MINUTES_SAVED'
+  | 'CODE_REVIEW_SAVED'
   | 'PROTOTYPE_SEARCH_RESULT'
   | 'TECH_DEBT_ANALYSIS'
   | 'TOOL_RESULT'
