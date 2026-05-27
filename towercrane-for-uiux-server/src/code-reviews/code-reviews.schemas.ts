@@ -26,10 +26,10 @@ export const codeReviewFindingSchema = z.object({
   category: findingCategorySchema.optional().default('code'),
   severity: findingSeveritySchema,
   title: z.string().trim().min(1).max(160),
-  body: z.string().trim().min(1).max(2000),
+  body: z.string().trim().min(1).max(12000),
   filePath: z.string().trim().min(1).max(500).nullable().optional().default(null),
   lineNumber: z.coerce.number().int().min(1).nullable().optional().default(null),
-  recommendation: z.string().trim().min(1).max(2000),
+  recommendation: z.string().trim().min(1).max(4000),
 });
 
 export const codeReviewChangedFileSchema = z.object({
@@ -66,12 +66,17 @@ export const createCodeReviewSchema = z.object({
 
 export const analyzeCodeReviewSchema = z.object({
   sourceUrl: z.string().trim().min(1).max(1000),
+  repositoryUrl: z.string().trim().min(1).max(1000).optional(),
   sections: z
     .array(codeReviewSectionSchema)
     .min(1)
     .max(6)
     .optional()
     .default(['structure', 'process', 'code', 'syntax', 'architecture']),
+});
+
+export const validateCodeReviewRepositorySchema = z.object({
+  repositoryUrl: z.string().trim().min(1).max(1000),
 });
 
 export const updateCodeReviewSchema = z
@@ -87,4 +92,7 @@ export const updateCodeReviewSchema = z
 export type ListCodeReviewsQuery = z.infer<typeof listCodeReviewsQuerySchema>;
 export type CreateCodeReviewInput = z.infer<typeof createCodeReviewSchema>;
 export type AnalyzeCodeReviewInput = z.infer<typeof analyzeCodeReviewSchema>;
+export type ValidateCodeReviewRepositoryInput = z.infer<
+  typeof validateCodeReviewRepositorySchema
+>;
 export type UpdateCodeReviewInput = z.infer<typeof updateCodeReviewSchema>;

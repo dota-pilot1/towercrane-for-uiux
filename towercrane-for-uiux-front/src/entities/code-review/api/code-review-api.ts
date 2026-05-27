@@ -11,6 +11,7 @@ import type {
   CodeReviewDetail,
   CodeReviewListParams,
   CodeReviewListResponse,
+  CodeReviewRepositoryValidation,
   UpdateCodeReviewPayload,
 } from '../model/types'
 
@@ -69,6 +70,16 @@ export function useAnalyzeCodeReview() {
       queryClient.setQueryData(codeReviewKeys.detail(detail.id), detail)
       void queryClient.invalidateQueries({ queryKey: codeReviewKeys.lists() })
     },
+  })
+}
+
+export function useValidateCodeReviewRepository() {
+  return useMutation({
+    mutationFn: (repositoryUrl: string) =>
+      apiRequest<CodeReviewRepositoryValidation>('/code-reviews/repository/validate', {
+        method: 'POST',
+        body: JSON.stringify({ repositoryUrl }),
+      }),
   })
 }
 

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, like, or, sql, type SQL } from 'drizzle-orm';
+import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import OpenAI from 'openai';
 import { DatabaseService } from '../database/database.service';
@@ -23,8 +24,10 @@ import {
   createCodeReviewSchema,
   listCodeReviewsQuerySchema,
   updateCodeReviewSchema,
+  validateCodeReviewRepositorySchema,
   type AnalyzeCodeReviewInput,
 } from './code-reviews.schemas';
+import { codeReviewStyleGuide } from './code-review-style-guide';
 
 export type CodeReviewUser = {
   id: string;
@@ -43,6 +46,7 @@ type ParsedGithubSource = {
 
 type ParsedDiffFile = CodeReviewChangedFile & {
   diff: string;
+  fullText?: string | null;
 };
 
 type CodeReviewAnalysis = {
@@ -61,6 +65,7 @@ const MAX_DIFF_CHARS = 80_000;
 const MAX_FILES = 30;
 const MAX_FILE_DIFF_CHARS = 20_000;
 const MAX_LLM_DIFF_CHARS = 30_000;
+const MAX_CONTEXT_FILE_CHARS = 40_000;
 
 @Injectable()
 export class CodeReviewsService {
@@ -142,13 +147,19 @@ export class CodeReviewsService {
     const reviewedFiles = selectedFiles
       .map((file) => this.applyDiffFileExclusion(file))
       .filter((file) => file.reviewed);
+    const reviewedFilesWithContext = await this.attachGithubFileContext(
+      source,
+      reviewedFiles,
+    );
     const excludedFiles = [
       ...selectedFiles
         .map((file) => this.applyDiffFileExclusion(file))
         .filter((file) => !file.reviewed),
       ...fileLimitExcluded,
     ];
-    const reviewableDiff = reviewedFiles.map((file) => file.diff).join('\n');
+    const reviewableDiff = reviewedFilesWithContext
+      .map((file) => file.diff)
+      .join('\n');
 
     if (!reviewableDiff.trim()) {
       throw new BadRequestException(
@@ -169,7 +180,7 @@ export class CodeReviewsService {
 
     const analysis = await this.reviewDiff(
       source,
-      reviewedFiles,
+      reviewedFilesWithContext,
       excludedFiles,
       input.sections,
     );
@@ -184,7 +195,9 @@ export class CodeReviewsService {
       riskLevel: analysis.riskLevel,
       findings: analysis.findings,
       testGaps: analysis.testGaps,
-      changedFiles: reviewedFiles.map(({ diff: _diff, ...file }) => file),
+      changedFiles: reviewedFilesWithContext.map(
+        ({ diff: _diff, fullText: _fullText, ...file }) => file,
+      ),
       excludedFiles: excludedFiles.map(({ diff: _diff, ...file }) => file),
       diffHash,
       diffSnapshot: reviewableDiff.slice(0, MAX_DIFF_CHARS),
@@ -222,6 +235,51 @@ export class CodeReviewsService {
     return this.detail(user, row.id);
   }
 
+  async validateRepository(user: CodeReviewUser, payload: unknown) {
+    this.ensureSignedIn(user);
+    const input = validateCodeReviewRepositorySchema.parse(payload ?? {});
+    const repository = this.parseGithubRepository(input.repositoryUrl);
+    const repositoryUrl = `https://github.com/${repository}`;
+
+    try {
+      const response = await fetch(`https://api.github.com/repos/${repository}`, {
+        headers: {
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'towercrane-code-review',
+        },
+      });
+      if (!response.ok) {
+        return {
+          valid: false,
+          repository,
+          repositoryUrl,
+          defaultBranch: null,
+          message:
+            response.status === 404
+              ? '저장소를 찾을 수 없습니다.'
+              : `GitHub 확인 실패: ${response.status}`,
+        };
+      }
+      const data = (await response.json()) as { default_branch?: string };
+
+      return {
+        valid: true,
+        repository,
+        repositoryUrl,
+        defaultBranch: data.default_branch ?? null,
+        message: 'GitHub 확인됨',
+      };
+    } catch {
+      return {
+        valid: false,
+        repository,
+        repositoryUrl,
+        defaultBranch: null,
+        message: 'GitHub 확인에 실패했습니다.',
+      };
+    }
+  }
+
   detail(user: CodeReviewUser, reviewId: string) {
     this.ensureSignedIn(user);
     return this.toDetailDto(this.ensureReview(reviewId), user);
@@ -255,6 +313,36 @@ export class CodeReviewsService {
       .where(eq(codeReviewsTable.id, reviewId))
       .run();
     return { success: true, id: reviewId };
+  }
+
+  private parseGithubRepository(rawValue: string) {
+    const value = rawValue.trim().replace(/\/$/g, '');
+    const shorthand = value.match(/^([\w.-]+)\/([\w.-]+)$/);
+    if (shorthand) {
+      return `${shorthand[1]}/${shorthand[2].replace(/\.git$/i, '')}`;
+    }
+
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new BadRequestException('GitHub 저장소 형식이 아닙니다.');
+    }
+
+    if (url.hostname.toLowerCase() !== 'github.com') {
+      throw new BadRequestException('github.com 저장소만 지원합니다.');
+    }
+
+    const [owner, repo] = url.pathname
+      .split('/')
+      .filter(Boolean)
+      .map((segment) => decodeURIComponent(segment));
+
+    if (!owner || !repo) {
+      throw new BadRequestException('GitHub 저장소 구조를 확인해 주세요.');
+    }
+
+    return `${owner}/${repo.replace(/\.git$/i, '')}`;
   }
 
   private parseGithubSource(rawValue: string): ParsedGithubSource {
@@ -359,6 +447,87 @@ export class CodeReviewsService {
       return text.slice(0, MAX_DIFF_CHARS);
     }
     return text;
+  }
+
+  private async attachGithubFileContext(
+    source: ParsedGithubSource,
+    files: ParsedDiffFile[],
+  ): Promise<ParsedDiffFile[]> {
+    const ref = await this.resolveGithubContentRef(source);
+    if (!ref) return files;
+
+    return Promise.all(
+      files.map(async (file) => ({
+        ...file,
+        fullText: await this.fetchGithubFileText(source.repository, file.path, ref),
+      })),
+    );
+  }
+
+  private async resolveGithubContentRef(source: ParsedGithubSource) {
+    if (source.sourceType === 'commit') return source.reference;
+
+    if (source.sourceType === 'compare') {
+      const headRef = source.reference.includes('...')
+        ? source.reference.split('...').pop()
+        : source.reference.split('..').pop();
+      return headRef?.split(':').pop() ?? null;
+    }
+
+    if (source.sourceType === 'pr') {
+      const pullNumber = source.reference.replace(/^#/, '');
+      try {
+        const response = await fetch(
+          `https://api.github.com/repos/${source.repository}/pulls/${pullNumber}`,
+          {
+            headers: {
+              Accept: 'application/vnd.github+json',
+              'User-Agent': 'towercrane-code-review',
+            },
+          },
+        );
+        if (!response.ok) return null;
+        const data = (await response.json()) as { head?: { sha?: string } };
+        return data.head?.sha ?? null;
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  private async fetchGithubFileText(
+    repository: string,
+    path: string,
+    ref: string,
+  ) {
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${repository}/contents/${encodeURIComponent(path).replace(/%2F/g, '/')}?ref=${encodeURIComponent(ref)}`,
+        {
+          headers: {
+            Accept: 'application/vnd.github+json',
+            'User-Agent': 'towercrane-code-review',
+          },
+        },
+      );
+      if (!response.ok) return null;
+      const data = (await response.json()) as {
+        content?: string;
+        encoding?: string;
+        type?: string;
+      };
+      if (data.type !== 'file' || data.encoding !== 'base64' || !data.content) {
+        return null;
+      }
+
+      return Buffer.from(data.content.replace(/\n/g, ''), 'base64')
+        .toString('utf8')
+        .slice(0, MAX_CONTEXT_FILE_CHARS);
+    } catch {
+      return null;
+    }
   }
 
   private parseDiff(diff: string) {
@@ -471,7 +640,7 @@ export class CodeReviewsService {
           {
             role: 'system',
             content:
-              '너는 실무 코드 리뷰어다. 한국어 JSON만 출력한다. selectedSections에 포함된 관점만 작성한다. 가능한 관점은 1. 파일 구조 도식화, 2. 주요 프로세스, 3. 주요 로직, 4. 주요 문법, 5. 아키텍처/클린코드 평가, 6. mmd 흐름도다. 테스트 공백은 보조 확인으로만 다루고, 테스트 부재만으로 위험도를 높이지 않는다.',
+              `너는 실무 코드 리뷰어다. 한국어 JSON만 출력한다. selectedSections에 포함된 관점만 작성한다. 테스트 공백은 보조 확인으로만 다루고, 테스트 부재만으로 위험도를 높이지 않는다.\n\n${codeReviewStyleGuide}`,
           },
           {
             role: 'user',
@@ -479,7 +648,9 @@ export class CodeReviewsService {
               repository: source.repository,
               sourceType: source.sourceType,
               sourceUrl: source.sourceUrl,
-              reviewedFiles: reviewedFiles.map(({ diff: _diff, ...file }) => file),
+              reviewedFiles: reviewedFiles.map(
+                ({ diff: _diff, fullText: _fullText, ...file }) => file,
+              ),
               excludedFiles: excludedFiles.map(({ diff: _diff, ...file }) => file),
               selectedSections: sections,
               requiredShape: {
@@ -491,11 +662,25 @@ export class CodeReviewsService {
                 testGaps:
                   'string[] for auxiliary verification only. Do not make missing tests the main review result.',
               },
+              bodyFormat: {
+                structure:
+                  'plain text file tree only. No prose in body.',
+                process:
+                  'numbered overview steps only. No code block.',
+                code:
+                  'repeat blocks only in this order: function/module name, fenced core code, short explanation. Do not add separate step title.',
+                syntax:
+                  'write "특이 문법 없음." if no special syntax. Otherwise repeat only in this order: technology name, fenced related code, supplemental explanation. Do not add file path prose.',
+                architecture:
+                  'short evaluation of boundaries, responsibilities, size, duplication, naming, maintainability.',
+                diagram:
+                  'raw Mermaid only, must start with flowchart TD, no code fence and no prose.',
+              },
               reviewFocus: [
                 '파일 구조 도식화: 설명문이 아니라 실제 변경 파일의 폴더 트리를 코드 블록에 넣을 수 있는 plain text tree로 작성',
-                '주요 프로세스: 사용자/운영 플로우가 어디서 시작해 어디에 저장·표시되는지 평가',
-                '주요 로직: 핵심 서비스, API, 프론트 상태/라우팅 코드의 계약과 책임 평가',
-                '주요 문법: TypeScript, React, NestJS, Zod/DB 사용 방식의 적절성 평가',
+                '주요 프로세스: 코드 없이 대략적인 처리 흐름만 작성',
+                '주요 로직: 함수/모듈명, 코드, 설명 순서로만 작성. 별도 단계명이나 파일 설명을 늘리지 않음',
+                '주요 문법: 기술 이름, 관련 코드, 보충 설명 순서로만 작성. React Query, Zod, NestJS, Drizzle처럼 특이한 문법이 있을 때만 작성. import/type-only 선언 금지',
                 '아키텍처/클린코드 평가: 레이어 분리, 모듈 경계, 파일 크기, 중복, 명명, 유지보수성 평가',
                 'mmd 흐름도: 선택된 경우 body는 반드시 flowchart TD로 시작하는 Mermaid 문법만 작성. 설명문, 권장문, 코드펜스는 넣지 않음',
               ],
@@ -737,6 +922,9 @@ export class CodeReviewsService {
       excludedFiles,
     );
     findings = this.ensureStructureFinding(findings, reviewedFiles, sections);
+    findings = this.ensureProcessFinding(findings, reviewedFiles, sections);
+    findings = this.ensureLogicFinding(findings, reviewedFiles, sections);
+    findings = this.ensureSyntaxFinding(findings, reviewedFiles, sections);
     findings = this.ensureDiagramFinding(findings, reviewedFiles, sections);
 
     return {
@@ -806,6 +994,80 @@ export class CodeReviewsService {
     );
 
     return [...withoutDiagram, diagramFinding];
+  }
+
+  private ensureProcessFinding(
+    findings: CodeReviewFinding[],
+    reviewedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[],
+  ): CodeReviewFinding[] {
+    if (!sections.includes('process')) return findings;
+
+    const processFinding: CodeReviewFinding = {
+      category: 'process',
+      severity: this.hasFullStackChange(reviewedFiles) ? 'medium' : 'low',
+      title: '2. 주요 프로세스',
+      body: this.formatProcessOverview(reviewedFiles),
+      filePath: this.pickTopChangedFiles(reviewedFiles, 1)[0]?.path ?? null,
+      lineNumber: null,
+      recommendation:
+        '입력, 분석, 저장, 조회, 화면 반영 흐름이 실제 사용자 경로에서 끊기지 않는지 확인하세요.',
+    };
+    const withoutProcess = findings.filter(
+      (finding) => finding.category !== 'process',
+    );
+
+    return [...withoutProcess, processFinding];
+  }
+
+  private ensureLogicFinding(
+    findings: CodeReviewFinding[],
+    reviewedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[],
+  ): CodeReviewFinding[] {
+    if (!sections.includes('code')) return findings;
+
+    const logicFinding: CodeReviewFinding = {
+      category: 'code',
+      severity: this.hasLargeChange(reviewedFiles) ? 'medium' : 'low',
+      title: '3. 주요 로직',
+      body: this.formatLogicWalkthrough(reviewedFiles),
+      filePath: this.pickTopChangedFiles(reviewedFiles, 1)[0]?.path ?? null,
+      lineNumber: null,
+      recommendation:
+        '실행 흐름의 각 함수가 입력 검증, 외부 호출, 상태 갱신, 저장 책임을 과도하게 함께 갖지 않는지 확인하세요.',
+    };
+    const withoutLogic = findings.filter((finding) => finding.category !== 'code');
+
+    return [...withoutLogic, logicFinding];
+  }
+
+  private ensureSyntaxFinding(
+    findings: CodeReviewFinding[],
+    reviewedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[],
+  ): CodeReviewFinding[] {
+    if (!sections.includes('syntax')) return findings;
+
+    const syntaxBody = this.formatSyntaxWalkthrough(reviewedFiles);
+
+    const syntaxFinding: CodeReviewFinding = {
+      category: 'syntax',
+      severity: 'low',
+      title: '4. 주요 문법',
+      body: syntaxBody,
+      filePath: null,
+      lineNumber: null,
+      recommendation:
+        syntaxBody === '특이 문법 없음.'
+          ? '이번 diff에서는 별도 문법 해설보다 주요 프로세스와 주요 로직을 우선 확인하세요.'
+          : '특이 문법이 런타임 검증, 서버 상태, 라우팅, DB 저장 계약과 같은 의미를 유지하는지 확인하세요.',
+    };
+    const withoutSyntax = findings.filter(
+      (finding) => finding.category !== 'syntax',
+    );
+
+    return [...withoutSyntax, syntaxFinding];
   }
 
   private buildStructuralReviewFindings(
@@ -884,16 +1146,9 @@ export class CodeReviewsService {
     if (selectedSectionSet.has('code')) {
       findings.push({
         category: 'code',
-        severity: topFiles.some((file) => file.additions + file.deletions > 500)
-          ? 'medium'
-          : 'low',
+        severity: this.hasLargeChange(topFiles) ? 'medium' : 'low',
         title: '3. 주요 로직',
-        body: topFiles
-          .map(
-            (file) =>
-              `${file.path}: +${file.additions} / -${file.deletions}`,
-          )
-          .join('\n'),
+        body: this.formatLogicWalkthrough(reviewedFiles),
         filePath: topFiles[0]?.path ?? null,
         lineNumber: null,
         recommendation:
@@ -906,14 +1161,7 @@ export class CodeReviewsService {
         category: 'syntax',
         severity: 'low',
         title: '4. 주요 문법',
-        body: [
-          hasSchema ? 'Zod 스키마로 API 입력값을 검증하는 흐름이 포함되어 있습니다.' : null,
-          hasReactQuery ? 'React Query mutation/query 훅으로 목록, 상세, 분석 요청 상태를 관리합니다.' : null,
-          hasService ? 'NestJS service/controller/module 패턴으로 서버 기능을 분리합니다.' : null,
-          hasDatabase ? 'Drizzle 테이블 타입과 SQLite 초기화 SQL이 함께 변경됩니다.' : null,
-        ]
-          .filter(Boolean)
-          .join('\n') || '주요 프레임워크 문법 변경은 제한적입니다.',
+        body: this.formatSyntaxWalkthrough(reviewedFiles),
         filePath: null,
         lineNumber: null,
         recommendation:
@@ -952,7 +1200,6 @@ export class CodeReviewsService {
         severity: 'low',
         title: '6. mmd 흐름도',
         body: [
-          '```mmd',
           'flowchart TD',
           '  A["GitHub URL 입력"] --> B["POST /api/code-reviews/analyze"]',
           '  B --> C["GitHub .diff 수집"]',
@@ -961,7 +1208,6 @@ export class CodeReviewsService {
           '  E --> F["code_reviews 저장"]',
           '  F --> G["목록/상세 화면 표시"]',
           '  G --> H["개발 채팅 카드에서 열기"]',
-          '```',
         ].join('\n'),
         filePath: null,
         lineNumber: null,
@@ -971,6 +1217,434 @@ export class CodeReviewsService {
     }
 
     return findings;
+  }
+
+  private formatLogicWalkthrough(files: ParsedDiffFile[]) {
+    const candidates = this.pickFlowFiles(files, 4);
+    if (candidates.length === 0) {
+      return '리뷰 가능한 변경 파일이 없어 단계별 주요 로직을 만들 수 없습니다.';
+    }
+
+    return candidates
+      .map((file, index) => {
+        const symbol = this.findChangedSymbol(file);
+        const snippet = this.extractReviewSnippet(
+          file,
+          this.logicPatternsForPath(file.path),
+          8,
+        );
+
+        return [
+          `${index + 1}. 함수/모듈: ${symbol}`,
+          '코드:',
+          `\`\`\`${this.languageForPath(file.path)}`,
+          snippet,
+          '```',
+          `설명: ${this.logicExplanation(file.path)}`,
+        ].join('\n');
+      })
+      .join('\n\n');
+  }
+
+  private formatProcessOverview(files: ParsedDiffFile[]) {
+    const changedPaths = files.map((file) => file.path);
+    const steps = [
+      changedPaths.some((path) => path.includes('/pages/'))
+        ? '1. 화면에서 사용자가 리뷰 URL과 관점을 선택합니다.'
+        : null,
+      changedPaths.some((path) => path.includes('/api/'))
+        ? '2. 프론트 API 계층이 분석 요청과 목록/상세 조회를 서버 계약으로 연결합니다.'
+        : null,
+      changedPaths.some((path) => path.includes('code-reviews.service.ts'))
+        ? '3. 서버 서비스가 GitHub diff와 파일 컨텍스트를 수집하고 리뷰 항목을 정규화합니다.'
+        : null,
+      changedPaths.some((path) => path.includes('/database/'))
+        ? '4. 분석 결과는 DB 스키마의 코드 리뷰 저장 구조에 맞춰 보관됩니다.'
+        : null,
+      changedPaths.some((path) => path.includes('/router') || path.includes('/app-header/'))
+        ? '5. 라우터/헤더 연결을 통해 저장된 리뷰 목록과 상세 화면으로 진입합니다.'
+        : null,
+    ].filter(Boolean);
+
+    return steps.length > 0
+      ? steps.join('\n')
+      : '1. 변경 파일을 기준으로 입력, 처리, 저장, 표시 흐름을 확인합니다.';
+  }
+
+  private formatSyntaxWalkthrough(files: ParsedDiffFile[]) {
+    const candidates = this.pickSyntaxFiles(files, 2);
+    if (candidates.length === 0) {
+      return '특이 문법 없음.';
+    }
+
+    return candidates
+      .map((file, index) => {
+        const focus = this.detectSyntaxFocus(file);
+        const snippet = this.extractReviewSnippet(file, focus.patterns);
+
+        return [
+          `${index + 1}. 기술 이름`,
+          `${focus.label}:`,
+          '관련 코드:',
+          `\`\`\`${this.languageForPath(file.path)}`,
+          snippet,
+          '```',
+          `보충 설명: ${focus.explanation}`,
+        ].join('\n');
+      })
+      .join('\n\n');
+  }
+
+  private pickTopChangedFiles(files: ParsedDiffFile[], limit: number) {
+    return [...files]
+      .filter((file) => file.additions > 0)
+      .sort((a, b) => b.additions + b.deletions - (a.additions + a.deletions))
+      .slice(0, limit);
+  }
+
+  private pickFlowFiles(files: ParsedDiffFile[], limit: number) {
+    const priority = (path: string) => {
+      if (path.includes('/pages/')) return 1;
+      if (path.includes('/api/')) return 2;
+      if (path.endsWith('.controller.ts')) return 3;
+      if (path.endsWith('.service.ts')) return 4;
+      if (path.endsWith('.schemas.ts')) return 5;
+      if (path.includes('/database/')) return 6;
+      if (path.includes('/router')) return 7;
+      return 9;
+    };
+
+    return [...files]
+      .filter((file) => file.additions > 0)
+      .sort((a, b) => {
+        const priorityDiff = priority(a.path) - priority(b.path);
+        if (priorityDiff !== 0) return priorityDiff;
+        return b.additions + b.deletions - (a.additions + a.deletions);
+      })
+      .slice(0, limit);
+  }
+
+  private pickSyntaxFiles(files: ParsedDiffFile[], limit: number) {
+    const patterns = [
+      /\bz\.(object|enum|array|string|number|boolean)|z\.infer/,
+      /use(Query|Mutation)|queryKey|mutationFn|invalidateQueries/,
+      /@(Controller|Get|Post|Patch|Delete|Injectable)|constructor\(/,
+      /sqliteTable|text\(|integer\(|\.\$type</,
+    ];
+    const syntaxFiles = files.filter((file) => {
+      if (!/\.(ts|tsx)$/.test(file.path)) return false;
+      const addedText = this.extractNonImportAddedText(file.diff);
+      return patterns.some((pattern) => pattern.test(addedText));
+    });
+    return syntaxFiles
+      .sort((a, b) => b.additions + b.deletions - (a.additions + a.deletions))
+      .slice(0, limit);
+  }
+
+  private logicPatternsForPath(path: string) {
+    if (path.includes('/pages/')) {
+      return [
+        /use(Query|Mutation|State|Memo|Effect)/,
+        /function\s+\w+/,
+        /const\s+\w+\s*=/,
+        /return\s*\(/,
+      ];
+    }
+    if (path.includes('/api/')) {
+      return [/apiRequest|use(Query|Mutation)|queryKey|mutationFn|invalidateQueries/];
+    }
+    if (path.endsWith('.service.ts')) {
+      return [/async\s+\w+|this\.db|\.select\(|\.insert\(|\.update\(|fetch\(/];
+    }
+    if (path.endsWith('.schemas.ts')) return [/\bz\.(object|enum|array|string)/];
+    if (path.includes('/database/')) return [/sqliteTable|text\(|integer\(|\.\$type</];
+    return [/function\s+\w+|const\s+\w+\s*=|return\s+/];
+  }
+
+  private extractReviewSnippet(
+    file: ParsedDiffFile,
+    patterns: RegExp[],
+    maxLines = 14,
+  ) {
+    if (file.fullText) {
+      const fullTextSnippet = this.extractFullTextSnippet(
+        file.fullText,
+        file.diff,
+        patterns,
+        maxLines,
+      );
+      if (fullTextSnippet) return fullTextSnippet;
+    }
+
+    const sourceLines = this.extractDiffContextLines(file.diff).filter(
+      (line) =>
+        line.text.trim().length > 0 && !this.isSnippetBoilerplateLine(line.text),
+    );
+    if (sourceLines.length === 0) return '// diff에서 표시 가능한 코드 스니펫 없음';
+
+    const addedAnchor = sourceLines.findIndex(
+      (line) =>
+        line.added && patterns.some((pattern) => pattern.test(line.text)),
+    );
+    const contextAnchor = sourceLines.findIndex((line) =>
+      patterns.some((pattern) => pattern.test(line.text)),
+    );
+    const firstAddedLine = sourceLines.findIndex((line) => line.added);
+    const anchor =
+      addedAnchor >= 0
+        ? addedAnchor
+        : contextAnchor >= 0
+          ? contextAnchor
+          : firstAddedLine >= 0
+            ? firstAddedLine
+            : 0;
+    let start = Math.max(0, anchor - 4);
+    let end = Math.min(sourceLines.length, start + maxLines);
+
+    while (
+      start < anchor &&
+      /^[}\])];?,?$/.test(sourceLines[start]?.text.trim() ?? '')
+    ) {
+      start += 1;
+    }
+
+    while (
+      end > start + 1 &&
+      /^[{[(]$/.test(sourceLines[end - 1]?.text.trim() ?? '')
+    ) {
+      end -= 1;
+    }
+
+    return sourceLines
+      .slice(start, end)
+      .map((line) => line.text)
+      .map((line) => (line.length > 140 ? `${line.slice(0, 137)}...` : line))
+      .join('\n');
+  }
+
+  private extractFullTextSnippet(
+    fullText: string,
+    diff: string,
+    patterns: RegExp[],
+    maxLines: number,
+  ) {
+    const lines = fullText.split('\n');
+    if (lines.length === 0) return null;
+
+    const changedLine = this.findFirstSignificantAddedLineNumber(diff);
+    const patternLine = lines.findIndex((line) =>
+      !this.isSnippetBoilerplateLine(line) &&
+      patterns.some((pattern) => pattern.test(line)),
+    );
+    const anchor =
+      patternLine >= 0
+        ? patternLine
+        : changedLine && changedLine > 0
+          ? Math.min(changedLine - 1, lines.length - 1)
+          : 0;
+    const functionStart = this.findSnippetStart(lines, anchor);
+    const start = Math.max(0, functionStart >= 0 ? functionStart : anchor - 4);
+    const end = Math.min(lines.length, start + maxLines);
+
+    const snippetLines = lines.slice(start, end);
+    while (
+      snippetLines.length > 0 &&
+      this.isSnippetBoilerplateLine(snippetLines[0])
+    ) {
+      snippetLines.shift();
+    }
+
+    return snippetLines
+      .map((line) => (line.length > 140 ? `${line.slice(0, 137)}...` : line))
+      .join('\n')
+      .trim();
+  }
+
+  private findSnippetStart(lines: string[], anchor: number) {
+    for (let index = anchor; index >= 0 && index >= anchor - 80; index -= 1) {
+      if (this.isSnippetBoilerplateLine(lines[index])) continue;
+      if (
+        /^(export\s+)?(async\s+)?function\s+\w+/.test(lines[index].trim()) ||
+        /^(export\s+)?const\s+\w+\s*=/.test(lines[index].trim()) ||
+        /^class\s+\w+/.test(lines[index].trim()) ||
+        /@(Controller|Injectable)\b/.test(lines[index].trim())
+      ) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  private findFirstSignificantAddedLineNumber(diff: string) {
+    let currentLine = 0;
+    for (const line of diff.split('\n')) {
+      const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+      if (hunk) {
+        currentLine = Number(hunk[1]);
+        continue;
+      }
+      if (line.startsWith('+') && !line.startsWith('+++')) {
+        if (!this.isImportLikeLine(line.slice(1))) return currentLine || null;
+        currentLine += 1;
+        continue;
+      }
+      if (!line.startsWith('-')) currentLine += 1;
+    }
+    return null;
+  }
+
+  private findChangedSymbol(file: ParsedDiffFile) {
+    const lines = (file.fullText ?? this.extractDiffContextLines(file.diff).map((line) => line.text).join('\n'))
+      .split('\n')
+      .filter((line) => !this.isSnippetBoilerplateLine(line));
+    const changedLine = this.findFirstSignificantAddedLineNumber(file.diff);
+    const anchor =
+      changedLine && file.fullText
+        ? Math.min(changedLine - 1, lines.length - 1)
+        : lines.findIndex((line) =>
+            /use(Query|Mutation)|apiRequest|fetch\(|\.select\(|\.insert\(|z\.object|sqliteTable|function\s+\w+|const\s+\w+\s*=/.test(
+              line,
+            ),
+          );
+    const start = this.findSnippetStart(lines, Math.max(0, anchor));
+    const candidate = lines[start >= 0 ? start : Math.max(0, anchor)]?.trim();
+
+    if (!candidate) return this.moduleNameFromPath(file.path);
+    return candidate
+      .replace(/^\s*export\s+/, '')
+      .replace(/\s*=>.*$/, '')
+      .replace(/\s*\{?\s*$/, '')
+      .slice(0, 120);
+  }
+
+  private moduleNameFromPath(path: string) {
+    const name = path.split('/').pop() ?? path;
+    return name.replace(/\.(tsx?|jsx?)$/, '');
+  }
+
+  private extractNonImportAddedText(diff: string) {
+    return diff
+      .split('\n')
+      .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+      .map((line) => line.slice(1))
+      .filter((line) => !this.isImportLikeLine(line))
+      .join('\n');
+  }
+
+  private isImportLikeLine(line: string) {
+    const trimmed = line.trim();
+    return (
+      trimmed.startsWith('import ') ||
+      trimmed.startsWith('import{') ||
+      trimmed.startsWith('from ') ||
+      /^} from ['"]/.test(trimmed) ||
+      /^}\s*$/.test(trimmed) ||
+      /^[\w$]+\s*,?$/.test(trimmed)
+    );
+  }
+
+  private isSnippetBoilerplateLine(line: string) {
+    const trimmed = line.trim();
+    return (
+      this.isImportLikeLine(line) ||
+      /^export\s+type\s+\w+/.test(trimmed) ||
+      /^type\s+\w+/.test(trimmed) ||
+      /^export\s+interface\s+\w+/.test(trimmed) ||
+      /^interface\s+\w+/.test(trimmed)
+    );
+  }
+
+  private extractDiffContextLines(diff: string) {
+    return diff
+      .split('\n')
+      .filter((line) => {
+        if (!line) return false;
+        if (line.startsWith('diff --git')) return false;
+        if (line.startsWith('index ')) return false;
+        if (line.startsWith('---') || line.startsWith('+++')) return false;
+        if (line.startsWith('@@')) return false;
+        if (line.startsWith('-')) return false;
+        return line.startsWith('+') || line.startsWith(' ');
+      })
+      .map((line) => ({
+        added: line.startsWith('+'),
+        text: line.slice(1),
+      }));
+  }
+
+  private detectSyntaxFocus(file: ParsedDiffFile) {
+    const addedText = this.extractAddedText(file.diff);
+    const candidates = [
+      {
+        label: 'Zod',
+        patterns: [/\bz\.(object|enum|array|string|number|boolean)|z\.infer/],
+        explanation:
+          '런타임 검증 스키마가 API payload의 실제 형태를 제한하고, 프론트/서버 타입 계약의 기준점이 됩니다.',
+      },
+      {
+        label: 'TanStack Query',
+        patterns: [/use(Query|Mutation)|queryKey|mutationFn|invalidateQueries/],
+        explanation:
+          'queryKey, mutationFn, 성공 후 무효화 흐름이 서버 상태를 화면 상태와 연결하는 핵심 문법입니다.',
+      },
+      {
+        label: 'NestJS',
+        patterns: [/@(Controller|Get|Post|Patch|Delete|Injectable)|constructor\(/],
+        explanation:
+          '데코레이터와 생성자 주입이 HTTP 엔드포인트, 서비스 책임, 의존성 경계를 선언적으로 묶습니다.',
+      },
+      {
+        label: 'Drizzle',
+        patterns: [/sqliteTable|text\(|integer\(|\.\$type</],
+        explanation:
+          'DB 컬럼 선언과 TypeScript 타입이 저장 가능한 JSON 구조와 조회 결과 타입을 함께 고정합니다.',
+      },
+    ];
+
+    return (
+      candidates.find((candidate) =>
+        candidate.patterns.some((pattern) => pattern.test(addedText)),
+      ) ?? candidates[0]
+    );
+  }
+
+  private logicExplanation(path: string) {
+    if (path.includes('/api/')) {
+      return '요청 함수는 URL, payload, 응답 타입을 한 곳에서 고정하므로 화면 컴포넌트가 서버 계약을 직접 알 필요가 줄어듭니다.';
+    }
+    if (path.includes('/pages/')) {
+      return '페이지 로직은 입력값, 선택 상태, mutation 결과, 상세 표시를 이어 주므로 상태 전이가 길어지면 훅이나 섹션 컴포넌트로 분리하는 편이 좋습니다.';
+    }
+    if (path.endsWith('.service.ts')) {
+      return '서비스 함수는 외부 diff 수집, 분석, 정규화, 저장을 담당하므로 실패 처리와 중복 저장 방어가 핵심입니다.';
+    }
+    if (path.endsWith('.schemas.ts')) {
+      return '스키마는 API 경계의 첫 방어선이므로 기본값, enum, 배열 길이 제한이 실제 UI 요청과 맞아야 합니다.';
+    }
+    if (path.includes('/database/')) {
+      return 'DB 타입은 저장 payload를 장기 계약으로 만들기 때문에 nullable, JSON 구조, 기본값을 프론트 타입과 맞춰야 합니다.';
+    }
+    return '이 코드가 맡는 입력, 처리, 출력 책임이 한 함수 안에서 읽히는지 확인하는 것이 핵심입니다.';
+  }
+
+  private hasLargeChange(files: ParsedDiffFile[]) {
+    return files.some((file) => file.additions + file.deletions > 500);
+  }
+
+  private hasFullStackChange(files: ParsedDiffFile[]) {
+    const paths = files.map((file) => file.path);
+    return (
+      paths.some((path) => path.includes('towercrane-for-uiux-front/src/')) &&
+      paths.some((path) => path.includes('towercrane-for-uiux-server/src/'))
+    );
+  }
+
+  private languageForPath(path: string) {
+    if (path.endsWith('.tsx')) return 'tsx';
+    if (path.endsWith('.ts')) return 'ts';
+    if (path.endsWith('.json')) return 'json';
+    if (path.endsWith('.sql')) return 'sql';
+    return '';
   }
 
   private formatChangedFileTree(files: ParsedDiffFile[]) {

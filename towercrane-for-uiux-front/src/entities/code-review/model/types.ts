@@ -85,7 +85,16 @@ export type CodeReviewListParams = {
 
 export type AnalyzeCodeReviewPayload = {
   sourceUrl: string
+  repositoryUrl?: string
   sections?: CodeReviewSection[]
+}
+
+export type CodeReviewRepositoryValidation = {
+  valid: boolean
+  repository: string
+  repositoryUrl: string
+  defaultBranch: string | null
+  message: string
 }
 
 export type UpdateCodeReviewPayload = {

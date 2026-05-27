@@ -1,5 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import ReactMarkdown from 'react-markdown'
+import rehypeHighlight from 'rehype-highlight'
+import remarkGfm from 'remark-gfm'
 import {
   Check,
   Code2,
@@ -18,12 +21,14 @@ import {
   useCodeReviewList,
   useDeleteCodeReview,
   useUpdateCodeReview,
+  useValidateCodeReviewRepository,
 } from '../../../entities/code-review/api/code-review-api'
 import type {
   CodeReviewChangedFile,
   CodeReviewFinding,
   CodeReviewRiskLevel,
   CodeReviewSection,
+  CodeReviewRepositoryValidation,
 } from '../../../entities/code-review/model/types'
 import { Button } from '../../../shared/ui/button'
 import { Mermaid } from '../../../shared/ui/mermaid'
@@ -90,7 +95,7 @@ function isMermaidChart(value: string) {
 }
 
 function shouldRenderCodeBlock(category: CodeReviewFinding['category']) {
-  return category === 'structure' || category === 'code'
+  return category === 'structure' || category === 'code' || category === 'syntax'
 }
 
 const defaultReviewSections: CodeReviewSection[] = [
@@ -110,23 +115,62 @@ const reviewSectionOptions: Array<{ value: CodeReviewSection; label: string }> =
   { value: 'diagram', label: '6. mmd' },
 ]
 
+const repositoryStorageKey = 'towercrane.codeReview.repositoryUrl'
+
 export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [sourceUrl, setSourceUrl] = useState('')
+  const [repositoryUrl, setRepositoryUrl] = useState('')
+  const [repositoryValidation, setRepositoryValidation] =
+    useState<CodeReviewRepositoryValidation | null>(null)
+  const [repositoryError, setRepositoryError] = useState<string | null>(null)
   const [selectedSections, setSelectedSections] =
     useState<CodeReviewSection[]>(defaultReviewSections)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const listQuery = useCodeReviewList({ q, page, pageSize: 20 })
   const detailQuery = useCodeReviewDetail(reviewId)
   const analyzeMutation = useAnalyzeCodeReview()
+  const validateRepositoryMutation = useValidateCodeReviewRepository()
 
   useEffect(() => {
     setPage(1)
   }, [q])
 
+  useEffect(() => {
+    const savedRepository = window.localStorage.getItem(repositoryStorageKey)
+    if (!savedRepository) return
+    setRepositoryUrl(savedRepository)
+    void validateRepository(savedRepository, false)
+  }, [])
+
   const selectedId = reviewId ?? listQuery.data?.items[0]?.id ?? null
+
+  async function validateRepository(value = repositoryUrl, persist = true) {
+    const nextValue = value.trim()
+    if (!nextValue) {
+      setRepositoryValidation(null)
+      setRepositoryError('저장소 주소를 입력하세요.')
+      return
+    }
+
+    setRepositoryError(null)
+    try {
+      const result = await validateRepositoryMutation.mutateAsync(nextValue)
+      setRepositoryValidation(result)
+      setRepositoryUrl(result.repositoryUrl)
+      if (result.valid && persist) {
+        window.localStorage.setItem(repositoryStorageKey, result.repositoryUrl)
+      }
+      if (!result.valid) setRepositoryError(result.message)
+    } catch (error) {
+      setRepositoryValidation(null)
+      setRepositoryError(
+        error instanceof Error ? error.message : '저장소 확인에 실패했습니다.',
+      )
+    }
+  }
 
   async function analyze(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -134,6 +178,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
     try {
       const detail = await analyzeMutation.mutateAsync({
         sourceUrl,
+        repositoryUrl: repositoryValidation?.valid ? repositoryValidation.repositoryUrl : undefined,
         sections: selectedSections,
       })
       setSourceUrl('')
@@ -157,13 +202,70 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
       <PageHeader
         icon={Code2}
         title="코드 리뷰 게시판"
-        description="GitHub commit, PR, compare URL을 입력해 diff를 분석하고 리뷰로 저장합니다."
       />
 
       <form
         onSubmit={analyze}
         className="rounded-md border border-surface-border bg-surface-raised p-4"
       >
+        <div className="mb-4 rounded-md border border-surface-border-soft bg-surface-muted p-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="min-w-40">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-text-primary">
+                <GitPullRequest className="size-4 text-brand-primary" />
+                리뷰 저장소
+              </div>
+            </div>
+            <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-raised px-3">
+              <input
+                value={repositoryUrl}
+                onChange={(event) => {
+                  setRepositoryUrl(event.target.value)
+                  setRepositoryValidation(null)
+                  setRepositoryError(null)
+                }}
+                className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+                placeholder="https://github.com/dota-pilot1/towercrane-for-uiux"
+                disabled={validateRepositoryMutation.isPending}
+              />
+            </label>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void validateRepository()}
+              disabled={!repositoryUrl.trim() || validateRepositoryMutation.isPending}
+            >
+              {validateRepositoryMutation.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <Check className="mr-1.5 size-3.5" />
+              )}
+              확인
+            </Button>
+          </div>
+          {repositoryValidation?.valid || repositoryError ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
+              {repositoryValidation?.valid ? (
+                <>
+                  <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-1 text-brand-primary">
+                    {repositoryValidation.message}
+                  </span>
+                  <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-text-secondary">
+                    {repositoryValidation.repository}
+                  </span>
+                  {repositoryValidation.defaultBranch ? (
+                    <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-text-secondary">
+                      {repositoryValidation.defaultBranch}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-danger-500">{repositoryError}</span>
+              )}
+            </div>
+          ) : null}
+        </div>
+
         <div className="flex flex-col gap-3 lg:flex-row">
           <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3">
             <GitPullRequest className="size-4 shrink-0 text-text-muted" />
@@ -217,11 +319,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
         </div>
         {analyzeError ? (
           <p className="mt-2 text-sm font-semibold text-danger-500">{analyzeError}</p>
-        ) : (
-          <p className="mt-2 text-xs text-text-muted">
-            선택한 관점만 리뷰 요청에 포함합니다. 6번 mmd는 상태 관리나 저장 흐름이 복잡한 diff에서만 켜세요.
-          </p>
-        )}
+        ) : null}
       </form>
 
       <div className="grid min-h-[calc(100vh-16rem)] gap-4 lg:grid-cols-[390px_minmax(0,1fr)]">
@@ -341,9 +439,6 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
                 <h3 className="mt-4 text-base font-extrabold text-text-primary">
                   코드 리뷰를 선택하세요
                 </h3>
-                <p className="mt-2 max-w-md text-sm leading-6 text-text-secondary">
-                  왼쪽 목록에서 저장된 리뷰를 선택하면 파일 구조, 주요 프로세스, 주요 로직, 문법, 아키텍처 평가를 확인할 수 있습니다.
-                </p>
               </div>
             </div>
           )}
@@ -570,6 +665,10 @@ function FindingBody({ finding }: { finding: CodeReviewFinding }) {
   }
 
   if (shouldRenderCodeBlock(finding.category)) {
+    if (finding.category === 'code' || finding.category === 'syntax') {
+      return <HighlightedMarkdownBody value={finding.body} />
+    }
+
     return (
       <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised px-3 py-3 font-mono text-xs leading-5 text-text-secondary">
         {finding.body}
@@ -581,6 +680,53 @@ function FindingBody({ finding }: { finding: CodeReviewFinding }) {
     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
       {finding.body}
     </p>
+  )
+}
+
+function HighlightedMarkdownBody({ value }: { value: string }) {
+  return (
+    <div className="mt-3 space-y-3 text-sm leading-6 text-text-secondary">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeHighlight]}
+        components={{
+          p: ({ children }) => (
+            <p className="whitespace-pre-wrap text-sm leading-6 text-text-secondary">
+              {children}
+            </p>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal space-y-3 pl-5 text-sm leading-6 text-text-secondary">
+              {children}
+            </ol>
+          ),
+          ul: ({ children }) => (
+            <ul className="list-disc space-y-2 pl-5 text-sm leading-6 text-text-secondary">
+              {children}
+            </ul>
+          ),
+          li: ({ children }) => <li className="pl-1">{children}</li>,
+          pre: ({ children }) => (
+            <pre className="overflow-x-auto whitespace-pre rounded-md border border-surface-border-soft bg-surface-raised px-3 py-3 font-mono text-xs leading-5 text-text-secondary">
+              {children}
+            </pre>
+          ),
+          code: ({ children, className }) => {
+            if (className?.includes('hljs') || className?.startsWith('language-')) {
+              return <code className={className}>{children}</code>
+            }
+
+            return (
+              <code className="rounded-sm border border-surface-border-soft bg-surface-muted px-1 py-0.5 font-mono text-[0.92em] text-text-primary">
+                {children}
+              </code>
+            )
+          },
+        }}
+      >
+        {value}
+      </ReactMarkdown>
+    </div>
   )
 }
 
