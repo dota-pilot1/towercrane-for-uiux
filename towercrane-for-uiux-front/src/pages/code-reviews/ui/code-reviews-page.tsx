@@ -24,7 +24,6 @@ import {
   useValidateCodeReviewRepository,
 } from '../../../entities/code-review/api/code-review-api'
 import type {
-  CodeReviewChangedFile,
   CodeReviewFinding,
   CodeReviewRiskLevel,
   CodeReviewSection,
@@ -72,7 +71,7 @@ function riskClassName(riskLevel: CodeReviewRiskLevel) {
 }
 
 function findingCategoryLabel(category: CodeReviewFinding['category']) {
-  if (category === 'structure') return '파일 구조'
+  if (category === 'structure') return '변경 파일'
   if (category === 'process') return '주요 프로세스'
   if (category === 'code') return '주요 로직'
   if (category === 'syntax') return '주요 문법'
@@ -107,7 +106,7 @@ const defaultReviewSections: CodeReviewSection[] = [
 ]
 
 const reviewSectionOptions: Array<{ value: CodeReviewSection; label: string }> = [
-  { value: 'structure', label: '1. 파일 구조' },
+  { value: 'structure', label: '1. 변경 파일' },
   { value: 'process', label: '2. 주요 프로세스' },
   { value: 'code', label: '3. 주요 로직' },
   { value: 'syntax', label: '4. 주요 문법' },
@@ -427,7 +426,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
                         <span>{formatDateTime(item.createdAt)}</span>
                       </div>
                       <div className="mt-2 text-[11px] font-bold text-brand-primary">
-                        평가 {item.findingCount}개 · 보조 확인 {item.testGapCount}개
+                        평가 {item.findingCount}개
                       </div>
                     </button>
                   )
@@ -634,9 +633,6 @@ function ReviewDetailPanel({
           </section>
 
           <FindingSection findings={detail.findings} />
-          <AuxiliaryCheckSection items={detail.testGaps} />
-          <ChangedFilesSection title="검토 파일" files={detail.changedFiles} />
-          <ChangedFilesSection title="제외 파일" files={detail.excludedFiles} />
         </div>
       </div>
     </div>
@@ -771,61 +767,5 @@ function HighlightedMarkdownBody({ value }: { value: string }) {
         {value}
       </ReactMarkdown>
     </div>
-  )
-}
-
-function AuxiliaryCheckSection({ items }: { items: string[] }) {
-  return (
-    <section>
-      <h3 className="text-sm font-extrabold text-text-primary">보조 확인</h3>
-      <div className="mt-2 space-y-2">
-        {items.length ? (
-          items.map((item, index) => (
-            <p
-              key={`${item}-${index}`}
-              className="rounded-md border border-surface-border-soft bg-surface-muted px-4 py-3 text-sm leading-6 text-text-secondary"
-            >
-              {item}
-            </p>
-          ))
-        ) : (
-          <p className="text-sm text-text-muted">보조 확인 항목이 없습니다.</p>
-        )}
-      </div>
-    </section>
-  )
-}
-
-function ChangedFilesSection({
-  title,
-  files,
-}: {
-  title: string
-  files: CodeReviewChangedFile[]
-}) {
-  return (
-    <section>
-      <h3 className="text-sm font-extrabold text-text-primary">{title}</h3>
-      <div className="mt-2 overflow-hidden rounded-md border border-surface-border-soft">
-        {files.length ? (
-          files.map((file) => (
-            <div
-              key={`${title}-${file.path}`}
-              className="flex flex-wrap items-center justify-between gap-2 border-b border-surface-border-soft bg-surface-muted px-4 py-2 last:border-b-0"
-            >
-              <span className="min-w-0 break-all text-sm font-semibold text-text-primary">
-                {file.path}
-              </span>
-              <span className="shrink-0 text-xs font-bold text-text-muted">
-                +{file.additions} / -{file.deletions}
-                {file.excludedReason ? ` · ${file.excludedReason}` : ''}
-              </span>
-            </div>
-          ))
-        ) : (
-          <p className="bg-surface-muted px-4 py-3 text-sm text-text-muted">파일이 없습니다.</p>
-        )}
-      </div>
-    </section>
   )
 }

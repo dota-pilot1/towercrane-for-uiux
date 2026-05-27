@@ -12,8 +12,8 @@ export const codeReviewStyleGuide = `
 
 ## 섹션별 body 형식
 
-### 1. 파일 구조 도식화
-plain text tree만 작성한다. 설명 문장은 recommendation에만 넣는다.
+### 1. 변경 파일 구조
+커밋에서 실제 변경된 파일만 plain text tree로 작성한다. 설명 문장은 recommendation에만 넣는다.
 
 ### 2. 주요 프로세스
 번호 목록으로 흐름만 작성한다. 코드블록을 넣지 않는다.

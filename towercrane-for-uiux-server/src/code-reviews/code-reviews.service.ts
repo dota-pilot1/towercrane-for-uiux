@@ -670,7 +670,7 @@ export class CodeReviewsService {
                   : source.sourceType,
               sourceInstruction:
                 source.sourceType === 'commit'
-                  ? '이 요청은 단일 커밋 리뷰다. reviewedFiles는 해당 커밋 diff에서 파싱한 변경 파일 목록이므로 파일 구조, 주요 프로세스, 주요 로직은 이 변경 파일과 reviewGoal을 기준으로만 작성한다.'
+                  ? '이 요청은 단일 커밋 리뷰다. reviewedFiles는 해당 커밋 diff에서 파싱한 변경 파일 목록이므로 변경 파일 구조, 주요 프로세스, 주요 로직은 이 변경 파일과 reviewGoal을 기준으로만 작성한다.'
                   : '이 요청은 commit이 아닌 GitHub diff 리뷰다. reviewedFiles에서 기능 단위를 먼저 좁힌 뒤 reviewGoal과 직접 관련된 변경만 중심으로 작성한다.',
               reviewGoal,
               reviewInstruction:
@@ -706,7 +706,7 @@ export class CodeReviewsService {
                   'raw Mermaid only, must start with flowchart TD, no code fence and no prose.',
               },
               reviewFocus: [
-                '파일 구조 도식화: reviewedFiles에 포함된 실제 변경 파일만 plain text folder tree로 작성',
+                '변경 파일 구조: reviewedFiles에 포함된 실제 변경 파일만 plain text folder tree로 작성',
                 '주요 프로세스: 코드 없이 대략적인 처리 흐름만 작성',
                 '주요 로직: 함수/모듈명, 코드, 설명 순서로만 작성. 별도 단계명이나 파일 설명을 늘리지 않음',
                 '주요 문법: 기술 이름, 관련 코드, 보충 설명 순서로만 작성. React Query, Zod, NestJS, Drizzle처럼 특이한 문법이 있을 때만 작성. import/type-only 선언 금지',
@@ -880,8 +880,8 @@ export class CodeReviewsService {
       title: `${source.repository} ${source.reference} 코드 리뷰`,
       summary:
         findings.length > 0
-          ? `리뷰 가능한 파일 ${reviewedFiles.length}개를 선택한 ${sections.length}개 관점으로 평가했습니다. 평가 항목은 ${findings.length}개, 제외 파일은 ${excludedFiles.length}개입니다.`
-          : `리뷰 가능한 파일 ${reviewedFiles.length}개 기준으로 구조적 평가 항목을 만들지 못했습니다. 제외 파일은 ${excludedFiles.length}개입니다.`,
+          ? `리뷰 가능한 파일 ${reviewedFiles.length}개를 선택한 ${sections.length}개 관점으로 평가했습니다. 평가 항목은 ${findings.length}개입니다.`
+          : `리뷰 가능한 파일 ${reviewedFiles.length}개 기준으로 구조적 평가 항목을 만들지 못했습니다.`,
       riskLevel,
       findings: findings.slice(0, 12),
       testGaps,
@@ -961,6 +961,7 @@ export class CodeReviewsService {
     findings = this.ensureProcessFinding(findings, reviewedFiles, sections, reviewGoal);
     findings = this.ensureLogicFinding(findings, reviewedFiles, sections, reviewGoal);
     findings = this.ensureSyntaxFinding(findings, reviewedFiles, sections);
+    findings = this.ensureArchitectureFinding(findings, reviewedFiles, sections, reviewGoal);
     findings = this.ensureDiagramFinding(findings, reviewedFiles, sections, reviewGoal);
 
     return {
@@ -994,7 +995,7 @@ export class CodeReviewsService {
     const structureFinding: CodeReviewFinding = {
       category: 'structure',
       severity: 'low',
-      title: '1. 파일 구조 도식화',
+      title: '1. 변경 파일 구조',
       body: this.formatChangedFileTree(reviewedFiles),
       filePath: null,
       lineNumber: null,
@@ -1027,7 +1028,9 @@ export class CodeReviewsService {
       recommendation:
         intent === 'delete'
           ? '이 흐름도를 기준으로 삭제 권한, 삭제 차단 조건, mutation 성공 후 목록 갱신이 이어지는지 확인하세요.'
-          : '이 흐름도를 기준으로 사용자 입력, API 처리, 저장, 화면 반영 단계의 책임 경계를 확인하세요.',
+          : intent === 'update'
+            ? '이 흐름도를 기준으로 수정 버튼 노출, 초기값 세팅, 변경 검증, update mutation, 목록 갱신이 이어지는지 확인하세요.'
+            : '이 흐름도를 기준으로 사용자 입력, API 처리, 저장, 화면 반영 단계의 책임 경계를 확인하세요.',
     };
     const withoutDiagram = findings.filter(
       (finding) => finding.category !== 'diagram',
@@ -1055,7 +1058,9 @@ export class CodeReviewsService {
       recommendation:
         intent === 'delete'
           ? '삭제 버튼 노출, 확인 다이얼로그, 삭제 차단 조건, mutation 성공 후 목록 갱신이 실제 화면에서 끊기지 않는지 확인하세요.'
-          : '입력, 분석, 저장, 조회, 화면 반영 흐름이 실제 사용자 경로에서 끊기지 않는지 확인하세요.',
+          : intent === 'update'
+            ? '수정 버튼 노출, 기존 값 초기화, 변경 검증, update mutation, 캐시 갱신이 실제 화면에서 끊기지 않는지 확인하세요.'
+            : '입력, 분석, 저장, 조회, 화면 반영 흐름이 실제 사용자 경로에서 끊기지 않는지 확인하세요.',
     };
     const withoutProcess = findings.filter(
       (finding) => finding.category !== 'process',
@@ -1083,7 +1088,9 @@ export class CodeReviewsService {
       recommendation:
         intent === 'delete'
           ? '삭제 확인 UI와 실제 delete mutation 사이에 권한/차단 조건이 중복되거나 빠지지 않았는지 확인하세요.'
-          : '실행 흐름의 각 함수가 입력 검증, 외부 호출, 상태 갱신, 저장 책임을 과도하게 함께 갖지 않는지 확인하세요.',
+          : intent === 'update'
+            ? '카드 권한 분기, 다이얼로그 폼 상태, submit mutation 책임이 과도하게 한곳에 섞이지 않는지 확인하세요.'
+            : '실행 흐름의 각 함수가 입력 검증, 외부 호출, 상태 갱신, 저장 책임을 과도하게 함께 갖지 않는지 확인하세요.',
     };
     const withoutLogic = findings.filter((finding) => finding.category !== 'code');
 
@@ -1116,6 +1123,40 @@ export class CodeReviewsService {
     );
 
     return [...withoutSyntax, syntaxFinding];
+  }
+
+  private ensureArchitectureFinding(
+    findings: CodeReviewFinding[],
+    reviewedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[],
+    reviewGoal = '',
+  ): CodeReviewFinding[] {
+    if (!sections.includes('architecture')) return findings;
+    const intent = this.detectReviewIntent(reviewedFiles, reviewGoal);
+    const largeFiles = reviewedFiles.filter(
+      (file) => file.additions + file.deletions >= 250,
+    );
+
+    const architectureFinding: CodeReviewFinding = {
+      category: 'architecture',
+      severity: largeFiles.length > 0 ? 'medium' : 'low',
+      title: '5. 아키텍처/클린코드 평가',
+      body: this.formatArchitectureAssessment(reviewedFiles, reviewGoal),
+      filePath: largeFiles[0]?.path ?? this.pickTopChangedFiles(reviewedFiles, 1)[0]?.path ?? null,
+      lineNumber: null,
+      recommendation:
+        intent === 'update'
+          ? '수정 기능이 카드 표시 책임, 다이얼로그 폼 책임, mutation 호출 책임으로 읽히는지 확인하세요.'
+          : intent === 'delete'
+            ? '삭제 기능이 카드 표시 책임, 확인/차단 책임, mutation 호출 책임으로 읽히는지 확인하세요.'
+            : '요청한 리뷰 범위 안에서 책임 분리, 파일 크기, 중복, 명명, 유지보수성을 확인하세요.',
+    };
+    const withoutArchitecture = findings.filter(
+      (finding) =>
+        finding.category !== 'architecture' && finding.category !== 'clean_code',
+    );
+
+    return [...withoutArchitecture, architectureFinding];
   }
 
   private buildStructuralReviewFindings(
@@ -1160,7 +1201,7 @@ export class CodeReviewsService {
       findings.push({
         category: 'structure',
         severity: 'low',
-        title: '1. 파일 구조 도식화',
+        title: '1. 변경 파일 구조',
         body: this.formatChangedFileTree(filesByPath),
         filePath: null,
         lineNumber: null,
@@ -1213,23 +1254,11 @@ export class CodeReviewsService {
         category: 'architecture',
         severity: largeFiles.length > 0 ? 'medium' : 'low',
         title: '5. 아키텍처/클린코드 평가',
-        body: [
-          hasFrontend && hasServer
-            ? '프론트 entity/page와 서버 module/service가 분리되어 기능 경계는 명확합니다.'
-            : '레이어 간 변경 범위는 작습니다.',
-          hasDatabase
-            ? 'DB-driven 메뉴와 실제 라우트/API가 함께 연결되어 메뉴 구조와 기능 진입점이 동기화됩니다.'
-            : null,
-          largeFiles.length > 0
-            ? `큰 변경 파일(${largeFiles.map((file) => file.path).join(', ')})은 이후 훅/섹션/분석 유틸로 분리할 여지가 있습니다.`
-            : '파일 크기 관점에서 즉시 분리할 만한 신호는 크지 않습니다.',
-        ]
-          .filter(Boolean)
-          .join('\n'),
+        body: this.formatArchitectureAssessment(reviewedFiles, reviewGoal),
         filePath: largeFiles[0]?.path ?? null,
         lineNumber: null,
         recommendation:
-          'MVP 이후에는 GitHub diff 파서, 리뷰 생성기, UI 섹션 컴포넌트를 분리해 테스트 가능한 단위로 낮추는 것이 좋습니다.',
+          '요청한 리뷰 범위 안에서 책임 분리, 파일 크기, 중복, 명명, 유지보수성을 확인하세요.',
       });
     }
 
@@ -1407,10 +1436,11 @@ export class CodeReviewsService {
     }
     if (intent === 'update') {
       return [
-        '1. 화면에서 수정 액션을 선택합니다.',
-        '2. 기존 값을 다이얼로그나 폼에 채웁니다.',
-        '3. 입력값 검증 후 update mutation을 실행합니다.',
-        '4. 성공 시 상세/목록 캐시를 갱신하고 변경 내용을 화면에 반영합니다.',
+        '1. 워크스페이스 카드에서 소유자에게 수정 버튼을 노출합니다.',
+        '2. 수정 버튼을 누르면 EditWorkspaceDialog를 열고 기존 이름/설명을 폼 상태로 채웁니다.',
+        '3. 이름 길이와 실제 변경 여부를 확인해 저장 버튼 활성 여부를 결정합니다.',
+        '4. 저장 시 useUpdatePrototypeWorkspace mutation으로 이름/설명을 전송합니다.',
+        '5. 성공하면 다이얼로그를 닫고 React Query 캐시 무효화로 워크스페이스 목록을 갱신합니다.',
       ].join('\n');
     }
     if (intent === 'create') {
@@ -1468,6 +1498,39 @@ export class CodeReviewsService {
         ].join('\n');
       })
       .join('\n\n');
+  }
+
+  private formatArchitectureAssessment(files: ParsedDiffFile[], reviewGoal = '') {
+    const intent = this.detectReviewIntent(files, reviewGoal);
+    const changedPaths = files.map((file) => file.path);
+    const largeFiles = files.filter((file) => file.additions + file.deletions >= 250);
+
+    if (intent === 'update') {
+      return [
+        '카드 컴포넌트는 수정 버튼 노출과 열기 액션만 담당하고, 실제 수정 폼은 EditWorkspaceDialog로 분리되어 읽기 쉽습니다.',
+        '기존 서버 PATCH API와 useUpdatePrototypeWorkspace 훅을 재사용하므로 새 서버 계약을 만들지 않고 수정 기능을 연결한 점은 적절합니다.',
+        largeFiles.length > 0
+          ? '다만 카드, 삭제 다이얼로그, 수정 다이얼로그가 한 파일에 계속 쌓이고 있어 이후 워크스페이스 관리 액션이 늘면 다이얼로그 컴포넌트를 분리하는 편이 좋습니다.'
+          : '변경 범위가 워크스페이스 카드와 수정 다이얼로그에 집중되어 있어 현재 기능 단위로는 과한 분리는 필요하지 않습니다.',
+      ].join('\n');
+    }
+
+    if (intent === 'delete') {
+      return [
+        '카드 컴포넌트는 삭제 버튼 노출 조건을 판단하고, 삭제 확인/차단/요청 흐름은 DeleteWorkspaceDialog로 분리되어 있습니다.',
+        '삭제 가능 조건과 mutation 호출이 같은 다이얼로그 안에 모여 있어 사용자가 누르는 액션과 서버 요청 흐름을 따라가기 쉽습니다.',
+      ].join('\n');
+    }
+
+    return [
+      changedPaths.some((path) => path.includes('towercrane-for-uiux-front/src/')) &&
+      changedPaths.some((path) => path.includes('towercrane-for-uiux-server/src/'))
+        ? '프론트와 서버 변경이 함께 있어 기능 경계와 API 계약을 같이 확인해야 합니다.'
+        : '변경 범위가 한 레이어에 가까워 책임 경계는 비교적 단순합니다.',
+      largeFiles.length > 0
+        ? `큰 변경 파일(${largeFiles.map((file) => file.path).join(', ')})은 이후 훅/섹션/유틸로 분리할 여지가 있습니다.`
+        : '파일 크기 관점에서 즉시 분리할 만한 신호는 크지 않습니다.',
+    ].join('\n');
   }
 
   private pickTopChangedFiles(files: ParsedDiffFile[], limit: number) {
@@ -1899,6 +1962,21 @@ export class CodeReviewsService {
         '  F -- "아니오" --> H["delete mutation 실행"]',
         '  H --> I["다이얼로그 닫기"]',
         '  I --> J["워크스페이스 목록 갱신"]',
+      ].join('\n');
+    }
+    if (intent === 'update') {
+      return [
+        'flowchart TD',
+        '  A["워크스페이스 카드"] --> B{"소유자 권한인가?"}',
+        '  B -- "아니오" --> C["수정 버튼 비활성"]',
+        '  B -- "예" --> D["수정 버튼 표시"]',
+        '  D --> E["EditWorkspaceDialog 열기"]',
+        '  E --> F["기존 이름/설명으로 폼 초기화"]',
+        '  F --> G{"이름 유효 + 변경 있음?"}',
+        '  G -- "아니오" --> H["저장 버튼 비활성"]',
+        '  G -- "예" --> I["update mutation 실행"]',
+        '  I --> J["다이얼로그 닫기"]',
+        '  J --> K["워크스페이스 목록 갱신"]',
       ].join('\n');
     }
 
