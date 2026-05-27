@@ -647,6 +647,16 @@ export class CodeReviewsService {
         .map((file) => file.diff)
         .join('\n')
         .slice(0, MAX_LLM_DIFF_CHARS);
+
+      // 파일 전체 내용 포함: diff 헝크 + fullText 같이 넘겨 맥락 전체를 AI에게 제공
+      const filesWithContext = reviewedFiles.map((file) => ({
+        path: file.path,
+        additions: file.additions,
+        deletions: file.deletions,
+        diff: file.diff,
+        ...(file.fullText ? { fullText: file.fullText } : {}),
+      }));
+
       const response = await this.openai!.chat.completions.create({
         model,
         temperature: 0.1,
@@ -655,7 +665,7 @@ export class CodeReviewsService {
           {
             role: 'system',
             content:
-              `너는 실무 코드 리뷰어다. 한국어 JSON만 출력한다. selectedSections에 포함된 관점만 작성한다. 테스트 공백은 보조 확인으로만 다루고, 테스트 부재만으로 위험도를 높이지 않는다.\n\n${codeReviewStyleGuide}`,
+              `너는 실무 코드 리뷰어다. 한국어 JSON만 출력한다. selectedSections에 포함된 관점만 작성한다. 테스트 공백은 보조 확인으로만 다루고, 테스트 부재만으로 위험도를 높이지 않는다.\n\nreviewedFiles의 각 항목에는 diff(변경 헝크)와 fullText(파일 전체 내용)가 함께 제공된다. diff로 무엇이 바뀌었는지 파악하고, fullText로 해당 파일의 전체 맥락(주변 함수, 타입, 클래스 구조)을 파악해 더 정확한 리뷰를 작성한다.\n\n${codeReviewStyleGuide}`,
           },
           {
             role: 'user',
@@ -670,16 +680,14 @@ export class CodeReviewsService {
                   : source.sourceType,
               sourceInstruction:
                 source.sourceType === 'commit'
-                  ? '이 요청은 단일 커밋 리뷰다. reviewedFiles는 해당 커밋 diff에서 파싱한 변경 파일 목록이므로 변경 파일 구조, 주요 프로세스, 주요 로직은 이 변경 파일과 reviewGoal을 기준으로만 작성한다.'
-                  : '이 요청은 commit이 아닌 GitHub diff 리뷰다. reviewedFiles에서 기능 단위를 먼저 좁힌 뒤 reviewGoal과 직접 관련된 변경만 중심으로 작성한다.',
+                  ? '이 요청은 단일 커밋 리뷰다. reviewedFiles는 해당 커밋 diff에서 파싱한 변경 파일 목록이므로 변경 파일 구조, 주요 프로세스, 주요 로직은 이 변경 파일과 reviewGoal을 기준으로만 작성한다. fullText가 있는 경우 파일 전체 구조와 맥락을 반드시 참고한다.'
+                  : '이 요청은 commit이 아닌 GitHub diff 리뷰다. reviewedFiles에서 기능 단위를 먼저 좁힌 뒤 reviewGoal과 직접 관련된 변경만 중심으로 작성한다. fullText가 있는 경우 파일 전체 구조와 맥락을 반드시 참고한다.',
               reviewGoal,
               reviewInstruction:
                 reviewGoal.length > 0
-                  ? 'reviewGoal을 최우선 기준으로 삼아 diff에서 해당 기능 흐름만 추적한다. reviewGoal과 직접 관련 없는 일반론은 쓰지 않는다.'
-                  : 'diff에서 변경 의도를 먼저 추론하고, 그 기능 흐름과 직접 관련된 내용만 작성한다.',
-              reviewedFiles: reviewedFiles.map(
-                ({ diff: _diff, fullText: _fullText, ...file }) => file,
-              ),
+                  ? 'reviewGoal을 최우선 기준으로 삼아 diff에서 해당 기능 흐름만 추적한다. fullText를 활용해 변경된 코드가 파일 전체에서 어떤 역할인지 파악한다. reviewGoal과 직접 관련 없는 일반론은 쓰지 않는다.'
+                  : 'diff에서 변경 의도를 먼저 추론하고, fullText로 파일 전체 구조를 파악한 뒤 그 기능 흐름과 직접 관련된 내용만 작성한다.',
+              reviewedFiles: filesWithContext,
               excludedFiles: excludedFiles.map(({ diff: _diff, ...file }) => file),
               selectedSections: sections,
               requiredShape: {
@@ -707,11 +715,11 @@ export class CodeReviewsService {
               },
               reviewFocus: [
                 '변경 파일 구조: reviewedFiles에 포함된 실제 변경 파일만 plain text folder tree로 작성',
-                '주요 프로세스: 코드 없이 대략적인 처리 흐름만 작성',
-                '주요 로직: 구현 주제 제목을 먼저 쓰고 괄호 안에 역할 타입과 함수명을 보조로 작성. 코드, 설명 순서로 작성',
+                '주요 프로세스: 코드 없이 대략적인 처리 흐름만 작성. fullText의 전체 흐름을 참고해 변경이 미치는 범위까지 포함',
+                '주요 로직: 구현 주제 제목을 먼저 쓰고 괄호 안에 역할 타입과 함수명을 보조로 작성. diff의 변경 내용 + fullText의 주변 코드를 함께 참고해 코드, 설명 순서로 작성',
                 '핵심 문법: 커밋 목표나 주요 로직을 이해하는 데 가장 중요한 기술/패턴 한 개만 깊게 작성. import/type-only 선언 금지',
-                '아키텍처/클린코드 평가: 레이어 분리, 모듈 경계, 파일 크기, 중복, 명명, 유지보수성 평가',
-                'mmd 흐름도: 선택된 경우 body는 반드시 flowchart TD로 시작하는 Mermaid 문법만 작성. 설명문, 권장문, 코드펜스는 넣지 않음',
+                '아키텍처/클린코드 평가: fullText 전체를 기준으로 레이어 분리, 모듈 경계, 파일 크기, 중복, 명명, 유지보수성 평가. diff만 보면 놓치는 구조적 문제까지 포함',
+                'mmd 흐름도: 선택된 경우 body는 반드시 flowchart TD로 시작하는 Mermaid 문법만 작성. fullText 전체 흐름 기반으로 더 완성도 높은 다이어그램 작성. 설명문, 권장문, 코드펜스는 넣지 않음',
               ],
               diff,
             }),
