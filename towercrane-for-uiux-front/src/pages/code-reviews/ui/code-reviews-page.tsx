@@ -312,13 +312,13 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
               />
             </label>
 
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
               {reviewSectionOptions.map((option) => {
                 const checked = selectedSections.includes(option.value)
                 return (
                   <label
                     key={option.value}
-                    className={`inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm border px-2.5 text-[11px] font-bold transition-colors ${
+                    className={`inline-flex h-7 cursor-pointer items-center justify-center gap-1.5 rounded-sm border px-2 text-[11px] font-bold transition-colors ${
                       checked
                         ? 'border-brand-border bg-brand-glass text-brand-primary'
                         : 'border-surface-border-soft bg-surface-muted text-text-secondary hover:border-brand-border hover:bg-brand-glass'
