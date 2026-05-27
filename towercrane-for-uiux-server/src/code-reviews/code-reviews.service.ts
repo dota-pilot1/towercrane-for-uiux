@@ -814,7 +814,7 @@ export class CodeReviewsService {
                 process:
                   'numbered overview steps only. No code block.',
                 code:
-                  '구현 주제마다 아래 순서로만 작성한다: ① 주제 제목 (역할타입: 함수명) ② 코드 블록 바로 시작 ③ 한 줄 설명 ④ 개선 방법 추천(있으면). 코드 블록 앞에 텍스트 레이블을 쓰지 않는다.',
+                  '구현 주제마다 아래 순서로만 작성한다: ① #### 단계 N. 제목 (역할타입: 함수명) ② 코드 블록 바로 시작 — 코드 블록 앞뒤로 어떤 레이블도 쓰지 않는다 ③ 코드 역할을 plain text 한 줄로 설명 (레이블 없이) ④ → 기호로 시작하는 개선 방향(있으면)',
                 syntax:
                   'pick exactly one core syntax/pattern that best explains the commit goal or main logic. Write "핵심 문법 없음." only if there is no useful pattern. Use only: title, fenced related code, supplemental explanation, improvement suggestion. Do not add file path prose.',
                 architecture:
