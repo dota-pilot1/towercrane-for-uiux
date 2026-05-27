@@ -3,6 +3,7 @@ import {
   ArrowRight,
   GitBranch,
   LoaderCircle,
+  Pencil,
   Plus,
   Trash2,
   Users,
@@ -15,11 +16,13 @@ import {
   useCreatePrototypeWorkspace,
   useDeletePrototypeWorkspace,
   usePrototypeWorkspaces,
+  useUpdatePrototypeWorkspace,
   type PrototypeWorkspace,
 } from '../../../shared/api/catalog'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
+import { Textarea } from '../../../shared/ui/textarea'
 
 export function PrototypeWorkspaceHomePage() {
   const navigate = useNavigate()
@@ -120,19 +123,35 @@ function PrototypeWorkspaceCard({ workspace, onOpen }: PrototypeWorkspaceCardPro
         </button>
         <div className="flex shrink-0 items-center gap-1">
           {canManage ? (
-            <DeleteWorkspaceDialog workspace={workspace} />
+            <>
+              <EditWorkspaceDialog workspace={workspace} />
+              <DeleteWorkspaceDialog workspace={workspace} />
+            </>
           ) : (
-            <Button
-              type="button"
-              size="sm-icon"
-              variant="ghost"
-              tone="danger"
-              aria-label={`${workspace.name} 삭제 권한 없음`}
-              title="소유자만 삭제할 수 있습니다"
-              disabled
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
+            <>
+              <Button
+                type="button"
+                size="sm-icon"
+                variant="ghost"
+                tone="brand"
+                aria-label={`${workspace.name} 수정 권한 없음`}
+                title="소유자만 수정할 수 있습니다"
+                disabled
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                size="sm-icon"
+                variant="ghost"
+                tone="danger"
+                aria-label={`${workspace.name} 삭제 권한 없음`}
+                title="소유자만 삭제할 수 있습니다"
+                disabled
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </>
           )}
           <Button
             type="button"
@@ -170,6 +189,114 @@ function PrototypeWorkspaceCard({ workspace, onOpen }: PrototypeWorkspaceCardPro
         </div>
       </button>
     </div>
+  )
+}
+
+function EditWorkspaceDialog({ workspace }: { workspace: PrototypeWorkspace }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState(workspace.name)
+  const [description, setDescription] = useState(workspace.description ?? '')
+  const [error, setError] = useState<string | null>(null)
+  const updateWorkspace = useUpdatePrototypeWorkspace(workspace.id)
+
+  const resetForm = () => {
+    setName(workspace.name)
+    setDescription(workspace.description ?? '')
+    setError(null)
+  }
+  const canSubmit =
+    name.trim().length >= 2 &&
+    (name.trim() !== workspace.name ||
+      description.trim() !== (workspace.description ?? ''))
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!canSubmit) return
+
+    setError(null)
+    try {
+      await updateWorkspace.mutateAsync({
+        name: name.trim(),
+        description: description.trim() || null,
+      })
+      setOpen(false)
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : '워크스페이스 수정에 실패했습니다.',
+      )
+    }
+  }
+
+  return (
+    <Dialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen) resetForm()
+      }}
+    >
+      <Dialog.Trigger asChild>
+        <Button
+          type="button"
+          size="sm-icon"
+          variant="ghost"
+          tone="brand"
+          aria-label={`${workspace.name} 수정`}
+        >
+          <Pencil className="size-3.5" />
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 ui-overlay" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-md border border-surface-border bg-surface-raised p-5 shadow-2xl">
+          <Dialog.Title className="text-lg font-black text-text-primary">
+            워크스페이스 수정
+          </Dialog.Title>
+          <form className="mt-5 space-y-4" onSubmit={onSubmit}>
+            <label className="block space-y-2">
+              <span className="text-sm font-semibold text-text-secondary">이름</span>
+              <Input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="예: 매장 운영팀"
+                maxLength={80}
+                disabled={updateWorkspace.isPending}
+              />
+            </label>
+            <label className="block space-y-2">
+              <span className="text-sm font-semibold text-text-secondary">설명</span>
+              <Textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="예: 매장 관리와 주문 흐름 프로토타입"
+                maxLength={300}
+                rows={4}
+                disabled={updateWorkspace.isPending}
+              />
+            </label>
+            {error ? (
+              <p className="text-sm font-semibold text-destructive">{error}</p>
+            ) : null}
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setOpen(false)}
+                disabled={updateWorkspace.isPending}
+              >
+                취소
+              </Button>
+              <Button
+                type="submit"
+                disabled={!canSubmit || updateWorkspace.isPending}
+              >
+                {updateWorkspace.isPending ? '저장 중...' : '저장'}
+              </Button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
