@@ -1,11 +1,19 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { ArrowRight, GitBranch, LoaderCircle, Plus, Users } from 'lucide-react'
+import {
+  ArrowRight,
+  GitBranch,
+  LoaderCircle,
+  Plus,
+  Trash2,
+  Users,
+} from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
 import {
   useCreatePrototypeWorkspace,
+  useDeletePrototypeWorkspace,
   usePrototypeWorkspaces,
   type PrototypeWorkspace,
 } from '../../../shared/api/catalog'
@@ -88,16 +96,18 @@ type PrototypeWorkspaceCardProps = {
 }
 
 function PrototypeWorkspaceCard({ workspace, onOpen }: PrototypeWorkspaceCardProps) {
+  const canManage = workspace.role === 'owner'
+
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group flex min-h-[176px] flex-col justify-between rounded-xl border border-surface-border bg-surface-raised p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:bg-brand-glass hover:shadow-[0_12px_24px_color-mix(in_srgb,var(--primary)_8%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
-    >
-      <div className="flex items-start justify-between gap-4 w-full">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
-            <Users className="size-4" />
+    <div className="group flex min-h-[196px] flex-col justify-between rounded-xl border border-surface-border bg-surface-raised p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:bg-brand-glass hover:shadow-[0_12px_24px_color-mix(in_srgb,var(--primary)_8%,transparent)]">
+      <div className="flex items-start justify-between gap-3">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+        >
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary transition-transform duration-200 group-hover:scale-105">
+            <Users className="size-4" aria-hidden />
           </div>
           <div className="min-w-0">
             <h2 className="truncate text-base font-black text-text-primary group-hover:text-brand-primary transition-colors">
@@ -107,11 +117,41 @@ function PrototypeWorkspaceCard({ workspace, onOpen }: PrototypeWorkspaceCardPro
               {workspace.description ?? '프로토타입 워크스페이스'}
             </p>
           </div>
+        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {canManage ? (
+            <DeleteWorkspaceDialog workspace={workspace} />
+          ) : (
+            <Button
+              type="button"
+              size="sm-icon"
+              variant="ghost"
+              tone="danger"
+              aria-label={`${workspace.name} 삭제 권한 없음`}
+              title="소유자만 삭제할 수 있습니다"
+              disabled
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="sm-icon"
+            variant="ghost"
+            tone="brand"
+            aria-label={`${workspace.name} 열기`}
+            onClick={onOpen}
+          >
+            <ArrowRight className="size-3.5 transition-all duration-200 group-hover:translate-x-0.5" />
+          </Button>
         </div>
-        <ArrowRight className="mt-1 size-4 shrink-0 text-text-muted transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-brand-primary" />
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 w-full">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="mt-6 grid w-full grid-cols-2 gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+      >
         <div className="rounded-xl border border-surface-border-soft bg-surface-raised px-4 py-3 transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">
             Categories
@@ -128,8 +168,88 @@ function PrototypeWorkspaceCard({ workspace, onOpen }: PrototypeWorkspaceCardPro
             {workspace.prototypeCount}
           </div>
         </div>
-      </div>
-    </button>
+      </button>
+    </div>
+  )
+}
+
+function DeleteWorkspaceDialog({ workspace }: { workspace: PrototypeWorkspace }) {
+  const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const deleteWorkspace = useDeletePrototypeWorkspace()
+  const hasCategories = workspace.categoryCount > 0
+
+  const onDelete = async () => {
+    if (hasCategories) return
+    setError(null)
+
+    try {
+      await deleteWorkspace.mutateAsync(workspace.id)
+      setOpen(false)
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : '워크스페이스 삭제에 실패했습니다.',
+      )
+    }
+  }
+
+  return (
+    <Dialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen) setError(null)
+      }}
+    >
+      <Dialog.Trigger asChild>
+        <Button
+          type="button"
+          size="sm-icon"
+          variant="ghost"
+          tone="danger"
+          aria-label={`${workspace.name} 삭제`}
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 ui-overlay" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-md border border-surface-border bg-surface-raised p-5 shadow-2xl">
+          <Dialog.Title className="text-lg font-black text-text-primary">
+            워크스페이스 삭제
+          </Dialog.Title>
+          <p className="mt-3 text-sm leading-6 text-text-secondary">
+            {workspace.name} 워크스페이스를 삭제합니다.
+          </p>
+          {hasCategories ? (
+            <p className="mt-3 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2 text-sm font-semibold text-text-secondary">
+              카테고리가 있는 워크스페이스는 먼저 비워야 삭제할 수 있습니다.
+            </p>
+          ) : null}
+          {error ? (
+            <p className="mt-3 text-sm font-semibold text-destructive">{error}</p>
+          ) : null}
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setOpen(false)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onDelete}
+              disabled={hasCategories || deleteWorkspace.isPending}
+              className="border-destructive bg-danger-glass text-destructive hover:bg-danger-glass hover:brightness-95"
+            >
+              {deleteWorkspace.isPending ? '삭제 중...' : '삭제'}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
