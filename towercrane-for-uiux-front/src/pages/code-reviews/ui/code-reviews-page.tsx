@@ -305,166 +305,159 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+    <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-7xl flex-col gap-4">
       <PageHeader
         icon={Code2}
         title="코드 리뷰 게시판"
       />
 
-      <form
-        onSubmit={analyze}
-        className="rounded-md border border-surface-border bg-surface-raised p-4"
-      >
-        <div className="mb-4 rounded-md border border-surface-border-soft bg-surface-muted p-3">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="min-w-40">
-              <div className="flex items-center gap-2 text-sm font-extrabold text-text-primary">
-                <GitPullRequest className="size-4 text-brand-primary" />
-                리뷰 저장소
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[420px_minmax(0,1fr)]">
+        {/* 왼쪽: 입력 폼 + 목록 */}
+        <section className="flex min-h-0 flex-col rounded-md border border-surface-border bg-surface-raised">
+          {/* 입력 폼 */}
+          <form
+            onSubmit={analyze}
+            className="shrink-0 border-b border-surface-border-soft p-4"
+          >
+            <div className="mb-3 rounded-md border border-surface-border-soft bg-surface-muted p-3">
+              <div className="flex items-center gap-2">
+                <GitPullRequest className="size-4 shrink-0 text-brand-primary" />
+                <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-raised px-3">
+                  <input
+                    value={repositoryUrl}
+                    onChange={(event) => {
+                      setRepositoryUrl(event.target.value)
+                      setRepositoryValidation(null)
+                      setRepositoryError(null)
+                    }}
+                    className="min-w-0 flex-1 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted"
+                    placeholder="https://github.com/owner/repo"
+                    disabled={validateRepositoryMutation.isPending}
+                  />
+                </label>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void validateRepository()}
+                  disabled={!repositoryUrl.trim() || validateRepositoryMutation.isPending}
+                >
+                  {validateRepositoryMutation.isPending ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Check className="size-3.5" />
+                  )}
+                </Button>
               </div>
+              {repositoryValidation?.valid || repositoryError ? (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                  {repositoryValidation?.valid ? (
+                    <>
+                      <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-brand-primary">
+                        {repositoryValidation.repository}
+                      </span>
+                      {repositoryValidation.defaultBranch ? (
+                        <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-0.5 text-text-secondary">
+                          {repositoryValidation.defaultBranch}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="text-danger-500">{repositoryError}</span>
+                  )}
+                </div>
+              ) : null}
             </div>
-            <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-raised px-3">
-              <input
-                value={repositoryUrl}
-                onChange={(event) => {
-                  setRepositoryUrl(event.target.value)
-                  setRepositoryValidation(null)
-                  setRepositoryError(null)
-                }}
-                className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
-                placeholder="https://github.com/dota-pilot1/towercrane-for-uiux"
-                disabled={validateRepositoryMutation.isPending}
-              />
-            </label>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void validateRepository()}
-              disabled={!repositoryUrl.trim() || validateRepositoryMutation.isPending}
-            >
-              {validateRepositoryMutation.isPending ? (
-                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-              ) : (
-                <Check className="mr-1.5 size-3.5" />
-              )}
-              확인
-            </Button>
-          </div>
-          {repositoryValidation?.valid || repositoryError ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
-              {repositoryValidation?.valid ? (
-                <>
-                  <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-1 text-brand-primary">
-                    {repositoryValidation.message}
-                  </span>
-                  <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-text-secondary">
-                    {repositoryValidation.repository}
-                  </span>
-                  {repositoryValidation.defaultBranch ? (
-                    <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-text-secondary">
-                      {repositoryValidation.defaultBranch}
-                    </span>
-                  ) : null}
-                </>
-              ) : (
-                <span className="text-danger-500">{repositoryError}</span>
-              )}
-            </div>
-          ) : null}
-        </div>
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
-          <div className="min-w-0 flex-1">
-            <label className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3">
+            <label className="flex h-10 min-w-0 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3">
               <GitPullRequest className="size-4 shrink-0 text-text-muted" />
               <input
                 value={sourceUrl}
                 onChange={(event) => setSourceUrl(event.target.value)}
-                className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+                className="min-w-0 flex-1 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted"
                 placeholder="https://github.com/owner/repo/commit/sha"
                 disabled={analyzeMutation.isPending}
               />
             </label>
             {sourceUrlError ? (
-              <p className="mt-2 text-xs font-semibold text-destructive">
-                {sourceUrlError}
-              </p>
+              <p className="mt-1.5 text-xs font-semibold text-destructive">{sourceUrlError}</p>
             ) : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={fillTestReviewInput}
-              disabled={analyzeMutation.isPending}
-            >
-              <Code2 className="mr-1.5 size-3.5" />
-              테스트
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                !sourceUrl.trim() ||
-                Boolean(sourceUrlError) ||
-                selectedSections.length === 0 ||
-                analyzeMutation.isPending
-              }
-            >
-              {analyzeMutation.isPending ? (
-                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-              ) : (
-                <FileCode2 className="mr-1.5 size-3.5" />
-              )}
-              분석 후 저장
-            </Button>
-          </div>
-        </div>
-        <label className="mt-3 block rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
-          <span className="text-xs font-extrabold text-text-secondary">
-            리뷰할 로직 설명
-          </span>
-          <textarea
-            value={reviewGoal}
-            onChange={(event) => setReviewGoal(event.target.value)}
-            className="mt-2 min-h-20 w-full resize-y bg-transparent text-sm leading-6 text-text-primary outline-none placeholder:text-text-muted"
-            placeholder="예: 프로토타입 워크스페이스 삭제 권한, 삭제 차단 조건, delete mutation 후 목록 갱신 흐름 위주로 리뷰"
-            maxLength={1000}
-            disabled={analyzeMutation.isPending}
-          />
-        </label>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {reviewSectionOptions.map((option) => {
-            const checked = selectedSections.includes(option.value)
-            return (
-              <label
-                key={option.value}
-                className={`inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm border px-3 text-xs font-bold transition-colors ${
-                  checked
-                    ? 'border-brand-border bg-brand-glass text-brand-primary'
-                    : 'border-surface-border-soft bg-surface-muted text-text-secondary hover:border-brand-border hover:bg-brand-glass'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleSection(option.value)}
-                  className="size-3 accent-[var(--brand-primary)]"
-                  disabled={analyzeMutation.isPending}
-                />
-                {option.label}
-              </label>
-            )
-          })}
-        </div>
-        {analyzeError ? (
-          <p className="mt-2 text-sm font-semibold text-danger-500">{analyzeError}</p>
-        ) : null}
-      </form>
 
-      <div className="grid min-h-[calc(100vh-16rem)] gap-4 lg:grid-cols-[390px_minmax(0,1fr)]">
-        <section className="flex min-h-0 flex-col rounded-md border border-surface-border bg-surface-raised">
-          <div className="border-b border-surface-border-soft p-3">
-            <label className="flex h-10 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3">
+            <label className="mt-3 block rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
+              <span className="text-[11px] font-extrabold text-text-secondary">리뷰할 로직 설명</span>
+              <textarea
+                value={reviewGoal}
+                onChange={(event) => setReviewGoal(event.target.value)}
+                className="mt-1.5 min-h-16 w-full resize-y bg-transparent text-xs leading-5 text-text-primary outline-none placeholder:text-text-muted"
+                placeholder="예: 워크스페이스 삭제 권한, delete mutation 후 목록 갱신 흐름 위주로 리뷰"
+                maxLength={1000}
+                disabled={analyzeMutation.isPending}
+              />
+            </label>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {reviewSectionOptions.map((option) => {
+                const checked = selectedSections.includes(option.value)
+                return (
+                  <label
+                    key={option.value}
+                    className={`inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm border px-2.5 text-[11px] font-bold transition-colors ${
+                      checked
+                        ? 'border-brand-border bg-brand-glass text-brand-primary'
+                        : 'border-surface-border-soft bg-surface-muted text-text-secondary hover:border-brand-border hover:bg-brand-glass'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleSection(option.value)}
+                      className="size-3 accent-[var(--brand-primary)]"
+                      disabled={analyzeMutation.isPending}
+                    />
+                    {option.label}
+                  </label>
+                )
+              })}
+            </div>
+
+            <div className="mt-3 flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={fillTestReviewInput}
+                disabled={analyzeMutation.isPending}
+              >
+                <Code2 className="mr-1.5 size-3.5" />
+                테스트
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="flex-1"
+                disabled={
+                  !sourceUrl.trim() ||
+                  Boolean(sourceUrlError) ||
+                  selectedSections.length === 0 ||
+                  analyzeMutation.isPending
+                }
+              >
+                {analyzeMutation.isPending ? (
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                ) : (
+                  <FileCode2 className="mr-1.5 size-3.5" />
+                )}
+                분석 후 저장
+              </Button>
+            </div>
+            {analyzeError ? (
+              <p className="mt-2 text-xs font-semibold text-danger-500">{analyzeError}</p>
+            ) : null}
+          </form>
+
+          {/* 검색 */}
+          <div className="shrink-0 border-b border-surface-border-soft p-3">
+            <label className="flex h-9 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3">
               <Search className="size-4 text-text-muted" />
               <input
                 value={q}
@@ -475,6 +468,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
             </label>
           </div>
 
+          {/* 목록 */}
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {listQuery.isLoading ? (
               <div className="flex h-40 items-center justify-center gap-2 text-sm text-text-muted">
@@ -539,6 +533,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
             )}
           </div>
 
+          {/* 페이지네이션 */}
           <div className="flex items-center justify-between border-t border-surface-border-soft px-3 py-2 text-xs text-text-muted">
             <span>총 {listQuery.data?.total ?? 0}건</span>
             <div className="flex items-center gap-2">
@@ -565,7 +560,8 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
           </div>
         </section>
 
-        <section className="min-w-0 rounded-md border border-surface-border bg-surface-raised">
+        {/* 오른쪽: 상세 패널 */}
+        <section className="min-h-0 min-w-0 rounded-md border border-surface-border bg-surface-raised">
           {analyzeMutation.isPending ? (
             <AnalyzingOverlay />
           ) : reviewId ? (
@@ -574,7 +570,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
               onBack={() => navigate({ to: '/code-reviews' })}
             />
           ) : (
-            <div className="flex h-full min-h-[28rem] items-center justify-center p-8 text-center">
+            <div className="flex h-full items-center justify-center p-8 text-center">
               <div>
                 <Code2 className="mx-auto size-10 text-text-muted" />
                 <h3 className="mt-4 text-base font-extrabold text-text-primary">
