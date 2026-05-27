@@ -67,6 +67,13 @@ const MAX_FILES = 30;
 const MAX_FILE_DIFF_CHARS = 20_000;
 const MAX_LLM_DIFF_CHARS = 30_000;
 const MAX_CONTEXT_FILE_CHARS = 40_000;
+const MAX_RELATED_FILES = 8;
+const MAX_RELATED_FILE_CHARS = 20_000;
+
+type RelatedFile = {
+  path: string;
+  content: string;
+};
 
 @Injectable()
 export class CodeReviewsService {
@@ -152,6 +159,8 @@ export class CodeReviewsService {
       source,
       reviewedFiles,
     );
+    // 변경 파일이 import하는 연관 파일(query/mutation/types 등)도 함께 읽어 AI 맥락 보강
+    const relatedFiles = await this.collectRelatedFiles(source, reviewedFilesWithContext);
     const excludedFiles = [
       ...selectedFiles
         .map((file) => this.applyDiffFileExclusion(file))
@@ -188,6 +197,7 @@ export class CodeReviewsService {
       source,
       reviewedFilesWithContext,
       excludedFiles,
+      relatedFiles,
       input.sections,
       repositoryUrl,
       reviewGoal,
@@ -538,6 +548,101 @@ export class CodeReviewsService {
     }
   }
 
+  // ── 연관 파일 수집 ──────────────────────────────────────────────────────────
+
+  /**
+   * 변경 파일들의 fullText에서 상대 import 경로를 파싱해
+   * 아직 reviewedFiles에 없는 연관 파일을 GitHub API로 읽어온다.
+   * (TanStack Query mutation/query, API 함수, 타입 파일 등)
+   */
+  private async collectRelatedFiles(
+    source: ParsedGithubSource,
+    reviewedFiles: ParsedDiffFile[],
+  ): Promise<RelatedFile[]> {
+    const ref = await this.resolveGithubContentRef(source);
+    if (!ref) return [];
+
+    const changedPaths = new Set(reviewedFiles.map((f) => f.path));
+    const seen = new Set<string>(changedPaths);
+    const result: RelatedFile[] = [];
+
+    for (const file of reviewedFiles) {
+      const sourceText = file.fullText ?? file.diff;
+      const imports = this.extractRelativeImports(file.path, sourceText);
+
+      for (const importPath of imports) {
+        if (seen.has(importPath)) continue;
+        seen.add(importPath);
+        if (result.length >= MAX_RELATED_FILES) break;
+
+        // .ts로 못 찾으면 .tsx → index.ts → index.tsx 순으로 fallback
+        const candidates = [
+          importPath,
+          importPath.replace(/\.ts$/, '.tsx'),
+          importPath.replace(/\.ts$/, '/index.ts'),
+          importPath.replace(/\.ts$/, '/index.tsx'),
+        ];
+        let content: string | null = null;
+        let resolvedPath = importPath;
+        for (const candidate of candidates) {
+          content = await this.fetchGithubFileText(source.repository, candidate, ref);
+          if (content) { resolvedPath = candidate; break; }
+        }
+        if (content) {
+          result.push({
+            path: resolvedPath,
+            content: content.slice(0, MAX_RELATED_FILE_CHARS),
+          });
+        }
+      }
+
+      if (result.length >= MAX_RELATED_FILES) break;
+    }
+
+    return result;
+  }
+
+  /**
+   * 파일 내용에서 상대 경로 import를 추출해 실제 파일 경로로 변환한다.
+   * node_modules import는 제외.
+   */
+  private extractRelativeImports(fromFile: string, content: string): string[] {
+    const importRegex = /from\s+['"](\.[^'"]+)['"]/g;
+    const dir = fromFile.split('/').slice(0, -1).join('/');
+    const candidates: string[] = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = importRegex.exec(content)) !== null) {
+      const resolved = this.resolveImportPath(dir, match[1]);
+      if (resolved) candidates.push(resolved);
+    }
+
+    return candidates;
+  }
+
+  /**
+   * 상대 경로를 레포 루트 기준 절대 경로로 변환한다.
+   * 확장자가 없으면 .ts / .tsx / index.ts / index.tsx 순으로 시도한다.
+   */
+  private resolveImportPath(fromDir: string, importPath: string): string | null {
+    const parts = `${fromDir}/${importPath}`.split('/');
+    const normalized: string[] = [];
+    for (const part of parts) {
+      if (part === '..') normalized.pop();
+      else if (part !== '.') normalized.push(part);
+    }
+    const base = normalized.join('/');
+
+    // 이미 확장자가 있으면 그대로
+    if (/\.(ts|tsx|js|jsx)$/.test(base)) return base;
+
+    // 확장자 없으면 .ts → .tsx → index.ts → index.tsx 순으로 후보 반환
+    // (실제 존재 여부는 GitHub API 호출 시 판별)
+    return `${base}.ts`;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+
   private parseDiff(diff: string) {
     const lines = diff.split('\n');
     const files: ParsedDiffFile[] = [];
@@ -608,6 +713,7 @@ export class CodeReviewsService {
     source: ParsedGithubSource,
     reviewedFiles: ParsedDiffFile[],
     excludedFiles: ParsedDiffFile[],
+    relatedFiles: RelatedFile[],
     sections: CodeReviewSection[],
     repositoryUrl: string,
     reviewGoal: string,
@@ -617,6 +723,7 @@ export class CodeReviewsService {
         source,
         reviewedFiles,
         excludedFiles,
+        relatedFiles,
         sections,
         repositoryUrl,
         reviewGoal,
@@ -636,6 +743,7 @@ export class CodeReviewsService {
     source: ParsedGithubSource,
     reviewedFiles: ParsedDiffFile[],
     excludedFiles: ParsedDiffFile[],
+    relatedFiles: RelatedFile[],
     sections: CodeReviewSection[],
     repositoryUrl: string,
     reviewGoal: string,
@@ -665,7 +773,7 @@ export class CodeReviewsService {
           {
             role: 'system',
             content:
-              `너는 실무 코드 리뷰어다. 한국어 JSON만 출력한다. selectedSections에 포함된 관점만 작성한다. 테스트 공백은 보조 확인으로만 다루고, 테스트 부재만으로 위험도를 높이지 않는다.\n\nreviewedFiles의 각 항목에는 diff(변경 헝크)와 fullText(파일 전체 내용)가 함께 제공된다. diff로 무엇이 바뀌었는지 파악하고, fullText로 해당 파일의 전체 맥락(주변 함수, 타입, 클래스 구조)을 파악해 더 정확한 리뷰를 작성한다.\n\n${codeReviewStyleGuide}`,
+              `너는 실무 코드 리뷰어다. 한국어 JSON만 출력한다. selectedSections에 포함된 관점만 작성한다. 테스트 공백은 보조 확인으로만 다루고, 테스트 부재만으로 위험도를 높이지 않는다.\n\nreviewedFiles의 각 항목에는 diff(변경 헝크)와 fullText(파일 전체 내용)가 함께 제공된다. diff로 무엇이 바뀌었는지 파악하고, fullText로 해당 파일의 전체 맥락(주변 함수, 타입, 클래스 구조)을 파악해 더 정확한 리뷰를 작성한다.\n\ncontextFiles는 변경 파일이 import하는 연관 파일(API 함수, mutation/query, 타입, 유틸 등)의 전체 내용이다. reviewGoal과 관련된 실제 구현 로직을 contextFiles에서 찾아 함께 분석한다.\n\n${codeReviewStyleGuide}`,
           },
           {
             role: 'user',
@@ -685,9 +793,10 @@ export class CodeReviewsService {
               reviewGoal,
               reviewInstruction:
                 reviewGoal.length > 0
-                  ? 'reviewGoal을 최우선 기준으로 삼아 diff에서 해당 기능 흐름만 추적한다. fullText를 활용해 변경된 코드가 파일 전체에서 어떤 역할인지 파악한다. reviewGoal과 직접 관련 없는 일반론은 쓰지 않는다.'
-                  : 'diff에서 변경 의도를 먼저 추론하고, fullText로 파일 전체 구조를 파악한 뒤 그 기능 흐름과 직접 관련된 내용만 작성한다.',
+                  ? 'reviewGoal을 최우선 기준으로 삼아 diff에서 해당 기능 흐름만 추적한다. fullText를 활용해 변경된 코드가 파일 전체에서 어떤 역할인지 파악한다. contextFiles에서 실제 mutation/query/API 구현 로직을 찾아 함께 분석한다. reviewGoal과 직접 관련 없는 일반론은 쓰지 않는다.'
+                  : 'diff에서 변경 의도를 먼저 추론하고, fullText로 파일 전체 구조를 파악한 뒤 contextFiles의 연관 구현까지 참고해 기능 흐름 전체를 작성한다.',
               reviewedFiles: filesWithContext,
+              contextFiles: relatedFiles,
               excludedFiles: excludedFiles.map(({ diff: _diff, ...file }) => file),
               selectedSections: sections,
               requiredShape: {
@@ -715,11 +824,11 @@ export class CodeReviewsService {
               },
               reviewFocus: [
                 '변경 파일 구조: reviewedFiles에 포함된 실제 변경 파일만 plain text folder tree로 작성',
-                '주요 프로세스: 코드 없이 대략적인 처리 흐름만 작성. fullText의 전체 흐름을 참고해 변경이 미치는 범위까지 포함',
-                '주요 로직: 구현 주제 제목을 먼저 쓰고 괄호 안에 역할 타입과 함수명을 보조로 작성. diff의 변경 내용 + fullText의 주변 코드를 함께 참고해 코드, 설명 순서로 작성',
-                '핵심 문법: 커밋 목표나 주요 로직을 이해하는 데 가장 중요한 기술/패턴 한 개만 깊게 작성. import/type-only 선언 금지',
-                '아키텍처/클린코드 평가: fullText 전체를 기준으로 레이어 분리, 모듈 경계, 파일 크기, 중복, 명명, 유지보수성 평가. diff만 보면 놓치는 구조적 문제까지 포함',
-                'mmd 흐름도: 선택된 경우 body는 반드시 flowchart TD로 시작하는 Mermaid 문법만 작성. fullText 전체 흐름 기반으로 더 완성도 높은 다이어그램 작성. 설명문, 권장문, 코드펜스는 넣지 않음',
+                '주요 프로세스: 코드 없이 대략적인 처리 흐름만 작성. fullText + contextFiles의 연관 흐름을 참고해 변경이 미치는 전체 범위까지 포함',
+                '주요 로직: 구현 주제 제목을 먼저 쓰고 괄호 안에 역할 타입과 함수명을 보조로 작성. diff 변경 내용 + contextFiles의 실제 mutation/query/API 구현을 함께 참고해 코드, 설명 순서로 작성',
+                '핵심 문법: 커밋 목표나 주요 로직을 이해하는 데 가장 중요한 기술/패턴 한 개만 깊게 작성. contextFiles에서 실제 구현 패턴 찾아 활용. import/type-only 선언 금지',
+                '아키텍처/클린코드 평가: fullText 전체 + contextFiles를 기준으로 레이어 분리, 모듈 경계, 파일 크기, 중복, 명명, 유지보수성 평가. diff만 보면 놓치는 구조적 문제까지 포함',
+                'mmd 흐름도: 선택된 경우 body는 반드시 flowchart TD로 시작하는 Mermaid 문법만 작성. contextFiles의 연관 구현까지 포함해 더 완성도 높은 다이어그램 작성. 설명문, 권장문, 코드펜스는 넣지 않음',
               ],
               diff,
             }),
