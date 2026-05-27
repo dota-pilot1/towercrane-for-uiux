@@ -833,6 +833,15 @@ export type CodeReviewRiskLevel = 'low' | 'medium' | 'high';
 export type CodeReviewFindingSeverity = 'low' | 'medium' | 'high';
 
 export type CodeReviewFinding = {
+  category?:
+    | 'process'
+    | 'code'
+    | 'syntax'
+    | 'structure'
+    | 'architecture'
+    | 'clean_code'
+    | 'diagram'
+    | 'risk';
   severity: CodeReviewFindingSeverity;
   title: string;
   body: string;

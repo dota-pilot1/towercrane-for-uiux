@@ -3,8 +3,27 @@ import { z } from 'zod';
 const riskLevelSchema = z.enum(['low', 'medium', 'high']);
 const sourceTypeSchema = z.enum(['commit', 'pr', 'compare', 'diff_url']);
 const findingSeveritySchema = z.enum(['low', 'medium', 'high']);
+const findingCategorySchema = z.enum([
+  'process',
+  'code',
+  'syntax',
+  'structure',
+  'architecture',
+  'clean_code',
+  'diagram',
+  'risk',
+]);
+export const codeReviewSectionSchema = z.enum([
+  'structure',
+  'process',
+  'code',
+  'syntax',
+  'architecture',
+  'diagram',
+]);
 
 export const codeReviewFindingSchema = z.object({
+  category: findingCategorySchema.optional().default('code'),
   severity: findingSeveritySchema,
   title: z.string().trim().min(1).max(160),
   body: z.string().trim().min(1).max(2000),
@@ -47,6 +66,12 @@ export const createCodeReviewSchema = z.object({
 
 export const analyzeCodeReviewSchema = z.object({
   sourceUrl: z.string().trim().min(1).max(1000),
+  sections: z
+    .array(codeReviewSectionSchema)
+    .min(1)
+    .max(6)
+    .optional()
+    .default(['structure', 'process', 'code', 'syntax', 'architecture']),
 });
 
 export const updateCodeReviewSchema = z

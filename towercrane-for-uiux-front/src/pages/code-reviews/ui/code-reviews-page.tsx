@@ -23,8 +23,10 @@ import type {
   CodeReviewChangedFile,
   CodeReviewFinding,
   CodeReviewRiskLevel,
+  CodeReviewSection,
 } from '../../../entities/code-review/model/types'
 import { Button } from '../../../shared/ui/button'
+import { Mermaid } from '../../../shared/ui/mermaid'
 import { PageHeader } from '../../../shared/ui/page-header'
 
 type CodeReviewsPageProps = {
@@ -64,11 +66,51 @@ function riskClassName(riskLevel: CodeReviewRiskLevel) {
   return 'border-surface-border-soft bg-surface-muted text-text-secondary'
 }
 
+function findingCategoryLabel(category: CodeReviewFinding['category']) {
+  if (category === 'structure') return '파일 구조'
+  if (category === 'process') return '주요 프로세스'
+  if (category === 'code') return '주요 로직'
+  if (category === 'syntax') return '주요 문법'
+  if (category === 'architecture') return '아키텍처'
+  if (category === 'clean_code') return '클린코드'
+  if (category === 'diagram') return 'mmd'
+  if (category === 'risk') return '리스크'
+  return '평가'
+}
+
+function extractMermaidChart(value: string) {
+  const fenced = value.match(/```(?:mmd|mermaid)?\n([\s\S]*?)```/i)
+  return (fenced?.[1] ?? value).trim()
+}
+
+function shouldRenderCodeBlock(category: CodeReviewFinding['category']) {
+  return category === 'structure' || category === 'code'
+}
+
+const defaultReviewSections: CodeReviewSection[] = [
+  'structure',
+  'process',
+  'code',
+  'syntax',
+  'architecture',
+]
+
+const reviewSectionOptions: Array<{ value: CodeReviewSection; label: string }> = [
+  { value: 'structure', label: '1. 파일 구조' },
+  { value: 'process', label: '2. 주요 프로세스' },
+  { value: 'code', label: '3. 주요 로직' },
+  { value: 'syntax', label: '4. 주요 문법' },
+  { value: 'architecture', label: '5. 아키텍처/클린코드' },
+  { value: 'diagram', label: '6. mmd' },
+]
+
 export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [sourceUrl, setSourceUrl] = useState('')
+  const [selectedSections, setSelectedSections] =
+    useState<CodeReviewSection[]>(defaultReviewSections)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const listQuery = useCodeReviewList({ q, page, pageSize: 20 })
   const detailQuery = useCodeReviewDetail(reviewId)
@@ -84,12 +126,24 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
     event.preventDefault()
     setAnalyzeError(null)
     try {
-      const detail = await analyzeMutation.mutateAsync({ sourceUrl })
+      const detail = await analyzeMutation.mutateAsync({
+        sourceUrl,
+        sections: selectedSections,
+      })
       setSourceUrl('')
       navigate({ to: '/code-reviews/$reviewId', params: { reviewId: detail.id } })
     } catch (error) {
       setAnalyzeError(error instanceof Error ? error.message : '분석에 실패했습니다.')
     }
+  }
+
+  function toggleSection(section: CodeReviewSection) {
+    setSelectedSections((current) => {
+      if (current.includes(section)) {
+        return current.filter((item) => item !== section)
+      }
+      return [...current, section]
+    })
   }
 
   return (
@@ -115,7 +169,14 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
               disabled={analyzeMutation.isPending}
             />
           </label>
-          <Button type="submit" disabled={!sourceUrl.trim() || analyzeMutation.isPending}>
+          <Button
+            type="submit"
+            disabled={
+              !sourceUrl.trim() ||
+              selectedSections.length === 0 ||
+              analyzeMutation.isPending
+            }
+          >
             {analyzeMutation.isPending ? (
               <Loader2 className="mr-1.5 size-3.5 animate-spin" />
             ) : (
@@ -124,11 +185,35 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
             분석 후 저장
           </Button>
         </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {reviewSectionOptions.map((option) => {
+            const checked = selectedSections.includes(option.value)
+            return (
+              <label
+                key={option.value}
+                className={`inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm border px-3 text-xs font-bold transition-colors ${
+                  checked
+                    ? 'border-brand-border bg-brand-glass text-brand-primary'
+                    : 'border-surface-border-soft bg-surface-muted text-text-secondary hover:border-brand-border hover:bg-brand-glass'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleSection(option.value)}
+                  className="size-3 accent-[var(--brand-primary)]"
+                  disabled={analyzeMutation.isPending}
+                />
+                {option.label}
+              </label>
+            )
+          })}
+        </div>
         {analyzeError ? (
           <p className="mt-2 text-sm font-semibold text-danger-500">{analyzeError}</p>
         ) : (
           <p className="mt-2 text-xs text-text-muted">
-            lock/generated/build 산출물은 자동 제외하고, 같은 diff는 중복 저장하지 않습니다.
+            선택한 관점만 리뷰 요청에 포함합니다. 6번 mmd는 상태 관리나 저장 흐름이 복잡한 diff에서만 켜세요.
           </p>
         )}
       </form>
@@ -194,7 +279,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
                         <span>{formatDateTime(item.createdAt)}</span>
                       </div>
                       <div className="mt-2 text-[11px] font-bold text-brand-primary">
-                        검토 {item.findingCount}개 · 테스트 공백 {item.testGapCount}개
+                        평가 {item.findingCount}개 · 보조 확인 {item.testGapCount}개
                       </div>
                     </button>
                   )
@@ -251,7 +336,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
                   코드 리뷰를 선택하세요
                 </h3>
                 <p className="mt-2 max-w-md text-sm leading-6 text-text-secondary">
-                  왼쪽 목록에서 저장된 리뷰를 선택하면 검토 항목, 테스트 공백, 변경 파일을 확인할 수 있습니다.
+                  왼쪽 목록에서 저장된 리뷰를 선택하면 파일 구조, 주요 프로세스, 주요 로직, 문법, 아키텍처 평가를 확인할 수 있습니다.
                 </p>
               </div>
             </div>
@@ -404,7 +489,7 @@ function ReviewDetailPanel({
           </section>
 
           <FindingSection findings={detail.findings} />
-          <TestGapSection items={detail.testGaps} />
+          <AuxiliaryCheckSection items={detail.testGaps} />
           <ChangedFilesSection title="검토 파일" files={detail.changedFiles} />
           <ChangedFilesSection title="제외 파일" files={detail.excludedFiles} />
         </div>
@@ -425,7 +510,14 @@ function FindingSection({ findings }: { findings: CodeReviewFinding[] }) {
               className="rounded-md border border-surface-border-soft bg-surface-muted px-4 py-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <h4 className="text-sm font-extrabold text-text-primary">{finding.title}</h4>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[11px] font-bold text-brand-primary">
+                    {findingCategoryLabel(finding.category)}
+                  </span>
+                  <h4 className="min-w-0 text-sm font-extrabold text-text-primary">
+                    {finding.title}
+                  </h4>
+                </div>
                 <span
                   className={`rounded-sm border px-2 py-0.5 text-[11px] font-bold ${riskClassName(
                     finding.severity,
@@ -434,9 +526,7 @@ function FindingSection({ findings }: { findings: CodeReviewFinding[] }) {
                   {riskLabel(finding.severity)}
                 </span>
               </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
-                {finding.body}
-              </p>
+              <FindingBody finding={finding} />
               <p className="mt-2 text-sm font-semibold text-text-primary">
                 권장: {finding.recommendation}
               </p>
@@ -447,17 +537,41 @@ function FindingSection({ findings }: { findings: CodeReviewFinding[] }) {
             </div>
           ))
         ) : (
-          <p className="text-sm text-text-muted">검토 항목이 없습니다.</p>
+          <p className="text-sm text-text-muted">평가 항목이 없습니다.</p>
         )}
       </div>
     </section>
   )
 }
 
-function TestGapSection({ items }: { items: string[] }) {
+function FindingBody({ finding }: { finding: CodeReviewFinding }) {
+  if (finding.category === 'diagram') {
+    return (
+      <div className="mt-3 rounded-md border border-surface-border-soft bg-surface-raised p-3">
+        <Mermaid chart={extractMermaidChart(finding.body)} className="min-h-36" />
+      </div>
+    )
+  }
+
+  if (shouldRenderCodeBlock(finding.category)) {
+    return (
+      <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised px-3 py-3 font-mono text-xs leading-5 text-text-secondary">
+        {finding.body}
+      </pre>
+    )
+  }
+
+  return (
+    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
+      {finding.body}
+    </p>
+  )
+}
+
+function AuxiliaryCheckSection({ items }: { items: string[] }) {
   return (
     <section>
-      <h3 className="text-sm font-extrabold text-text-primary">테스트 공백</h3>
+      <h3 className="text-sm font-extrabold text-text-primary">보조 확인</h3>
       <div className="mt-2 space-y-2">
         {items.length ? (
           items.map((item, index) => (
@@ -469,7 +583,7 @@ function TestGapSection({ items }: { items: string[] }) {
             </p>
           ))
         ) : (
-          <p className="text-sm text-text-muted">테스트 공백 항목이 없습니다.</p>
+          <p className="text-sm text-text-muted">보조 확인 항목이 없습니다.</p>
         )}
       </div>
     </section>

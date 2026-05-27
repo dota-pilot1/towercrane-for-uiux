@@ -540,9 +540,9 @@ function MessageBubble({
             </div>
             <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold text-brand-primary">
               <span>위험도 {codeReviewRiskLabel(codeReviewCard.riskLevel)}</span>
-              <span>검토 {codeReviewCard.findingCount}개</span>
+              <span>평가 {codeReviewCard.findingCount}개</span>
               <span>높음 {codeReviewCard.highSeverityCount}개</span>
-              <span>테스트 공백 {codeReviewCard.testGapCount}개</span>
+              <span>보조 확인 {codeReviewCard.testGapCount}개</span>
               <span>파일 {codeReviewCard.changedFileCount}개</span>
               {codeReviewCard.excludedFileCount > 0 ? (
                 <span>제외 {codeReviewCard.excludedFileCount}개</span>
@@ -1031,7 +1031,7 @@ export function DevManagementPage() {
                 </button>
               </div>
             ) : null}
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-end">
               <MeetingMinutesSummaryDialog
                 messages={messages}
                 isPending={sendMessage.isPending}

@@ -826,8 +826,8 @@ export class DevManagementService {
         '',
         `제목: ${review.title}`,
         `위험도: ${this.codeReviewRiskLabel(review.riskLevel)}`,
-        `검토 항목: ${review.findingCount}개`,
-        `테스트 공백: ${review.testGapCount}개`,
+        `평가 항목: ${review.findingCount}개`,
+        `보조 확인: ${review.testGapCount}개`,
         '',
         `열기: ${reviewUrl}`,
       ].join('\n');

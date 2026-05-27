@@ -23,6 +23,7 @@ import {
   createCodeReviewSchema,
   listCodeReviewsQuerySchema,
   updateCodeReviewSchema,
+  type AnalyzeCodeReviewInput,
 } from './code-reviews.schemas';
 
 export type CodeReviewUser = {
@@ -52,6 +53,9 @@ type CodeReviewAnalysis = {
   testGaps: string[];
   model: string;
 };
+
+type CodeReviewFindingCategory = NonNullable<CodeReviewFinding['category']>;
+type CodeReviewSection = AnalyzeCodeReviewInput['sections'][number];
 
 const MAX_DIFF_CHARS = 80_000;
 const MAX_FILES = 30;
@@ -163,7 +167,12 @@ export class CodeReviewsService {
       };
     }
 
-    const analysis = await this.reviewDiff(source, reviewedFiles, excludedFiles);
+    const analysis = await this.reviewDiff(
+      source,
+      reviewedFiles,
+      excludedFiles,
+      input.sections,
+    );
     const now = new Date().toISOString();
     const row: CodeReviewInsert = {
       id: `code-review-${randomUUID().slice(0, 12)}`,
@@ -422,18 +431,30 @@ export class CodeReviewsService {
     source: ParsedGithubSource,
     reviewedFiles: ParsedDiffFile[],
     excludedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[],
   ): Promise<CodeReviewAnalysis> {
     if (this.openai) {
-      const llmReview = await this.tryReviewDiffWithOpenAI(source, reviewedFiles, excludedFiles);
+      const llmReview = await this.tryReviewDiffWithOpenAI(
+        source,
+        reviewedFiles,
+        excludedFiles,
+        sections,
+      );
       if (llmReview) return llmReview;
     }
-    return this.reviewDiffWithHeuristics(source, reviewedFiles, excludedFiles);
+    return this.reviewDiffWithHeuristics(
+      source,
+      reviewedFiles,
+      excludedFiles,
+      sections,
+    );
   }
 
   private async tryReviewDiffWithOpenAI(
     source: ParsedGithubSource,
     reviewedFiles: ParsedDiffFile[],
     excludedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[],
   ): Promise<CodeReviewAnalysis | null> {
     try {
       const model =
@@ -450,7 +471,7 @@ export class CodeReviewsService {
           {
             role: 'system',
             content:
-              '너는 실무 코드 리뷰어다. 한국어 JSON만 출력한다. 과장하지 말고 diff에서 근거가 있는 위험, 버그, 테스트 공백만 리뷰한다.',
+              '너는 실무 코드 리뷰어다. 한국어 JSON만 출력한다. selectedSections에 포함된 관점만 작성한다. 가능한 관점은 1. 파일 구조 도식화, 2. 주요 프로세스, 3. 주요 로직, 4. 주요 문법, 5. 아키텍처/클린코드 평가, 6. mmd 흐름도다. 테스트 공백은 보조 확인으로만 다루고, 테스트 부재만으로 위험도를 높이지 않는다.',
           },
           {
             role: 'user',
@@ -460,14 +481,24 @@ export class CodeReviewsService {
               sourceUrl: source.sourceUrl,
               reviewedFiles: reviewedFiles.map(({ diff: _diff, ...file }) => file),
               excludedFiles: excludedFiles.map(({ diff: _diff, ...file }) => file),
+              selectedSections: sections,
               requiredShape: {
                 title: 'string',
                 summary: 'string',
                 riskLevel: 'low | medium | high',
                 findings:
-                  'array of {severity,title,body,filePath,lineNumber,recommendation}',
-                testGaps: 'string[]',
+                  'array of {category: structure | process | code | syntax | architecture | clean_code | diagram | risk, severity, title, body, filePath, lineNumber, recommendation}',
+                testGaps:
+                  'string[] for auxiliary verification only. Do not make missing tests the main review result.',
               },
+              reviewFocus: [
+                '파일 구조 도식화: 변경된 파일을 기능/레이어별 트리로 요약',
+                '주요 프로세스: 사용자/운영 플로우가 어디서 시작해 어디에 저장·표시되는지 평가',
+                '주요 로직: 핵심 서비스, API, 프론트 상태/라우팅 코드의 계약과 책임 평가',
+                '주요 문법: TypeScript, React, NestJS, Zod/DB 사용 방식의 적절성 평가',
+                '아키텍처/클린코드 평가: 레이어 분리, 모듈 경계, 파일 크기, 중복, 명명, 유지보수성 평가',
+                'mmd 흐름도: 상태 관리나 외부 API/DB 저장 흐름이 복잡할 때만 Mermaid 문법으로 추가',
+              ],
               diff,
             }),
           },
@@ -476,7 +507,14 @@ export class CodeReviewsService {
       const content = response.choices[0]?.message.content;
       if (!content) return null;
       const parsed = JSON.parse(content) as Partial<CodeReviewAnalysis>;
-      return this.normalizeAnalysis(parsed, model, source, reviewedFiles, excludedFiles);
+      return this.normalizeAnalysis(
+        parsed,
+        model,
+        source,
+        reviewedFiles,
+        excludedFiles,
+        sections,
+      );
     } catch {
       return null;
     }
@@ -486,9 +524,20 @@ export class CodeReviewsService {
     source: ParsedGithubSource,
     reviewedFiles: ParsedDiffFile[],
     excludedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[] = [
+      'structure',
+      'process',
+      'code',
+      'syntax',
+      'architecture',
+    ],
   ): CodeReviewAnalysis {
     const findings: CodeReviewFinding[] = [];
+    const selectedSectionSet = new Set(sections);
+    const shouldRunRiskChecks =
+      selectedSectionSet.has('code') || selectedSectionSet.has('architecture');
     const addFinding = (
+      category: CodeReviewFindingCategory,
       severity: CodeReviewFinding['severity'],
       title: string,
       body: string,
@@ -498,6 +547,7 @@ export class CodeReviewsService {
     ) => {
       const lineNumber = file ? this.findAddedLineNumber(file.diff, pattern) : null;
       findings.push({
+        category,
         severity,
         title,
         body,
@@ -509,8 +559,12 @@ export class CodeReviewsService {
 
     for (const file of reviewedFiles) {
       const addedText = this.extractAddedText(file.diff);
-      if (/dangerouslySetInnerHTML|innerHTML\s*=|eval\s*\(/.test(addedText)) {
+      if (
+        shouldRunRiskChecks &&
+        /dangerouslySetInnerHTML|innerHTML\s*=|eval\s*\(/.test(addedText)
+      ) {
         addFinding(
+          'risk',
           'high',
           '동적 HTML/스크립트 실행 위험',
           '추가된 코드에 HTML 직접 주입 또는 동적 실행 패턴이 있습니다. 입력값 경계가 명확하지 않으면 XSS 또는 임의 실행 위험으로 이어질 수 있습니다.',
@@ -519,8 +573,12 @@ export class CodeReviewsService {
           '입력값을 신뢰하지 말고 sanitizer 또는 안전한 렌더링 API로 대체하세요.',
         );
       }
-      if (/(password|secret|api[_-]?key|token)\s*[:=]/i.test(addedText)) {
+      if (
+        shouldRunRiskChecks &&
+        /(password|secret|api[_-]?key|token)\s*[:=]/i.test(addedText)
+      ) {
         addFinding(
+          'risk',
           'high',
           '민감정보 하드코딩 의심',
           '추가된 코드에 비밀번호, 토큰, API 키로 보이는 값 할당 패턴이 있습니다.',
@@ -529,8 +587,12 @@ export class CodeReviewsService {
           '민감정보는 환경변수나 비밀 관리 저장소로 분리하고 저장소 기록 노출 여부를 확인하세요.',
         );
       }
-      if (/catch\s*\(\s*\w*\s*\)\s*{\s*}|catch\s*{\s*}/.test(addedText)) {
+      if (
+        selectedSectionSet.has('code') &&
+        /catch\s*\(\s*\w*\s*\)\s*{\s*}|catch\s*{\s*}/.test(addedText)
+      ) {
         addFinding(
+          'code',
           'medium',
           '빈 catch 블록',
           '오류를 삼키는 catch 블록은 장애 원인 추적과 사용자 피드백을 어렵게 만듭니다.',
@@ -539,8 +601,12 @@ export class CodeReviewsService {
           '최소한 로깅, 사용자 메시지, 재시도 여부 중 하나를 명시하세요.',
         );
       }
-      if (/console\.(log|debug|info)\s*\(/.test(addedText)) {
+      if (
+        selectedSectionSet.has('architecture') &&
+        /console\.(log|debug|info)\s*\(/.test(addedText)
+      ) {
         addFinding(
+          'clean_code',
           'low',
           '디버그 로그 잔존',
           '추가된 코드에 console 로그가 남아 있습니다. 운영 화면 또는 서버 로그 품질에 영향을 줄 수 있습니다.',
@@ -549,8 +615,13 @@ export class CodeReviewsService {
           '의도한 운영 로그가 아니라면 제거하고, 필요하면 프로젝트 로거로 전환하세요.',
         );
       }
-      if (/\bany\b/.test(addedText) && /\.(ts|tsx)$/.test(file.path)) {
+      if (
+        selectedSectionSet.has('syntax') &&
+        /\bany\b/.test(addedText) &&
+        /\.(ts|tsx)$/.test(file.path)
+      ) {
         addFinding(
+          'syntax',
           'low',
           'any 타입 추가',
           'TypeScript 변경에 any 타입이 추가되어 계약이 느슨해질 수 있습니다.',
@@ -563,17 +634,19 @@ export class CodeReviewsService {
 
     const changedFileCount = reviewedFiles.length + excludedFiles.length;
     const changedPaths = reviewedFiles.map((file) => file.path.toLowerCase());
+    findings.push(...this.buildStructuralReviewFindings(reviewedFiles, sections));
+
     const hasTestChange = changedPaths.some((path) =>
       /(^|\/)(__tests__|test|tests|spec)(\/|\.|-)|\.(test|spec)\.(ts|tsx|js|jsx)$/.test(path),
     );
     const testGaps = hasTestChange
       ? []
       : [
-          '이번 diff에서 테스트 파일 변경을 찾지 못했습니다. 주요 분기, API 실패, 권한/검증 로직을 수정했다면 회귀 테스트가 필요합니다.',
+          '보조 확인: 자동화 테스트 변경은 diff에서 보이지 않습니다. URL 분석, 저장, 상세 조회처럼 사용자가 직접 타는 주요 경로는 수동 검증하거나 회귀 테스트를 보강하세요.',
         ];
-    if (changedFileCount > 12 && findings.length === 0) {
+    if (changedFileCount > 12) {
       testGaps.push(
-        '변경 파일 수가 많습니다. 기능별로 리뷰 범위를 나누거나 핵심 경로 수동 검증 체크리스트를 남기는 것이 좋습니다.',
+        '보조 확인: 변경 파일 수가 많으므로 기능별 체크리스트로 URL 분석, 중복 저장, 상세 표시, 채팅 카드 렌더링을 나눠 확인하는 것이 좋습니다.',
       );
     }
 
@@ -589,8 +662,8 @@ export class CodeReviewsService {
       title: `${source.repository} ${source.reference} 코드 리뷰`,
       summary:
         findings.length > 0
-          ? `리뷰 가능한 파일 ${reviewedFiles.length}개에서 ${findings.length}개의 검토 포인트를 찾았습니다. 제외 파일은 ${excludedFiles.length}개입니다.`
-          : `리뷰 가능한 파일 ${reviewedFiles.length}개 기준으로 즉시 수정해야 할 명확한 위험은 발견하지 못했습니다. 제외 파일은 ${excludedFiles.length}개입니다.`,
+          ? `리뷰 가능한 파일 ${reviewedFiles.length}개를 선택한 ${sections.length}개 관점으로 평가했습니다. 평가 항목은 ${findings.length}개, 제외 파일은 ${excludedFiles.length}개입니다.`
+          : `리뷰 가능한 파일 ${reviewedFiles.length}개 기준으로 구조적 평가 항목을 만들지 못했습니다. 제외 파일은 ${excludedFiles.length}개입니다.`,
       riskLevel,
       findings: findings.slice(0, 12),
       testGaps,
@@ -604,13 +677,41 @@ export class CodeReviewsService {
     source: ParsedGithubSource,
     reviewedFiles: ParsedDiffFile[],
     excludedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[] = [
+      'structure',
+      'process',
+      'code',
+      'syntax',
+      'architecture',
+    ],
   ): CodeReviewAnalysis {
     const allowedRisks = new Set(['low', 'medium', 'high']);
     const allowedSeverities = new Set(['low', 'medium', 'high']);
+    const allowedCategories = new Set([
+      'process',
+      'code',
+      'syntax',
+      'structure',
+      'architecture',
+      'clean_code',
+      'diagram',
+      'risk',
+    ]);
+    const selectedSectionSet = new Set(sections);
+    const categoryAllowedByRequest = (category: CodeReviewFindingCategory) => {
+      if (category === 'clean_code') return selectedSectionSet.has('architecture');
+      if (category === 'risk') {
+        return selectedSectionSet.has('code') || selectedSectionSet.has('architecture');
+      }
+      return selectedSectionSet.has(category as CodeReviewSection);
+    };
     const findings = Array.isArray(input.findings)
       ? input.findings
           .filter((finding) => finding && typeof finding === 'object')
           .map((finding) => ({
+            category: allowedCategories.has(finding.category ?? '')
+              ? (finding.category as CodeReviewFindingCategory)
+              : 'code',
             severity: allowedSeverities.has(finding.severity)
               ? finding.severity
               : 'low',
@@ -625,9 +726,16 @@ export class CodeReviewsService {
             recommendation: String(finding.recommendation ?? '수정 방향을 검토하세요.').slice(0, 2000),
           }))
           .filter((finding) => finding.body)
+          .filter((finding) =>
+            categoryAllowedByRequest(finding.category as CodeReviewFindingCategory),
+          )
           .slice(0, 12)
       : [];
-    const fallback = this.reviewDiffWithHeuristics(source, reviewedFiles, excludedFiles);
+    const fallback = this.reviewDiffWithHeuristics(
+      source,
+      reviewedFiles,
+      excludedFiles,
+    );
 
     return {
       title:
@@ -648,6 +756,194 @@ export class CodeReviewsService {
           : fallback.testGaps,
       model,
     };
+  }
+
+  private buildStructuralReviewFindings(
+    reviewedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[],
+  ): CodeReviewFinding[] {
+    const selectedSectionSet = new Set(sections);
+    const filesByPath = [...reviewedFiles].sort((a, b) =>
+      a.path.localeCompare(b.path),
+    );
+    const topFiles = [...reviewedFiles]
+      .sort((a, b) => b.additions + b.deletions - (a.additions + a.deletions))
+      .slice(0, 6);
+    const changedPaths = filesByPath.map((file) => file.path);
+    const hasFrontend = changedPaths.some((path) =>
+      path.includes('towercrane-for-uiux-front/src/'),
+    );
+    const hasServer = changedPaths.some((path) =>
+      path.includes('towercrane-for-uiux-server/src/'),
+    );
+    const hasDatabase = changedPaths.some((path) =>
+      /database\/(schema|database\.service)\.ts$/.test(path),
+    );
+    const hasRouter = changedPaths.some((path) => path.endsWith('/router.tsx'));
+    const hasPage = changedPaths.some((path) => path.includes('/pages/'));
+    const hasService = changedPaths.some((path) => path.endsWith('.service.ts'));
+    const hasSchema = changedPaths.some((path) => path.endsWith('.schemas.ts'));
+    const hasReactQuery = changedPaths.some((path) => path.includes('/api/'));
+    const shouldIncludeDiagram =
+      selectedSectionSet.has('diagram') &&
+      ((hasFrontend && hasServer && hasDatabase) ||
+        changedPaths.some((path) => path.includes('/dev-management/')) ||
+        reviewedFiles.length >= 8);
+    const largeFiles = topFiles.filter(
+      (file) => file.additions + file.deletions >= 250,
+    );
+
+    const findings: CodeReviewFinding[] = [];
+
+    if (selectedSectionSet.has('structure')) {
+      findings.push({
+        category: 'structure',
+        severity: 'low',
+        title: '1. 파일 구조 도식화',
+        body: this.formatChangedFileTree(filesByPath),
+        filePath: null,
+        lineNumber: null,
+        recommendation:
+          '변경 파일을 기능 단위로 볼 때 서버 API/DB, 프론트 entity/page, 라우터/헤더 연결이 한 흐름으로 묶이는지 먼저 확인하세요.',
+      });
+    }
+
+    if (selectedSectionSet.has('process')) {
+      findings.push({
+        category: 'process',
+        severity: hasFrontend && hasServer ? 'medium' : 'low',
+        title: '2. 주요 프로세스',
+        body: [
+          hasFrontend
+            ? '프론트에서 사용자가 URL을 입력하고 분석을 요청하는 진입점이 추가되었습니다.'
+            : '프론트 진입점 변경은 제한적입니다.',
+          hasServer
+            ? '서버는 GitHub diff 수집, 제외 규칙 적용, 리뷰 생성, DB 저장, 상세 조회 API를 담당합니다.'
+            : '서버 처리 흐름 변경은 제한적입니다.',
+          hasRouter
+            ? '라우터/헤더 연결이 포함되어 메뉴에서 상세 화면까지 직접 접근할 수 있습니다.'
+            : '라우터 변경은 감지되지 않았습니다.',
+        ].join('\n'),
+        filePath: topFiles[0]?.path ?? null,
+        lineNumber: null,
+        recommendation:
+          'URL 입력 -> 분석 API -> 저장 -> 목록/상세 표시 -> 채팅 카드 진입 경로를 실제 사용자 플로우로 검증하세요.',
+      });
+    }
+
+    if (selectedSectionSet.has('code')) {
+      findings.push({
+        category: 'code',
+        severity: topFiles.some((file) => file.additions + file.deletions > 500)
+          ? 'medium'
+          : 'low',
+        title: '3. 주요 로직',
+        body: topFiles
+          .map(
+            (file) =>
+              `${file.path}: +${file.additions} / -${file.deletions}`,
+          )
+          .join('\n'),
+        filePath: topFiles[0]?.path ?? null,
+        lineNumber: null,
+        recommendation:
+          '가장 큰 변경 파일부터 입력 검증, 예외 처리, 중복 저장, 상태 갱신, 권한 체크가 한 책임 안에 과도하게 섞이지 않았는지 확인하세요.',
+      });
+    }
+
+    if (selectedSectionSet.has('syntax')) {
+      findings.push({
+        category: 'syntax',
+        severity: 'low',
+        title: '4. 주요 문법',
+        body: [
+          hasSchema ? 'Zod 스키마로 API 입력값을 검증하는 흐름이 포함되어 있습니다.' : null,
+          hasReactQuery ? 'React Query mutation/query 훅으로 목록, 상세, 분석 요청 상태를 관리합니다.' : null,
+          hasService ? 'NestJS service/controller/module 패턴으로 서버 기능을 분리합니다.' : null,
+          hasDatabase ? 'Drizzle 테이블 타입과 SQLite 초기화 SQL이 함께 변경됩니다.' : null,
+        ]
+          .filter(Boolean)
+          .join('\n') || '주요 프레임워크 문법 변경은 제한적입니다.',
+        filePath: null,
+        lineNumber: null,
+        recommendation:
+          '런타임 payload는 Zod, DB JSON 타입, 프론트 타입이 같은 필드명과 nullability를 공유하는지 맞춰 보세요.',
+      });
+    }
+
+    if (selectedSectionSet.has('architecture')) {
+      findings.push({
+        category: 'architecture',
+        severity: largeFiles.length > 0 ? 'medium' : 'low',
+        title: '5. 아키텍처/클린코드 평가',
+        body: [
+          hasFrontend && hasServer
+            ? '프론트 entity/page와 서버 module/service가 분리되어 기능 경계는 명확합니다.'
+            : '레이어 간 변경 범위는 작습니다.',
+          hasDatabase
+            ? 'DB-driven 메뉴와 실제 라우트/API가 함께 연결되어 메뉴 구조와 기능 진입점이 동기화됩니다.'
+            : null,
+          largeFiles.length > 0
+            ? `큰 변경 파일(${largeFiles.map((file) => file.path).join(', ')})은 이후 훅/섹션/분석 유틸로 분리할 여지가 있습니다.`
+            : '파일 크기 관점에서 즉시 분리할 만한 신호는 크지 않습니다.',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        filePath: largeFiles[0]?.path ?? null,
+        lineNumber: null,
+        recommendation:
+          'MVP 이후에는 GitHub diff 파서, 리뷰 생성기, UI 섹션 컴포넌트를 분리해 테스트 가능한 단위로 낮추는 것이 좋습니다.',
+      });
+    }
+
+    if (shouldIncludeDiagram) {
+      findings.push({
+        category: 'diagram',
+        severity: 'low',
+        title: '6. mmd 흐름도',
+        body: [
+          '```mmd',
+          'flowchart TD',
+          '  A["GitHub URL 입력"] --> B["POST /api/code-reviews/analyze"]',
+          '  B --> C["GitHub .diff 수집"]',
+          '  C --> D["파일 제외 규칙 / diff 파싱"]',
+          '  D --> E["리뷰 관점 생성"]',
+          '  E --> F["code_reviews 저장"]',
+          '  F --> G["목록/상세 화면 표시"]',
+          '  G --> H["개발 채팅 카드에서 열기"]',
+          '```',
+        ].join('\n'),
+        filePath: null,
+        lineNumber: null,
+        recommendation:
+          '흐름이 복잡한 변경에서는 이 다이어그램을 기준으로 실패 지점과 상태 전이를 하나씩 대조하세요.',
+      });
+    }
+
+    return findings;
+  }
+
+  private formatChangedFileTree(files: ParsedDiffFile[]) {
+    const groups = new Map<string, string[]>();
+    for (const file of files) {
+      const parts = file.path.split('/');
+      const group = parts.slice(0, Math.min(parts.length - 1, 4)).join('/');
+      const name = parts.at(-1) ?? file.path;
+      const current = groups.get(group) ?? [];
+      current.push(`${name} (+${file.additions}/-${file.deletions})`);
+      groups.set(group, current);
+    }
+
+    return Array.from(groups.entries())
+      .slice(0, 10)
+      .map(([group, names]) => {
+        const children = names
+          .slice(0, 6)
+          .map((name) => `  - ${name}`)
+          .join('\n');
+        return `${group || '.'}\n${children}`;
+      })
+      .join('\n');
   }
 
   private extractAddedText(diff: string) {

@@ -1,8 +1,24 @@
 export type CodeReviewSourceType = 'commit' | 'pr' | 'compare' | 'diff_url'
 export type CodeReviewRiskLevel = 'low' | 'medium' | 'high'
 export type CodeReviewFindingSeverity = 'low' | 'medium' | 'high'
+export type CodeReviewSection =
+  | 'structure'
+  | 'process'
+  | 'code'
+  | 'syntax'
+  | 'architecture'
+  | 'diagram'
 
 export type CodeReviewFinding = {
+  category?:
+    | 'structure'
+    | 'process'
+    | 'code'
+    | 'syntax'
+    | 'architecture'
+    | 'clean_code'
+    | 'diagram'
+    | 'risk'
   severity: CodeReviewFindingSeverity
   title: string
   body: string
@@ -69,6 +85,7 @@ export type CodeReviewListParams = {
 
 export type AnalyzeCodeReviewPayload = {
   sourceUrl: string
+  sections?: CodeReviewSection[]
 }
 
 export type UpdateCodeReviewPayload = {
