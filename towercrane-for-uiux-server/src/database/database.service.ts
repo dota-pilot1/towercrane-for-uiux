@@ -2042,6 +2042,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       now,
     });
     this.upsertMenuBySectionId({
+      sectionId: 'code_reviews',
+      name: '코드 리뷰',
+      icon: 'Code2',
+      displayOrder: 2,
+      parentId: existingDevManagement.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
       sectionId: 'prototype',
       name: 'Prototype',
       icon: 'GitBranch',
