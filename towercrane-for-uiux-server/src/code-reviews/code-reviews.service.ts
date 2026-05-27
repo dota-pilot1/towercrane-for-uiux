@@ -2454,7 +2454,10 @@ export class CodeReviewsService {
   private toDetailDto(row: CodeReviewRow, user: CodeReviewUser) {
     return {
       ...this.toSummaryDto(row),
-      findings: row.findings,
+      findings: row.findings.map((f) => ({
+        ...f,
+        body: this.stripBodyLabels(String(f.body ?? '')),
+      })),
       testGaps: row.testGaps,
       changedFiles: row.changedFiles,
       excludedFiles: row.excludedFiles,
