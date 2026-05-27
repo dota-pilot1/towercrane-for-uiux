@@ -697,9 +697,9 @@ export class CodeReviewsService {
                 process:
                   'numbered overview steps only. No code block.',
                 code:
-                  'repeat blocks only in this order: function/module name, fenced core code, short explanation. Do not add separate step title.',
+                  'repeat topic blocks only in this order: topic title with code role/name in parentheses, fenced core code, short explanation.',
                 syntax:
-                  'write "특이 문법 없음." if no special syntax. Otherwise repeat only in this order: technology name, fenced related code, supplemental explanation. Do not add file path prose.',
+                  'write "핵심 문법 없음." if there is no syntax/pattern worth explaining. Otherwise repeat only in this order: core syntax or pattern name, fenced related code, supplemental explanation. Do not add file path prose.',
                 architecture:
                   'short evaluation of boundaries, responsibilities, size, duplication, naming, maintainability.',
                 diagram:
@@ -708,8 +708,8 @@ export class CodeReviewsService {
               reviewFocus: [
                 '변경 파일 구조: reviewedFiles에 포함된 실제 변경 파일만 plain text folder tree로 작성',
                 '주요 프로세스: 코드 없이 대략적인 처리 흐름만 작성',
-                '주요 로직: 함수/모듈명, 코드, 설명 순서로만 작성. 별도 단계명이나 파일 설명을 늘리지 않음',
-                '주요 문법: 기술 이름, 관련 코드, 보충 설명 순서로만 작성. React Query, Zod, NestJS, Drizzle처럼 특이한 문법이 있을 때만 작성. import/type-only 선언 금지',
+                '주요 로직: 구현 주제 제목을 먼저 쓰고 괄호 안에 역할 타입과 함수명을 보조로 작성. 코드, 설명 순서로 작성',
+                '핵심 문법: 기술/패턴 이름, 관련 코드, 보충 설명 순서로만 작성. React Query, Zod, NestJS, Drizzle, 상태 파생 조건처럼 diff 이해에 필요한 핵심 문법만 작성. import/type-only 선언 금지',
                 '아키텍처/클린코드 평가: 레이어 분리, 모듈 경계, 파일 크기, 중복, 명명, 유지보수성 평가',
                 'mmd 흐름도: 선택된 경우 body는 반드시 flowchart TD로 시작하는 Mermaid 문법만 작성. 설명문, 권장문, 코드펜스는 넣지 않음',
               ],
@@ -1109,14 +1109,14 @@ export class CodeReviewsService {
     const syntaxFinding: CodeReviewFinding = {
       category: 'syntax',
       severity: 'low',
-      title: '4. 주요 문법',
+      title: '4. 핵심 문법',
       body: syntaxBody,
       filePath: null,
       lineNumber: null,
       recommendation:
-        syntaxBody === '특이 문법 없음.'
+        syntaxBody === '핵심 문법 없음.'
           ? '이번 diff에서는 별도 문법 해설보다 주요 프로세스와 주요 로직을 우선 확인하세요.'
-          : '특이 문법이 런타임 검증, 서버 상태, 라우팅, DB 저장 계약과 같은 의미를 유지하는지 확인하세요.',
+          : '핵심 문법이 런타임 검증, 서버 상태, 라우팅, DB 저장 계약과 같은 의미를 유지하는지 확인하세요.',
     };
     const withoutSyntax = findings.filter(
       (finding) => finding.category !== 'syntax',
@@ -1240,7 +1240,7 @@ export class CodeReviewsService {
       findings.push({
         category: 'syntax',
         severity: 'low',
-        title: '4. 주요 문법',
+        title: '4. 핵심 문법',
         body: this.formatSyntaxWalkthrough(reviewedFiles),
         filePath: null,
         lineNumber: null,
@@ -1303,7 +1303,7 @@ export class CodeReviewsService {
         );
 
         return [
-          `단계 ${index + 1}. ${this.logicSubjectLabel(symbol, file.path)}`,
+          `단계 ${index + 1}. ${this.logicStepTitle(symbol, file.path, intent)} (${this.logicSubjectLabel(symbol, file.path)})`,
           '',
           '핵심 코드:',
           '',
@@ -1331,7 +1331,7 @@ export class CodeReviewsService {
     );
     blocks.push(
       [
-        '단계 1. 함수 컴포넌트: PrototypeWorkspaceCard',
+        '단계 1. 삭제 버튼 UI (함수 컴포넌트: PrototypeWorkspaceCard)',
         '',
         '핵심 코드:',
         '',
@@ -1354,7 +1354,7 @@ export class CodeReviewsService {
     if (dialogSnippet && dialogSnippet !== cardSnippet) {
       blocks.push(
         [
-          '단계 2. 함수 컴포넌트: DeleteWorkspaceDialog',
+          '단계 2. 삭제 확인 다이얼로그 (함수 컴포넌트: DeleteWorkspaceDialog)',
           '',
           '핵심 코드:',
           '',
@@ -1384,15 +1384,14 @@ export class CodeReviewsService {
 
     return [
       [
-        '단계 1. 함수 컴포넌트: PrototypeWorkspaceCard',
+        '단계 1. 수정 버튼 UI (함수 컴포넌트: PrototypeWorkspaceCard)',
         '',
         '핵심 코드:',
         '',
         `\`\`\`${language}`,
         [
-          '// 소유자에게만 수정/삭제 액션을 노출',
+          '// 소유자에게만 수정/삭제 액션 노출',
           "const canManage = workspace.role === 'owner'",
-          '',
           '{canManage ? (',
           '  <>',
           '    <EditWorkspaceDialog workspace={workspace} />',
@@ -1409,7 +1408,7 @@ export class CodeReviewsService {
         '설명: 카드에서 소유자 권한을 기준으로 수정 다이얼로그를 노출하고, 권한이 없으면 수정 버튼을 비활성 상태로 보여줍니다.',
       ].join('\n'),
       [
-        '단계 2. 함수 컴포넌트: EditWorkspaceDialog',
+        '단계 2. 수정 폼 상태와 저장 가능 조건 (함수 컴포넌트: EditWorkspaceDialog)',
         '',
         '핵심 코드:',
         '',
@@ -1419,7 +1418,6 @@ export class CodeReviewsService {
           "const [name, setName] = useState(workspace.name)",
           "const [description, setDescription] = useState(workspace.description ?? '')",
           'const updateWorkspace = useUpdatePrototypeWorkspace(workspace.id)',
-          '',
           '// 이름이 유효하고 실제 변경이 있을 때만 저장 허용',
           'const canSubmit =',
           '  name.trim().length >= 2 &&',
@@ -1431,7 +1429,7 @@ export class CodeReviewsService {
         '설명: 다이얼로그가 열릴 때 기존 값을 폼 상태로 옮기고, 이름 길이와 실제 변경 여부를 저장 조건으로 계산합니다.',
       ].join('\n'),
       [
-        '단계 3. 이벤트 핸들러: onSubmit',
+        '단계 3. 수정 저장 요청 (이벤트 핸들러: onSubmit)',
         '',
         '핵심 코드:',
         '',
@@ -1508,7 +1506,7 @@ export class CodeReviewsService {
   private formatSyntaxWalkthrough(files: ParsedDiffFile[]) {
     const candidates = this.pickSyntaxFiles(files, 2);
     if (candidates.length === 0) {
-      return '특이 문법 없음.';
+      return '핵심 문법 없음.';
     }
 
     return candidates
@@ -1574,6 +1572,26 @@ export class CodeReviewsService {
     if (/on[A-Z]|handle[A-Z]/.test(symbol)) return `이벤트 핸들러: ${symbol}`;
 
     return `함수: ${symbol}`;
+  }
+
+  private logicStepTitle(symbol: string, path: string, intent: ReviewIntent) {
+    if (intent === 'update') {
+      if (/Dialog|Form/.test(symbol)) return '수정 폼 처리';
+      if (/on[A-Z]|handle[A-Z]/.test(symbol)) return '수정 저장 요청';
+      if (/Card|Button|Pencil/.test(symbol)) return '수정 버튼 UI';
+      return '수정 로직';
+    }
+    if (intent === 'delete') {
+      if (/Dialog/.test(symbol)) return '삭제 확인 다이얼로그';
+      if (/on[A-Z]|handle[A-Z]/.test(symbol)) return '삭제 실행 요청';
+      if (/Card|Button|Trash/.test(symbol)) return '삭제 버튼 UI';
+      return '삭제 로직';
+    }
+    if (path.includes('/api/')) return 'API 요청 연결';
+    if (path.includes('/pages/')) return '화면 상태와 사용자 액션';
+    if (path.includes('/router')) return '라우트 연결';
+
+    return '주요 변경 로직';
   }
 
   private logicCodeComment(path: string, intent: ReviewIntent, symbol: string) {

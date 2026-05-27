@@ -74,7 +74,7 @@ function findingCategoryLabel(category: CodeReviewFinding['category']) {
   if (category === 'structure') return '변경 파일'
   if (category === 'process') return '주요 프로세스'
   if (category === 'code') return '주요 로직'
-  if (category === 'syntax') return '주요 문법'
+  if (category === 'syntax') return '핵심 문법'
   if (category === 'architecture') return '아키텍처'
   if (category === 'clean_code') return '클린코드'
   if (category === 'diagram') return 'mmd'
@@ -109,7 +109,7 @@ const reviewSectionOptions: Array<{ value: CodeReviewSection; label: string }> =
   { value: 'structure', label: '1. 변경 파일' },
   { value: 'process', label: '2. 주요 프로세스' },
   { value: 'code', label: '3. 주요 로직' },
-  { value: 'syntax', label: '4. 주요 문법' },
+  { value: 'syntax', label: '4. 핵심 문법' },
   { value: 'architecture', label: '5. 아키텍처/클린코드' },
   { value: 'diagram', label: '6. mmd' },
 ]
