@@ -801,7 +801,7 @@ export function MeetingPage({ workspaceId }: { workspaceId?: string }) {
             <button
               type="button"
               onClick={() => navigate({ to: '/meeting' })}
-              className="flex items-center gap-1.5 rounded-md border border-background/20 bg-background/10 px-3 py-1.5 text-xs font-bold text-background/80 transition-colors hover:bg-background/20 hover:text-background"
+              className="flex items-center gap-1.5 rounded-md border border-surface-border-soft bg-surface-raised px-3 py-1.5 text-xs font-bold text-text-secondary transition-all duration-200 hover:border-brand-border/40 hover:bg-brand-glass hover:text-brand-primary active:scale-95 cursor-pointer shadow-2xs"
             >
               <ChevronLeft className="size-3.5" />
               Workspaces
