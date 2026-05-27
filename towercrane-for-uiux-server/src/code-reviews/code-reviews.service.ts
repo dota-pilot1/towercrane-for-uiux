@@ -1006,6 +1006,17 @@ export class CodeReviewsService {
     };
   }
 
+  /**
+   * AI가 프롬프트를 무시하고 생성하는 불필요한 레이블을 후처리로 제거한다.
+   * "핵심 코드:", "관련 코드:", "예시 코드:", "코드:" 등 코드 블록 앞 레이블 라인 삭제.
+   */
+  private stripBodyLabels(body: string): string {
+    return body
+      .replace(/^[ \t]*(핵심 코드|관련 코드|예시 코드|코드|Code|Example)\s*:\s*$/gim, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
   private normalizeAnalysis(
     input: Partial<CodeReviewAnalysis>,
     model: string,
@@ -1052,7 +1063,7 @@ export class CodeReviewsService {
               ? finding.severity
               : 'low',
             title: String(finding.title ?? '검토 항목').slice(0, 160),
-            body: String(finding.body ?? '').slice(0, 12000),
+            body: this.stripBodyLabels(String(finding.body ?? '')).slice(0, 12000),
             filePath:
               typeof finding.filePath === 'string' ? finding.filePath : null,
             lineNumber:
