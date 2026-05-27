@@ -814,7 +814,7 @@ export class CodeReviewsService {
                 process:
                   'numbered overview steps only. No code block.',
                 code:
-                  'repeat topic blocks only in this order: topic title with code role/name in parentheses, fenced code block (no label before it like "핵심 코드:" — just the code fence directly), short explanation.',
+                  '구현 주제마다 아래 순서로만 작성한다: ① 주제 제목 (역할타입: 함수명) ② 코드 블록 — "핵심 코드:", "예시 코드:", "코드:" 같은 레이블 문자열을 코드 블록 앞에 절대 쓰지 않는다 ③ 한 줄 설명 ④ 개선 방법 추천(있으면)',
                 syntax:
                   'pick exactly one core syntax/pattern that best explains the commit goal or main logic. Write "핵심 문법 없음." only if there is no useful pattern. Use only: title, fenced related code, supplemental explanation, improvement suggestion. Do not add file path prose.',
                 architecture:
