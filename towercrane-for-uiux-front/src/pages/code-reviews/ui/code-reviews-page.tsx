@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
@@ -135,6 +135,70 @@ function getCommitUrlInputError(value: string) {
     return '예: https://github.com/owner/repo/commit/sha'
   }
   return null
+}
+
+const ANALYZE_STEPS = [
+  { icon: '⬇️', label: 'GitHub diff 수집 중...' },
+  { icon: '📂', label: '변경 파일 전체 읽는 중...' },
+  { icon: '🔗', label: '연관 파일 탐색 중...' },
+  { icon: '🤖', label: 'AI 코드 리뷰 생성 중...' },
+  { icon: '💾', label: '리뷰 저장 중...' },
+]
+
+function AnalyzingOverlay() {
+  const [step, setStep] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      setStep((prev) => (prev < ANALYZE_STEPS.length - 1 ? prev + 1 : prev))
+    }, 2200)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [])
+
+  return (
+    <div className="flex h-full min-h-[28rem] flex-col items-center justify-center gap-8 p-8">
+      {/* 아이콘 애니메이션 */}
+      <div className="relative flex size-24 items-center justify-center">
+        <div className="absolute inset-0 animate-ping rounded-full bg-brand-glass opacity-60" />
+        <div className="absolute inset-2 animate-pulse rounded-full bg-brand-glass opacity-40" />
+        <Code2 className="relative size-10 text-brand-primary" />
+      </div>
+
+      {/* 제목 */}
+      <div className="text-center">
+        <p className="text-base font-extrabold text-text-primary">AI 코드 리뷰 분석 중</p>
+        <p className="mt-1 text-xs text-text-muted">diff · 전체 파일 · 연관 파일까지 읽습니다</p>
+      </div>
+
+      {/* 단계 표시 */}
+      <div className="flex w-full max-w-xs flex-col gap-2">
+        {ANALYZE_STEPS.map((s, i) => (
+          <div
+            key={s.label}
+            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-500 ${
+              i === step
+                ? 'bg-brand-glass text-brand-primary font-bold'
+                : i < step
+                  ? 'text-text-muted line-through opacity-50'
+                  : 'text-text-muted opacity-30'
+            }`}
+          >
+            <span className="text-base">{s.icon}</span>
+            <span>{s.label}</span>
+            {i === step && (
+              <Loader2 className="ml-auto size-3.5 animate-spin text-brand-primary" />
+            )}
+            {i < step && (
+              <Check className="ml-auto size-3.5 text-brand-primary" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
@@ -502,7 +566,9 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
         </section>
 
         <section className="min-w-0 rounded-md border border-surface-border bg-surface-raised">
-          {reviewId ? (
+          {analyzeMutation.isPending ? (
+            <AnalyzingOverlay />
+          ) : reviewId ? (
             <ReviewDetailPanel
               reviewId={reviewId}
               onBack={() => navigate({ to: '/code-reviews' })}
