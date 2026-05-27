@@ -1012,7 +1012,10 @@ export class CodeReviewsService {
    */
   private stripBodyLabels(body: string): string {
     return body
-      .replace(/^[ \t]*(핵심 코드|관련 코드|예시 코드|코드|Code|Example)\s*:\s*$/gim, '')
+      // 줄 위치·볼드·공백 변형 모두 무관하게 해당 레이블 텍스트 자체를 제거
+      .replace(/\*{0,2}핵심\s*코드\s*:\*{0,2}/g, '')
+      .replace(/\*{0,2}관련\s*코드\s*:\*{0,2}/g, '')
+      .replace(/\*{0,2}예시\s*코드\s*:\*{0,2}/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
