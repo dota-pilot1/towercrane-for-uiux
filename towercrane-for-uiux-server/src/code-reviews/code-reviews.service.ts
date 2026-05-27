@@ -24,6 +24,7 @@ import {
   createCodeReviewSchema,
   listCodeReviewsQuerySchema,
   updateCodeReviewSchema,
+  uploadCodeReviewSchema,
   validateCodeReviewRepositorySchema,
   type AnalyzeCodeReviewInput,
 } from './code-reviews.schemas';
@@ -231,6 +232,47 @@ export class CodeReviewsService {
       ...this.detail(user, row.id),
       duplicate: false,
     };
+  }
+
+  upload(user: CodeReviewUser, payload: unknown) {
+    this.ensureSignedIn(user);
+    const input = uploadCodeReviewSchema.parse(payload);
+    const source = this.parseGithubSource(input.sourceUrl);
+    const diffHash = createHash('sha256')
+      .update(input.sourceUrl)
+      .update('\n--review-goal--\n')
+      .update(input.reviewGoal ?? '')
+      .update('\n--title--\n')
+      .update(input.title)
+      .digest('hex');
+
+    const duplicate = this.findDuplicate(source.sourceUrl, diffHash);
+    if (duplicate) return { ...this.toDetailDto(duplicate, user), duplicate: true };
+
+    const now = new Date().toISOString();
+    const row: CodeReviewInsert = {
+      id: `code-review-${randomUUID().slice(0, 12)}`,
+      sourceType: source.sourceType,
+      sourceUrl: source.sourceUrl,
+      repository: source.repository,
+      title: input.title,
+      summary: input.summary,
+      riskLevel: input.riskLevel,
+      findings: input.findings,
+      testGaps: input.testGaps,
+      changedFiles: [],
+      excludedFiles: [],
+      diffHash,
+      diffSnapshot: null,
+      model: input.model ?? 'external',
+      createdBy: user.id,
+      createdByName: user.name || user.email,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.db.insert(codeReviewsTable).values(row).run();
+    return { ...this.detail(user, row.id), duplicate: false };
   }
 
   create(user: CodeReviewUser, payload: unknown) {

@@ -9,6 +9,7 @@ import {
   ExternalLink,
   FileCode2,
   GitPullRequest,
+  Info,
   Loader2,
   Search,
   Trash2,
@@ -133,6 +134,184 @@ function getCommitUrlInputError(value: string) {
   return null
 }
 
+const UPLOAD_JSON_TEMPLATE = `{
+  "sourceUrl": "https://github.com/owner/repo/commit/sha",
+  "reviewGoal": "리뷰할 로직 설명 (선택)",
+  "title": "리뷰 제목",
+  "summary": "전체 요약",
+  "riskLevel": "low | medium | high",
+  "model": "claude-sonnet-4-6",
+  "findings": [
+    {
+      "category": "structure | process | code | syntax | architecture | clean_code | diagram",
+      "severity": "low | medium | high",
+      "title": "항목 제목",
+      "body": "본문 (Markdown 지원)",
+      "recommendation": "개선 방향",
+      "filePath": "src/example.ts",
+      "lineNumber": 42
+    }
+  ],
+  "testGaps": ["테스트 부족 항목"]
+}`
+
+const CLAUDE_CODE_SKILL = `# towercrane 코드 리뷰 업로드 스킬
+# ~/.claude/skills/towercrane-review.md 에 저장
+
+## 사용법
+/towercrane-review <리뷰 주제>
+
+## 동작
+1. 주제 관련 파일을 ripgrep으로 탐색
+2. 백엔드 + 프론트 코드 읽기
+3. 구조화된 리뷰 생성
+4. POST https://api.hibot-docu.com/api/code-reviews/upload
+
+## 환경 변수 필요
+TOWERCRANE_TOKEN=<로그인 후 발급받은 토큰>
+TOWERCRANE_COMMIT_URL=<분석할 커밋 URL>`
+
+function UploadGuideDialog({ onClose }: { onClose: () => void }) {
+  const [tab, setTab] = useState<'api' | 'json'>('api')
+  const [copied, setCopied] = useState(false)
+
+  function copy(text: string) {
+    void navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1800)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      <div className="relative z-10 flex w-full max-w-2xl flex-col rounded-md border border-surface-border bg-surface-raised shadow-xl">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between border-b border-surface-border-soft px-5 py-4">
+          <div>
+            <h2 className="text-base font-extrabold text-text-primary">직접 코드 리뷰 저장하기</h2>
+            <p className="mt-0.5 text-xs text-text-muted">Claude Code / Codex 스킬 연동 또는 JSON 직접 업로드</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ui-icon-button"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* 탭 */}
+        <div className="flex border-b border-surface-border-soft">
+          {(['api', 'json'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`flex-1 py-2.5 text-xs font-bold transition-colors ${
+                tab === t
+                  ? 'border-b-2 border-brand-primary text-brand-primary'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              {t === 'api' ? '방법 1 — Claude Code / Codex 스킬 연동' : '방법 2 — JSON 직접 업로드'}
+            </button>
+          ))}
+        </div>
+
+        {/* 본문 */}
+        <div className="overflow-y-auto p-5 text-sm">
+          {tab === 'api' ? (
+            <div className="space-y-4">
+              <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                <p className="font-extrabold text-text-primary">동작 흐름</p>
+                <ol className="mt-3 space-y-2 text-xs leading-5 text-text-secondary">
+                  <li>1. Claude Code 또는 Codex가 로컬 코드베이스를 자율 탐색</li>
+                  <li>2. ripgrep으로 관련 파일 검색 → 백+프론트 코드 읽기</li>
+                  <li>3. 구조화된 리뷰 JSON 생성</li>
+                  <li>4. <code className="rounded bg-surface-raised px-1 font-mono text-brand-primary">POST /api/code-reviews/upload</code> 로 전송</li>
+                  <li>5. towercrane에 저장 → 팀 공유 URL 발급</li>
+                </ol>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-extrabold text-text-secondary">API 엔드포인트</p>
+                <div className="flex items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
+                  <code className="flex-1 font-mono text-xs text-brand-primary">
+                    POST https://api.hibot-docu.com/api/code-reviews/upload
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => copy('POST https://api.hibot-docu.com/api/code-reviews/upload')}
+                    className="shrink-0 text-[11px] font-bold text-text-muted hover:text-text-primary"
+                  >
+                    복사
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-extrabold text-text-secondary">스킬 파일 템플릿</p>
+                <div className="relative rounded-md border border-surface-border-soft bg-surface-muted p-3">
+                  <pre className="overflow-x-auto font-mono text-[11px] leading-5 text-text-secondary">{CLAUDE_CODE_SKILL}</pre>
+                  <button
+                    type="button"
+                    onClick={() => copy(CLAUDE_CODE_SKILL)}
+                    className="absolute right-2 top-2 rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-0.5 text-[11px] font-bold text-text-muted hover:text-text-primary"
+                  >
+                    {copied ? '복사됨' : '복사'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-brand-border bg-brand-glass px-4 py-3 text-xs leading-5 text-brand-primary">
+                💡 Claude Code가 이미 ripgrep + 파일 읽기 + tool_use 루프를 내장하고 있어
+                별도 에이전트 구현 없이 스킬 파일만으로 로컬 풀스택 리뷰가 가능합니다.
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                <p className="font-extrabold text-text-primary">동작 흐름</p>
+                <ol className="mt-3 space-y-2 text-xs leading-5 text-text-secondary">
+                  <li>1. 아래 JSON 스키마를 복사</li>
+                  <li>2. 외부 AI 툴 또는 스크립트로 내용 채우기</li>
+                  <li>3. <code className="rounded bg-surface-raised px-1 font-mono text-brand-primary">POST /api/code-reviews/upload</code> 로 전송</li>
+                  <li>4. towercrane 목록에 즉시 반영</li>
+                </ol>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-extrabold text-text-secondary">JSON 스키마 템플릿</p>
+                <div className="relative rounded-md border border-surface-border-soft bg-surface-muted p-3">
+                  <pre className="overflow-x-auto font-mono text-[11px] leading-5 text-text-secondary">{UPLOAD_JSON_TEMPLATE}</pre>
+                  <button
+                    type="button"
+                    onClick={() => copy(UPLOAD_JSON_TEMPLATE)}
+                    className="absolute right-2 top-2 rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-0.5 text-[11px] font-bold text-text-muted hover:text-text-primary"
+                  >
+                    {copied ? '복사됨' : '복사'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-surface-border-soft bg-surface-muted px-4 py-3 text-xs leading-5 text-text-secondary">
+                <p className="font-bold text-text-primary">필수 헤더</p>
+                <code className="mt-1 block font-mono text-[11px] text-brand-primary">
+                  Authorization: Bearer {'<token>'}{'\n'}
+                  Content-Type: application/json
+                </code>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const ANALYZE_STEPS = [
   { icon: '⬇️', label: 'GitHub diff 수집 중...' },
   { icon: '📂', label: '변경 파일 전체 읽는 중...' },
@@ -206,6 +385,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   const [selectedSections, setSelectedSections] =
     useState<CodeReviewSection[]>(defaultReviewSections)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+  const [showUploadGuide, setShowUploadGuide] = useState(false)
   const listQuery = useCodeReviewList({ q, page, pageSize: 20 })
   const detailQuery = useCodeReviewDetail(reviewId)
   const analyzeMutation = useAnalyzeCodeReview()
@@ -255,10 +435,19 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
 
   return (
     <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-7xl flex-col gap-4">
-      <PageHeader
-        icon={Code2}
-        title="코드 리뷰 게시판"
-      />
+      <div className="flex items-center justify-between">
+        <PageHeader icon={Code2} title="코드 리뷰 게시판" />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowUploadGuide(true)}
+        >
+          <Info className="mr-1.5 size-3.5" />
+          직접 저장하기 구현 계획
+        </Button>
+      </div>
+      {showUploadGuide && <UploadGuideDialog onClose={() => setShowUploadGuide(false)} />}
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[460px_minmax(0,1fr)]">
         {/* 왼쪽: 입력 폼 + 목록 */}

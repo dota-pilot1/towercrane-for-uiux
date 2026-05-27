@@ -36,6 +36,11 @@ export class CodeReviewsController {
     return this.codeReviewsService.analyzeAndSave(user, body);
   }
 
+  @Post('upload')
+  upload(@CurrentUser() user: CodeReviewUser, @Body() body: unknown) {
+    return this.codeReviewsService.upload(user, body);
+  }
+
   @Post('repository/validate')
   validateRepository(@CurrentUser() user: CodeReviewUser, @Body() body: unknown) {
     return this.codeReviewsService.validateRepository(user, body);

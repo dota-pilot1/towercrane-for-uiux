@@ -64,6 +64,17 @@ export const createCodeReviewSchema = z.object({
   model: z.string().trim().max(120).nullable().optional().default(null),
 });
 
+export const uploadCodeReviewSchema = z.object({
+  sourceUrl: z.string().trim().min(1).max(1000),
+  reviewGoal: z.string().trim().max(1000).optional().default(''),
+  title: z.string().trim().min(1).max(180),
+  summary: z.string().trim().min(1).max(12000),
+  riskLevel: riskLevelSchema.default('low'),
+  findings: z.array(codeReviewFindingSchema).default([]),
+  testGaps: z.array(z.string().trim().min(1).max(1000)).default([]),
+  model: z.string().trim().max(120).optional().default('external'),
+});
+
 export const analyzeCodeReviewSchema = z.object({
   sourceUrl: z.string().trim().min(1).max(1000),
   repositoryUrl: z.string().trim().min(1).max(1000).optional(),
@@ -75,6 +86,8 @@ export const analyzeCodeReviewSchema = z.object({
     .optional()
     .default(['structure', 'process', 'code', 'syntax', 'architecture']),
 });
+
+export type UploadCodeReviewInput = z.infer<typeof uploadCodeReviewSchema>;
 
 export const validateCodeReviewRepositorySchema = z.object({
   repositoryUrl: z.string().trim().min(1).max(1000),
