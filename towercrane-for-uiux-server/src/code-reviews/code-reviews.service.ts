@@ -825,7 +825,7 @@ export class CodeReviewsService {
               reviewFocus: [
                 '변경 파일 구조: reviewedFiles에 포함된 실제 변경 파일만 plain text folder tree로 작성',
                 '주요 프로세스: 코드 없이 대략적인 처리 흐름만 작성. fullText + contextFiles의 연관 흐름을 참고해 변경이 미치는 전체 범위까지 포함',
-                '주요 로직: 구현 주제 제목을 먼저 쓰고 괄호 안에 역할 타입과 함수명을 보조로 작성. diff 변경 내용 + contextFiles의 실제 mutation/query/API 구현을 함께 참고해 코드, 설명 순서로 작성',
+                '주요 로직: bodyFormat.code 형식을 그대로 따른다. diff 변경 내용 + contextFiles의 실제 mutation/query/API 구현을 함께 참고해 단계별로 작성한다.',
                 '핵심 문법: 커밋 목표나 주요 로직을 이해하는 데 가장 중요한 기술/패턴 한 개만 깊게 작성. contextFiles에서 실제 구현 패턴 찾아 활용. import/type-only 선언 금지',
                 '아키텍처/클린코드 평가: fullText 전체 + contextFiles를 기준으로 레이어 분리, 모듈 경계, 파일 크기, 중복, 명명, 유지보수성 평가. diff만 보면 놓치는 구조적 문제까지 포함',
                 'mmd 흐름도: 선택된 경우 body는 반드시 flowchart TD로 시작하는 Mermaid 문법만 작성. contextFiles의 연관 구현까지 포함해 더 완성도 높은 다이어그램 작성. 설명문, 권장문, 코드펜스는 넣지 않음',
