@@ -117,6 +117,22 @@ const reviewSectionOptions: Array<{ value: CodeReviewSection; label: string }> =
 
 const repositoryStorageKey = 'towercrane.codeReview.repositoryUrl'
 
+function getCommitUrlInputError(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (/^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(trimmed)) {
+    return '저장소 주소가 아니라 GitHub commit URL을 입력하세요.'
+  }
+  if (
+    !/^https:\/\/github\.com\/[^/]+\/[^/]+\/commit\/[0-9a-f]{7,40}(?:\.diff)?(?:[?#].*)?$/i.test(
+      trimmed,
+    )
+  ) {
+    return '예: https://github.com/owner/repo/commit/sha'
+  }
+  return null
+}
+
 export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   const navigate = useNavigate()
   const [q, setQ] = useState('')
@@ -134,6 +150,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   const detailQuery = useCodeReviewDetail(reviewId)
   const analyzeMutation = useAnalyzeCodeReview()
   const validateRepositoryMutation = useValidateCodeReviewRepository()
+  const sourceUrlError = getCommitUrlInputError(sourceUrl)
 
   useEffect(() => {
     setPage(1)
@@ -176,6 +193,10 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   async function analyze(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setAnalyzeError(null)
+    if (sourceUrlError) {
+      setAnalyzeError(sourceUrlError)
+      return
+    }
     try {
       const detail = await analyzeMutation.mutateAsync({
         sourceUrl,
@@ -268,21 +289,29 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-3 lg:flex-row">
-          <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3">
-            <GitPullRequest className="size-4 shrink-0 text-text-muted" />
-            <input
-              value={sourceUrl}
-              onChange={(event) => setSourceUrl(event.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
-              placeholder="https://github.com/owner/repo/commit/sha"
-              disabled={analyzeMutation.isPending}
-            />
-          </label>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+          <div className="min-w-0 flex-1">
+            <label className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3">
+              <GitPullRequest className="size-4 shrink-0 text-text-muted" />
+              <input
+                value={sourceUrl}
+                onChange={(event) => setSourceUrl(event.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+                placeholder="https://github.com/owner/repo/commit/sha"
+                disabled={analyzeMutation.isPending}
+              />
+            </label>
+            {sourceUrlError ? (
+              <p className="mt-2 text-xs font-semibold text-destructive">
+                {sourceUrlError}
+              </p>
+            ) : null}
+          </div>
           <Button
             type="submit"
             disabled={
               !sourceUrl.trim() ||
+              Boolean(sourceUrlError) ||
               selectedSections.length === 0 ||
               analyzeMutation.isPending
             }
