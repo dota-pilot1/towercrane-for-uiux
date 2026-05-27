@@ -67,6 +67,7 @@ export const createCodeReviewSchema = z.object({
 export const analyzeCodeReviewSchema = z.object({
   sourceUrl: z.string().trim().min(1).max(1000),
   repositoryUrl: z.string().trim().min(1).max(1000).optional(),
+  reviewGoal: z.string().trim().max(1000).optional().default(''),
   sections: z
     .array(codeReviewSectionSchema)
     .min(1)

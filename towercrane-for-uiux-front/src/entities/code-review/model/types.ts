@@ -86,6 +86,7 @@ export type CodeReviewListParams = {
 export type AnalyzeCodeReviewPayload = {
   sourceUrl: string
   repositoryUrl?: string
+  reviewGoal?: string
   sections?: CodeReviewSection[]
 }
 

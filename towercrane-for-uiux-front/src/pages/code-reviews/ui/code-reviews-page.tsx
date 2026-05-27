@@ -122,6 +122,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [sourceUrl, setSourceUrl] = useState('')
+  const [reviewGoal, setReviewGoal] = useState('')
   const [repositoryUrl, setRepositoryUrl] = useState('')
   const [repositoryValidation, setRepositoryValidation] =
     useState<CodeReviewRepositoryValidation | null>(null)
@@ -179,6 +180,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
       const detail = await analyzeMutation.mutateAsync({
         sourceUrl,
         repositoryUrl: repositoryValidation?.valid ? repositoryValidation.repositoryUrl : undefined,
+        reviewGoal: reviewGoal.trim() || undefined,
         sections: selectedSections,
       })
       setSourceUrl('')
@@ -293,6 +295,19 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
             분석 후 저장
           </Button>
         </div>
+        <label className="mt-3 block rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
+          <span className="text-xs font-extrabold text-text-secondary">
+            리뷰할 로직 설명
+          </span>
+          <textarea
+            value={reviewGoal}
+            onChange={(event) => setReviewGoal(event.target.value)}
+            className="mt-2 min-h-20 w-full resize-y bg-transparent text-sm leading-6 text-text-primary outline-none placeholder:text-text-muted"
+            placeholder="예: 프로토타입 워크스페이스 삭제 권한, 삭제 차단 조건, delete mutation 후 목록 갱신 흐름 위주로 리뷰"
+            maxLength={1000}
+            disabled={analyzeMutation.isPending}
+          />
+        </label>
         <div className="mt-3 flex flex-wrap gap-2">
           {reviewSectionOptions.map((option) => {
             const checked = selectedSections.includes(option.value)

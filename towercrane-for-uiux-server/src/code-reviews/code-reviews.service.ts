@@ -161,6 +161,9 @@ export class CodeReviewsService {
     const reviewableDiff = reviewedFilesWithContext
       .map((file) => file.diff)
       .join('\n');
+    const reviewGoal = input.reviewGoal.trim();
+    const repositoryUrl =
+      input.repositoryUrl?.trim() || `https://github.com/${source.repository}`;
 
     if (!reviewableDiff.trim()) {
       throw new BadRequestException(
@@ -170,6 +173,8 @@ export class CodeReviewsService {
 
     const diffHash = createHash('sha256')
       .update(reviewableDiff)
+      .update('\n--review-goal--\n')
+      .update(reviewGoal)
       .digest('hex');
     const duplicate = this.findDuplicate(source.sourceUrl, diffHash);
     if (duplicate) {
@@ -184,6 +189,8 @@ export class CodeReviewsService {
       reviewedFilesWithContext,
       excludedFiles,
       input.sections,
+      repositoryUrl,
+      reviewGoal,
     );
     const now = new Date().toISOString();
     const row: CodeReviewInsert = {
@@ -602,6 +609,8 @@ export class CodeReviewsService {
     reviewedFiles: ParsedDiffFile[],
     excludedFiles: ParsedDiffFile[],
     sections: CodeReviewSection[],
+    repositoryUrl: string,
+    reviewGoal: string,
   ): Promise<CodeReviewAnalysis> {
     if (this.openai) {
       const llmReview = await this.tryReviewDiffWithOpenAI(
@@ -609,6 +618,8 @@ export class CodeReviewsService {
         reviewedFiles,
         excludedFiles,
         sections,
+        repositoryUrl,
+        reviewGoal,
       );
       if (llmReview) return llmReview;
     }
@@ -617,6 +628,7 @@ export class CodeReviewsService {
       reviewedFiles,
       excludedFiles,
       sections,
+      reviewGoal,
     );
   }
 
@@ -625,6 +637,8 @@ export class CodeReviewsService {
     reviewedFiles: ParsedDiffFile[],
     excludedFiles: ParsedDiffFile[],
     sections: CodeReviewSection[],
+    repositoryUrl: string,
+    reviewGoal: string,
   ): Promise<CodeReviewAnalysis | null> {
     try {
       const model =
@@ -647,8 +661,14 @@ export class CodeReviewsService {
             role: 'user',
             content: JSON.stringify({
               repository: source.repository,
+              repositoryUrl,
               sourceType: source.sourceType,
               sourceUrl: source.sourceUrl,
+              reviewGoal,
+              reviewInstruction:
+                reviewGoal.length > 0
+                  ? 'reviewGoal을 최우선 기준으로 삼아 diff에서 해당 기능 흐름만 추적한다. reviewGoal과 직접 관련 없는 일반론은 쓰지 않는다.'
+                  : 'diff에서 변경 의도를 먼저 추론하고, 그 기능 흐름과 직접 관련된 내용만 작성한다.',
               reviewedFiles: reviewedFiles.map(
                 ({ diff: _diff, fullText: _fullText, ...file }) => file,
               ),
@@ -700,6 +720,7 @@ export class CodeReviewsService {
         reviewedFiles,
         excludedFiles,
         sections,
+        reviewGoal,
       );
     } catch {
       return null;
@@ -717,6 +738,7 @@ export class CodeReviewsService {
       'syntax',
       'architecture',
     ],
+    reviewGoal = '',
   ): CodeReviewAnalysis {
     const findings: CodeReviewFinding[] = [];
     const selectedSectionSet = new Set(sections);
@@ -820,7 +842,9 @@ export class CodeReviewsService {
 
     const changedFileCount = reviewedFiles.length + excludedFiles.length;
     const changedPaths = reviewedFiles.map((file) => file.path.toLowerCase());
-    findings.push(...this.buildStructuralReviewFindings(reviewedFiles, sections));
+    findings.push(
+      ...this.buildStructuralReviewFindings(reviewedFiles, sections, reviewGoal),
+    );
 
     const hasTestChange = changedPaths.some((path) =>
       /(^|\/)(__tests__|test|tests|spec)(\/|\.|-)|\.(test|spec)\.(ts|tsx|js|jsx)$/.test(path),
@@ -870,6 +894,7 @@ export class CodeReviewsService {
       'syntax',
       'architecture',
     ],
+    reviewGoal = '',
   ): CodeReviewAnalysis {
     const allowedRisks = new Set(['low', 'medium', 'high']);
     const allowedSeverities = new Set(['low', 'medium', 'high']);
@@ -902,14 +927,14 @@ export class CodeReviewsService {
               ? finding.severity
               : 'low',
             title: String(finding.title ?? '검토 항목').slice(0, 160),
-            body: String(finding.body ?? '').slice(0, 2000),
+            body: String(finding.body ?? '').slice(0, 12000),
             filePath:
               typeof finding.filePath === 'string' ? finding.filePath : null,
             lineNumber:
               typeof finding.lineNumber === 'number' && finding.lineNumber > 0
                 ? Math.floor(finding.lineNumber)
                 : null,
-            recommendation: String(finding.recommendation ?? '수정 방향을 검토하세요.').slice(0, 2000),
+            recommendation: String(finding.recommendation ?? '수정 방향을 검토하세요.').slice(0, 4000),
           }))
           .filter((finding) => finding.body)
           .filter((finding) =>
@@ -921,12 +946,14 @@ export class CodeReviewsService {
       source,
       reviewedFiles,
       excludedFiles,
+      sections,
+      reviewGoal,
     );
     findings = this.ensureStructureFinding(findings, reviewedFiles, sections);
-    findings = this.ensureProcessFinding(findings, reviewedFiles, sections);
-    findings = this.ensureLogicFinding(findings, reviewedFiles, sections);
+    findings = this.ensureProcessFinding(findings, reviewedFiles, sections, reviewGoal);
+    findings = this.ensureLogicFinding(findings, reviewedFiles, sections, reviewGoal);
     findings = this.ensureSyntaxFinding(findings, reviewedFiles, sections);
-    findings = this.ensureDiagramFinding(findings, reviewedFiles, sections);
+    findings = this.ensureDiagramFinding(findings, reviewedFiles, sections, reviewGoal);
 
     return {
       title:
@@ -977,15 +1004,16 @@ export class CodeReviewsService {
     findings: CodeReviewFinding[],
     reviewedFiles: ParsedDiffFile[],
     sections: CodeReviewSection[],
+    reviewGoal = '',
   ): CodeReviewFinding[] {
     if (!sections.includes('diagram')) return findings;
-    const intent = this.detectReviewIntent(reviewedFiles);
+    const intent = this.detectReviewIntent(reviewedFiles, reviewGoal);
 
     const diagramFinding: CodeReviewFinding = {
       category: 'diagram',
       severity: 'low',
       title: '6. mmd 흐름도',
-      body: this.buildReviewMermaidFlowchart(reviewedFiles),
+      body: this.buildReviewMermaidFlowchart(reviewedFiles, reviewGoal),
       filePath: null,
       lineNumber: null,
       recommendation:
@@ -1004,15 +1032,16 @@ export class CodeReviewsService {
     findings: CodeReviewFinding[],
     reviewedFiles: ParsedDiffFile[],
     sections: CodeReviewSection[],
+    reviewGoal = '',
   ): CodeReviewFinding[] {
     if (!sections.includes('process')) return findings;
-    const intent = this.detectReviewIntent(reviewedFiles);
+    const intent = this.detectReviewIntent(reviewedFiles, reviewGoal);
 
     const processFinding: CodeReviewFinding = {
       category: 'process',
       severity: this.hasFullStackChange(reviewedFiles) ? 'medium' : 'low',
       title: '2. 주요 프로세스',
-      body: this.formatProcessOverview(reviewedFiles),
+      body: this.formatProcessOverview(reviewedFiles, reviewGoal),
       filePath: this.pickTopChangedFiles(reviewedFiles, 1)[0]?.path ?? null,
       lineNumber: null,
       recommendation:
@@ -1031,15 +1060,16 @@ export class CodeReviewsService {
     findings: CodeReviewFinding[],
     reviewedFiles: ParsedDiffFile[],
     sections: CodeReviewSection[],
+    reviewGoal = '',
   ): CodeReviewFinding[] {
     if (!sections.includes('code')) return findings;
-    const intent = this.detectReviewIntent(reviewedFiles);
+    const intent = this.detectReviewIntent(reviewedFiles, reviewGoal);
 
     const logicFinding: CodeReviewFinding = {
       category: 'code',
       severity: this.hasLargeChange(reviewedFiles) ? 'medium' : 'low',
       title: '3. 주요 로직',
-      body: this.formatLogicWalkthrough(reviewedFiles),
+      body: this.formatLogicWalkthrough(reviewedFiles, reviewGoal),
       filePath: this.pickTopChangedFiles(reviewedFiles, 1)[0]?.path ?? null,
       lineNumber: null,
       recommendation:
@@ -1083,6 +1113,7 @@ export class CodeReviewsService {
   private buildStructuralReviewFindings(
     reviewedFiles: ParsedDiffFile[],
     sections: CodeReviewSection[],
+    reviewGoal = '',
   ): CodeReviewFinding[] {
     const selectedSectionSet = new Set(sections);
     const filesByPath = [...reviewedFiles].sort((a, b) =>
@@ -1135,17 +1166,7 @@ export class CodeReviewsService {
         category: 'process',
         severity: hasFrontend && hasServer ? 'medium' : 'low',
         title: '2. 주요 프로세스',
-        body: [
-          hasFrontend
-            ? '프론트에서 사용자가 URL을 입력하고 분석을 요청하는 진입점이 추가되었습니다.'
-            : '프론트 진입점 변경은 제한적입니다.',
-          hasServer
-            ? '서버는 GitHub diff 수집, 제외 규칙 적용, 리뷰 생성, DB 저장, 상세 조회 API를 담당합니다.'
-            : '서버 처리 흐름 변경은 제한적입니다.',
-          hasRouter
-            ? '라우터/헤더 연결이 포함되어 메뉴에서 상세 화면까지 직접 접근할 수 있습니다.'
-            : '라우터 변경은 감지되지 않았습니다.',
-        ].join('\n'),
+        body: this.formatProcessOverview(reviewedFiles, reviewGoal),
         filePath: topFiles[0]?.path ?? null,
         lineNumber: null,
         recommendation:
@@ -1158,7 +1179,7 @@ export class CodeReviewsService {
         category: 'code',
         severity: this.hasLargeChange(topFiles) ? 'medium' : 'low',
         title: '3. 주요 로직',
-        body: this.formatLogicWalkthrough(reviewedFiles),
+        body: this.formatLogicWalkthrough(reviewedFiles, reviewGoal),
         filePath: topFiles[0]?.path ?? null,
         lineNumber: null,
         recommendation:
@@ -1209,16 +1230,7 @@ export class CodeReviewsService {
         category: 'diagram',
         severity: 'low',
         title: '6. mmd 흐름도',
-        body: [
-          'flowchart TD',
-          '  A["GitHub URL 입력"] --> B["POST /api/code-reviews/analyze"]',
-          '  B --> C["GitHub .diff 수집"]',
-          '  C --> D["파일 제외 규칙 / diff 파싱"]',
-          '  D --> E["리뷰 관점 생성"]',
-          '  E --> F["code_reviews 저장"]',
-          '  F --> G["목록/상세 화면 표시"]',
-          '  G --> H["개발 채팅 카드에서 열기"]',
-        ].join('\n'),
+        body: this.buildReviewMermaidFlowchart(reviewedFiles, reviewGoal),
         filePath: null,
         lineNumber: null,
         recommendation:
@@ -1229,12 +1241,12 @@ export class CodeReviewsService {
     return findings;
   }
 
-  private formatLogicWalkthrough(files: ParsedDiffFile[]) {
+  private formatLogicWalkthrough(files: ParsedDiffFile[], reviewGoal = '') {
     const candidates = this.pickFlowFiles(files, 4);
     if (candidates.length === 0) {
       return '리뷰 가능한 변경 파일이 없어 단계별 주요 로직을 만들 수 없습니다.';
     }
-    const intent = this.detectReviewIntent(files);
+    const intent = this.detectReviewIntent(files, reviewGoal);
     if (intent === 'delete') {
       const deleteLogic = this.formatDeleteLogicWalkthrough(candidates);
       if (deleteLogic) return deleteLogic;
@@ -1305,8 +1317,8 @@ export class CodeReviewsService {
     return blocks.join('\n\n');
   }
 
-  private formatProcessOverview(files: ParsedDiffFile[]) {
-    const intent = this.detectReviewIntent(files);
+  private formatProcessOverview(files: ParsedDiffFile[], reviewGoal = '') {
+    const intent = this.detectReviewIntent(files, reviewGoal);
     if (intent === 'delete') {
       return [
         '1. 워크스페이스 카드에서 삭제 액션을 노출합니다.',
@@ -1796,8 +1808,8 @@ export class CodeReviewsService {
     return ['.', ...render(root)].join('\n');
   }
 
-  private buildReviewMermaidFlowchart(files: ParsedDiffFile[]) {
-    const intent = this.detectReviewIntent(files);
+  private buildReviewMermaidFlowchart(files: ParsedDiffFile[], reviewGoal = '') {
+    const intent = this.detectReviewIntent(files, reviewGoal);
     if (intent === 'delete') {
       return [
         'flowchart TD',
@@ -1854,10 +1866,10 @@ export class CodeReviewsService {
     return lines.join('\n');
   }
 
-  private detectReviewIntent(files: ParsedDiffFile[]): ReviewIntent {
+  private detectReviewIntent(files: ParsedDiffFile[], reviewGoal = ''): ReviewIntent {
     const addedText = files.map((file) => this.extractAddedText(file.diff)).join('\n');
     const pathText = files.map((file) => file.path).join('\n');
-    const text = `${pathText}\n${addedText}`;
+    const text = `${reviewGoal}\n${pathText}\n${addedText}`;
 
     if (/useDelete|delete[A-Z]|\bDELETE\b|Trash2|onDelete|삭제/.test(text)) {
       return 'delete';
