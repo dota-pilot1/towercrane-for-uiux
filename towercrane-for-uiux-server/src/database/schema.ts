@@ -734,6 +734,8 @@ export type DevManagementMessageType =
   | 'SYSTEM'
   | 'BOT_REPLY'
   | 'SUMMARY'
+  | 'MEETING_MINUTES_SAVED'
+  | 'CODE_REVIEW_SAVED'
   | 'PROTOTYPE_SEARCH_RESULT'
   | 'TECH_DEBT_ANALYSIS'
   | 'TOOL_RESULT';
@@ -777,6 +779,118 @@ export const devManagementMessagesTable = sqliteTable('dev_management_messages',
     unknown
   > | null>(),
   createdAt: text('created_at').notNull(),
+});
+
+export type DevMeetingMinutesSourceRef = {
+  text: string;
+  sourceMessageIds: string[];
+};
+
+export type DevMeetingMinutesActionItem = {
+  text: string;
+  assigneeName: string | null;
+  dueDate: string | null;
+  sourceMessageIds: string[];
+};
+
+export const devMeetingMinutesTable = sqliteTable('dev_meeting_minutes', {
+  id: text('id').primaryKey(),
+  roomId: text('room_id')
+    .notNull()
+    .references(() => devManagementRoomsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  discussionPoints: text('discussion_points', { mode: 'json' })
+    .$type<DevMeetingMinutesSourceRef[]>()
+    .notNull()
+    .default([]),
+  decisions: text('decisions', { mode: 'json' })
+    .$type<DevMeetingMinutesSourceRef[]>()
+    .notNull()
+    .default([]),
+  actionItems: text('action_items', { mode: 'json' })
+    .$type<DevMeetingMinutesActionItem[]>()
+    .notNull()
+    .default([]),
+  openQuestions: text('open_questions', { mode: 'json' })
+    .$type<DevMeetingMinutesSourceRef[]>()
+    .notNull()
+    .default([]),
+  sourceMessageIds: text('source_message_ids', { mode: 'json' })
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdByName: text('created_by_name').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type CodeReviewSourceType = 'commit' | 'pr' | 'compare' | 'diff_url';
+export type CodeReviewRiskLevel = 'low' | 'medium' | 'high';
+export type CodeReviewFindingSeverity = 'low' | 'medium' | 'high';
+
+export type CodeReviewFinding = {
+  category?:
+    | 'process'
+    | 'code'
+    | 'syntax'
+    | 'structure'
+    | 'architecture'
+    | 'clean_code'
+    | 'diagram'
+    | 'risk';
+  severity: CodeReviewFindingSeverity;
+  title: string;
+  body: string;
+  filePath: string | null;
+  lineNumber: number | null;
+  recommendation: string;
+};
+
+export type CodeReviewChangedFile = {
+  path: string;
+  additions: number;
+  deletions: number;
+  reviewed: boolean;
+  excludedReason: string | null;
+};
+
+export const codeReviewsTable = sqliteTable('code_reviews', {
+  id: text('id').primaryKey(),
+  sourceType: text('source_type').$type<CodeReviewSourceType>().notNull(),
+  sourceUrl: text('source_url').notNull(),
+  repository: text('repository').notNull(),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  riskLevel: text('risk_level').$type<CodeReviewRiskLevel>().notNull(),
+  findings: text('findings', { mode: 'json' })
+    .$type<CodeReviewFinding[]>()
+    .notNull()
+    .default([]),
+  testGaps: text('test_gaps', { mode: 'json' })
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+  changedFiles: text('changed_files', { mode: 'json' })
+    .$type<CodeReviewChangedFile[]>()
+    .notNull()
+    .default([]),
+  excludedFiles: text('excluded_files', { mode: 'json' })
+    .$type<CodeReviewChangedFile[]>()
+    .notNull()
+    .default([]),
+  diffHash: text('diff_hash').notNull(),
+  diffSnapshot: text('diff_snapshot'),
+  model: text('model'),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdByName: text('created_by_name').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
 });
 
 export const devManagementBotSettingsTable = sqliteTable(
@@ -1690,6 +1804,8 @@ export const schema = {
   meetingDmPairsTable,
   devManagementRoomsTable,
   devManagementMessagesTable,
+  devMeetingMinutesTable,
+  codeReviewsTable,
   devManagementBotSettingsTable,
   devManagementDmPairsTable,
   issuesTable,
@@ -1840,6 +1956,12 @@ export type DevManagementMessageRow =
   typeof devManagementMessagesTable.$inferSelect;
 export type DevManagementMessageInsert =
   typeof devManagementMessagesTable.$inferInsert;
+export type DevMeetingMinutesRow =
+  typeof devMeetingMinutesTable.$inferSelect;
+export type DevMeetingMinutesInsert =
+  typeof devMeetingMinutesTable.$inferInsert;
+export type CodeReviewRow = typeof codeReviewsTable.$inferSelect;
+export type CodeReviewInsert = typeof codeReviewsTable.$inferInsert;
 export type DevManagementBotSettingsRow =
   typeof devManagementBotSettingsTable.$inferSelect;
 export type DevManagementBotSettingsInsert =

@@ -21,6 +21,8 @@ function sectionIdToPath(sectionId: string): string {
     meeting: '/meeting',
     dev_management: '/dev-management',
     dev_management_chat: '/dev-management',
+    dev_meeting_minutes: '/dev-meeting-minutes',
+    code_reviews: '/code-reviews',
     docu: '/docu',
     knowledge_channel: '/chatbot/knowledge',
     knowledge_notice: '/chatbot/knowledge/notice',
@@ -83,6 +85,8 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/study-diary')) return 'study_diary'
   if (pathname.startsWith('/challenge')) return 'study_diary'
   if (pathname.startsWith('/meeting')) return 'meeting'
+  if (pathname.startsWith('/dev-meeting-minutes')) return 'dev_meeting_minutes'
+  if (pathname.startsWith('/code-reviews')) return 'code_reviews'
   if (pathname.startsWith('/dev-management')) return 'dev_management_chat'
   if (pathname.startsWith('/docu')) return 'docu'
   if (pathname.startsWith('/ai-service-request/my')) return 'ai_service_my'
