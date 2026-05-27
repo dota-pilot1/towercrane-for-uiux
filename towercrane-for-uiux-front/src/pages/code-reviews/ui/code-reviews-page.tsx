@@ -730,11 +730,17 @@ function HighlightedMarkdownBody({ value }: { value: string }) {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         components={{
+          h4: ({ children }) => (
+            <h4 className="pt-2 text-sm font-extrabold text-text-primary">
+              {children}
+            </h4>
+          ),
           p: ({ children }) => (
             <p className="whitespace-pre-wrap text-sm leading-6 text-text-secondary">
               {children}
             </p>
           ),
+          hr: () => <hr className="my-5 border-surface-border-soft" />,
           ol: ({ children }) => (
             <ol className="list-decimal space-y-3 pl-5 text-sm leading-6 text-text-secondary">
               {children}

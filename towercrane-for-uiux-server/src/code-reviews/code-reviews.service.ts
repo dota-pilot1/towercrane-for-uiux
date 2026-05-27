@@ -699,7 +699,7 @@ export class CodeReviewsService {
                 code:
                   'repeat topic blocks only in this order: topic title with code role/name in parentheses, fenced core code, short explanation.',
                 syntax:
-                  'write "핵심 문법 없음." if there is no syntax/pattern worth explaining. Otherwise repeat only in this order: core syntax or pattern name, fenced related code, supplemental explanation. Do not add file path prose.',
+                  'pick exactly one core syntax/pattern that best explains the commit goal or main logic. Write "핵심 문법 없음." only if there is no useful pattern. Use only: title, fenced related code, supplemental explanation, improvement suggestion. Do not add file path prose.',
                 architecture:
                   'short evaluation of boundaries, responsibilities, size, duplication, naming, maintainability.',
                 diagram:
@@ -709,7 +709,7 @@ export class CodeReviewsService {
                 '변경 파일 구조: reviewedFiles에 포함된 실제 변경 파일만 plain text folder tree로 작성',
                 '주요 프로세스: 코드 없이 대략적인 처리 흐름만 작성',
                 '주요 로직: 구현 주제 제목을 먼저 쓰고 괄호 안에 역할 타입과 함수명을 보조로 작성. 코드, 설명 순서로 작성',
-                '핵심 문법: 기술/패턴 이름, 관련 코드, 보충 설명 순서로만 작성. React Query, Zod, NestJS, Drizzle, 상태 파생 조건처럼 diff 이해에 필요한 핵심 문법만 작성. import/type-only 선언 금지',
+                '핵심 문법: 커밋 목표나 주요 로직을 이해하는 데 가장 중요한 기술/패턴 한 개만 깊게 작성. import/type-only 선언 금지',
                 '아키텍처/클린코드 평가: 레이어 분리, 모듈 경계, 파일 크기, 중복, 명명, 유지보수성 평가',
                 'mmd 흐름도: 선택된 경우 body는 반드시 flowchart TD로 시작하는 Mermaid 문법만 작성. 설명문, 권장문, 코드펜스는 넣지 않음',
               ],
@@ -960,7 +960,7 @@ export class CodeReviewsService {
     findings = this.ensureStructureFinding(findings, reviewedFiles, sections);
     findings = this.ensureProcessFinding(findings, reviewedFiles, sections, reviewGoal);
     findings = this.ensureLogicFinding(findings, reviewedFiles, sections, reviewGoal);
-    findings = this.ensureSyntaxFinding(findings, reviewedFiles, sections);
+    findings = this.ensureSyntaxFinding(findings, reviewedFiles, sections, reviewGoal);
     findings = this.ensureArchitectureFinding(findings, reviewedFiles, sections, reviewGoal);
     findings = this.ensureDiagramFinding(findings, reviewedFiles, sections, reviewGoal);
 
@@ -1101,10 +1101,11 @@ export class CodeReviewsService {
     findings: CodeReviewFinding[],
     reviewedFiles: ParsedDiffFile[],
     sections: CodeReviewSection[],
+    reviewGoal = '',
   ): CodeReviewFinding[] {
     if (!sections.includes('syntax')) return findings;
 
-    const syntaxBody = this.formatSyntaxWalkthrough(reviewedFiles);
+    const syntaxBody = this.formatSyntaxWalkthrough(reviewedFiles, reviewGoal);
 
     const syntaxFinding: CodeReviewFinding = {
       category: 'syntax',
@@ -1116,7 +1117,7 @@ export class CodeReviewsService {
       recommendation:
         syntaxBody === '핵심 문법 없음.'
           ? '이번 diff에서는 별도 문법 해설보다 주요 프로세스와 주요 로직을 우선 확인하세요.'
-          : '핵심 문법이 런타임 검증, 서버 상태, 라우팅, DB 저장 계약과 같은 의미를 유지하는지 확인하세요.',
+          : '핵심 문법이 커밋 목적의 저장, 검증, 서버 상태 갱신 흐름을 정확히 설명하는지 확인하세요.',
     };
     const withoutSyntax = findings.filter(
       (finding) => finding.category !== 'syntax',
@@ -1241,7 +1242,7 @@ export class CodeReviewsService {
         category: 'syntax',
         severity: 'low',
         title: '4. 핵심 문법',
-        body: this.formatSyntaxWalkthrough(reviewedFiles),
+        body: this.formatSyntaxWalkthrough(reviewedFiles, reviewGoal),
         filePath: null,
         lineNumber: null,
         recommendation:
@@ -1303,7 +1304,7 @@ export class CodeReviewsService {
         );
 
         return [
-          `단계 ${index + 1}. ${this.logicStepTitle(symbol, file.path, intent)} (${this.logicSubjectLabel(symbol, file.path)})`,
+          `#### 단계 ${index + 1}. ${this.logicStepTitle(symbol, file.path, intent)} (${this.logicSubjectLabel(symbol, file.path)})`,
           '',
           '핵심 코드:',
           '',
@@ -1312,9 +1313,11 @@ export class CodeReviewsService {
           '```',
           '',
           `설명: ${this.logicExplanation(file.path, intent, symbol)}`,
+          '',
+          `개선 방법 추천: ${this.logicImprovementSuggestion(file.path, intent, symbol)}`,
         ].join('\n');
       })
-      .join('\n\n');
+      .join('\n\n---\n\n');
   }
 
   private formatDeleteLogicWalkthrough(files: ParsedDiffFile[]) {
@@ -1331,7 +1334,7 @@ export class CodeReviewsService {
     );
     blocks.push(
       [
-        '단계 1. 삭제 버튼 UI (함수 컴포넌트: PrototypeWorkspaceCard)',
+        '#### 단계 1. 삭제 버튼 UI (함수 컴포넌트: PrototypeWorkspaceCard)',
         '',
         '핵심 코드:',
         '',
@@ -1343,6 +1346,8 @@ export class CodeReviewsService {
         '```',
         '',
         '설명: 카드에서 소유자 여부를 판단해 삭제 다이얼로그를 노출하고, 권한이 없으면 비활성 삭제 버튼으로 상태를 알려주는 로직입니다.',
+        '',
+        '개선 방법 추천: 카드 액션이 더 늘어나면 권한별 액션 버튼 묶음을 별도 컴포넌트로 분리하면 좋습니다.',
       ].join('\n'),
     );
 
@@ -1354,7 +1359,7 @@ export class CodeReviewsService {
     if (dialogSnippet && dialogSnippet !== cardSnippet) {
       blocks.push(
         [
-          '단계 2. 삭제 확인 다이얼로그 (함수 컴포넌트: DeleteWorkspaceDialog)',
+          '#### 단계 2. 삭제 확인 다이얼로그 (함수 컴포넌트: DeleteWorkspaceDialog)',
           '',
           '핵심 코드:',
           '',
@@ -1366,11 +1371,13 @@ export class CodeReviewsService {
           '```',
           '',
           '설명: 삭제 확인 다이얼로그의 열림 상태, 카테고리 존재 시 삭제 차단, delete mutation 실행, 실패 메시지 표시를 담당합니다.',
+          '',
+          '개선 방법 추천: 삭제 차단 조건이 복잡해지면 canDeleteReason 같은 파생 값을 만들어 UI 문구와 실행 조건을 같은 기준으로 관리하는 편이 좋습니다.',
         ].join('\n'),
       );
     }
 
-    return blocks.join('\n\n');
+    return blocks.join('\n\n---\n\n');
   }
 
   private formatUpdateLogicWalkthrough(files: ParsedDiffFile[]) {
@@ -1384,7 +1391,7 @@ export class CodeReviewsService {
 
     return [
       [
-        '단계 1. 수정 버튼 UI (함수 컴포넌트: PrototypeWorkspaceCard)',
+        '#### 단계 1. 수정 버튼 UI (함수 컴포넌트: PrototypeWorkspaceCard)',
         '',
         '핵심 코드:',
         '',
@@ -1406,9 +1413,11 @@ export class CodeReviewsService {
         '```',
         '',
         '설명: 카드에서 소유자 권한을 기준으로 수정 다이얼로그를 노출하고, 권한이 없으면 수정 버튼을 비활성 상태로 보여줍니다.',
+        '',
+        '개선 방법 추천: 수정/삭제 버튼이 계속 늘어나면 WorkspaceActionButtons 같은 작은 컴포넌트로 분리해 카드의 표시 책임을 줄일 수 있습니다.',
       ].join('\n'),
       [
-        '단계 2. 수정 폼 상태와 저장 가능 조건 (함수 컴포넌트: EditWorkspaceDialog)',
+        '#### 단계 2. 수정 폼 상태와 저장 가능 조건 (함수 컴포넌트: EditWorkspaceDialog)',
         '',
         '핵심 코드:',
         '',
@@ -1427,9 +1436,11 @@ export class CodeReviewsService {
         '```',
         '',
         '설명: 다이얼로그가 열릴 때 기존 값을 폼 상태로 옮기고, 이름 길이와 실제 변경 여부를 저장 조건으로 계산합니다.',
+        '',
+        '개선 방법 추천: 입력 필드나 검증 규칙이 늘어나면 react-hook-form과 zod로 폼 상태와 검증 스키마를 분리하는 방식이 적합합니다.',
       ].join('\n'),
       [
-        '단계 3. 수정 저장 요청 (이벤트 핸들러: onSubmit)',
+        '#### 단계 3. 수정 저장 요청 (이벤트 핸들러: onSubmit)',
         '',
         '핵심 코드:',
         '',
@@ -1446,8 +1457,10 @@ export class CodeReviewsService {
         '```',
         '',
         '설명: 검증된 이름과 설명만 update mutation으로 보내고, 성공하면 다이얼로그를 닫습니다. 목록 갱신은 React Query 훅의 invalidateQueries가 담당합니다.',
+        '',
+        '개선 방법 추천: 저장 후 처리 흐름이 늘어나면 mutation 훅의 onSuccess/onError 옵션으로 성공 처리와 오류 처리를 모아두는 편이 좋습니다.',
       ].join('\n'),
-    ].join('\n\n');
+    ].join('\n\n---\n\n');
   }
 
   private formatProcessOverview(files: ParsedDiffFile[], reviewGoal = '') {
@@ -1503,8 +1516,18 @@ export class CodeReviewsService {
       : '1. 변경 파일을 기준으로 사용자 액션, 상태 변경, 서버 요청, 화면 반영 흐름을 확인합니다.';
   }
 
-  private formatSyntaxWalkthrough(files: ParsedDiffFile[]) {
-    const candidates = this.pickSyntaxFiles(files, 2);
+  private formatSyntaxWalkthrough(files: ParsedDiffFile[], reviewGoal = '') {
+    const intent = this.detectReviewIntent(files, reviewGoal);
+    if (intent === 'update') {
+      const updateSyntax = this.formatUpdateSyntaxWalkthrough(files);
+      if (updateSyntax) return updateSyntax;
+    }
+    if (intent === 'delete') {
+      const deleteSyntax = this.formatDeleteSyntaxWalkthrough(files);
+      if (deleteSyntax) return deleteSyntax;
+    }
+
+    const candidates = this.pickSyntaxFiles(files, 1);
     if (candidates.length === 0) {
       return '핵심 문법 없음.';
     }
@@ -1515,7 +1538,7 @@ export class CodeReviewsService {
         const snippet = this.extractReviewSnippet(file, focus.patterns);
 
         return [
-          `문법 ${index + 1}. ${focus.label}`,
+          `#### 문법 ${index + 1}. ${focus.label}`,
           '',
           '관련 코드:',
           '',
@@ -1526,7 +1549,73 @@ export class CodeReviewsService {
           `보충 설명: ${focus.explanation}`,
         ].join('\n');
       })
-      .join('\n\n');
+      .join('\n\n---\n\n');
+  }
+
+  private formatUpdateSyntaxWalkthrough(files: ParsedDiffFile[]) {
+    const workspaceFile = files.find((file) =>
+      /useUpdatePrototypeWorkspace|mutateAsync|canSubmit/.test(
+        this.extractAddedText(file.diff),
+      ),
+    );
+    if (!workspaceFile) return null;
+    const language = this.languageForPath(workspaceFile.path);
+
+    return [
+      '#### 문법 1. 수정 후 저장 mutation',
+      '',
+      '관련 코드:',
+      '',
+      `\`\`\`${language}`,
+      [
+        '// 수정 API를 감싼 mutation 훅을 현재 워크스페이스 id로 준비',
+        'const updateWorkspace = useUpdatePrototypeWorkspace(workspace.id)',
+        '',
+        '// 폼 값을 저장 가능한 payload로 정리한 뒤 mutation 실행',
+        'await updateWorkspace.mutateAsync({',
+        '  name: name.trim(),',
+        '  description: description.trim() || null,',
+        '})',
+        '',
+        '// 성공 후 다이얼로그를 닫고, 목록 갱신은 mutation 훅의 캐시 무효화가 담당',
+        'setOpen(false)',
+      ].join('\n'),
+      '```',
+      '',
+      '보충 설명: 이 커밋은 워크스페이스 수정값을 저장하는 기능이므로, 핵심 문법은 TanStack Query mutation을 통해 서버 변경 요청을 실행하는 흐름입니다. 컴포넌트는 payload 정리와 호출만 담당하고, 성공 후 목록 갱신은 useUpdatePrototypeWorkspace 훅 내부의 invalidateQueries가 맡는 구조입니다.',
+      '',
+      '개선 방법 추천: 수정 폼이 커지면 react-hook-form과 zod로 입력 검증을 분리하고, mutation 성공/실패 처리는 useUpdatePrototypeWorkspace의 onSuccess/onError에 모아두는 편이 좋습니다.',
+    ].join('\n');
+  }
+
+  private formatDeleteSyntaxWalkthrough(files: ParsedDiffFile[]) {
+    const workspaceFile = files.find((file) =>
+      /deleteWorkspace\.mutateAsync|hasCategories|canManage/.test(
+        this.extractAddedText(file.diff),
+      ),
+    );
+    if (!workspaceFile) return null;
+    const language = this.languageForPath(workspaceFile.path);
+
+    return [
+      [
+        '#### 문법 1. 삭제 차단 조건과 mutation 실행',
+        '',
+        '관련 코드:',
+        '',
+        `\`\`\`${language}`,
+        [
+          '// 삭제 불가 조건이면 mutation 실행 전 차단',
+          'if (hasCategories) return',
+          'await deleteWorkspace.mutateAsync(workspace.id)',
+        ].join('\n'),
+        '```',
+        '',
+        '보충 설명: 삭제 커밋에서는 실행 전 guard와 delete mutation 호출이 핵심 패턴입니다.',
+        '',
+        '개선 방법 추천: 삭제 차단 사유가 늘어나면 canDeleteReason으로 계산해 버튼, 안내 문구, submit guard가 같은 값을 보게 하는 편이 좋습니다.',
+      ].join('\n'),
+    ].join('\n\n---\n\n');
   }
 
   private formatArchitectureAssessment(files: ParsedDiffFile[], reviewGoal = '') {
@@ -1601,6 +1690,26 @@ export class CodeReviewsService {
     if (path.includes('/pages/')) return '사용자 액션과 화면 상태를 연결하는 핵심 코드';
 
     return `${symbol}에서 변경 흐름을 만드는 핵심 코드`;
+  }
+
+  private logicImprovementSuggestion(path: string, intent: ReviewIntent, symbol: string) {
+    if (intent === 'update' && /Dialog|Form/.test(symbol)) {
+      return '폼 필드나 검증 조건이 늘어나면 react-hook-form과 zod로 폼 상태, 기본값, 검증 메시지를 분리할 수 있습니다.';
+    }
+    if (intent === 'update' && /on[A-Z]|handle[A-Z]/.test(symbol)) {
+      return '저장 성공/실패 처리가 늘어나면 mutation 훅의 onSuccess/onError에 후처리를 모으는 편이 좋습니다.';
+    }
+    if (intent === 'delete' && /Dialog/.test(symbol)) {
+      return '삭제 차단 조건이 늘어나면 canDeleteReason 같은 파생 값을 만들어 버튼 상태와 안내 문구를 같은 기준으로 관리하세요.';
+    }
+    if (path.includes('/api/')) {
+      return '요청/응답 필드가 늘어나면 API payload 타입과 서버 DTO 검증을 같은 이름과 null 규칙으로 맞추는 것이 좋습니다.';
+    }
+    if (path.includes('/pages/')) {
+      return '화면 상태가 길어지면 액션 단위 훅이나 섹션 컴포넌트로 분리해 렌더링 책임을 줄일 수 있습니다.';
+    }
+
+    return '같은 패턴이 다른 파일에도 반복되면 공통 훅이나 유틸로 분리할지 검토하세요.';
   }
 
   private withSnippetComment(snippet: string, comment: string) {
