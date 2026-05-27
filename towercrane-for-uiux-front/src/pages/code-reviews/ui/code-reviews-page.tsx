@@ -260,7 +260,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
         title="코드 리뷰 게시판"
       />
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[420px_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[460px_minmax(0,1fr)]">
         {/* 왼쪽: 입력 폼 + 목록 */}
         <section className="flex min-h-0 flex-col rounded-md border border-surface-border bg-surface-raised">
           {/* 패널 헤더 */}
