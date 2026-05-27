@@ -6,7 +6,7 @@ export const codeReviewStyleGuide = `
 - reviewGoal이 있으면 그 기능 흐름을 최우선 기준으로 삼고, 직접 관련 없는 일반론은 쓰지 않는다.
 - 주요 프로세스는 코드 없이 전체 흐름만 설명한다.
 - 주요 로직의 단계 제목은 "무슨 코드인가"를 먼저 쓴다. 함수명은 괄호 안에 보조로 넣는다.
-- 주요 로직은 주제 제목, 핵심 코드, 설명, 개선 방법 추천 순서로만 단순하게 보여준다.
+- 주요 로직은 주제 제목, 코드 블록, 설명, 개선 방법 추천 순서로만 단순하게 보여준다.
 - 주요 로직 단계는 Markdown h4 제목(####)으로 시작하고 단계 사이에는 --- 구분선을 넣는다.
 - 주요 로직 코드블록에는 의도를 읽을 수 있는 짧은 주석을 1~2개 넣는다.
 - 핵심 문법은 diff 이해에 필요한 기술/패턴이 있을 때만 작성한다.
@@ -27,7 +27,6 @@ export const codeReviewStyleGuide = `
 
 #### 단계 1. 수정 버튼 UI (함수 컴포넌트: 함수명)
 
-핵심 코드:
 \`\`\`ts
 // 이 함수가 맡는 핵심 책임
 실제 핵심 코드 3~12줄
@@ -43,7 +42,6 @@ export const codeReviewStyleGuide = `
 
 문법 1. TanStack Query
 
-관련 코드:
 \`\`\`ts
 실제 핵심 코드 3~10줄
 \`\`\`
@@ -68,7 +66,6 @@ body는 반드시 Mermaid 원문만 작성한다. 첫 줄은 flowchart TD여야 
 ### 3. 주요 로직
 #### 단계 1. 리뷰 요청 전송 (함수 컴포넌트: analyze)
 
-핵심 코드:
 \`\`\`ts
 // 리뷰 요청값을 서버 분석 요청으로 전달
 const detail = await analyzeMutation.mutateAsync({
@@ -87,7 +84,6 @@ const detail = await analyzeMutation.mutateAsync({
 
 #### 단계 2. diff 분석과 리뷰 저장 (서비스 함수: analyzeAndSave)
 
-핵심 코드:
 \`\`\`ts
 // diff 수집부터 리뷰 저장까지 서버에서 한 번에 처리
 const diff = await this.fetchDiff(source.diffUrl)
