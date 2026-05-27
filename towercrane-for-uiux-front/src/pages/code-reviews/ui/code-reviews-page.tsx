@@ -115,6 +115,11 @@ const reviewSectionOptions: Array<{ value: CodeReviewSection; label: string }> =
 ]
 
 const repositoryStorageKey = 'towercrane.codeReview.repositoryUrl'
+const testCodeReviewRepositoryUrl = 'https://github.com/dota-pilot1/towercrane-for-uiux'
+const testCodeReviewCommitUrl =
+  'https://github.com/dota-pilot1/towercrane-for-uiux/commit/0620b8ec376e0ee19379eabf2c063628d140ed6a'
+const testCodeReviewGoal = '프로토 타입 워크 스페이스 수정 관련 로직'
+const testCodeReviewSections = reviewSectionOptions.map((option) => option.value)
 
 function getCommitUrlInputError(value: string) {
   const trimmed = value.trim()
@@ -219,6 +224,22 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
     })
   }
 
+  function fillTestReviewInput() {
+    setRepositoryUrl(testCodeReviewRepositoryUrl)
+    setRepositoryValidation({
+      valid: true,
+      repository: 'dota-pilot1/towercrane-for-uiux',
+      repositoryUrl: testCodeReviewRepositoryUrl,
+      defaultBranch: 'main',
+      message: '테스트 저장소가 입력되었습니다.',
+    })
+    setRepositoryError(null)
+    setSourceUrl(testCodeReviewCommitUrl)
+    setReviewGoal(testCodeReviewGoal)
+    setSelectedSections(testCodeReviewSections)
+    setAnalyzeError(null)
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
       <PageHeader
@@ -306,22 +327,33 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
               </p>
             ) : null}
           </div>
-          <Button
-            type="submit"
-            disabled={
-              !sourceUrl.trim() ||
-              Boolean(sourceUrlError) ||
-              selectedSections.length === 0 ||
-              analyzeMutation.isPending
-            }
-          >
-            {analyzeMutation.isPending ? (
-              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-            ) : (
-              <FileCode2 className="mr-1.5 size-3.5" />
-            )}
-            분석 후 저장
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={fillTestReviewInput}
+              disabled={analyzeMutation.isPending}
+            >
+              <Code2 className="mr-1.5 size-3.5" />
+              테스트
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                !sourceUrl.trim() ||
+                Boolean(sourceUrlError) ||
+                selectedSections.length === 0 ||
+                analyzeMutation.isPending
+              }
+            >
+              {analyzeMutation.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <FileCode2 className="mr-1.5 size-3.5" />
+              )}
+              분석 후 저장
+            </Button>
+          </div>
         </div>
         <label className="mt-3 block rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
           <span className="text-xs font-extrabold text-text-secondary">
