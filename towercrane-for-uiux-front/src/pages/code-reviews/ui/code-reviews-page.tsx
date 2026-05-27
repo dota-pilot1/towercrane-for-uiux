@@ -21,13 +21,11 @@ import {
   useCodeReviewList,
   useDeleteCodeReview,
   useUpdateCodeReview,
-  useValidateCodeReviewRepository,
 } from '../../../entities/code-review/api/code-review-api'
 import type {
   CodeReviewFinding,
   CodeReviewRiskLevel,
   CodeReviewSection,
-  CodeReviewRepositoryValidation,
 } from '../../../entities/code-review/model/types'
 import { Button } from '../../../shared/ui/button'
 import { Mermaid } from '../../../shared/ui/mermaid'
@@ -114,12 +112,10 @@ const reviewSectionOptions: Array<{ value: CodeReviewSection; label: string }> =
   { value: 'diagram', label: '6. mmd' },
 ]
 
-const repositoryStorageKey = 'towercrane.codeReview.repositoryUrl'
-const testCodeReviewRepositoryUrl = 'https://github.com/dota-pilot1/towercrane-for-uiux'
 const testCodeReviewCommitUrl =
   'https://github.com/dota-pilot1/towercrane-for-uiux/commit/0620b8ec376e0ee19379eabf2c063628d140ed6a'
 const testCodeReviewGoal = '프로토 타입 워크 스페이스 수정 관련 로직'
-const testCodeReviewSections = reviewSectionOptions.map((option) => option.value)
+const testCodeReviewSections = reviewSectionOptions.map((o) => o.value)
 
 function getCommitUrlInputError(value: string) {
   const trimmed = value.trim()
@@ -207,56 +203,19 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   const [page, setPage] = useState(1)
   const [sourceUrl, setSourceUrl] = useState('')
   const [reviewGoal, setReviewGoal] = useState('')
-  const [repositoryUrl, setRepositoryUrl] = useState('')
-  const [repositoryValidation, setRepositoryValidation] =
-    useState<CodeReviewRepositoryValidation | null>(null)
-  const [repositoryError, setRepositoryError] = useState<string | null>(null)
   const [selectedSections, setSelectedSections] =
     useState<CodeReviewSection[]>(defaultReviewSections)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const listQuery = useCodeReviewList({ q, page, pageSize: 20 })
   const detailQuery = useCodeReviewDetail(reviewId)
   const analyzeMutation = useAnalyzeCodeReview()
-  const validateRepositoryMutation = useValidateCodeReviewRepository()
   const sourceUrlError = getCommitUrlInputError(sourceUrl)
 
   useEffect(() => {
     setPage(1)
   }, [q])
 
-  useEffect(() => {
-    const savedRepository = window.localStorage.getItem(repositoryStorageKey)
-    if (!savedRepository) return
-    setRepositoryUrl(savedRepository)
-    void validateRepository(savedRepository, false)
-  }, [])
-
   const selectedId = reviewId ?? listQuery.data?.items[0]?.id ?? null
-
-  async function validateRepository(value = repositoryUrl, persist = true) {
-    const nextValue = value.trim()
-    if (!nextValue) {
-      setRepositoryValidation(null)
-      setRepositoryError('저장소 주소를 입력하세요.')
-      return
-    }
-
-    setRepositoryError(null)
-    try {
-      const result = await validateRepositoryMutation.mutateAsync(nextValue)
-      setRepositoryValidation(result)
-      setRepositoryUrl(result.repositoryUrl)
-      if (result.valid && persist) {
-        window.localStorage.setItem(repositoryStorageKey, result.repositoryUrl)
-      }
-      if (!result.valid) setRepositoryError(result.message)
-    } catch (error) {
-      setRepositoryValidation(null)
-      setRepositoryError(
-        error instanceof Error ? error.message : '저장소 확인에 실패했습니다.',
-      )
-    }
-  }
 
   async function analyze(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -268,7 +227,6 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
     try {
       const detail = await analyzeMutation.mutateAsync({
         sourceUrl,
-        repositoryUrl: repositoryValidation?.valid ? repositoryValidation.repositoryUrl : undefined,
         reviewGoal: reviewGoal.trim() || undefined,
         sections: selectedSections,
       })
@@ -289,15 +247,6 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   }
 
   function fillTestReviewInput() {
-    setRepositoryUrl(testCodeReviewRepositoryUrl)
-    setRepositoryValidation({
-      valid: true,
-      repository: 'dota-pilot1/towercrane-for-uiux',
-      repositoryUrl: testCodeReviewRepositoryUrl,
-      defaultBranch: 'main',
-      message: '테스트 저장소가 입력되었습니다.',
-    })
-    setRepositoryError(null)
     setSourceUrl(testCodeReviewCommitUrl)
     setReviewGoal(testCodeReviewGoal)
     setSelectedSections(testCodeReviewSections)
@@ -314,61 +263,29 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[420px_minmax(0,1fr)]">
         {/* 왼쪽: 입력 폼 + 목록 */}
         <section className="flex min-h-0 flex-col rounded-md border border-surface-border bg-surface-raised">
+          {/* 패널 헤더 */}
+          <div className="flex shrink-0 items-center justify-between border-b border-surface-border-soft px-4 py-2.5">
+            <div className="flex items-center gap-2 text-xs font-extrabold text-text-primary">
+              <FileCode2 className="size-4 text-brand-primary" />
+              코드 리뷰 분석
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={fillTestReviewInput}
+              disabled={analyzeMutation.isPending}
+            >
+              <Code2 className="mr-1.5 size-3.5" />
+              테스트
+            </Button>
+          </div>
+
           {/* 입력 폼 */}
           <form
             onSubmit={analyze}
             className="shrink-0 border-b border-surface-border-soft p-4"
           >
-            <div className="mb-3 rounded-md border border-surface-border-soft bg-surface-muted p-3">
-              <div className="flex items-center gap-2">
-                <GitPullRequest className="size-4 shrink-0 text-brand-primary" />
-                <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-raised px-3">
-                  <input
-                    value={repositoryUrl}
-                    onChange={(event) => {
-                      setRepositoryUrl(event.target.value)
-                      setRepositoryValidation(null)
-                      setRepositoryError(null)
-                    }}
-                    className="min-w-0 flex-1 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted"
-                    placeholder="https://github.com/owner/repo"
-                    disabled={validateRepositoryMutation.isPending}
-                  />
-                </label>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void validateRepository()}
-                  disabled={!repositoryUrl.trim() || validateRepositoryMutation.isPending}
-                >
-                  {validateRepositoryMutation.isPending ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <Check className="size-3.5" />
-                  )}
-                </Button>
-              </div>
-              {repositoryValidation?.valid || repositoryError ? (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold">
-                  {repositoryValidation?.valid ? (
-                    <>
-                      <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-brand-primary">
-                        {repositoryValidation.repository}
-                      </span>
-                      {repositoryValidation.defaultBranch ? (
-                        <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-0.5 text-text-secondary">
-                          {repositoryValidation.defaultBranch}
-                        </span>
-                      ) : null}
-                    </>
-                  ) : (
-                    <span className="text-danger-500">{repositoryError}</span>
-                  )}
-                </div>
-              ) : null}
-            </div>
-
             <label className="flex h-10 min-w-0 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3">
               <GitPullRequest className="size-4 shrink-0 text-text-muted" />
               <input
@@ -420,36 +337,24 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
               })}
             </div>
 
-            <div className="mt-3 flex items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={fillTestReviewInput}
-                disabled={analyzeMutation.isPending}
-              >
-                <Code2 className="mr-1.5 size-3.5" />
-                테스트
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                className="flex-1"
-                disabled={
-                  !sourceUrl.trim() ||
-                  Boolean(sourceUrlError) ||
-                  selectedSections.length === 0 ||
-                  analyzeMutation.isPending
-                }
-              >
-                {analyzeMutation.isPending ? (
-                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                ) : (
-                  <FileCode2 className="mr-1.5 size-3.5" />
-                )}
-                분석 후 저장
-              </Button>
-            </div>
+            <Button
+              type="submit"
+              size="sm"
+              className="mt-3 w-full"
+              disabled={
+                !sourceUrl.trim() ||
+                Boolean(sourceUrlError) ||
+                selectedSections.length === 0 ||
+                analyzeMutation.isPending
+              }
+            >
+              {analyzeMutation.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <FileCode2 className="mr-1.5 size-3.5" />
+              )}
+              분석 후 저장
+            </Button>
             {analyzeError ? (
               <p className="mt-2 text-xs font-semibold text-danger-500">{analyzeError}</p>
             ) : null}
