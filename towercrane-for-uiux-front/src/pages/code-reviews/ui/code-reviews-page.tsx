@@ -275,7 +275,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
               value={sourceUrl}
               onChange={(event) => setSourceUrl(event.target.value)}
               className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
-              placeholder="https://github.com/owner/repo/pull/123 또는 commit/sha"
+              placeholder="https://github.com/owner/repo/commit/sha"
               disabled={analyzeMutation.isPending}
             />
           </label>
@@ -409,7 +409,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
                 <Code2 className="mx-auto size-8 text-text-muted" />
                 <p className="mt-3 text-sm font-bold text-text-primary">저장된 코드 리뷰가 없습니다.</p>
                 <p className="mt-1 text-xs text-text-secondary">
-                  GitHub URL을 입력하면 diff 분석 후 리뷰가 저장됩니다.
+                  GitHub commit URL을 입력하면 변경 파일 분석 후 리뷰가 저장됩니다.
                 </p>
               </div>
             )}

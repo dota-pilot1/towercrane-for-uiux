@@ -664,6 +664,14 @@ export class CodeReviewsService {
               repositoryUrl,
               sourceType: source.sourceType,
               sourceUrl: source.sourceUrl,
+              reviewUnit:
+                source.sourceType === 'commit'
+                  ? 'single_commit'
+                  : source.sourceType,
+              sourceInstruction:
+                source.sourceType === 'commit'
+                  ? '이 요청은 단일 커밋 리뷰다. reviewedFiles는 해당 커밋 diff에서 파싱한 변경 파일 목록이므로 파일 구조, 주요 프로세스, 주요 로직은 이 변경 파일과 reviewGoal을 기준으로만 작성한다.'
+                  : '이 요청은 commit이 아닌 GitHub diff 리뷰다. reviewedFiles에서 기능 단위를 먼저 좁힌 뒤 reviewGoal과 직접 관련된 변경만 중심으로 작성한다.',
               reviewGoal,
               reviewInstruction:
                 reviewGoal.length > 0
@@ -698,7 +706,7 @@ export class CodeReviewsService {
                   'raw Mermaid only, must start with flowchart TD, no code fence and no prose.',
               },
               reviewFocus: [
-                '파일 구조 도식화: 설명문이 아니라 실제 변경 파일의 폴더 트리를 코드 블록에 넣을 수 있는 plain text tree로 작성',
+                '파일 구조 도식화: reviewedFiles에 포함된 실제 변경 파일만 plain text folder tree로 작성',
                 '주요 프로세스: 코드 없이 대략적인 처리 흐름만 작성',
                 '주요 로직: 함수/모듈명, 코드, 설명 순서로만 작성. 별도 단계명이나 파일 설명을 늘리지 않음',
                 '주요 문법: 기술 이름, 관련 코드, 보충 설명 순서로만 작성. React Query, Zod, NestJS, Drizzle처럼 특이한 문법이 있을 때만 작성. import/type-only 선언 금지',
@@ -1836,7 +1844,7 @@ export class CodeReviewsService {
       path.includes('/database/') || path.includes('/data/'),
     );
 
-    const lines = ['flowchart TD', '  A["GitHub URL 입력"] --> B["diff 수집"]'];
+    const lines = ['flowchart TD', '  A["commit URL 입력"] --> B["커밋 diff 수집"]'];
 
     if (hasServer) {
       lines.push(

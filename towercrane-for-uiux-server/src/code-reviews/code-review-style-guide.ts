@@ -49,7 +49,7 @@ body는 반드시 Mermaid 원문만 작성한다. 첫 줄은 flowchart TD여야 
 ## 좋은 예시
 
 ### 2. 주요 프로세스
-1. 사용자가 GitHub compare URL과 리뷰 관점을 선택한다.
+1. 사용자가 GitHub commit URL과 리뷰 관점을 선택한다.
 2. 프론트 API 계층이 분석 요청을 서버로 보낸다.
 3. 서버가 diff와 변경 파일 컨텍스트를 수집한다.
 4. 리뷰 항목을 정규화해 code_reviews에 저장한다.
@@ -62,10 +62,11 @@ body는 반드시 Mermaid 원문만 작성한다. 첫 줄은 flowchart TD여야 
 const detail = await analyzeMutation.mutateAsync({
   sourceUrl,
   repositoryUrl,
+  reviewGoal,
   sections: selectedSections,
 })
 \`\`\`
-설명: 화면 입력값을 서버 분석 요청으로 넘기는 진입점이다.
+설명: 커밋 URL, 저장소 URL, 리뷰할 로직 설명을 서버 분석 요청으로 넘기는 진입점이다.
 
 2. 함수/모듈: analyzeAndSave
 코드:
@@ -74,7 +75,7 @@ const diff = await this.fetchDiff(source.diffUrl)
 const analysis = await this.reviewDiff(source, reviewedFiles, excludedFiles, input.sections)
 this.db.insert(codeReviewsTable).values(row).run()
 \`\`\`
-설명: diff 수집, 리뷰 생성, 저장을 한 흐름으로 연결한다.
+설명: 커밋 diff 수집, 변경 파일 파싱, 리뷰 생성, 저장을 한 흐름으로 연결한다.
 
 ### 4. 주요 문법
 특이 문법 없음.
