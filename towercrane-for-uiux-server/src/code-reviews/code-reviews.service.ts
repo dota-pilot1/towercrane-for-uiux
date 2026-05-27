@@ -60,6 +60,7 @@ type CodeReviewAnalysis = {
 
 type CodeReviewFindingCategory = NonNullable<CodeReviewFinding['category']>;
 type CodeReviewSection = AnalyzeCodeReviewInput['sections'][number];
+type ReviewIntent = 'delete' | 'update' | 'create' | 'navigation' | 'generic';
 
 const MAX_DIFF_CHARS = 80_000;
 const MAX_FILES = 30;
@@ -978,6 +979,7 @@ export class CodeReviewsService {
     sections: CodeReviewSection[],
   ): CodeReviewFinding[] {
     if (!sections.includes('diagram')) return findings;
+    const intent = this.detectReviewIntent(reviewedFiles);
 
     const diagramFinding: CodeReviewFinding = {
       category: 'diagram',
@@ -987,7 +989,9 @@ export class CodeReviewsService {
       filePath: null,
       lineNumber: null,
       recommendation:
-        '이 흐름도를 기준으로 사용자 입력, API 처리, 저장, 화면 반영 단계의 책임 경계를 확인하세요.',
+        intent === 'delete'
+          ? '이 흐름도를 기준으로 삭제 권한, 삭제 차단 조건, mutation 성공 후 목록 갱신이 이어지는지 확인하세요.'
+          : '이 흐름도를 기준으로 사용자 입력, API 처리, 저장, 화면 반영 단계의 책임 경계를 확인하세요.',
     };
     const withoutDiagram = findings.filter(
       (finding) => finding.category !== 'diagram',
@@ -1002,6 +1006,7 @@ export class CodeReviewsService {
     sections: CodeReviewSection[],
   ): CodeReviewFinding[] {
     if (!sections.includes('process')) return findings;
+    const intent = this.detectReviewIntent(reviewedFiles);
 
     const processFinding: CodeReviewFinding = {
       category: 'process',
@@ -1011,7 +1016,9 @@ export class CodeReviewsService {
       filePath: this.pickTopChangedFiles(reviewedFiles, 1)[0]?.path ?? null,
       lineNumber: null,
       recommendation:
-        '입력, 분석, 저장, 조회, 화면 반영 흐름이 실제 사용자 경로에서 끊기지 않는지 확인하세요.',
+        intent === 'delete'
+          ? '삭제 버튼 노출, 확인 다이얼로그, 삭제 차단 조건, mutation 성공 후 목록 갱신이 실제 화면에서 끊기지 않는지 확인하세요.'
+          : '입력, 분석, 저장, 조회, 화면 반영 흐름이 실제 사용자 경로에서 끊기지 않는지 확인하세요.',
     };
     const withoutProcess = findings.filter(
       (finding) => finding.category !== 'process',
@@ -1026,6 +1033,7 @@ export class CodeReviewsService {
     sections: CodeReviewSection[],
   ): CodeReviewFinding[] {
     if (!sections.includes('code')) return findings;
+    const intent = this.detectReviewIntent(reviewedFiles);
 
     const logicFinding: CodeReviewFinding = {
       category: 'code',
@@ -1035,7 +1043,9 @@ export class CodeReviewsService {
       filePath: this.pickTopChangedFiles(reviewedFiles, 1)[0]?.path ?? null,
       lineNumber: null,
       recommendation:
-        '실행 흐름의 각 함수가 입력 검증, 외부 호출, 상태 갱신, 저장 책임을 과도하게 함께 갖지 않는지 확인하세요.',
+        intent === 'delete'
+          ? '삭제 확인 UI와 실제 delete mutation 사이에 권한/차단 조건이 중복되거나 빠지지 않았는지 확인하세요.'
+          : '실행 흐름의 각 함수가 입력 검증, 외부 호출, 상태 갱신, 저장 책임을 과도하게 함께 갖지 않는지 확인하세요.',
     };
     const withoutLogic = findings.filter((finding) => finding.category !== 'code');
 
@@ -1224,6 +1234,11 @@ export class CodeReviewsService {
     if (candidates.length === 0) {
       return '리뷰 가능한 변경 파일이 없어 단계별 주요 로직을 만들 수 없습니다.';
     }
+    const intent = this.detectReviewIntent(files);
+    if (intent === 'delete') {
+      const deleteLogic = this.formatDeleteLogicWalkthrough(candidates);
+      if (deleteLogic) return deleteLogic;
+    }
 
     return candidates
       .map((file, index) => {
@@ -1240,17 +1255,88 @@ export class CodeReviewsService {
           `\`\`\`${this.languageForPath(file.path)}`,
           snippet,
           '```',
-          `설명: ${this.logicExplanation(file.path)}`,
+          `설명: ${this.logicExplanation(file.path, intent, symbol)}`,
         ].join('\n');
       })
       .join('\n\n');
   }
 
+  private formatDeleteLogicWalkthrough(files: ParsedDiffFile[]) {
+    const blocks: string[] = [];
+    const cardFile = files.find((file) =>
+      /DeleteWorkspaceDialog|Trash2|canManage/.test(this.extractAddedText(file.diff)),
+    );
+    if (!cardFile) return null;
+
+    const cardSnippet = this.extractReviewSnippet(
+      cardFile,
+      [/canManage|DeleteWorkspaceDialog|삭제 권한 없음|Trash2/],
+      18,
+    );
+    blocks.push(
+      [
+        '1. 함수/모듈: PrototypeWorkspaceCard',
+        '코드:',
+        `\`\`\`${this.languageForPath(cardFile.path)}`,
+        cardSnippet,
+        '```',
+        '설명: 카드에서 소유자 여부를 판단해 삭제 다이얼로그를 노출하고, 권한이 없으면 비활성 삭제 버튼으로 상태를 알려주는 로직입니다.',
+      ].join('\n'),
+    );
+
+    const dialogSnippet = this.extractReviewSnippet(
+      cardFile,
+      [/function\s+DeleteWorkspaceDialog|const\s+onDelete|deleteWorkspace\.mutateAsync|hasCategories/],
+      14,
+    );
+    if (dialogSnippet && dialogSnippet !== cardSnippet) {
+      blocks.push(
+        [
+          '2. 함수/모듈: DeleteWorkspaceDialog',
+          '코드:',
+          `\`\`\`${this.languageForPath(cardFile.path)}`,
+          dialogSnippet,
+          '```',
+          '설명: 삭제 확인 다이얼로그의 열림 상태, 카테고리 존재 시 삭제 차단, delete mutation 실행, 실패 메시지 표시를 담당합니다.',
+        ].join('\n'),
+      );
+    }
+
+    return blocks.join('\n\n');
+  }
+
   private formatProcessOverview(files: ParsedDiffFile[]) {
+    const intent = this.detectReviewIntent(files);
+    if (intent === 'delete') {
+      return [
+        '1. 워크스페이스 카드에서 삭제 액션을 노출합니다.',
+        '2. 소유자 권한이 없으면 삭제 버튼을 비활성 상태로 표시합니다.',
+        '3. 삭제 버튼을 누르면 확인 다이얼로그를 열고 삭제 가능 조건을 확인합니다.',
+        '4. 카테고리가 남아 있으면 삭제 실행을 막고 안내 문구를 보여줍니다.',
+        '5. 삭제 가능하면 delete mutation을 실행하고 성공 후 목록을 갱신합니다.',
+      ].join('\n');
+    }
+    if (intent === 'update') {
+      return [
+        '1. 화면에서 수정 액션을 선택합니다.',
+        '2. 기존 값을 다이얼로그나 폼에 채웁니다.',
+        '3. 입력값 검증 후 update mutation을 실행합니다.',
+        '4. 성공 시 상세/목록 캐시를 갱신하고 변경 내용을 화면에 반영합니다.',
+      ].join('\n');
+    }
+    if (intent === 'create') {
+      return [
+        '1. 화면에서 생성 액션을 선택합니다.',
+        '2. 생성 폼 입력값을 검증합니다.',
+        '3. create mutation을 실행해 새 데이터를 저장합니다.',
+        '4. 성공 시 폼을 닫고 목록 캐시를 갱신합니다.',
+      ].join('\n');
+    }
+
     const changedPaths = files.map((file) => file.path);
     const steps = [
       changedPaths.some((path) => path.includes('/pages/'))
-        ? '1. 화면에서 사용자가 리뷰 URL과 관점을 선택합니다.'
+        ? '1. 화면에서 사용자가 변경된 기능을 실행합니다.'
         : null,
       changedPaths.some((path) => path.includes('/api/'))
         ? '2. 프론트 API 계층이 분석 요청과 목록/상세 조회를 서버 계약으로 연결합니다.'
@@ -1268,7 +1354,7 @@ export class CodeReviewsService {
 
     return steps.length > 0
       ? steps.join('\n')
-      : '1. 변경 파일을 기준으로 입력, 처리, 저장, 표시 흐름을 확인합니다.';
+      : '1. 변경 파일을 기준으로 사용자 액션, 상태 변경, 서버 요청, 화면 반영 흐름을 확인합니다.';
   }
 
   private formatSyntaxWalkthrough(files: ParsedDiffFile[]) {
@@ -1608,7 +1694,25 @@ export class CodeReviewsService {
     );
   }
 
-  private logicExplanation(path: string) {
+  private logicExplanation(path: string, intent: ReviewIntent, symbol: string) {
+    if (intent === 'delete') {
+      if (/Delete|delete|onDelete|Trash/.test(symbol)) {
+        return '삭제 확인 다이얼로그의 열림 상태, 삭제 가능 조건, delete mutation 호출, 실패 메시지를 한 흐름으로 묶는 핵심 로직입니다.';
+      }
+      if (path.includes('/pages/')) {
+        return '카드에서 삭제 액션의 노출 조건과 열기 액션을 분리해, 카드 이동과 삭제 실행이 서로 충돌하지 않게 만드는 로직입니다.';
+      }
+      if (path.includes('/api/')) {
+        return '삭제 요청을 서버 계약으로 감싸고 성공 후 목록 캐시를 갱신하는 경계 로직입니다.';
+      }
+      return '삭제 기능에서 사용자 확인, 요청 실행, 화면 갱신 책임이 이어지는지 확인해야 하는 로직입니다.';
+    }
+    if (intent === 'update') {
+      return '수정 기능에서 기존 값 초기화, 입력 검증, update mutation, 성공 후 화면 갱신이 끊기지 않는지 확인해야 하는 로직입니다.';
+    }
+    if (intent === 'create') {
+      return '생성 기능에서 입력값 검증, create mutation, 성공 후 폼 초기화와 목록 갱신이 이어지는지 확인해야 하는 로직입니다.';
+    }
     if (path.includes('/api/')) {
       return '요청 함수는 URL, payload, 응답 타입을 한 곳에서 고정하므로 화면 컴포넌트가 서버 계약을 직접 알 필요가 줄어듭니다.';
     }
@@ -1693,6 +1797,22 @@ export class CodeReviewsService {
   }
 
   private buildReviewMermaidFlowchart(files: ParsedDiffFile[]) {
+    const intent = this.detectReviewIntent(files);
+    if (intent === 'delete') {
+      return [
+        'flowchart TD',
+        '  A["워크스페이스 카드"] --> B{"소유자 권한인가?"}',
+        '  B -- "아니오" --> C["삭제 버튼 비활성"]',
+        '  B -- "예" --> D["삭제 버튼 표시"]',
+        '  D --> E["삭제 확인 다이얼로그 열기"]',
+        '  E --> F{"카테고리가 남아 있는가?"}',
+        '  F -- "예" --> G["삭제 차단 안내"]',
+        '  F -- "아니오" --> H["delete mutation 실행"]',
+        '  H --> I["다이얼로그 닫기"]',
+        '  I --> J["워크스페이스 목록 갱신"]',
+      ].join('\n');
+    }
+
     const changedPaths = files.map((file) => file.path);
     const hasFrontend = changedPaths.some((path) =>
       path.includes('towercrane-for-uiux-front/src/'),
@@ -1732,6 +1852,26 @@ export class CodeReviewsService {
     }
 
     return lines.join('\n');
+  }
+
+  private detectReviewIntent(files: ParsedDiffFile[]): ReviewIntent {
+    const addedText = files.map((file) => this.extractAddedText(file.diff)).join('\n');
+    const pathText = files.map((file) => file.path).join('\n');
+    const text = `${pathText}\n${addedText}`;
+
+    if (/useDelete|delete[A-Z]|\bDELETE\b|Trash2|onDelete|삭제/.test(text)) {
+      return 'delete';
+    }
+    if (/useUpdate|update[A-Z]|\bPATCH\b|Pencil|onSubmit|수정/.test(text)) {
+      return 'update';
+    }
+    if (/useCreate|create[A-Z]|\bPOST\b|Plus|생성/.test(text)) {
+      return 'create';
+    }
+    if (/navigate\(|onOpen|ArrowRight|라우트|route/i.test(text)) {
+      return 'navigation';
+    }
+    return 'generic';
   }
 
   private extractAddedText(diff: string) {
