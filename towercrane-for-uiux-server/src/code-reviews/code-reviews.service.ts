@@ -492,7 +492,7 @@ export class CodeReviewsService {
                   'string[] for auxiliary verification only. Do not make missing tests the main review result.',
               },
               reviewFocus: [
-                '파일 구조 도식화: 변경된 파일을 기능/레이어별 트리로 요약',
+                '파일 구조 도식화: 설명문이 아니라 실제 변경 파일의 폴더 트리를 코드 블록에 넣을 수 있는 plain text tree로 작성',
                 '주요 프로세스: 사용자/운영 플로우가 어디서 시작해 어디에 저장·표시되는지 평가',
                 '주요 로직: 핵심 서비스, API, 프론트 상태/라우팅 코드의 계약과 책임 평가',
                 '주요 문법: TypeScript, React, NestJS, Zod/DB 사용 방식의 적절성 평가',
@@ -705,7 +705,7 @@ export class CodeReviewsService {
       }
       return selectedSectionSet.has(category as CodeReviewSection);
     };
-    const findings = Array.isArray(input.findings)
+    let findings: CodeReviewFinding[] = Array.isArray(input.findings)
       ? input.findings
           .filter((finding) => finding && typeof finding === 'object')
           .map((finding) => ({
@@ -736,6 +736,7 @@ export class CodeReviewsService {
       reviewedFiles,
       excludedFiles,
     );
+    findings = this.ensureStructureFinding(findings, reviewedFiles, sections);
 
     return {
       title:
@@ -756,6 +757,30 @@ export class CodeReviewsService {
           : fallback.testGaps,
       model,
     };
+  }
+
+  private ensureStructureFinding(
+    findings: CodeReviewFinding[],
+    reviewedFiles: ParsedDiffFile[],
+    sections: CodeReviewSection[],
+  ): CodeReviewFinding[] {
+    if (!sections.includes('structure')) return findings;
+
+    const structureFinding: CodeReviewFinding = {
+      category: 'structure',
+      severity: 'low',
+      title: '1. 파일 구조 도식화',
+      body: this.formatChangedFileTree(reviewedFiles),
+      filePath: null,
+      lineNumber: null,
+      recommendation:
+        '이 트리를 기준으로 변경 범위가 기능 단위로 모였는지, 프론트/서버/DB 연결 파일이 한 흐름으로 묶이는지 확인하세요.',
+    };
+    const withoutStructure = findings.filter(
+      (finding) => finding.category !== 'structure',
+    );
+
+    return [structureFinding, ...withoutStructure];
   }
 
   private buildStructuralReviewFindings(
@@ -924,26 +949,48 @@ export class CodeReviewsService {
   }
 
   private formatChangedFileTree(files: ParsedDiffFile[]) {
-    const groups = new Map<string, string[]>();
-    for (const file of files) {
-      const parts = file.path.split('/');
-      const group = parts.slice(0, Math.min(parts.length - 1, 4)).join('/');
-      const name = parts.at(-1) ?? file.path;
-      const current = groups.get(group) ?? [];
-      current.push(`${name} (+${file.additions}/-${file.deletions})`);
-      groups.set(group, current);
+    type TreeNode = {
+      children: Map<string, TreeNode>;
+      file: ParsedDiffFile | null;
+    };
+    const root: TreeNode = { children: new Map(), file: null };
+
+    for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
+      const parts = file.path.split('/').filter(Boolean);
+      let current = root;
+      for (const [index, part] of parts.entries()) {
+        const next = current.children.get(part) ?? {
+          children: new Map<string, TreeNode>(),
+          file: null,
+        };
+        if (index === parts.length - 1) {
+          next.file = file;
+        }
+        current.children.set(part, next);
+        current = next;
+      }
     }
 
-    return Array.from(groups.entries())
-      .slice(0, 10)
-      .map(([group, names]) => {
-        const children = names
-          .slice(0, 6)
-          .map((name) => `  - ${name}`)
-          .join('\n');
-        return `${group || '.'}\n${children}`;
-      })
-      .join('\n');
+    const render = (node: TreeNode, prefix = ''): string[] => {
+      const entries = Array.from(node.children.entries()).sort((a, b) => {
+        const aIsFile = Boolean(a[1].file);
+        const bIsFile = Boolean(b[1].file);
+        if (aIsFile !== bIsFile) return aIsFile ? 1 : -1;
+        return a[0].localeCompare(b[0]);
+      });
+
+      return entries.flatMap(([name, child], index) => {
+        const isLast = index === entries.length - 1;
+        const connector = isLast ? '`-- ' : '|-- ';
+        const nextPrefix = `${prefix}${isLast ? '    ' : '|   '}`;
+        const label = child.file
+          ? `${name} (+${child.file.additions}/-${child.file.deletions})`
+          : name;
+        return [`${prefix}${connector}${label}`, ...render(child, nextPrefix)];
+      });
+    };
+
+    return ['.', ...render(root)].join('\n');
   }
 
   private extractAddedText(diff: string) {
