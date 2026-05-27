@@ -725,7 +725,7 @@ function FindingBody({ finding }: { finding: CodeReviewFinding }) {
 
 function HighlightedMarkdownBody({ value }: { value: string }) {
   return (
-    <div className="mt-3 space-y-3 text-sm leading-6 text-text-secondary">
+    <div className="mt-3 space-y-4 text-sm leading-6 text-text-secondary">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
@@ -747,7 +747,7 @@ function HighlightedMarkdownBody({ value }: { value: string }) {
           ),
           li: ({ children }) => <li className="pl-1">{children}</li>,
           pre: ({ children }) => (
-            <pre className="overflow-x-auto whitespace-pre rounded-md border border-surface-border-soft bg-surface-raised px-3 py-3 font-mono text-xs leading-5 text-text-secondary">
+            <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-surface-border-soft bg-surface-raised px-3 py-3 font-mono text-xs leading-5 text-text-secondary">
               {children}
             </pre>
           ),

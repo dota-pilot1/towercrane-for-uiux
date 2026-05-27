@@ -5,7 +5,8 @@ export const codeReviewStyleGuide = `
 - 리뷰는 변경 diff를 이해하기 위한 작업 노트처럼 작성한다.
 - reviewGoal이 있으면 그 기능 흐름을 최우선 기준으로 삼고, 직접 관련 없는 일반론은 쓰지 않는다.
 - 주요 프로세스는 코드 없이 전체 흐름만 설명한다.
-- 주요 로직은 함수/모듈명, 코드, 설명 순서로만 단순하게 보여준다.
+- 주요 로직은 역할 타입, 이름, 핵심 코드, 설명 순서로만 단순하게 보여준다.
+- 주요 로직 코드블록에는 의도를 읽을 수 있는 짧은 주석을 1~2개 넣는다.
 - 주요 문법은 정말 특이하거나 난이도 있는 문법이 있을 때만 작성한다.
 - import 목록, 단순 type/interface 선언, 일반적인 TypeScript 안정성 설명은 주요 문법으로 뽑지 않는다.
 - 테스트 부족만 주요 리뷰 결과로 만들지 않는다.
@@ -21,23 +22,27 @@ export const codeReviewStyleGuide = `
 ### 3. 주요 로직
 아래 형식을 반복한다.
 
-1. 함수/모듈: 함수명 또는 모듈명
-코드:
+단계 1. 함수 컴포넌트: 함수명
+
+핵심 코드:
 \`\`\`ts
+// 이 함수가 맡는 핵심 책임
 실제 핵심 코드 3~12줄
 \`\`\`
+
 설명: 해당 코드가 맡는 역할을 짧게 설명한다.
 
 ### 4. 주요 문법
 특이 문법이 없으면 정확히 "특이 문법 없음."만 작성한다.
 특이 문법이 있으면 아래 형식을 반복한다.
 
-1. 기술 이름
-TanStack Query:
+문법 1. TanStack Query
+
 관련 코드:
 \`\`\`ts
 실제 핵심 코드 3~10줄
 \`\`\`
+
 보충 설명: 이 문법이 왜 여기서 중요한지 설명한다.
 
 ### 5. 아키텍처/클린코드 평가
@@ -56,9 +61,11 @@ body는 반드시 Mermaid 원문만 작성한다. 첫 줄은 flowchart TD여야 
 5. 목록/상세 화면에서 저장된 리뷰를 확인한다.
 
 ### 3. 주요 로직
-1. 함수/모듈: analyze
-코드:
+단계 1. 함수 컴포넌트: analyze
+
+핵심 코드:
 \`\`\`ts
+// 리뷰 요청값을 서버 분석 요청으로 전달
 const detail = await analyzeMutation.mutateAsync({
   sourceUrl,
   repositoryUrl,
@@ -66,15 +73,19 @@ const detail = await analyzeMutation.mutateAsync({
   sections: selectedSections,
 })
 \`\`\`
+
 설명: 커밋 URL, 저장소 URL, 리뷰할 로직 설명을 서버 분석 요청으로 넘기는 진입점이다.
 
-2. 함수/모듈: analyzeAndSave
-코드:
+단계 2. 서비스 함수: analyzeAndSave
+
+핵심 코드:
 \`\`\`ts
+// diff 수집부터 리뷰 저장까지 서버에서 한 번에 처리
 const diff = await this.fetchDiff(source.diffUrl)
 const analysis = await this.reviewDiff(source, reviewedFiles, excludedFiles, input.sections)
 this.db.insert(codeReviewsTable).values(row).run()
 \`\`\`
+
 설명: 커밋 diff 수집, 변경 파일 파싱, 리뷰 생성, 저장을 한 흐름으로 연결한다.
 
 ### 4. 주요 문법

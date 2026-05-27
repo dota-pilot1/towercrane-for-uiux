@@ -1303,11 +1303,14 @@ export class CodeReviewsService {
         );
 
         return [
-          `${index + 1}. 함수/모듈: ${symbol}`,
-          '코드:',
+          `단계 ${index + 1}. ${this.logicSubjectLabel(symbol, file.path)}`,
+          '',
+          '핵심 코드:',
+          '',
           `\`\`\`${this.languageForPath(file.path)}`,
-          snippet,
+          this.withSnippetComment(snippet, this.logicCodeComment(file.path, intent, symbol)),
           '```',
+          '',
           `설명: ${this.logicExplanation(file.path, intent, symbol)}`,
         ].join('\n');
       })
@@ -1328,11 +1331,17 @@ export class CodeReviewsService {
     );
     blocks.push(
       [
-        '1. 함수/모듈: PrototypeWorkspaceCard',
-        '코드:',
+        '단계 1. 함수 컴포넌트: PrototypeWorkspaceCard',
+        '',
+        '핵심 코드:',
+        '',
         `\`\`\`${this.languageForPath(cardFile.path)}`,
-        cardSnippet,
+        this.withSnippetComment(
+          cardSnippet,
+          '소유자 권한을 기준으로 삭제 액션 노출 여부를 결정',
+        ),
         '```',
+        '',
         '설명: 카드에서 소유자 여부를 판단해 삭제 다이얼로그를 노출하고, 권한이 없으면 비활성 삭제 버튼으로 상태를 알려주는 로직입니다.',
       ].join('\n'),
     );
@@ -1345,11 +1354,17 @@ export class CodeReviewsService {
     if (dialogSnippet && dialogSnippet !== cardSnippet) {
       blocks.push(
         [
-          '2. 함수/모듈: DeleteWorkspaceDialog',
-          '코드:',
+          '단계 2. 함수 컴포넌트: DeleteWorkspaceDialog',
+          '',
+          '핵심 코드:',
+          '',
           `\`\`\`${this.languageForPath(cardFile.path)}`,
-          dialogSnippet,
+          this.withSnippetComment(
+            dialogSnippet,
+            '삭제 확인, 삭제 차단 조건, delete mutation 실행을 한 다이얼로그에서 처리',
+          ),
           '```',
+          '',
           '설명: 삭제 확인 다이얼로그의 열림 상태, 카테고리 존재 시 삭제 차단, delete mutation 실행, 실패 메시지 표시를 담당합니다.',
         ].join('\n'),
       );
@@ -1369,10 +1384,13 @@ export class CodeReviewsService {
 
     return [
       [
-        '1. 함수/모듈: PrototypeWorkspaceCard',
-        '코드:',
+        '단계 1. 함수 컴포넌트: PrototypeWorkspaceCard',
+        '',
+        '핵심 코드:',
+        '',
         `\`\`\`${language}`,
         [
+          '// 소유자에게만 수정/삭제 액션을 노출',
           "const canManage = workspace.role === 'owner'",
           '',
           '{canManage ? (',
@@ -1387,37 +1405,48 @@ export class CodeReviewsService {
           ')}',
         ].join('\n'),
         '```',
+        '',
         '설명: 카드에서 소유자 권한을 기준으로 수정 다이얼로그를 노출하고, 권한이 없으면 수정 버튼을 비활성 상태로 보여줍니다.',
       ].join('\n'),
       [
-        '2. 함수/모듈: EditWorkspaceDialog',
-        '코드:',
+        '단계 2. 함수 컴포넌트: EditWorkspaceDialog',
+        '',
+        '핵심 코드:',
+        '',
         `\`\`\`${language}`,
         [
+          '// 기존 워크스페이스 값을 폼 초기값으로 사용',
           "const [name, setName] = useState(workspace.name)",
           "const [description, setDescription] = useState(workspace.description ?? '')",
           'const updateWorkspace = useUpdatePrototypeWorkspace(workspace.id)',
           '',
+          '// 이름이 유효하고 실제 변경이 있을 때만 저장 허용',
           'const canSubmit =',
           '  name.trim().length >= 2 &&',
           '  (name.trim() !== workspace.name ||',
           "    description.trim() !== (workspace.description ?? ''))",
         ].join('\n'),
         '```',
+        '',
         '설명: 다이얼로그가 열릴 때 기존 값을 폼 상태로 옮기고, 이름 길이와 실제 변경 여부를 저장 조건으로 계산합니다.',
       ].join('\n'),
       [
-        '3. 함수/모듈: onSubmit',
-        '코드:',
+        '단계 3. 이벤트 핸들러: onSubmit',
+        '',
+        '핵심 코드:',
+        '',
         `\`\`\`${language}`,
         [
+          '// 정리된 값만 update mutation으로 전송',
           'await updateWorkspace.mutateAsync({',
           '  name: name.trim(),',
           '  description: description.trim() || null,',
           '})',
+          '// 저장 성공 후 다이얼로그 닫기',
           'setOpen(false)',
         ].join('\n'),
         '```',
+        '',
         '설명: 검증된 이름과 설명만 update mutation으로 보내고, 성공하면 다이얼로그를 닫습니다. 목록 갱신은 React Query 훅의 invalidateQueries가 담당합니다.',
       ].join('\n'),
     ].join('\n\n');
@@ -1488,12 +1517,14 @@ export class CodeReviewsService {
         const snippet = this.extractReviewSnippet(file, focus.patterns);
 
         return [
-          `${index + 1}. 기술 이름`,
-          `${focus.label}:`,
+          `문법 ${index + 1}. ${focus.label}`,
+          '',
           '관련 코드:',
+          '',
           `\`\`\`${this.languageForPath(file.path)}`,
           snippet,
           '```',
+          '',
           `보충 설명: ${focus.explanation}`,
         ].join('\n');
       })
@@ -1531,6 +1562,35 @@ export class CodeReviewsService {
         ? `큰 변경 파일(${largeFiles.map((file) => file.path).join(', ')})은 이후 훅/섹션/유틸로 분리할 여지가 있습니다.`
         : '파일 크기 관점에서 즉시 분리할 만한 신호는 크지 않습니다.',
     ].join('\n');
+  }
+
+  private logicSubjectLabel(symbol: string, path: string) {
+    if (/^use[A-Z]/.test(symbol)) return `커스텀 훅: ${symbol}`;
+    if (/Dialog|Card|Page|Panel|Section|List|Form/.test(symbol)) {
+      return `함수 컴포넌트: ${symbol}`;
+    }
+    if (path.includes('/api/')) return `API 모듈: ${symbol}`;
+    if (path.includes('/service') || path.includes('.service.')) return `서비스 함수: ${symbol}`;
+    if (/on[A-Z]|handle[A-Z]/.test(symbol)) return `이벤트 핸들러: ${symbol}`;
+
+    return `함수: ${symbol}`;
+  }
+
+  private logicCodeComment(path: string, intent: ReviewIntent, symbol: string) {
+    if (intent === 'update') return '리뷰 요청과 직접 관련된 수정 흐름의 핵심 코드';
+    if (intent === 'delete') return '리뷰 요청과 직접 관련된 삭제 흐름의 핵심 코드';
+    if (path.includes('/api/')) return '화면과 서버 계약을 연결하는 핵심 호출 코드';
+    if (path.includes('/pages/')) return '사용자 액션과 화면 상태를 연결하는 핵심 코드';
+
+    return `${symbol}에서 변경 흐름을 만드는 핵심 코드`;
+  }
+
+  private withSnippetComment(snippet: string, comment: string) {
+    const trimmed = snippet.trim();
+    if (!trimmed) return `// ${comment}`;
+    if (trimmed.startsWith('//')) return trimmed;
+
+    return [`// ${comment}`, trimmed].join('\n');
   }
 
   private pickTopChangedFiles(files: ParsedDiffFile[], limit: number) {
