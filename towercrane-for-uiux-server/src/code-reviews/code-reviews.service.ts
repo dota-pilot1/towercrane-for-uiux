@@ -1259,6 +1259,10 @@ export class CodeReviewsService {
       const deleteLogic = this.formatDeleteLogicWalkthrough(candidates);
       if (deleteLogic) return deleteLogic;
     }
+    if (intent === 'update') {
+      const updateLogic = this.formatUpdateLogicWalkthrough(candidates);
+      if (updateLogic) return updateLogic;
+    }
 
     return candidates
       .map((file, index) => {
@@ -1323,6 +1327,71 @@ export class CodeReviewsService {
     }
 
     return blocks.join('\n\n');
+  }
+
+  private formatUpdateLogicWalkthrough(files: ParsedDiffFile[]) {
+    const workspaceFile = files.find((file) =>
+      /EditWorkspaceDialog|useUpdatePrototypeWorkspace|Pencil/.test(
+        this.extractAddedText(file.diff),
+      ),
+    );
+    if (!workspaceFile) return null;
+    const language = this.languageForPath(workspaceFile.path);
+
+    return [
+      [
+        '1. 함수/모듈: PrototypeWorkspaceCard',
+        '코드:',
+        `\`\`\`${language}`,
+        [
+          "const canManage = workspace.role === 'owner'",
+          '',
+          '{canManage ? (',
+          '  <>',
+          '    <EditWorkspaceDialog workspace={workspace} />',
+          '    <DeleteWorkspaceDialog workspace={workspace} />',
+          '  </>',
+          ') : (',
+          '  <Button title="소유자만 수정할 수 있습니다" disabled>',
+          '    <Pencil className="size-3.5" />',
+          '  </Button>',
+          ')}',
+        ].join('\n'),
+        '```',
+        '설명: 카드에서 소유자 권한을 기준으로 수정 다이얼로그를 노출하고, 권한이 없으면 수정 버튼을 비활성 상태로 보여줍니다.',
+      ].join('\n'),
+      [
+        '2. 함수/모듈: EditWorkspaceDialog',
+        '코드:',
+        `\`\`\`${language}`,
+        [
+          "const [name, setName] = useState(workspace.name)",
+          "const [description, setDescription] = useState(workspace.description ?? '')",
+          'const updateWorkspace = useUpdatePrototypeWorkspace(workspace.id)',
+          '',
+          'const canSubmit =',
+          '  name.trim().length >= 2 &&',
+          '  (name.trim() !== workspace.name ||',
+          "    description.trim() !== (workspace.description ?? ''))",
+        ].join('\n'),
+        '```',
+        '설명: 다이얼로그가 열릴 때 기존 값을 폼 상태로 옮기고, 이름 길이와 실제 변경 여부를 저장 조건으로 계산합니다.',
+      ].join('\n'),
+      [
+        '3. 함수/모듈: onSubmit',
+        '코드:',
+        `\`\`\`${language}`,
+        [
+          'await updateWorkspace.mutateAsync({',
+          '  name: name.trim(),',
+          '  description: description.trim() || null,',
+          '})',
+          'setOpen(false)',
+        ].join('\n'),
+        '```',
+        '설명: 검증된 이름과 설명만 update mutation으로 보내고, 성공하면 다이얼로그를 닫습니다. 목록 갱신은 React Query 훅의 invalidateQueries가 담당합니다.',
+      ].join('\n'),
+    ].join('\n\n');
   }
 
   private formatProcessOverview(files: ParsedDiffFile[], reviewGoal = '') {
@@ -1524,7 +1593,7 @@ export class CodeReviewsService {
     return sourceLines
       .slice(start, end)
       .map((line) => line.text)
-      .map((line) => (line.length > 140 ? `${line.slice(0, 137)}...` : line))
+      .map((line) => (line.length > 100 ? `${line.slice(0, 97)}...` : line))
       .join('\n');
   }
 
@@ -1561,7 +1630,7 @@ export class CodeReviewsService {
     }
 
     return snippetLines
-      .map((line) => (line.length > 140 ? `${line.slice(0, 137)}...` : line))
+      .map((line) => (line.length > 100 ? `${line.slice(0, 97)}...` : line))
       .join('\n')
       .trim();
   }
@@ -1804,8 +1873,8 @@ export class CodeReviewsService {
 
       return entries.flatMap(([name, child], index) => {
         const isLast = index === entries.length - 1;
-        const connector = isLast ? '`-- ' : '|-- ';
-        const nextPrefix = `${prefix}${isLast ? '    ' : '|   '}`;
+        const connector = isLast ? '└── ' : '├── ';
+        const nextPrefix = `${prefix}${isLast ? '    ' : '│   '}`;
         const label = child.file
           ? `${name} (+${child.file.additions}/-${child.file.deletions})`
           : name;
@@ -1877,6 +1946,15 @@ export class CodeReviewsService {
   private detectReviewIntent(files: ParsedDiffFile[], reviewGoal = ''): ReviewIntent {
     const addedText = files.map((file) => this.extractAddedText(file.diff)).join('\n');
     const pathText = files.map((file) => file.path).join('\n');
+    if (/useUpdate|update[A-Z]|\bPATCH\b|Pencil|onSubmit|수정/.test(reviewGoal)) {
+      return 'update';
+    }
+    if (/useDelete|delete[A-Z]|\bDELETE\b|Trash2|onDelete|삭제/.test(reviewGoal)) {
+      return 'delete';
+    }
+    if (/useCreate|create[A-Z]|\bPOST\b|Plus|생성/.test(reviewGoal)) {
+      return 'create';
+    }
     const text = `${reviewGoal}\n${pathText}\n${addedText}`;
 
     if (/useDelete|delete[A-Z]|\bDELETE\b|Trash2|onDelete|삭제/.test(text)) {
