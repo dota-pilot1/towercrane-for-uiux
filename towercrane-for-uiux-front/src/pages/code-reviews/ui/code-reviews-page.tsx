@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
+import { toast } from 'sonner'
 import {
   Check,
   Code2,
@@ -15,6 +16,7 @@ import {
   Search,
   Trash2,
   Unlink,
+  Upload,
   X,
 } from 'lucide-react'
 
@@ -22,14 +24,18 @@ import {
   useAnalyzeCodeReview,
   useCodeReviewDetail,
   useCodeReviewList,
+  useCreateCodeReview,
   useDeleteCodeReview,
   useUpdateCodeReview,
 } from '../../../entities/code-review/api/code-review-api'
 import type {
+  CodeReviewChangedFile,
   CodeReviewFinding,
   CodeReviewDetail,
   CodeReviewRiskLevel,
   CodeReviewSection,
+  CodeReviewSourceType,
+  CreateCodeReviewPayload,
 } from '../../../entities/code-review/model/types'
 import { TASK_STATUS_LABELS } from '../../../entities/task/model/constants'
 import { Button } from '../../../shared/ui/button'
@@ -137,6 +143,286 @@ function getCommitUrlInputError(value: string) {
     return '예: https://github.com/owner/repo/commit/sha'
   }
   return null
+}
+
+type UploadedReviewFile = {
+  name: string
+  size: number
+  text: string
+  extension: string
+  lineCount: number
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function stringValue(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function safeRiskLevel(value: unknown): CodeReviewRiskLevel {
+  if (value === 'high' || value === 'medium' || value === 'low') return value
+  return 'low'
+}
+
+function safeSourceType(value: unknown): CodeReviewSourceType {
+  if (value === 'commit' || value === 'pr' || value === 'compare' || value === 'diff_url') {
+    return value
+  }
+  return 'diff_url'
+}
+
+function createManualSourceUrl(name: string) {
+  return `manual-upload://${encodeURIComponent(name)}-${Date.now()}`
+}
+
+function simpleHash(value: string) {
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `upload-${Math.abs(hash).toString(16).padStart(12, '0')}-${Date.now().toString(36)}`
+}
+
+function inferRepository(sourceUrl: string) {
+  const githubMatch = sourceUrl.match(/^https:\/\/github\.com\/([^/]+\/[^/]+)/i)
+  if (githubMatch?.[1]) return githubMatch[1]
+  if (sourceUrl.startsWith('manual-upload://')) return 'manual-upload'
+  return 'external-upload'
+}
+
+function parseFrontmatter(value: string) {
+  if (!value.startsWith('---')) return { metadata: {}, body: value }
+  const endIndex = value.indexOf('\n---', 3)
+  if (endIndex === -1) return { metadata: {}, body: value }
+
+  const metadata = value
+    .slice(3, endIndex)
+    .split(/\r?\n/)
+    .reduce<Record<string, string>>((acc, line) => {
+      const match = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/)
+      if (match?.[1]) acc[match[1]] = (match[2] ?? '').replace(/^['"]|['"]$/g, '').trim()
+      return acc
+    }, {})
+
+  return {
+    metadata,
+    body: value.slice(endIndex + 4).trim(),
+  }
+}
+
+function getMarkdownSection(body: string, names: string[]) {
+  const escapedNames = names.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+  const match = body.match(new RegExp(`^#{1,3}\\s*(?:${escapedNames})\\s*\\n([\\s\\S]*?)(?=\\n#{1,3}\\s|$)`, 'im'))
+  return match?.[1]?.trim() ?? null
+}
+
+function normalizeFinding(value: unknown, index: number): CodeReviewFinding | null {
+  if (!isRecord(value)) return null
+  const body = stringValue(value.body) ?? stringValue(value.description)
+  const recommendation =
+    stringValue(value.recommendation) ?? stringValue(value.suggestion) ?? '리뷰 내용을 기준으로 변경 의도와 실제 구현을 확인하세요.'
+
+  if (!body) return null
+  return {
+    category:
+      value.category === 'structure' ||
+      value.category === 'process' ||
+      value.category === 'code' ||
+      value.category === 'syntax' ||
+      value.category === 'architecture' ||
+      value.category === 'clean_code' ||
+      value.category === 'diagram' ||
+      value.category === 'risk'
+        ? value.category
+        : 'code',
+    severity: safeRiskLevel(value.severity),
+    title: stringValue(value.title) ?? `검토 항목 ${index + 1}`,
+    body,
+    filePath: stringValue(value.filePath) ?? stringValue(value.path),
+    lineNumber: typeof value.lineNumber === 'number' ? value.lineNumber : null,
+    recommendation,
+  }
+}
+
+function normalizeChangedFile(value: unknown): CodeReviewChangedFile | null {
+  if (!isRecord(value)) return null
+  const path = stringValue(value.path) ?? stringValue(value.filePath)
+  if (!path) return null
+  return {
+    path,
+    additions: typeof value.additions === 'number' && value.additions > 0 ? value.additions : 0,
+    deletions: typeof value.deletions === 'number' && value.deletions > 0 ? value.deletions : 0,
+    reviewed: typeof value.reviewed === 'boolean' ? value.reviewed : true,
+    excludedReason: stringValue(value.excludedReason),
+  }
+}
+
+function filesToChangedFiles(files: UploadedReviewFile[]) {
+  return files.map((file) => ({
+    path: file.name,
+    additions: file.lineCount,
+    deletions: 0,
+    reviewed: true,
+    excludedReason: null,
+  }))
+}
+
+function buildPayloadFromJson(
+  value: unknown,
+  uploadedFiles: UploadedReviewFile[],
+  fallbackSourceUrl: string,
+): CreateCodeReviewPayload | null {
+  if (!isRecord(value)) return null
+
+  const sourceUrl =
+    stringValue(value.sourceUrl) ??
+    (fallbackSourceUrl.trim() || createManualSourceUrl(uploadedFiles[0]?.name ?? 'review'))
+  const repository = stringValue(value.repository) ?? inferRepository(sourceUrl)
+  const summary = stringValue(value.summary) ?? stringValue(value.description)
+  const primaryText = uploadedFiles.map((file) => `# ${file.name}\n${file.text}`).join('\n\n')
+  const findings = Array.isArray(value.findings)
+    ? value.findings
+        .map((finding, index) => normalizeFinding(finding, index))
+        .filter((finding): finding is CodeReviewFinding => Boolean(finding))
+    : []
+  const changedFiles = Array.isArray(value.changedFiles)
+    ? value.changedFiles
+        .map(normalizeChangedFile)
+        .filter((file): file is CodeReviewChangedFile => Boolean(file))
+    : filesToChangedFiles(uploadedFiles)
+
+  return {
+    taskId: stringValue(value.taskId),
+    sourceType: safeSourceType(value.sourceType),
+    sourceUrl,
+    repository,
+    title: truncate(stringValue(value.title) ?? `업로드 코드 리뷰 - ${uploadedFiles[0]?.name ?? 'review'}`, 177),
+    summary: summary ?? truncate(primaryText, 11997),
+    riskLevel: safeRiskLevel(value.riskLevel),
+    findings,
+    testGaps: Array.isArray(value.testGaps)
+      ? value.testGaps.map(stringValue).filter((item): item is string => Boolean(item))
+      : [],
+    changedFiles,
+    excludedFiles: Array.isArray(value.excludedFiles)
+      ? value.excludedFiles
+          .map(normalizeChangedFile)
+          .filter((file): file is CodeReviewChangedFile => Boolean(file))
+      : [],
+    diffHash: stringValue(value.diffHash) ?? simpleHash(primaryText),
+    diffSnapshot: stringValue(value.diffSnapshot) ?? truncate(primaryText, 119997),
+    model: stringValue(value.model) ?? 'file-upload',
+  }
+}
+
+async function buildUploadedReviewPayload(
+  files: File[],
+  fallbackSourceUrl: string,
+): Promise<CreateCodeReviewPayload> {
+  const uploadedFiles = await Promise.all(
+    files.map(async (file) => {
+      const text = await file.text()
+      return {
+        name: file.webkitRelativePath || file.name,
+        size: file.size,
+        text,
+        extension: file.name.split('.').pop()?.toLowerCase() ?? '',
+        lineCount: text.split(/\r?\n/).length,
+      }
+    }),
+  )
+
+  const primaryFile =
+    uploadedFiles.find((file) => file.extension === 'json') ??
+    uploadedFiles.find((file) => /review|리뷰|summary|요약/i.test(file.name)) ??
+    uploadedFiles.find((file) => file.extension === 'md' || file.extension === 'markdown') ??
+    uploadedFiles[0]
+
+  if (!primaryFile) throw new Error('업로드할 파일을 선택하세요.')
+
+  if (primaryFile.extension === 'json') {
+    const payload = buildPayloadFromJson(JSON.parse(primaryFile.text), uploadedFiles, fallbackSourceUrl)
+    if (payload) return payload
+  }
+
+  const { metadata, body } = parseFrontmatter(primaryFile.text)
+  const sourceUrl =
+    metadata.sourceUrl || metadata.source_url || fallbackSourceUrl.trim() || createManualSourceUrl(primaryFile.name)
+  const repository = metadata.repository || inferRepository(sourceUrl)
+  const summary =
+    getMarkdownSection(body, ['전체 요약', '요약', 'summary']) ??
+    truncate(body || `${primaryFile.name} 파일을 기준으로 코드 리뷰를 등록했습니다.`, 11997)
+  const testsSection = getMarkdownSection(body, ['테스트', '검증', 'test', 'tests'])
+  const relatedFiles = uploadedFiles.filter((file) => file.name !== primaryFile.name)
+  const changedFiles = filesToChangedFiles(relatedFiles.length ? relatedFiles : [primaryFile])
+  const combinedSnapshot = uploadedFiles
+    .map((file) => `# ${file.name}\n\n${file.text}`)
+    .join('\n\n---\n\n')
+
+  return {
+    taskId: metadata.taskId || metadata.task_id || null,
+    sourceType: safeSourceType(metadata.sourceType || metadata.source_type),
+    sourceUrl,
+    repository,
+    title: truncate(metadata.title || `파일 업로드 코드 리뷰 - ${primaryFile.name}`, 177),
+    summary,
+    riskLevel: safeRiskLevel(metadata.riskLevel || metadata.risk_level),
+    findings: [
+      {
+        category: 'process',
+        severity: safeRiskLevel(metadata.riskLevel || metadata.risk_level),
+        title: '리뷰 요약',
+        body: summary,
+        filePath: primaryFile.name,
+        lineNumber: null,
+        recommendation: '요약 기준으로 구현 의도와 실제 변경 흐름을 대조하세요.',
+      },
+      {
+        category: 'structure',
+        severity: 'low',
+        title: '업로드 파일 구조',
+        body: truncate(
+          changedFiles
+            .map((file) => `- ${file.path} (${file.additions} lines)`)
+            .join('\n'),
+          11997,
+        ),
+        filePath: null,
+        lineNumber: null,
+        recommendation: '업로드 파일이 실제 변경 범위와 맞는지 확인하세요.',
+      },
+      ...(relatedFiles.length
+        ? [
+            {
+              category: 'code' as const,
+              severity: 'low' as const,
+              title: '관련 파일 내용',
+              body: relatedFiles
+                .slice(0, 5)
+                .map((file) => `### ${file.name}\n\n\`\`\`\n${truncate(file.text, 1600)}\n\`\`\``)
+                .join('\n\n'),
+              filePath: null,
+              lineNumber: null,
+              recommendation: '핵심 파일은 상세 리뷰에서 흐름 단위로 다시 확인하세요.',
+            },
+          ]
+        : []),
+    ],
+    testGaps: testsSection
+      ? testsSection
+          .split(/\r?\n/)
+          .map((line) => line.replace(/^[-*]\s*/, '').trim())
+          .filter(Boolean)
+      : [],
+    changedFiles,
+    excludedFiles: [],
+    diffHash: simpleHash(combinedSnapshot),
+    diffSnapshot: truncate(combinedSnapshot, 119997),
+    model: 'file-upload',
+  }
 }
 
 const UPLOAD_JSON_TEMPLATE = `{
@@ -383,6 +669,7 @@ function AnalyzingOverlay() {
 
 export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   const navigate = useNavigate()
+  const reviewFileInputRef = useRef<HTMLInputElement>(null)
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [sourceUrl, setSourceUrl] = useState('')
@@ -394,6 +681,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   const listQuery = useCodeReviewList({ q, page, pageSize: 20 })
   const detailQuery = useCodeReviewDetail(reviewId)
   const analyzeMutation = useAnalyzeCodeReview()
+  const createReviewMutation = useCreateCodeReview()
   const sourceUrlError = getCommitUrlInputError(sourceUrl)
 
   useEffect(() => {
@@ -422,6 +710,21 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
     }
   }
 
+  async function uploadReviewFiles(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    if (!files.length) return
+
+    try {
+      const payload = await buildUploadedReviewPayload(files, sourceUrl)
+      const detail = await createReviewMutation.mutateAsync(payload)
+      toast.success('코드 리뷰가 등록되었습니다.')
+      navigate({ to: '/code-reviews/$reviewId', params: { reviewId: detail.id } })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '코드 리뷰 파일 등록에 실패했습니다.')
+    }
+  }
+
   function toggleSection(section: CodeReviewSection) {
     setSelectedSections((current) => {
       if (current.includes(section)) {
@@ -442,15 +745,39 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
     <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-7xl flex-col gap-4">
       <div className="flex items-center justify-between">
         <PageHeader icon={Code2} title="코드 리뷰 게시판" />
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => setShowUploadGuide(true)}
-        >
-          <Info className="mr-1.5 size-3.5" />
-          직접 저장하기 구현 계획
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={reviewFileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            accept=".json,.md,.markdown,.txt,.ts,.tsx,.js,.jsx,.css,.html,.mmd,.mermaid,.java,.kt,.py,.go,.rs,.sql,.yml,.yaml"
+            onChange={uploadReviewFiles}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => reviewFileInputRef.current?.click()}
+            disabled={analyzeMutation.isPending || createReviewMutation.isPending}
+          >
+            {createReviewMutation.isPending ? (
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+            ) : (
+              <Upload className="mr-1.5 size-3.5" />
+            )}
+            리뷰 파일 업로드
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowUploadGuide(true)}
+          >
+            <Info className="mr-1.5 size-3.5" />
+            직접 저장하기 구현 계획
+          </Button>
+        </div>
       </div>
       {showUploadGuide && <UploadGuideDialog onClose={() => setShowUploadGuide(false)} />}
 
@@ -661,7 +988,7 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
 
         {/* 오른쪽: 상세 패널 */}
         <section className="min-h-0 min-w-0 rounded-md border border-surface-border bg-surface-raised">
-          {analyzeMutation.isPending ? (
+          {analyzeMutation.isPending || createReviewMutation.isPending ? (
             <AnalyzingOverlay />
           ) : reviewId ? (
             <ReviewDetailPanel

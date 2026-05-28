@@ -12,6 +12,7 @@ import type {
   CodeReviewListParams,
   CodeReviewListResponse,
   CodeReviewRepositoryValidation,
+  CreateCodeReviewPayload,
   UpdateCodeReviewPayload,
 } from '../model/types'
 
@@ -82,6 +83,23 @@ export function useAnalyzeCodeReview() {
   return useMutation({
     mutationFn: (payload: AnalyzeCodeReviewPayload) =>
       apiRequest<CodeReviewDetail>('/code-reviews/analyze', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: (detail) => {
+      queryClient.setQueryData(codeReviewKeys.detail(detail.id), detail)
+      void queryClient.invalidateQueries({ queryKey: codeReviewKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: codeReviewKeys.taskList(detail.taskId) })
+    },
+  })
+}
+
+export function useCreateCodeReview() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: CreateCodeReviewPayload) =>
+      apiRequest<CodeReviewDetail>('/code-reviews', {
         method: 'POST',
         body: JSON.stringify(payload),
       }),

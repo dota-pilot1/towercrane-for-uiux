@@ -92,6 +92,23 @@ export type AnalyzeCodeReviewPayload = {
   sections?: CodeReviewSection[]
 }
 
+export type CreateCodeReviewPayload = {
+  taskId?: string | null
+  sourceType: CodeReviewSourceType
+  sourceUrl: string
+  repository: string
+  title: string
+  summary: string
+  riskLevel: CodeReviewRiskLevel
+  findings: CodeReviewFinding[]
+  testGaps: string[]
+  changedFiles: CodeReviewChangedFile[]
+  excludedFiles: CodeReviewChangedFile[]
+  diffHash: string
+  diffSnapshot?: string | null
+  model?: string | null
+}
+
 export type CodeReviewRepositoryValidation = {
   valid: boolean
   repository: string
