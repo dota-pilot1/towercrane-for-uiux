@@ -70,15 +70,43 @@ function getMarkdownTitle(body: string) {
   return body.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? null
 }
 
+function normalizeSectionName(value: string) {
+  return value
+    .replace(/[#`*_]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
 function getMarkdownSection(body: string, names: string[]) {
-  const escapedNames = names.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
-  const match = body.match(new RegExp(`^#{2,3}\\s*(?:${escapedNames})\\s*\\n([\\s\\S]*?)(?=\\n#{2,3}\\s|$)`, 'im'))
-  return match?.[1]?.trim() ?? ''
+  const wantedNames = new Set(names.map(normalizeSectionName))
+  const lines = body.replace(/\r\n/g, '\n').split('\n')
+  const captured: string[] = []
+  let capturing = false
+  let inFence = false
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('```')) inFence = !inFence
+
+    const headingMatch = !inFence ? line.match(/^#{2,3}\s+(.+?)\s*#*\s*$/) : null
+    if (headingMatch?.[1]) {
+      if (capturing) break
+      capturing = wantedNames.has(normalizeSectionName(headingMatch[1]))
+      continue
+    }
+
+    if (capturing) captured.push(line)
+  }
+
+  return captured.join('\n').trim()
 }
 
 function stripFence(value: string) {
-  const match = value.match(/```(?:txt|text|mermaid|mmd)?\n([\s\S]*?)```/i)
-  return (match?.[1] ?? value).trim()
+  const lines = value.trim().replace(/\r\n/g, '\n').split('\n')
+  if (lines[0]?.trim().startsWith('```')) lines.shift()
+  if (lines.at(-1)?.trim() === '```') lines.pop()
+  return lines.join('\n').trim()
 }
 
 function sectionLines(value: string) {
