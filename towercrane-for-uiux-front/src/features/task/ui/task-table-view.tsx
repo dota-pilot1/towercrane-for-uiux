@@ -169,18 +169,18 @@ export function TaskTableView({
         accessorKey: 'title',
         header: '업무',
         cell: ({ row }) => (
-          <div className="min-w-[240px]">
+          <div className="min-w-0">
             <button
               type="button"
               onClick={(event) => {
                 event.stopPropagation()
                 onOpenTask(row.original.id)
               }}
-              className="line-clamp-1 text-left text-sm font-bold text-text-primary hover:text-brand-primary"
+              className="block w-full truncate text-left text-sm font-bold text-text-primary hover:text-brand-primary"
             >
               {row.original.title}
             </button>
-            <p className="mt-1 line-clamp-1 text-xs text-text-muted">
+            <p className="mt-1 truncate text-xs text-text-muted">
               {row.original.content || row.original.id}
             </p>
           </div>
@@ -375,7 +375,20 @@ export function TaskTableView({
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
-            <table className="w-full min-w-[1140px] border-collapse text-left">
+            <table className="w-full min-w-[1320px] table-fixed border-collapse text-left">
+              <colgroup>
+                <col className="w-16" />
+                <col className="w-12" />
+                <col className="w-[520px]" />
+                <col className="w-20" />
+                <col className="w-24" />
+                <col className="w-28" />
+                <col className="w-36" />
+                <col className="w-28" />
+                <col className="w-28" />
+                <col className="w-28" />
+                <col className="w-16" />
+              </colgroup>
               <thead className="bg-surface-muted">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id} className="border-b border-surface-border-soft">
