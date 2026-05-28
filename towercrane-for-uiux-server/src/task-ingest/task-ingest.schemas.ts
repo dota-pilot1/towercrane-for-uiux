@@ -10,6 +10,7 @@ export const publicTaskIngestSchema = z.object({
   content: z.string().max(5000).optional().default(''),
   plan: z.string().max(8000).optional().default(''),
   folderStructure: z.string().max(8000).optional().default(''),
+  mmdContent: z.string().max(20000).optional().default(''),
   checklists: z
     .array(z.string().trim().min(1).max(300))
     .max(20)

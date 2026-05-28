@@ -10,6 +10,8 @@ import {
   Code2,
   Copy,
   FilePenLine,
+  FileText,
+  Folder,
   Link2,
   MessageSquareText,
   Paperclip,
@@ -69,6 +71,17 @@ type FormState = {
   dueDate: string
 }
 
+type FolderTreeNode = {
+  name: string
+  path: string
+  isFile: boolean
+  children: FolderTreeNode[]
+}
+
+type FolderTreeBuildNode = Omit<FolderTreeNode, 'children'> & {
+  childrenMap: Map<string, FolderTreeBuildNode>
+}
+
 function toDateInputValue(value?: string | null) {
   if (!value) return ''
   return value.slice(0, 10)
@@ -104,6 +117,115 @@ function formatDateTime(value?: string | null) {
 function FieldLabel({ children }: { children: string }) {
   return (
     <span className="text-xs font-black text-text-secondary">{children}</span>
+  )
+}
+
+function cleanFolderStructureLine(line: string) {
+  return line
+    .trim()
+    .replace(/^[\s├└│─]+/, '')
+    .replace(/^[-*]\s+/, '')
+    .replace(/^\d+\.\s+/, '')
+    .trim()
+}
+
+function buildFolderTree(value: string) {
+  const root = new Map<string, FolderTreeBuildNode>()
+
+  value
+    .split('\n')
+    .map(cleanFolderStructureLine)
+    .filter(Boolean)
+    .forEach((line) => {
+      const parts = line.split('/').map((part) => part.trim()).filter(Boolean)
+      let level = root
+      let currentPath = ''
+
+      parts.forEach((part, index) => {
+        currentPath = currentPath ? `${currentPath}/${part}` : part
+        const isLast = index === parts.length - 1
+        const existing = level.get(part)
+        const node =
+          existing ??
+          {
+            name: part,
+            path: currentPath,
+            isFile: isLast && part.includes('.'),
+            childrenMap: new Map<string, FolderTreeBuildNode>(),
+          }
+
+        if (isLast && part.includes('.')) node.isFile = true
+        level.set(part, node)
+
+        if (!isLast) {
+          level = node.childrenMap
+        }
+      })
+    })
+
+  const hydrate = (nodes: FolderTreeBuildNode[]): FolderTreeNode[] =>
+    nodes.map((node) => {
+      const children = hydrate(Array.from(node.childrenMap.values()))
+      return {
+        name: node.name,
+        path: node.path,
+        isFile: node.isFile && children.length === 0,
+        children,
+      }
+    })
+
+  return hydrate(Array.from(root.values()))
+}
+
+function FolderTreeItems({
+  nodes,
+  depth = 0,
+}: {
+  nodes: FolderTreeNode[]
+  depth?: number
+}) {
+  return (
+    <>
+      {nodes.map((node) => (
+        <li key={node.path}>
+          <div
+            className="flex min-h-6 items-center gap-2 rounded-sm px-1 text-xs text-text-primary"
+            style={{ paddingLeft: `${depth * 1.25}rem` }}
+          >
+            {node.isFile ? (
+              <FileText className="size-3.5 shrink-0 text-text-muted" />
+            ) : (
+              <Folder className="size-3.5 shrink-0 text-brand-primary" />
+            )}
+            <span className="whitespace-nowrap font-mono">{node.name}</span>
+          </div>
+          {node.children.length > 0 ? (
+            <ul className="space-y-0.5">
+              <FolderTreeItems nodes={node.children} depth={depth + 1} />
+            </ul>
+          ) : null}
+        </li>
+      ))}
+    </>
+  )
+}
+
+function FolderStructurePreview({ value }: { value: string }) {
+  const nodes = buildFolderTree(value)
+  if (nodes.length === 0) return null
+
+  return (
+    <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <Folder className="size-4 text-brand-primary" />
+        <p className="text-xs font-black text-text-secondary">도식 미리보기</p>
+      </div>
+      <div className="max-h-64 overflow-auto rounded-md border border-surface-border-soft bg-surface-raised p-2">
+        <ul className="min-w-max space-y-0.5">
+          <FolderTreeItems nodes={nodes} />
+        </ul>
+      </div>
+    </div>
   )
 }
 
@@ -397,7 +519,7 @@ export function TaskDetailPage() {
                   />
                 </label>
 
-                <label className="block space-y-1.5 md:col-span-2">
+                <div className="block space-y-1.5 md:col-span-2">
                   <FieldLabel>예상 파일 구조</FieldLabel>
                   <Textarea
                     value={form.folderStructure}
@@ -407,7 +529,8 @@ export function TaskDetailPage() {
                     className="min-h-32 resize-y font-mono text-sm leading-6"
                     placeholder="towercrane-for-uiux-front/src/...&#10;towercrane-for-uiux-server/src/..."
                   />
-                </label>
+                  <FolderStructurePreview value={form.folderStructure} />
+                </div>
 
                 <label className="block space-y-1.5">
                   <FieldLabel>유형</FieldLabel>

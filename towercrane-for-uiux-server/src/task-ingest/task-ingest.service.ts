@@ -86,7 +86,7 @@ export class TaskIngestService {
       content: input.content,
       plan: input.plan,
       folderStructure: input.folderStructure,
-      mmdContent: '',
+      mmdContent: input.mmdContent,
       taskType: input.taskType,
       status: input.status,
       priority: input.priority,
