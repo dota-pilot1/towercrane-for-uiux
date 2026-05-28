@@ -86,8 +86,22 @@ type FolderTreeBuildNode = Omit<FolderTreeNode, 'children'> & {
   childrenMap: Map<string, FolderTreeBuildNode>
 }
 
-const TASK_SKILL_EXAMPLE =
-  '이 내용을 Towercrane 업무로 등록해줘. 단계별 계획, 예상 파일 구조, MMD 흐름도까지 같이 만들어줘.'
+const TASK_SKILL_EXAMPLES = [
+  {
+    title: '바로 PMS 등록',
+    content:
+      'PMS에 업무 등록해줘. 개발 채팅 페이지에서 GPT, Gemini, Claude를 선택해서 말걸 수 있는 기능을 구현하려고 해. 구현 계획, 예상 파일 구조, MMD 흐름도까지 만들어서 등록해줘.',
+  },
+  {
+    title: '계획 폴더 기반 등록',
+    content:
+      '/pms-task-register docs-for-5차 mvp/개발 채팅에서 gpt, gemini, claude 선택해서 말걸수 있게 하기\n구현 계획 폴더의 계획.md 또는 PLAN.md를 읽고 PMS 업무로 등록해줘.',
+  },
+]
+
+const TASK_SKILL_EXAMPLE_TEXT = TASK_SKILL_EXAMPLES.map(
+  (example) => `${example.title}\n${example.content}`,
+).join('\n\n')
 
 function toDateInputValue(value?: string | null) {
   if (!value) return ''
@@ -281,7 +295,7 @@ function TaskSkillGuideDialog({
                 Codex 스킬로 업무 입력
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-text-secondary">
-                Codex에게 업무 내용을 말하면 Towercrane 업무로 바로 등록합니다.
+                Codex에게 PMS 등록 요청을 말하면 Towercrane 업무로 바로 등록합니다.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -303,10 +317,20 @@ function TaskSkillGuideDialog({
                   스킬 발동 예시
                 </p>
               </div>
-              <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
-                <p className="whitespace-pre-wrap font-mono text-sm leading-6 text-text-primary">
-                  {TASK_SKILL_EXAMPLE}
-                </p>
+              <div className="space-y-2">
+                {TASK_SKILL_EXAMPLES.map((example) => (
+                  <div
+                    key={example.title}
+                    className="rounded-md border border-surface-border-soft bg-surface-muted p-3"
+                  >
+                    <p className="mb-1 text-xs font-black text-text-secondary">
+                      {example.title}
+                    </p>
+                    <p className="whitespace-pre-wrap font-mono text-sm leading-6 text-text-primary">
+                      {example.content}
+                    </p>
+                  </div>
+                ))}
               </div>
               <div className="mt-3 flex justify-end">
                 <Button
@@ -316,7 +340,7 @@ function TaskSkillGuideDialog({
                   onClick={onCopyExample}
                 >
                   <Copy className="mr-1.5 size-3.5" />
-                  예시 복사
+                  예시 전체 복사
                 </Button>
               </div>
             </section>
@@ -455,7 +479,7 @@ export function TaskDetailPage() {
     : ''
 
   const handleCopySkillExample = () =>
-    copyText(TASK_SKILL_EXAMPLE, '스킬 발동 예시를 복사했습니다.')
+    copyText(TASK_SKILL_EXAMPLE_TEXT, '스킬 발동 예시를 복사했습니다.')
 
   const handleDelete = async () => {
     if (!task) return
