@@ -760,9 +760,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_code_reviews_repository_created
         ON code_reviews(repository, created_at);
 
-      CREATE INDEX IF NOT EXISTS idx_code_reviews_task_created
-        ON code_reviews(task_id, created_at);
-
       CREATE TABLE IF NOT EXISTS dev_management_bot_settings (
         room_id TEXT PRIMARY KEY,
         enabled INTEGER NOT NULL DEFAULT 1,
