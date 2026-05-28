@@ -871,19 +871,7 @@ export function TaskPage({
             <Download className="mr-1.5 size-3.5" />
             {exportMode === 'current' ? '내보내는 중...' : '엑셀'}
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-9"
-            disabled={Boolean(exportMode) || workspacesQuery.isLoading}
-            onClick={handleExportAllWorkspaces}
-            title="모든 워크스페이스를 시트별로 엑셀 다운로드"
-            aria-label="모든 워크스페이스를 시트별로 엑셀 다운로드"
-          >
-            <Download className="mr-1.5 size-3.5" />
-            {exportMode === 'all' ? '내보내는 중...' : '전체 엑셀'}
-          </Button>
+
           <Button
             type="button"
             variant="ghost"
