@@ -4,6 +4,7 @@ import type {
   CreateTaskWorkspaceRequest,
   Task,
   TaskActivityLog,
+  TaskAiReview,
   TaskAttachment,
   TaskChecklist,
   TaskComment,
@@ -142,12 +143,18 @@ export const taskApi = {
   listActivity: (taskId: string) =>
     apiRequest<TaskActivityLog[]>(`/tasks/${taskId}/activity`),
 
+  listAiReviews: (taskId: string) =>
+    apiRequest<TaskAiReview[]>(`/tasks/${taskId}/ai-reviews`),
+
   listAttachments: (taskId: string) =>
     apiRequest<TaskAttachment[]>(`/tasks/${taskId}/attachments`),
 
   createAttachment: (
     taskId: string,
-    body: Pick<TaskAttachment, 'fileName' | 'fileUrl' | 'contentType' | 'fileSize'>,
+    body: Pick<
+      TaskAttachment,
+      'fileName' | 'fileUrl' | 'contentType' | 'fileSize'
+    >,
   ) =>
     apiRequest<TaskAttachment>(`/tasks/${taskId}/attachments`, {
       method: 'POST',

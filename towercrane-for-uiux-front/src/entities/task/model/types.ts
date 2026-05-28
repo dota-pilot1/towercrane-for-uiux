@@ -32,12 +32,7 @@ export type TaskType =
   | 'QA'
   | 'CHORE'
 
-export type TaskStatus =
-  | 'TODO'
-  | 'IN_PROGRESS'
-  | 'REVIEW'
-  | 'DONE'
-  | 'HOLD'
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'HOLD'
 
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
 export type TaskScope = 'TEAM' | 'PERSONAL'
@@ -47,6 +42,8 @@ export type Task = {
   id: string
   title: string
   content: string
+  plan: string
+  folderStructure: string
   mmdContent: string
   taskType: TaskType
   status: TaskStatus
@@ -93,6 +90,8 @@ export type TaskFilters = {
 export type CreateTaskRequest = {
   title: string
   content?: string
+  plan?: string
+  folderStructure?: string
   mmdContent?: string
   taskType?: TaskType
   status?: TaskStatus
@@ -145,6 +144,17 @@ export type TaskActivityLog = {
   toValue?: string | null
   message?: string | null
   createdAt: string
+}
+
+export type TaskAiReview = {
+  id: string
+  taskId: string
+  format: 'MARKDOWN' | 'HTML'
+  title: string
+  content: string
+  source: 'CODEX' | 'MANUAL'
+  createdAt: string
+  updatedAt: string
 }
 
 export type TaskAttachment = {

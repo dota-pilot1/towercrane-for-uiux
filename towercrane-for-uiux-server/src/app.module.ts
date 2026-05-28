@@ -29,6 +29,7 @@ import { AiServiceRequestModule } from './ai-service-request/ai-service-request.
 import { DevManagementModule } from './dev-management/dev-management.module';
 import { DevMeetingMinutesModule } from './dev-meeting-minutes/dev-meeting-minutes.module';
 import { CodeReviewsModule } from './code-reviews/code-reviews.module';
+import { TaskIngestModule } from './task-ingest/task-ingest.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { CodeReviewsModule } from './code-reviews/code-reviews.module';
     DevManagementModule,
     DevMeetingMinutesModule,
     CodeReviewsModule,
+    TaskIngestModule,
   ],
   controllers: [AppController],
   providers: [AppService],

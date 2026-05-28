@@ -48,6 +48,8 @@ export const listTasksQuerySchema = z.object({
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1).max(120),
   content: z.string().max(5000).optional().default(''),
+  plan: z.string().max(8000).optional().default(''),
+  folderStructure: z.string().max(8000).optional().default(''),
   mmdContent: z.string().max(20000).optional().default(''),
   taskType: taskTypeSchema.default('FEATURE'),
   status: taskStatusSchema.default('TODO'),
@@ -146,5 +148,9 @@ export const reorderTaskWorkspacesSchema = z.object({
 export type ListTasksQuery = z.infer<typeof listTasksQuerySchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
-export type CreateTaskWorkspaceInput = z.infer<typeof createTaskWorkspaceSchema>;
-export type UpdateTaskWorkspaceInput = z.infer<typeof updateTaskWorkspaceSchema>;
+export type CreateTaskWorkspaceInput = z.infer<
+  typeof createTaskWorkspaceSchema
+>;
+export type UpdateTaskWorkspaceInput = z.infer<
+  typeof updateTaskWorkspaceSchema
+>;

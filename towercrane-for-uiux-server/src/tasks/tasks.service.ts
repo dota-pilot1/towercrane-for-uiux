@@ -8,6 +8,7 @@ import { and, asc, desc, eq, like, or, sql, type SQL } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import {
   taskActivityLogsTable,
+  taskAiReviewsTable,
   taskAttachmentsTable,
   taskChecklistsTable,
   taskCommentsTable,
@@ -16,6 +17,7 @@ import {
   tasksTable,
   usersTable,
   type TaskActivityType,
+  type TaskAiReviewRow,
   type TaskAttachmentInsert,
   type TaskAttachmentRow,
   type TaskChecklistInsert,
@@ -120,6 +122,8 @@ export class TasksService {
       id: `task-${randomUUID().slice(0, 12)}`,
       title: input.title,
       content: input.content,
+      plan: input.plan,
+      folderStructure: input.folderStructure,
       mmdContent: input.mmdContent,
       taskType: input.taskType,
       status: input.status,
@@ -162,6 +166,10 @@ export class TasksService {
 
     if (input.title !== undefined) changes.title = input.title;
     if (input.content !== undefined) changes.content = input.content;
+    if (input.plan !== undefined) changes.plan = input.plan;
+    if (input.folderStructure !== undefined) {
+      changes.folderStructure = input.folderStructure;
+    }
     if (input.mmdContent !== undefined) changes.mmdContent = input.mmdContent;
     if (input.taskType !== undefined) changes.taskType = input.taskType;
     if (input.status !== undefined) changes.status = input.status;
@@ -492,6 +500,19 @@ export class TasksService {
           ? (usersById.get(activity.actorId)?.name ?? null)
           : null,
       }));
+  }
+
+  listAiReviews(user: TaskUser, taskId: string) {
+    const task = this.ensureTask(taskId);
+    this.ensureCanReadTask(user, task);
+
+    return this.db
+      .select()
+      .from(taskAiReviewsTable)
+      .where(eq(taskAiReviewsTable.taskId, taskId))
+      .orderBy(desc(taskAiReviewsTable.createdAt))
+      .all()
+      .map((review) => this.toAiReviewDto(review));
   }
 
   listAttachments(_user: TaskUser, taskId: string) {
@@ -893,6 +914,19 @@ export class TasksService {
     };
   }
 
+  private toAiReviewDto(review: TaskAiReviewRow) {
+    return {
+      id: review.id,
+      taskId: review.taskId,
+      format: review.format,
+      title: review.title,
+      content: review.content,
+      source: review.source,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+    };
+  }
+
   private toAttachmentDto(
     attachment: TaskAttachmentRow,
     usersById: Map<string, UserRow>,
@@ -911,14 +945,22 @@ export class TasksService {
     const workspaces = this.db
       .select()
       .from(taskWorkspacesTable)
-      .orderBy(asc(taskWorkspacesTable.orderIdx), asc(taskWorkspacesTable.createdAt))
+      .orderBy(
+        asc(taskWorkspacesTable.orderIdx),
+        asc(taskWorkspacesTable.createdAt),
+      )
       .all();
 
     return workspaces.map((ws) => {
       const taskCount = this.db
         .select({ count: sql<number>`count(*)` })
         .from(tasksTable)
-        .where(and(eq(tasksTable.workspaceId, ws.id), eq(tasksTable.archived, false)))
+        .where(
+          and(
+            eq(tasksTable.workspaceId, ws.id),
+            eq(tasksTable.archived, false),
+          ),
+        )
         .get();
 
       const openTaskCount = this.db
@@ -987,7 +1029,8 @@ export class TasksService {
     const changes: Partial<TaskWorkspaceInsert> = { updatedAt: now };
 
     if (input.name !== undefined) changes.name = input.name;
-    if (input.description !== undefined) changes.description = input.description || null;
+    if (input.description !== undefined)
+      changes.description = input.description || null;
     if ('icon' in input) changes.icon = input.icon ?? null;
     if ('color' in input) changes.color = input.color ?? null;
 
@@ -1079,7 +1122,8 @@ export class TasksService {
       ? (input.assigneeId ?? user.id)
       : (input.assigneeId ?? null);
     const ownerId = isPersonalTask ? user.id : null;
-    const visibility = input.visibility ?? (isPersonalTask ? 'PRIVATE' : 'TEAM');
+    const visibility =
+      input.visibility ?? (isPersonalTask ? 'PRIVATE' : 'TEAM');
 
     this.ensureAssignableUser(assigneeId);
 
@@ -1096,6 +1140,8 @@ export class TasksService {
       workspaceId,
       title: input.title,
       content: input.content,
+      plan: input.plan,
+      folderStructure: input.folderStructure,
       mmdContent: input.mmdContent,
       taskType: input.taskType,
       status: input.status,

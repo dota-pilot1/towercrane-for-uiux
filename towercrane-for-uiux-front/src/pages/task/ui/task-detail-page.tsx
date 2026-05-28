@@ -6,6 +6,9 @@ import {
   CalendarDays,
   CheckSquare,
   Check,
+  Clipboard,
+  Code2,
+  Copy,
   FilePenLine,
   Link2,
   MessageSquareText,
@@ -48,6 +51,7 @@ import { TaskCommentsPanel } from '../../../features/task/ui/task-comments-panel
 import {
   useArchiveTasks,
   useDeleteTask,
+  useTaskAiReviews,
   useRestoreTasks,
   useTaskDetail,
   useUpdateTask,
@@ -56,6 +60,8 @@ import {
 type FormState = {
   title: string
   content: string
+  plan: string
+  folderStructure: string
   taskType: TaskType
   status: TaskStatus
   priority: TaskPriority
@@ -72,6 +78,8 @@ function toFormState(task: Task): FormState {
   return {
     title: task.title,
     content: task.content,
+    plan: task.plan ?? '',
+    folderStructure: task.folderStructure ?? '',
     taskType: task.taskType,
     status: task.status,
     priority: task.priority,
@@ -94,7 +102,34 @@ function formatDateTime(value?: string | null) {
 }
 
 function FieldLabel({ children }: { children: string }) {
-  return <span className="text-xs font-black text-text-secondary">{children}</span>
+  return (
+    <span className="text-xs font-black text-text-secondary">{children}</span>
+  )
+}
+
+function PromptCopyBox({
+  title,
+  content,
+  onCopy,
+}: {
+  title: string
+  content: string
+  onCopy: () => void
+}) {
+  return (
+    <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-black text-text-secondary">{title}</p>
+        <Button type="button" variant="secondary" size="sm" onClick={onCopy}>
+          <Copy className="mr-1.5 size-3.5" />
+          복사
+        </Button>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-primary">
+        {content}
+      </p>
+    </div>
+  )
 }
 
 export function TaskDetailPage() {
@@ -104,6 +139,7 @@ export function TaskDetailPage() {
   const userRole = useSessionStore((state) => state.userRole)
   const isAdmin = userRole === 'admin'
   const taskQuery = useTaskDetail(taskId)
+  const aiReviewsQuery = useTaskAiReviews(taskId)
   const assignableUsersQuery = useAssignableUsers()
   const updateTask = useUpdateTask()
   const archiveTasks = useArchiveTasks()
@@ -150,6 +186,8 @@ export function TaskDetailPage() {
       body: {
         title: form.title.trim(),
         content: form.content,
+        plan: form.plan,
+        folderStructure: form.folderStructure,
         taskType: form.taskType,
         status: form.status,
         priority: form.priority,
@@ -181,6 +219,22 @@ export function TaskDetailPage() {
     }
   }
 
+  const copyText = async (text: string, successMessage: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success(successMessage)
+    } catch {
+      toast.error('복사에 실패했습니다.')
+    }
+  }
+
+  const implementationPrompt = task
+    ? `이 업무(${task.id})를 구현해줘. 업무 상세, 단계별 계획, 예상 파일 구조를 참고해서 작업하고, 완료 후 변경 요약과 검증 결과를 남겨줘.`
+    : ''
+  const reviewPrompt = task
+    ? `이 업무(${task.id})에 대한 구현 결과를 코드 리뷰로 등록해줘. 변경 파일, 주요 결정, 테스트 결과, 남은 리스크를 markdown으로 정리해줘.`
+    : ''
+
   const handleDelete = async () => {
     if (!task) return
     const confirmed = window.confirm(
@@ -202,8 +256,15 @@ export function TaskDetailPage() {
   if (!task) {
     return (
       <div className="mx-auto flex min-h-[52vh] max-w-3xl flex-col items-center justify-center gap-3 rounded-md border border-surface-border-soft bg-surface-muted text-center">
-        <p className="text-sm font-bold text-text-primary">업무를 찾을 수 없습니다.</p>
-        <Button type="button" variant="secondary" size="sm" onClick={() => navigate({ to: '/task' })}>
+        <p className="text-sm font-bold text-text-primary">
+          업무를 찾을 수 없습니다.
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => navigate({ to: '/task' })}
+        >
           목록으로
         </Button>
       </div>
@@ -259,7 +320,11 @@ export function TaskDetailPage() {
               size="sm"
               className="h-9"
               onClick={handleArchive}
-              disabled={archiveTasks.isPending || restoreTasks.isPending || deleteTask.isPending}
+              disabled={
+                archiveTasks.isPending ||
+                restoreTasks.isPending ||
+                deleteTask.isPending
+              }
             >
               {task.archived ? (
                 <ArchiveRestore className="mr-1.5 size-3.5" />
@@ -275,7 +340,11 @@ export function TaskDetailPage() {
                 size="sm"
                 className="h-9 border-destructive bg-danger-glass text-destructive hover:bg-danger-glass"
                 onClick={handleDelete}
-                disabled={archiveTasks.isPending || restoreTasks.isPending || deleteTask.isPending}
+                disabled={
+                  archiveTasks.isPending ||
+                  restoreTasks.isPending ||
+                  deleteTask.isPending
+                }
               >
                 <Trash2 className="mr-1.5 size-3.5" />
                 삭제
@@ -298,7 +367,9 @@ export function TaskDetailPage() {
                   <FieldLabel>제목</FieldLabel>
                   <Input
                     value={form.title}
-                    onChange={(event) => updateDraft({ title: event.target.value })}
+                    onChange={(event) =>
+                      updateDraft({ title: event.target.value })
+                    }
                     className="h-11"
                   />
                 </label>
@@ -307,8 +378,34 @@ export function TaskDetailPage() {
                   <FieldLabel>내용</FieldLabel>
                   <Textarea
                     value={form.content}
-                    onChange={(event) => updateDraft({ content: event.target.value })}
+                    onChange={(event) =>
+                      updateDraft({ content: event.target.value })
+                    }
                     className="min-h-44 resize-y leading-6"
+                  />
+                </label>
+
+                <label className="block space-y-1.5 md:col-span-2">
+                  <FieldLabel>단계별 계획</FieldLabel>
+                  <Textarea
+                    value={form.plan}
+                    onChange={(event) =>
+                      updateDraft({ plan: event.target.value })
+                    }
+                    className="min-h-36 resize-y font-mono text-sm leading-6"
+                    placeholder="1. 현재 구조 확인&#10;2. 구현 범위 정리&#10;3. 코드 수정"
+                  />
+                </label>
+
+                <label className="block space-y-1.5 md:col-span-2">
+                  <FieldLabel>예상 파일 구조</FieldLabel>
+                  <Textarea
+                    value={form.folderStructure}
+                    onChange={(event) =>
+                      updateDraft({ folderStructure: event.target.value })
+                    }
+                    className="min-h-32 resize-y font-mono text-sm leading-6"
+                    placeholder="towercrane-for-uiux-front/src/...&#10;towercrane-for-uiux-server/src/..."
                   />
                 </label>
 
@@ -316,7 +413,9 @@ export function TaskDetailPage() {
                   <FieldLabel>유형</FieldLabel>
                   <Select
                     value={form.taskType}
-                    onChange={(event) => updateDraft({ taskType: event.target.value as TaskType })}
+                    onChange={(event) =>
+                      updateDraft({ taskType: event.target.value as TaskType })
+                    }
                     className="h-10"
                   >
                     {TASK_TYPE_ORDER.map((type) => (
@@ -331,7 +430,9 @@ export function TaskDetailPage() {
                   <FieldLabel>상태</FieldLabel>
                   <Select
                     value={form.status}
-                    onChange={(event) => updateDraft({ status: event.target.value as TaskStatus })}
+                    onChange={(event) =>
+                      updateDraft({ status: event.target.value as TaskStatus })
+                    }
                     className="h-10"
                   >
                     {TASK_STATUS_ORDER.map((status) => (
@@ -347,7 +448,9 @@ export function TaskDetailPage() {
                   <Select
                     value={form.priority}
                     onChange={(event) =>
-                      updateDraft({ priority: event.target.value as TaskPriority })
+                      updateDraft({
+                        priority: event.target.value as TaskPriority,
+                      })
                     }
                     className="h-10"
                   >
@@ -363,7 +466,9 @@ export function TaskDetailPage() {
                   <FieldLabel>담당자</FieldLabel>
                   <Select
                     value={form.assigneeId}
-                    onChange={(event) => updateDraft({ assigneeId: event.target.value })}
+                    onChange={(event) =>
+                      updateDraft({ assigneeId: event.target.value })
+                    }
                     className="h-10"
                   >
                     <option value="">미지정</option>
@@ -380,7 +485,9 @@ export function TaskDetailPage() {
                   <Input
                     type="date"
                     value={form.dueDate}
-                    onChange={(event) => updateDraft({ dueDate: event.target.value })}
+                    onChange={(event) =>
+                      updateDraft({ dueDate: event.target.value })
+                    }
                     className="h-10"
                   />
                 </label>
@@ -401,6 +508,94 @@ export function TaskDetailPage() {
             icon={CheckSquare}
           >
             <TaskChecklistPanel taskId={task.id} showHeader={false} />
+          </SectionCard>
+
+          <SectionCard
+            title="Codex 요청"
+            description="업무 ID와 스킬 요청 문구를 복사합니다."
+            icon={Clipboard}
+          >
+            <div className="space-y-3">
+              <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-text-secondary">
+                      업무 ID
+                    </p>
+                    <p className="mt-1 break-all font-mono text-sm text-text-primary">
+                      {task.id}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => copyText(task.id, '업무 ID를 복사했습니다.')}
+                  >
+                    <Copy className="mr-1.5 size-3.5" />
+                    복사
+                  </Button>
+                </div>
+              </div>
+
+              <PromptCopyBox
+                title="구현 요청"
+                content={implementationPrompt}
+                onCopy={() =>
+                  copyText(
+                    implementationPrompt,
+                    '구현 요청 문구를 복사했습니다.',
+                  )
+                }
+              />
+              <PromptCopyBox
+                title="리뷰 등록 요청"
+                content={reviewPrompt}
+                onCopy={() =>
+                  copyText(reviewPrompt, '리뷰 등록 문구를 복사했습니다.')
+                }
+              />
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="코드 리뷰"
+            description="Codex가 등록한 구현 리뷰를 확인합니다."
+            icon={Code2}
+          >
+            {aiReviewsQuery.isLoading ? (
+              <p className="text-sm text-text-muted">
+                코드 리뷰를 불러오는 중입니다.
+              </p>
+            ) : aiReviewsQuery.data?.length ? (
+              <div className="space-y-3">
+                {aiReviewsQuery.data.map((review) => (
+                  <article
+                    key={review.id}
+                    className="rounded-md border border-surface-border-soft bg-surface-muted p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-black text-text-primary">
+                        {review.title}
+                      </h3>
+                      <span className="rounded-md border border-surface-border-soft bg-surface-raised px-2 py-0.5 text-[11px] font-bold text-text-muted">
+                        {review.format}
+                      </span>
+                    </div>
+                    <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-primary">
+                      {review.content}
+                    </pre>
+                    <p className="mt-2 text-xs text-text-muted">
+                      {formatDateTime(review.createdAt)}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">
+                등록된 코드 리뷰가 없습니다.
+              </p>
+            )}
           </SectionCard>
 
           <SectionCard

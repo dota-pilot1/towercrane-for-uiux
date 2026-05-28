@@ -83,7 +83,10 @@ export const prototypeWorkspaceMembersTable = sqliteTable(
     userId: text('user_id')
       .notNull()
       .references(() => usersTable.id, { onDelete: 'cascade' }),
-    role: text('role').$type<PrototypeWorkspaceRole>().notNull().default('member'),
+    role: text('role')
+      .$type<PrototypeWorkspaceRole>()
+      .notNull()
+      .default('member'),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
@@ -91,9 +94,12 @@ export const prototypeWorkspaceMembersTable = sqliteTable(
 
 export const categoriesTable = sqliteTable('categories', {
   id: text('id').primaryKey(),
-  workspaceId: text('workspace_id').references(() => prototypeWorkspacesTable.id, {
-    onDelete: 'cascade',
-  }),
+  workspaceId: text('workspace_id').references(
+    () => prototypeWorkspacesTable.id,
+    {
+      onDelete: 'cascade',
+    },
+  ),
   userId: text('user_id')
     .notNull()
     .references(() => usersTable.id, { onDelete: 'cascade' }),
@@ -423,6 +429,8 @@ export const tasksTable = sqliteTable('tasks', {
   }),
   title: text('title').notNull(),
   content: text('content').notNull().default(''),
+  plan: text('plan').notNull().default(''),
+  folderStructure: text('folder_structure').notNull().default(''),
   mmdContent: text('mmd_content').notNull().default(''),
   taskType: text('task_type').$type<TaskType>().notNull().default('FEATURE'),
   status: text('status').$type<TaskStatus>().notNull().default('TODO'),
@@ -502,6 +510,22 @@ export const taskActivityLogsTable = sqliteTable('task_activity_logs', {
   toValue: text('to_value'),
   message: text('message'),
   createdAt: text('created_at').notNull(),
+});
+
+export const taskAiReviewsTable = sqliteTable('task_ai_reviews', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => tasksTable.id, { onDelete: 'cascade' }),
+  format: text('format')
+    .$type<'MARKDOWN' | 'HTML'>()
+    .notNull()
+    .default('MARKDOWN'),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  source: text('source').$type<'CODEX' | 'MANUAL'>().notNull().default('CODEX'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
 });
 
 export const projectIssueCategoriesTable = sqliteTable(
@@ -644,7 +668,10 @@ export const meetingWorkspaceMembersTable = sqliteTable(
     userId: text('user_id')
       .notNull()
       .references(() => usersTable.id, { onDelete: 'cascade' }),
-    role: text('role').$type<MeetingWorkspaceRole>().notNull().default('member'),
+    role: text('role')
+      .$type<MeetingWorkspaceRole>()
+      .notNull()
+      .default('member'),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
@@ -674,9 +701,12 @@ export const meetingRoomsTable = sqliteTable('meeting_rooms', {
   description: text('description'),
   orderIdx: integer('order_idx').notNull().default(0),
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
-  workspaceId: text('workspace_id').references(() => meetingWorkspacesTable.id, {
-    onDelete: 'set null',
-  }),
+  workspaceId: text('workspace_id').references(
+    () => meetingWorkspacesTable.id,
+    {
+      onDelete: 'set null',
+    },
+  ),
   createdBy: text('created_by').references(() => usersTable.id, {
     onDelete: 'set null',
   }),
@@ -758,28 +788,31 @@ export const devManagementRoomsTable = sqliteTable('dev_management_rooms', {
   updatedAt: text('updated_at').notNull(),
 });
 
-export const devManagementMessagesTable = sqliteTable('dev_management_messages', {
-  id: text('id').primaryKey(),
-  roomId: text('room_id')
-    .notNull()
-    .references(() => devManagementRoomsTable.id, { onDelete: 'cascade' }),
-  senderId: text('sender_id').references(() => usersTable.id, {
-    onDelete: 'set null',
-  }),
-  senderType: text('sender_type').$type<DevManagementSenderType>().notNull(),
-  senderName: text('sender_name').notNull(),
-  senderRole: text('sender_role'),
-  content: text('content').notNull(),
-  messageType: text('message_type')
-    .$type<DevManagementMessageType>()
-    .notNull()
-    .default('TEXT'),
-  payload: text('payload', { mode: 'json' }).$type<Record<
-    string,
-    unknown
-  > | null>(),
-  createdAt: text('created_at').notNull(),
-});
+export const devManagementMessagesTable = sqliteTable(
+  'dev_management_messages',
+  {
+    id: text('id').primaryKey(),
+    roomId: text('room_id')
+      .notNull()
+      .references(() => devManagementRoomsTable.id, { onDelete: 'cascade' }),
+    senderId: text('sender_id').references(() => usersTable.id, {
+      onDelete: 'set null',
+    }),
+    senderType: text('sender_type').$type<DevManagementSenderType>().notNull(),
+    senderName: text('sender_name').notNull(),
+    senderRole: text('sender_role'),
+    content: text('content').notNull(),
+    messageType: text('message_type')
+      .$type<DevManagementMessageType>()
+      .notNull()
+      .default('TEXT'),
+    payload: text('payload', { mode: 'json' }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    createdAt: text('created_at').notNull(),
+  },
+);
 
 export type DevMeetingMinutesSourceRef = {
   text: string;
@@ -911,19 +944,22 @@ export const devManagementBotSettingsTable = sqliteTable(
   },
 );
 
-export const devManagementDmPairsTable = sqliteTable('dev_management_dm_pairs', {
-  id: text('id').primaryKey(),
-  roomId: text('room_id')
-    .notNull()
-    .references(() => devManagementRoomsTable.id, { onDelete: 'cascade' }),
-  userAId: text('user_a_id')
-    .notNull()
-    .references(() => usersTable.id, { onDelete: 'cascade' }),
-  userBId: text('user_b_id')
-    .notNull()
-    .references(() => usersTable.id, { onDelete: 'cascade' }),
-  createdAt: text('created_at').notNull(),
-});
+export const devManagementDmPairsTable = sqliteTable(
+  'dev_management_dm_pairs',
+  {
+    id: text('id').primaryKey(),
+    roomId: text('room_id')
+      .notNull()
+      .references(() => devManagementRoomsTable.id, { onDelete: 'cascade' }),
+    userAId: text('user_a_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    userBId: text('user_b_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+  },
+);
 
 export type IssueType =
   | 'BUG'
@@ -1791,6 +1827,7 @@ export const schema = {
   taskCommentsTable,
   taskAttachmentsTable,
   taskActivityLogsTable,
+  taskAiReviewsTable,
   projectIssueCategoriesTable,
   projectIssuesTable,
   projectIssueChecklistsTable,
@@ -1904,8 +1941,10 @@ export type ApiDocBlockRow = typeof apiDocBlocksTable.$inferSelect;
 export type ApiDocBlockInsert = typeof apiDocBlocksTable.$inferInsert;
 export type TaskWorkspaceRow = typeof taskWorkspacesTable.$inferSelect;
 export type TaskWorkspaceInsert = typeof taskWorkspacesTable.$inferInsert;
-export type TaskWorkspaceMemberRow = typeof taskWorkspaceMembersTable.$inferSelect;
-export type TaskWorkspaceMemberInsert = typeof taskWorkspaceMembersTable.$inferInsert;
+export type TaskWorkspaceMemberRow =
+  typeof taskWorkspaceMembersTable.$inferSelect;
+export type TaskWorkspaceMemberInsert =
+  typeof taskWorkspaceMembersTable.$inferInsert;
 export type TaskRow = typeof tasksTable.$inferSelect;
 export type TaskInsert = typeof tasksTable.$inferInsert;
 export type TaskChecklistRow = typeof taskChecklistsTable.$inferSelect;
@@ -1916,6 +1955,8 @@ export type TaskAttachmentRow = typeof taskAttachmentsTable.$inferSelect;
 export type TaskAttachmentInsert = typeof taskAttachmentsTable.$inferInsert;
 export type TaskActivityLogRow = typeof taskActivityLogsTable.$inferSelect;
 export type TaskActivityLogInsert = typeof taskActivityLogsTable.$inferInsert;
+export type TaskAiReviewRow = typeof taskAiReviewsTable.$inferSelect;
+export type TaskAiReviewInsert = typeof taskAiReviewsTable.$inferInsert;
 export type ProjectIssueCategoryRow =
   typeof projectIssueCategoriesTable.$inferSelect;
 export type ProjectIssueCategoryInsert =
@@ -1940,24 +1981,24 @@ export type ProjectIssueActivityLogInsert =
   typeof projectIssueActivityLogsTable.$inferInsert;
 export type MeetingWorkspaceRow = typeof meetingWorkspacesTable.$inferSelect;
 export type MeetingWorkspaceInsert = typeof meetingWorkspacesTable.$inferInsert;
-export type MeetingWorkspaceMemberRow = typeof meetingWorkspaceMembersTable.$inferSelect;
-export type MeetingWorkspaceMemberInsert = typeof meetingWorkspaceMembersTable.$inferInsert;
+export type MeetingWorkspaceMemberRow =
+  typeof meetingWorkspaceMembersTable.$inferSelect;
+export type MeetingWorkspaceMemberInsert =
+  typeof meetingWorkspaceMembersTable.$inferInsert;
 export type MeetingRoomRow = typeof meetingRoomsTable.$inferSelect;
 export type MeetingRoomInsert = typeof meetingRoomsTable.$inferInsert;
 export type MeetingMessageRow = typeof meetingMessagesTable.$inferSelect;
 export type MeetingMessageInsert = typeof meetingMessagesTable.$inferInsert;
 export type MeetingDmPairRow = typeof meetingDmPairsTable.$inferSelect;
 export type MeetingDmPairInsert = typeof meetingDmPairsTable.$inferInsert;
-export type DevManagementRoomRow =
-  typeof devManagementRoomsTable.$inferSelect;
+export type DevManagementRoomRow = typeof devManagementRoomsTable.$inferSelect;
 export type DevManagementRoomInsert =
   typeof devManagementRoomsTable.$inferInsert;
 export type DevManagementMessageRow =
   typeof devManagementMessagesTable.$inferSelect;
 export type DevManagementMessageInsert =
   typeof devManagementMessagesTable.$inferInsert;
-export type DevMeetingMinutesRow =
-  typeof devMeetingMinutesTable.$inferSelect;
+export type DevMeetingMinutesRow = typeof devMeetingMinutesTable.$inferSelect;
 export type DevMeetingMinutesInsert =
   typeof devMeetingMinutesTable.$inferInsert;
 export type CodeReviewRow = typeof codeReviewsTable.$inferSelect;
@@ -2135,7 +2176,9 @@ export type EvalScoreRow = typeof evalScoresTable.$inferSelect;
 
 export const usageLogsTable = sqliteTable('usage_logs', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => usersTable.id),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id),
   userName: text('user_name').notNull(),
   sessionId: text('session_id').notNull(),
   model: text('model').notNull(),
@@ -2154,7 +2197,9 @@ export type UsageLogInsert = typeof usageLogsTable.$inferInsert;
 
 export const aiServiceRequestsTable = sqliteTable('ai_service_requests', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => usersTable.id),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id),
   userName: text('user_name').notNull(),
   serviceType: text('service_type').notNull(),
   purpose: text('purpose').notNull(),

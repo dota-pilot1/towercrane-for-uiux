@@ -224,6 +224,14 @@ export class TasksController {
     return this.tasksService.listActivity(user, taskId);
   }
 
+  @Get(':taskId/ai-reviews')
+  listAiReviews(
+    @CurrentUser() user: TaskUser,
+    @Param('taskId') taskId: string,
+  ) {
+    return this.tasksService.listAiReviews(user, taskId);
+  }
+
   @Get(':taskId/attachments')
   listAttachments(
     @CurrentUser() user: TaskUser,
@@ -249,5 +257,4 @@ export class TasksController {
   ) {
     return this.tasksService.deleteAttachment(user, taskId, attachmentId);
   }
-
 }

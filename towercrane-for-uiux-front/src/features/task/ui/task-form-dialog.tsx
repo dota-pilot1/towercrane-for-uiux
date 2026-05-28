@@ -21,10 +21,21 @@ import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 import { Select } from '../../../shared/ui/select'
 import { Textarea } from '../../../shared/ui/textarea'
-import { useCreateTask, useCreateWorkspaceTask } from '../model/use-task-queries'
+import {
+  useCreateTask,
+  useCreateWorkspaceTask,
+} from '../model/use-task-queries'
 
 type TaskFormState = Required<
-  Omit<CreateTaskRequest, 'assigneeId' | 'dueDate' | 'visibility'>
+  Omit<
+    CreateTaskRequest,
+    | 'assigneeId'
+    | 'dueDate'
+    | 'visibility'
+    | 'mmdContent'
+    | 'plan'
+    | 'folderStructure'
+  >
 > & {
   assigneeId: string
   dueDate: string
@@ -72,7 +83,9 @@ export function TaskFormDialog({
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      setForm(getInitialForm(defaultScope, currentUserId, lockAssigneeToCurrentUser))
+      setForm(
+        getInitialForm(defaultScope, currentUserId, lockAssigneeToCurrentUser),
+      )
     }
     onOpenChange(nextOpen)
   }
@@ -97,11 +110,15 @@ export function TaskFormDialog({
     } else {
       await createTask.mutateAsync(payload)
     }
-    setForm(getInitialForm(defaultScope, currentUserId, lockAssigneeToCurrentUser))
+    setForm(
+      getInitialForm(defaultScope, currentUserId, lockAssigneeToCurrentUser),
+    )
     handleOpenChange(false)
   }
 
-  const isPending = workspaceId ? createWorkspaceTask.isPending : createTask.isPending
+  const isPending = workspaceId
+    ? createWorkspaceTask.isPending
+    : createTask.isPending
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
@@ -133,7 +150,9 @@ export function TaskFormDialog({
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5">
             <div className="space-y-4">
               <label className="block space-y-1.5">
-                <span className="text-xs font-bold text-text-secondary">제목</span>
+                <span className="text-xs font-bold text-text-secondary">
+                  제목
+                </span>
                 <Input
                   value={form.title}
                   onChange={(event) =>
@@ -145,11 +164,16 @@ export function TaskFormDialog({
               </label>
 
               <label className="block space-y-1.5">
-                <span className="text-xs font-bold text-text-secondary">내용</span>
+                <span className="text-xs font-bold text-text-secondary">
+                  내용
+                </span>
                 <Textarea
                   value={form.content}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, content: event.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      content: event.target.value,
+                    }))
                   }
                   className="min-h-28 resize-y"
                   placeholder="업무 배경, 범위, 완료 기준"
@@ -158,7 +182,9 @@ export function TaskFormDialog({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-bold text-text-secondary">업무 범위</span>
+                  <span className="text-xs font-bold text-text-secondary">
+                    업무 범위
+                  </span>
                   <Select
                     value={form.scope}
                     onChange={(event) => {
@@ -179,7 +205,9 @@ export function TaskFormDialog({
                 </label>
 
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-bold text-text-secondary">유형</span>
+                  <span className="text-xs font-bold text-text-secondary">
+                    유형
+                  </span>
                   <Select
                     value={form.taskType}
                     onChange={(event) =>
@@ -198,7 +226,9 @@ export function TaskFormDialog({
                 </label>
 
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-bold text-text-secondary">상태</span>
+                  <span className="text-xs font-bold text-text-secondary">
+                    상태
+                  </span>
                   <Select
                     value={form.status}
                     onChange={(event) =>
@@ -217,7 +247,9 @@ export function TaskFormDialog({
                 </label>
 
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-bold text-text-secondary">우선순위</span>
+                  <span className="text-xs font-bold text-text-secondary">
+                    우선순위
+                  </span>
                   <Select
                     value={form.priority}
                     onChange={(event) =>
@@ -236,12 +268,19 @@ export function TaskFormDialog({
                 </label>
 
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-bold text-text-secondary">담당자</span>
+                  <span className="text-xs font-bold text-text-secondary">
+                    담당자
+                  </span>
                   <Select
                     value={form.assigneeId}
-                    disabled={lockAssigneeToCurrentUser || form.scope === 'PERSONAL'}
+                    disabled={
+                      lockAssigneeToCurrentUser || form.scope === 'PERSONAL'
+                    }
                     onChange={(event) =>
-                      setForm((prev) => ({ ...prev, assigneeId: event.target.value }))
+                      setForm((prev) => ({
+                        ...prev,
+                        assigneeId: event.target.value,
+                      }))
                     }
                   >
                     <option value="">미지정</option>
@@ -254,12 +293,17 @@ export function TaskFormDialog({
                 </label>
 
                 <label className="block space-y-1.5 sm:col-span-2">
-                  <span className="text-xs font-bold text-text-secondary">마감일</span>
+                  <span className="text-xs font-bold text-text-secondary">
+                    마감일
+                  </span>
                   <Input
                     type="date"
                     value={form.dueDate}
                     onChange={(event) =>
-                      setForm((prev) => ({ ...prev, dueDate: event.target.value }))
+                      setForm((prev) => ({
+                        ...prev,
+                        dueDate: event.target.value,
+                      }))
                     }
                   />
                 </label>
