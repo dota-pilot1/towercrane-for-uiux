@@ -22,7 +22,7 @@ import {
   type Row,
   type RowSelectionState,
 } from '@tanstack/react-table'
-import { Copy, GripVertical, X } from 'lucide-react'
+import { Code2, Copy, ExternalLink, FileText, GripVertical, Loader2, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import {
@@ -33,6 +33,8 @@ import {
   TASK_STATUS_BADGE_CLASS,
   TASK_PRIORITY_BADGE_CLASS,
 } from '../../../entities/task/model/constants'
+import { useTaskCodeReviewList } from '../../../entities/code-review/api/code-review-api'
+import type { CodeReviewSummary } from '../../../entities/code-review/model/types'
 import type { Task, TaskPriority, TaskStatus } from '../../../entities/task/model/types'
 import type { AssignableUser } from '../../../shared/api/users'
 import { Button } from '../../../shared/ui/button'
@@ -55,9 +57,22 @@ function formatDate(value?: string | null, fallback = '-') {
   return new Intl.DateTimeFormat('ko-KR').format(date)
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
 function buildReviewSkillPrompt(taskId: string) {
-  return `/pms-task-review ${REVIEW_FOLDER_EXAMPLE} ${taskId}
-코드 리뷰 폴더의 리뷰.md 또는 REVIEW.md를 읽고 이 업무에 코드 리뷰로 등록해줘.`
+  return `/pms-task-review ${taskId} ${REVIEW_FOLDER_EXAMPLE}
+현재 커밋을 기준으로 코드 리뷰를 만들고 이 업무에 연결해줘.`
 }
 
 async function copyText(text: string, successMessage: string) {
@@ -77,19 +92,20 @@ function TaskReviewGuideDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const prompt = task ? buildReviewSkillPrompt(task.id) : ''
+  const reviewsQuery = useTaskCodeReviewList(task?.id ?? null)
 
   return (
     <Dialog.Root open={Boolean(task)} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
-        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[60] w-[min(620px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
+        <Dialog.Content className="glass-panel fixed inset-3 z-[60] flex flex-col overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl md:inset-6">
           <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-black text-text-primary">
                 PMS 코드 리뷰 등록
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-text-secondary">
-                코드 리뷰 폴더와 업무 ID를 기반으로 Codex가 리뷰를 등록합니다.
+                업무 정보와 등록된 코드 리뷰를 보면서 Codex 리뷰 등록 문구를 복사합니다.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -104,68 +120,237 @@ function TaskReviewGuideDialog({
           </div>
 
           {task ? (
-            <div className="space-y-4 px-5 py-5">
-              <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-sm font-black text-text-primary">
-                    업무 ID
-                  </p>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => copyText(task.id, '업무 ID를 복사했습니다.')}
-                  >
-                    <Copy className="mr-1.5 size-3.5" />
-                    복사
-                  </Button>
-                </div>
-                <p className="break-all rounded-md border border-surface-border-soft bg-surface-muted p-3 font-mono text-sm text-text-primary">
-                  {task.id}
-                </p>
-              </section>
+            <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-surface-border-soft overflow-hidden lg:grid-cols-[minmax(360px,0.9fr)_minmax(0,1.4fr)] lg:divide-x lg:divide-y-0">
+              <aside className="min-h-0 overflow-y-auto bg-surface-raised p-5">
+                <div className="space-y-4">
+                  <section className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                    <div className="flex items-center gap-2">
+                      <FileText className="size-4 text-brand-primary" />
+                      <h3 className="text-sm font-black text-text-primary">
+                        업무 기본 정보
+                      </h3>
+                    </div>
+                    <div className="mt-4 space-y-4">
+                      <div>
+                        <p className="text-xs font-bold text-text-muted">제목</p>
+                        <p className="mt-1 text-base font-black text-text-primary">
+                          {task.title}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-text-muted">업무 ID</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <p className="min-w-0 flex-1 break-all rounded-md border border-surface-border-soft bg-surface-raised p-2 font-mono text-xs text-text-primary">
+                            {task.id}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => copyText(task.id, '업무 ID를 복사했습니다.')}
+                          >
+                            <Copy className="mr-1.5 size-3.5" />
+                            복사
+                          </Button>
+                        </div>
+                      </div>
+                      <dl className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
+                          <dt className="text-xs font-bold text-text-muted">상태</dt>
+                          <dd className="mt-1 font-bold text-text-primary">
+                            {TASK_STATUS_LABELS[task.status]}
+                          </dd>
+                        </div>
+                        <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
+                          <dt className="text-xs font-bold text-text-muted">우선순위</dt>
+                          <dd className="mt-1 font-bold text-text-primary">
+                            {TASK_PRIORITY_LABELS[task.priority]}
+                          </dd>
+                        </div>
+                        <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
+                          <dt className="text-xs font-bold text-text-muted">담당자</dt>
+                          <dd className="mt-1 font-bold text-text-primary">
+                            {task.assigneeName ?? '미지정'}
+                          </dd>
+                        </div>
+                        <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
+                          <dt className="text-xs font-bold text-text-muted">마감일</dt>
+                          <dd className="mt-1 font-bold text-text-primary">
+                            {formatDate(task.dueDate)}
+                          </dd>
+                        </div>
+                      </dl>
+                      <div>
+                        <p className="text-xs font-bold text-text-muted">내용</p>
+                        <p className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-secondary">
+                          {task.content || '업무 내용이 없습니다.'}
+                        </p>
+                      </div>
+                    </div>
+                  </section>
 
-              <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-sm font-black text-text-primary">
-                    스킬 발동 예시
-                  </p>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() =>
-                      copyText(prompt, '리뷰 스킬 발동 예시를 복사했습니다.')
-                    }
-                  >
-                    <Copy className="mr-1.5 size-3.5" />
-                    예시 복사
-                  </Button>
+                  <section className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-sm font-black text-text-primary">
+                        스킬 발동 예시
+                      </p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() =>
+                          copyText(prompt, '리뷰 스킬 발동 예시를 복사했습니다.')
+                        }
+                      >
+                        <Copy className="mr-1.5 size-3.5" />
+                        예시 복사
+                      </Button>
+                    </div>
+                    <p className="whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 font-mono text-xs leading-6 text-text-primary">
+                      {prompt}
+                    </p>
+                    <p className="mt-3 text-xs leading-5 text-text-muted">
+                      리뷰 폴더에는 `리뷰.md`, `REVIEW.md`, `review.md` 또는 HTML 리뷰 파일을 둘 수 있습니다.
+                      공유 키나 스킬 설치 방법은{' '}
+                      <a
+                        href="mailto:terecal@daum.net"
+                        className="font-bold text-brand-primary underline-offset-4 hover:underline"
+                      >
+                        terecal@daum.net
+                      </a>
+                      으로 문의하세요.
+                    </p>
+                  </section>
                 </div>
-                <p className="whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-muted p-3 font-mono text-sm leading-6 text-text-primary">
-                  {prompt}
-                </p>
-              </section>
+              </aside>
 
-              <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
-                <p className="text-sm leading-6 text-text-secondary">
-                  리뷰 폴더에는 `리뷰.md`, `REVIEW.md`, `review.md` 또는
-                  HTML 리뷰 파일을 둘 수 있습니다. API 공유 키나 스킬 설치
-                  방법이 필요하면{' '}
-                  <a
-                    href="mailto:terecal@daum.net"
-                    className="font-bold text-brand-primary underline-offset-4 hover:underline"
-                  >
-                    terecal@daum.net
-                  </a>
-                  으로 문의하세요.
-                </p>
-              </section>
+              <main className="min-h-0 overflow-y-auto bg-background p-5">
+                <TaskReviewPreview
+                  reviews={reviewsQuery.data ?? []}
+                  isLoading={reviewsQuery.isLoading}
+                />
+              </main>
             </div>
           ) : null}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  )
+}
+
+function TaskReviewPreview({
+  reviews,
+  isLoading,
+}: {
+  reviews: CodeReviewSummary[]
+  isLoading: boolean
+}) {
+  if (isLoading) {
+    return (
+      <div className="flex min-h-full items-center justify-center gap-2 text-sm text-text-muted">
+        <Loader2 className="size-4 animate-spin" />
+        코드 리뷰를 불러오는 중입니다.
+      </div>
+    )
+  }
+
+  if (!reviews.length) {
+    return (
+      <div className="flex min-h-full items-center justify-center">
+        <div className="w-full max-w-xl rounded-md border border-surface-border-soft bg-surface-muted p-6 text-center">
+          <Code2 className="mx-auto size-8 text-brand-primary" />
+          <h3 className="mt-3 text-base font-black text-text-primary">
+            등록된 코드 리뷰가 없습니다.
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">
+            왼쪽의 스킬 발동 예시를 복사해서 Codex에게 실행시키면 이 영역에 리뷰가 표시됩니다.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-black text-text-primary">
+              코드 리뷰
+            </h3>
+            <p className="mt-1 text-sm text-text-secondary">
+              등록된 리뷰 {reviews.length}건을 최신순으로 표시합니다.
+            </p>
+          </div>
+          <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-1 text-xs font-bold text-brand-primary">
+            리뷰 {reviews.length}
+          </span>
+        </div>
+      </div>
+
+      {reviews.map((review) => (
+        <TaskReviewArticle key={review.id} review={review} />
+      ))}
+    </div>
+  )
+}
+
+function riskLabel(riskLevel: CodeReviewSummary['riskLevel']) {
+  if (riskLevel === 'high') return '높음'
+  if (riskLevel === 'medium') return '중간'
+  return '낮음'
+}
+
+function riskClassName(riskLevel: CodeReviewSummary['riskLevel']) {
+  if (riskLevel === 'high') return 'border-danger-border bg-danger-glass text-danger-500'
+  if (riskLevel === 'medium') return 'border-brand-border bg-brand-glass text-brand-primary'
+  return 'border-surface-border-soft bg-surface-raised text-text-secondary'
+}
+
+function TaskReviewArticle({ review }: { review: CodeReviewSummary }) {
+  return (
+    <article className="rounded-md border border-surface-border-soft bg-surface-muted">
+      <header className="border-b border-surface-border-soft p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h4 className="text-lg font-black text-text-primary">
+              {review.title}
+            </h4>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-text-muted">
+              <span>{review.repository}</span>
+              <span>{formatDateTime(review.createdAt)}</span>
+              <span className={clsx('rounded-sm border px-2 py-0.5', riskClassName(review.riskLevel))}>
+                위험도 {riskLabel(review.riskLevel)}
+              </span>
+            </div>
+          </div>
+          <a
+            href={`/code-reviews/${review.id}`}
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised px-3 text-xs font-bold text-text-primary hover:bg-surface-strong"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <ExternalLink className="mr-1.5 size-3.5" />
+            열기
+          </a>
+        </div>
+      </header>
+      <div className="space-y-3 p-4">
+        <p className="whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-secondary">
+          {review.summary}
+        </p>
+        <div className="flex flex-wrap gap-2 text-[11px] font-bold text-text-muted">
+          <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1">
+            평가 {review.findingCount}
+          </span>
+          <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1">
+            높음 {review.highSeverityCount}
+          </span>
+          <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1">
+            파일 {review.changedFileCount}
+          </span>
+        </div>
+      </div>
+    </article>
   )
 }
 

@@ -10,9 +10,11 @@ import {
   FileCode2,
   GitPullRequest,
   Info,
+  Link2,
   Loader2,
   Search,
   Trash2,
+  Unlink,
   X,
 } from 'lucide-react'
 
@@ -25,12 +27,15 @@ import {
 } from '../../../entities/code-review/api/code-review-api'
 import type {
   CodeReviewFinding,
+  CodeReviewDetail,
   CodeReviewRiskLevel,
   CodeReviewSection,
 } from '../../../entities/code-review/model/types'
+import { TASK_STATUS_LABELS } from '../../../entities/task/model/constants'
 import { Button } from '../../../shared/ui/button'
 import { Mermaid } from '../../../shared/ui/mermaid'
 import { PageHeader } from '../../../shared/ui/page-header'
+import { useTasks } from '../../../features/task/model/use-task-queries'
 
 type CodeReviewsPageProps = {
   reviewId?: string
@@ -691,6 +696,7 @@ function ReviewDetailPanel({
   const updateMutation = useUpdateCodeReview(reviewId)
   const deleteMutation = useDeleteCodeReview()
   const [isEditing, setIsEditing] = useState(false)
+  const [showTaskLinkDialog, setShowTaskLinkDialog] = useState(false)
   const [title, setTitle] = useState('')
   const [summary, setSummary] = useState('')
 
@@ -757,6 +763,14 @@ function ReviewDetailPanel({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowTaskLinkDialog(true)}
+            >
+              <Link2 className="mr-1.5 size-3.5" />
+              {detail.taskId ? '업무 연결 변경' : '업무 연결'}
+            </Button>
             <a
               href={detail.sourceUrl}
               target="_blank"
@@ -821,6 +835,132 @@ function ReviewDetailPanel({
           </section>
 
           <FindingSection findings={detail.findings} />
+        </div>
+      </div>
+      {showTaskLinkDialog ? (
+        <TaskLinkDialog
+          detail={detail}
+          onClose={() => setShowTaskLinkDialog(false)}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function TaskLinkDialog({
+  detail,
+  onClose,
+}: {
+  detail: CodeReviewDetail
+  onClose: () => void
+}) {
+  const [q, setQ] = useState('')
+  const tasksQuery = useTasks({
+    q,
+    page: 1,
+    pageSize: 10,
+    archived: false,
+    sort: 'recent',
+  })
+  const updateMutation = useUpdateCodeReview(detail.id)
+
+  async function connect(taskId: string | null) {
+    await updateMutation.mutateAsync({ taskId })
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 ui-overlay" onClick={onClose} />
+      <div className="relative z-10 flex max-h-[min(760px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-md border border-surface-border bg-surface-raised shadow-xl">
+        <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft px-5 py-4">
+          <div>
+            <h2 className="text-base font-extrabold text-text-primary">
+              코드 리뷰를 업무에 연결
+            </h2>
+            <p className="mt-1 text-xs text-text-muted">
+              업무를 선택하면 이 코드 리뷰가 해당 업무의 리뷰 목록에 표시됩니다.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="ui-icon-button">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 overflow-y-auto p-5">
+          <div>
+            <label className="text-xs font-extrabold text-text-secondary">
+              업무 검색
+            </label>
+            <div className="mt-2 flex items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
+              <Search className="size-4 text-text-muted" />
+              <input
+                value={q}
+                onChange={(event) => setQ(event.target.value)}
+                placeholder="제목 또는 내용으로 검색"
+                className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+              />
+            </div>
+          </div>
+
+          {detail.taskId ? (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-brand-border bg-brand-glass p-3">
+              <p className="min-w-0 break-all text-xs font-bold text-brand-primary">
+                현재 연결: {detail.taskId}
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => connect(null)}
+                disabled={updateMutation.isPending}
+              >
+                <Unlink className="mr-1.5 size-3.5" />
+                해제
+              </Button>
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            {tasksQuery.isLoading ? (
+              <div className="flex items-center justify-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted p-8 text-sm text-text-muted">
+                <Loader2 className="size-4 animate-spin" />
+                업무를 불러오는 중
+              </div>
+            ) : tasksQuery.data?.items.length ? (
+              tasksQuery.data.items.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => connect(task.id)}
+                  disabled={updateMutation.isPending}
+                  className="w-full rounded-md border border-surface-border-soft bg-surface-muted p-3 text-left transition-colors hover:border-brand-border hover:bg-surface-strong disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-extrabold text-text-primary">
+                        {task.title}
+                      </p>
+                      <p className="mt-1 break-all font-mono text-[11px] text-text-muted">
+                        {task.id}
+                      </p>
+                    </div>
+                    <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-0.5 text-[11px] font-bold text-text-secondary">
+                      {TASK_STATUS_LABELS[task.status]}
+                    </span>
+                  </div>
+                  {task.content ? (
+                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-text-muted">
+                      {task.content}
+                    </p>
+                  ) : null}
+                </button>
+              ))
+            ) : (
+              <div className="rounded-md border border-surface-border-soft bg-surface-muted p-8 text-center text-sm text-text-muted">
+                검색된 업무가 없습니다.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

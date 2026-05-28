@@ -43,12 +43,14 @@ export const codeReviewChangedFileSchema = z.object({
 export const listCodeReviewsQuerySchema = z.object({
   q: z.string().trim().max(120).optional().default(''),
   repository: z.string().trim().max(200).optional().default(''),
+  taskId: z.string().trim().max(80).optional().default(''),
   riskLevel: riskLevelSchema.optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export const createCodeReviewSchema = z.object({
+  taskId: z.string().trim().min(1).max(80).nullable().optional().default(null),
   sourceType: sourceTypeSchema,
   sourceUrl: z.string().trim().min(1).max(1000),
   repository: z.string().trim().min(1).max(240),
@@ -65,6 +67,7 @@ export const createCodeReviewSchema = z.object({
 });
 
 export const uploadCodeReviewSchema = z.object({
+  taskId: z.string().trim().min(1).max(80).nullable().optional().default(null),
   sourceUrl: z.string().trim().min(1).max(1000),
   reviewGoal: z.string().trim().max(1000).optional().default(''),
   title: z.string().trim().min(1).max(180),
@@ -98,6 +101,7 @@ export const updateCodeReviewSchema = z
     title: z.string().trim().min(1).max(180).optional(),
     summary: z.string().trim().min(1).max(12000).optional(),
     riskLevel: riskLevelSchema.optional(),
+    taskId: z.string().trim().min(1).max(80).nullable().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',

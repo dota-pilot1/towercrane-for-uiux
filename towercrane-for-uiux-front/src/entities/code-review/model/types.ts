@@ -37,6 +37,7 @@ export type CodeReviewChangedFile = {
 
 export type CodeReviewSummary = {
   id: string
+  taskId: string | null
   sourceType: CodeReviewSourceType
   sourceUrl: string
   repository: string
@@ -78,6 +79,7 @@ export type CodeReviewListResponse = {
 export type CodeReviewListParams = {
   q?: string
   repository?: string
+  taskId?: string
   riskLevel?: CodeReviewRiskLevel
   page: number
   pageSize: number
@@ -102,4 +104,5 @@ export type UpdateCodeReviewPayload = {
   title?: string
   summary?: string
   riskLevel?: CodeReviewRiskLevel
+  taskId?: string | null
 }

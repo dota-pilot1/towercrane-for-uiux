@@ -19,6 +19,7 @@ export const codeReviewKeys = {
   all: ['code-reviews'] as const,
   lists: () => [...codeReviewKeys.all, 'list'] as const,
   list: (params: CodeReviewListParams) => [...codeReviewKeys.lists(), params] as const,
+  taskList: (taskId: string | null) => [...codeReviewKeys.all, 'task', taskId] as const,
   detail: (reviewId: string) => [...codeReviewKeys.all, 'detail', reviewId] as const,
 }
 
@@ -29,6 +30,7 @@ function buildListQuery(params: CodeReviewListParams) {
   })
   if (params.q) search.set('q', params.q)
   if (params.repository) search.set('repository', params.repository)
+  if (params.taskId) search.set('taskId', params.taskId)
   if (params.riskLevel) search.set('riskLevel', params.riskLevel)
   return search.toString()
 }
@@ -42,6 +44,23 @@ export function useCodeReviewList(params: CodeReviewListParams) {
       apiRequest<CodeReviewListResponse>(`/code-reviews?${buildListQuery(params)}`),
     enabled: isAuthenticated,
     placeholderData: keepPreviousData,
+  })
+}
+
+export function useTaskCodeReviewList(taskId: string | null) {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+
+  return useQuery({
+    queryKey: codeReviewKeys.taskList(taskId),
+    queryFn: () =>
+      apiRequest<CodeReviewListResponse>(
+        `/code-reviews?${buildListQuery({
+          taskId: taskId as string,
+          page: 1,
+          pageSize: 50,
+        })}`,
+      ),
+    enabled: isAuthenticated && Boolean(taskId),
   })
 }
 
@@ -69,6 +88,7 @@ export function useAnalyzeCodeReview() {
     onSuccess: (detail) => {
       queryClient.setQueryData(codeReviewKeys.detail(detail.id), detail)
       void queryClient.invalidateQueries({ queryKey: codeReviewKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: codeReviewKeys.taskList(detail.taskId) })
     },
   })
 }

@@ -21,4 +21,13 @@ export class TaskIngestController {
   ) {
     return this.taskIngestService.ingestReview(taskId, body, ingestKey);
   }
+
+  @Post(':taskId/code-reviews')
+  ingestCodeReview(
+    @Headers('x-towercrane-ingest-key') ingestKey: string | undefined,
+    @Param('taskId') taskId: string,
+    @Body() body: unknown,
+  ) {
+    return this.taskIngestService.ingestCodeReview(taskId, body, ingestKey);
+  }
 }

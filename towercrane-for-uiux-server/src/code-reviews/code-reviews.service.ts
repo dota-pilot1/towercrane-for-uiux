@@ -110,6 +110,9 @@ export class CodeReviewsService {
     if (query.repository) {
       conditions.push(like(codeReviewsTable.repository, `%${query.repository}%`));
     }
+    if (query.taskId) {
+      conditions.push(eq(codeReviewsTable.taskId, query.taskId));
+    }
     if (query.riskLevel) {
       conditions.push(eq(codeReviewsTable.riskLevel, query.riskLevel));
     }
@@ -206,6 +209,7 @@ export class CodeReviewsService {
     const now = new Date().toISOString();
     const row: CodeReviewInsert = {
       id: `code-review-${randomUUID().slice(0, 12)}`,
+      taskId: null,
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
       repository: source.repository,
@@ -295,6 +299,62 @@ export class CodeReviewsService {
     return this.detail(user, row.id);
   }
 
+  uploadFromIngest(user: CodeReviewUser, taskId: string, payload: unknown) {
+    const input = uploadCodeReviewSchema.parse({
+      ...(typeof payload === 'object' && payload ? payload : {}),
+      taskId,
+    });
+    const source = this.parseGithubSource(input.sourceUrl);
+    const diffHash = createHash('sha256')
+      .update(input.sourceUrl)
+      .update('\n--review-goal--\n')
+      .update(input.reviewGoal ?? '')
+      .update('\n--title--\n')
+      .update(input.title)
+      .digest('hex');
+
+    const duplicate = this.findDuplicate(source.sourceUrl, diffHash);
+    if (duplicate) {
+      if (!duplicate.taskId || duplicate.taskId !== taskId) {
+        this.db
+          .update(codeReviewsTable)
+          .set({ taskId, updatedAt: new Date().toISOString() })
+          .where(eq(codeReviewsTable.id, duplicate.id))
+          .run();
+      }
+      return {
+        ...this.toDetailDto({ ...duplicate, taskId }, user),
+        duplicate: true,
+      };
+    }
+
+    const now = new Date().toISOString();
+    const row: CodeReviewInsert = {
+      id: `code-review-${randomUUID().slice(0, 12)}`,
+      taskId,
+      sourceType: source.sourceType,
+      sourceUrl: source.sourceUrl,
+      repository: source.repository,
+      title: input.title,
+      summary: input.summary,
+      riskLevel: input.riskLevel,
+      findings: input.findings,
+      testGaps: input.testGaps,
+      changedFiles: [],
+      excludedFiles: [],
+      diffHash,
+      diffSnapshot: null,
+      model: input.model ?? 'codex',
+      createdBy: user.id,
+      createdByName: user.name || user.email,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.db.insert(codeReviewsTable).values(row).run();
+    return { ...this.detail(user, row.id), duplicate: false };
+  }
+
   async validateRepository(user: CodeReviewUser, payload: unknown) {
     this.ensureSignedIn(user);
     const input = validateCodeReviewRepositorySchema.parse(payload ?? {});
@@ -355,6 +415,7 @@ export class CodeReviewsService {
     if (input.title !== undefined) changes.title = input.title;
     if (input.summary !== undefined) changes.summary = input.summary;
     if (input.riskLevel !== undefined) changes.riskLevel = input.riskLevel;
+    if (input.taskId !== undefined) changes.taskId = input.taskId;
 
     this.db
       .update(codeReviewsTable)
@@ -2474,6 +2535,7 @@ export class CodeReviewsService {
     ).length;
     return {
       id: row.id,
+      taskId: row.taskId,
       sourceType: row.sourceType,
       sourceUrl: row.sourceUrl,
       repository: row.repository,

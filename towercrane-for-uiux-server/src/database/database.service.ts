@@ -732,6 +732,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE TABLE IF NOT EXISTS code_reviews (
         id TEXT PRIMARY KEY,
+        task_id TEXT,
         source_type TEXT NOT NULL,
         source_url TEXT NOT NULL,
         repository TEXT NOT NULL,
@@ -749,6 +750,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by_name TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE SET NULL,
         FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
       );
 
@@ -757,6 +759,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_code_reviews_repository_created
         ON code_reviews(repository, created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_code_reviews_task_created
+        ON code_reviews(task_id, created_at);
 
       CREATE TABLE IF NOT EXISTS dev_management_bot_settings (
         room_id TEXT PRIMARY KEY,
@@ -2822,6 +2827,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'content_json',
       'ALTER TABLE knowledge_documents ADD COLUMN content_json TEXT',
     );
+    this.ensureColumn(
+      'code_reviews',
+      'task_id',
+      'ALTER TABLE code_reviews ADD COLUMN task_id TEXT',
+    );
     this.sqlite.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user
         ON study_diaries(user_id);
@@ -2861,6 +2871,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_tasks_visibility_updated
         ON tasks(visibility, archived, updated_at);
+
+      CREATE INDEX IF NOT EXISTS idx_code_reviews_task_created
+        ON code_reviews(task_id, created_at);
 
       CREATE INDEX IF NOT EXISTS idx_api_doc_categories_team_order
         ON api_doc_categories(team_id, order_idx);

@@ -893,6 +893,9 @@ export type CodeReviewChangedFile = {
 
 export const codeReviewsTable = sqliteTable('code_reviews', {
   id: text('id').primaryKey(),
+  taskId: text('task_id').references(() => tasksTable.id, {
+    onDelete: 'set null',
+  }),
   sourceType: text('source_type').$type<CodeReviewSourceType>().notNull(),
   sourceUrl: text('source_url').notNull(),
   repository: text('repository').notNull(),

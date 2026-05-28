@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { asc, eq } from 'drizzle-orm';
+import { CodeReviewsService } from '../code-reviews/code-reviews.service';
 import { DatabaseService } from '../database/database.service';
 import {
   taskAiReviewsTable,
@@ -27,6 +28,7 @@ export class TaskIngestService {
   constructor(
     private readonly configService: ConfigService,
     private readonly databaseService: DatabaseService,
+    private readonly codeReviewsService: CodeReviewsService,
   ) {}
 
   private get db() {
@@ -165,6 +167,39 @@ export class TaskIngestService {
     };
   }
 
+  ingestCodeReview(taskId: string, rawPayload: unknown, ingestKey?: string) {
+    this.assertIngestKey(ingestKey);
+    const task = this.db
+      .select({ id: tasksTable.id })
+      .from(tasksTable)
+      .where(eq(tasksTable.id, taskId))
+      .get();
+
+    if (!task) {
+      throw new NotFoundException(`Task not found: ${taskId}`);
+    }
+
+    const reporter = this.resolveReporter();
+    const review = this.codeReviewsService.uploadFromIngest(
+      {
+        id: reporter.id,
+        email: reporter.email,
+        name: reporter.name,
+        role: reporter.role,
+      },
+      taskId,
+      rawPayload,
+    );
+
+    return {
+      codeReviewId: review.id,
+      taskId,
+      duplicate: Boolean(review.duplicate),
+      url: this.buildTaskUrl(taskId),
+      codeReviewUrl: this.buildCodeReviewUrl(review.id),
+    };
+  }
+
   private assertIngestKey(inputKey?: string) {
     const expectedKey = this.configService.get<string>('TASK_INGEST_KEY');
     if (!expectedKey) {
@@ -217,11 +252,18 @@ export class TaskIngestService {
     return `${frontendUrl.replace(/\/$/, '')}/task/${taskId}`;
   }
 
+  private buildCodeReviewUrl(reviewId: string) {
+    const frontendUrl =
+      this.configService.get<string>('TASK_INGEST_FRONTEND_URL') ??
+      'https://hibot-docu.com';
+    return `${frontendUrl.replace(/\/$/, '')}/code-reviews/${reviewId}`;
+  }
+
   private buildImplementationPrompt(taskId: string) {
     return `이 업무(${taskId})를 구현해줘. 업무 상세, 단계별 계획, 예상 파일 구조를 참고해서 작업하고, 완료 후 변경 요약과 검증 결과를 남겨줘.`;
   }
 
   private buildReviewPrompt(taskId: string) {
-    return `이 업무(${taskId})에 대한 구현 결과를 코드 리뷰로 등록해줘. 변경 파일, 주요 결정, 테스트 결과, 남은 리스크를 markdown으로 정리해줘.`;
+    return `/pms-task-review ${taskId} docs-for-5차 mvp/코드 리뷰\n현재 커밋을 기준으로 코드 리뷰를 만들고 이 업무에 연결해줘.`;
   }
 }
