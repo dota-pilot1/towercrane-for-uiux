@@ -139,6 +139,23 @@ export function useUpdateCodeReview(reviewId: string | null) {
   })
 }
 
+export function useLinkCodeReviewToTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ reviewId, taskId }: { reviewId: string; taskId: string | null }) =>
+      apiRequest<CodeReviewDetail>(`/code-reviews/${reviewId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ taskId }),
+      }),
+    onSuccess: (detail) => {
+      queryClient.setQueryData(codeReviewKeys.detail(detail.id), detail)
+      void queryClient.invalidateQueries({ queryKey: codeReviewKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: codeReviewKeys.all })
+    },
+  })
+}
+
 export function useDeleteCodeReview() {
   const queryClient = useQueryClient()
 

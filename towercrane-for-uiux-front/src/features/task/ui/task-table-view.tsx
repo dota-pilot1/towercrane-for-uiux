@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import {
   closestCenter,
@@ -22,7 +22,7 @@ import {
   type Row,
   type RowSelectionState,
 } from '@tanstack/react-table'
-import { Code2, Copy, ExternalLink, FileText, GripVertical, Loader2, X } from 'lucide-react'
+import { Code2, Copy, ExternalLink, FileText, GripVertical, Loader2, Search, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import {
@@ -33,8 +33,13 @@ import {
   TASK_STATUS_BADGE_CLASS,
   TASK_PRIORITY_BADGE_CLASS,
 } from '../../../entities/task/model/constants'
-import { useTaskCodeReviewList } from '../../../entities/code-review/api/code-review-api'
-import type { CodeReviewSummary } from '../../../entities/code-review/model/types'
+import {
+  useCodeReviewDetail,
+  useCodeReviewList,
+  useLinkCodeReviewToTask,
+  useTaskCodeReviewList,
+} from '../../../entities/code-review/api/code-review-api'
+import type { CodeReviewDetail, CodeReviewFinding, CodeReviewSummary } from '../../../entities/code-review/model/types'
 import type { Task, TaskPriority, TaskStatus } from '../../../entities/task/model/types'
 import type { AssignableUser } from '../../../shared/api/users'
 import { Button } from '../../../shared/ui/button'
@@ -46,9 +51,6 @@ import {
   useUpdateTaskStatus,
 } from '../model/use-task-queries'
 import { TaskTypeBadge } from './task-badges'
-
-const REVIEW_FOLDER_EXAMPLE =
-  'docs-for-5차 mvp/코드 리뷰 폴더'
 
 function formatDate(value?: string | null, fallback = '-') {
   if (!value) return fallback
@@ -70,11 +72,6 @@ function formatDateTime(value?: string | null) {
   }).format(date)
 }
 
-function buildReviewSkillPrompt(taskId: string) {
-  return `/pms-task-review ${taskId} ${REVIEW_FOLDER_EXAMPLE}
-현재 커밋을 기준으로 코드 리뷰를 만들고 이 업무에 연결해줘.`
-}
-
 async function copyText(text: string, successMessage: string) {
   try {
     await navigator.clipboard.writeText(text)
@@ -91,8 +88,21 @@ function TaskReviewGuideDialog({
   task: Task | null
   onOpenChange: (open: boolean) => void
 }) {
-  const prompt = task ? buildReviewSkillPrompt(task.id) : ''
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [activeReviewId, setActiveReviewId] = useState<string | null>(null)
   const reviewsQuery = useTaskCodeReviewList(task?.id ?? null)
+  const reviews = reviewsQuery.data?.items ?? []
+  const activeReview = reviews.find((review) => review.id === activeReviewId) ?? reviews[0] ?? null
+  const detailQuery = useCodeReviewDetail(activeReview?.id ?? null)
+
+  useEffect(() => {
+    setActiveReviewId(null)
+    setPickerOpen(false)
+  }, [task?.id])
+
+  useEffect(() => {
+    if (!activeReviewId && reviews[0]) setActiveReviewId(reviews[0].id)
+  }, [activeReviewId, reviews])
 
   return (
     <Dialog.Root open={Boolean(task)} onOpenChange={onOpenChange}>
@@ -102,10 +112,10 @@ function TaskReviewGuideDialog({
           <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-black text-text-primary">
-                PMS 코드 리뷰 등록
+                업무 코드 리뷰
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-text-secondary">
-                업무 정보와 등록된 코드 리뷰를 보면서 Codex 리뷰 등록 문구를 복사합니다.
+                업무 기본 정보와 연결된 코드 리뷰를 한 화면에서 확인합니다.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -122,114 +132,32 @@ function TaskReviewGuideDialog({
           {task ? (
             <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-surface-border-soft overflow-hidden lg:grid-cols-[minmax(360px,0.9fr)_minmax(0,1.4fr)] lg:divide-x lg:divide-y-0">
               <aside className="min-h-0 overflow-y-auto bg-surface-raised p-5">
-                <div className="space-y-4">
-                  <section className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
-                    <div className="flex items-center gap-2">
-                      <FileText className="size-4 text-brand-primary" />
-                      <h3 className="text-sm font-black text-text-primary">
-                        업무 기본 정보
-                      </h3>
-                    </div>
-                    <div className="mt-4 space-y-4">
-                      <div>
-                        <p className="text-xs font-bold text-text-muted">제목</p>
-                        <p className="mt-1 text-base font-black text-text-primary">
-                          {task.title}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-text-muted">업무 ID</p>
-                        <div className="mt-1 flex items-center gap-2">
-                          <p className="min-w-0 flex-1 break-all rounded-md border border-surface-border-soft bg-surface-raised p-2 font-mono text-xs text-text-primary">
-                            {task.id}
-                          </p>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => copyText(task.id, '업무 ID를 복사했습니다.')}
-                          >
-                            <Copy className="mr-1.5 size-3.5" />
-                            복사
-                          </Button>
-                        </div>
-                      </div>
-                      <dl className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
-                          <dt className="text-xs font-bold text-text-muted">상태</dt>
-                          <dd className="mt-1 font-bold text-text-primary">
-                            {TASK_STATUS_LABELS[task.status]}
-                          </dd>
-                        </div>
-                        <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
-                          <dt className="text-xs font-bold text-text-muted">우선순위</dt>
-                          <dd className="mt-1 font-bold text-text-primary">
-                            {TASK_PRIORITY_LABELS[task.priority]}
-                          </dd>
-                        </div>
-                        <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
-                          <dt className="text-xs font-bold text-text-muted">담당자</dt>
-                          <dd className="mt-1 font-bold text-text-primary">
-                            {task.assigneeName ?? '미지정'}
-                          </dd>
-                        </div>
-                        <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
-                          <dt className="text-xs font-bold text-text-muted">마감일</dt>
-                          <dd className="mt-1 font-bold text-text-primary">
-                            {formatDate(task.dueDate)}
-                          </dd>
-                        </div>
-                      </dl>
-                      <div>
-                        <p className="text-xs font-bold text-text-muted">내용</p>
-                        <p className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-secondary">
-                          {task.content || '업무 내용이 없습니다.'}
-                        </p>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-sm font-black text-text-primary">
-                        스킬 발동 예시
-                      </p>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() =>
-                          copyText(prompt, '리뷰 스킬 발동 예시를 복사했습니다.')
-                        }
-                      >
-                        <Copy className="mr-1.5 size-3.5" />
-                        예시 복사
-                      </Button>
-                    </div>
-                    <p className="whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 font-mono text-xs leading-6 text-text-primary">
-                      {prompt}
-                    </p>
-                    <p className="mt-3 text-xs leading-5 text-text-muted">
-                      리뷰 폴더에는 `리뷰.md`, `REVIEW.md`, `review.md` 또는 HTML 리뷰 파일을 둘 수 있습니다.
-                      공유 키나 스킬 설치 방법은{' '}
-                      <a
-                        href="mailto:terecal@daum.net"
-                        className="font-bold text-brand-primary underline-offset-4 hover:underline"
-                      >
-                        terecal@daum.net
-                      </a>
-                      으로 문의하세요.
-                    </p>
-                  </section>
-                </div>
+                <TaskReviewTaskInfo task={task} />
               </aside>
 
               <main className="min-h-0 overflow-y-auto bg-background p-5">
                 <TaskReviewPreview
-                  reviews={reviewsQuery.data ?? []}
+                  task={task}
+                  reviews={reviews}
+                  activeReviewId={activeReview?.id ?? null}
+                  detail={detailQuery.data ?? null}
                   isLoading={reviewsQuery.isLoading}
+                  isDetailLoading={detailQuery.isLoading}
+                  onSelectReview={setActiveReviewId}
+                  onOpenPicker={() => setPickerOpen(true)}
                 />
               </main>
+              {pickerOpen ? (
+                <CodeReviewPickerDialog
+                  task={task}
+                  linkedReviews={reviews}
+                  onClose={() => setPickerOpen(false)}
+                  onLinked={(reviewId) => {
+                    setActiveReviewId(reviewId)
+                    void reviewsQuery.refetch()
+                  }}
+                />
+              ) : null}
             </div>
           ) : null}
         </Dialog.Content>
@@ -238,59 +166,200 @@ function TaskReviewGuideDialog({
   )
 }
 
+function TaskReviewTaskInfo({ task }: { task: Task }) {
+  return (
+    <section className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+      <div className="flex items-center gap-2">
+        <FileText className="size-4 text-brand-primary" />
+        <h3 className="text-sm font-black text-text-primary">
+          업무 기본 정보
+        </h3>
+      </div>
+      <div className="mt-4 space-y-4">
+        <div>
+          <p className="text-xs font-bold text-text-muted">제목</p>
+          <p className="mt-1 text-base font-black text-text-primary">
+            {task.title}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-bold text-text-muted">업무 ID</p>
+          <div className="mt-1 flex items-center gap-2">
+            <p className="min-w-0 flex-1 break-all rounded-md border border-surface-border-soft bg-surface-raised p-2 font-mono text-xs text-text-primary">
+              {task.id}
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => copyText(task.id, '업무 ID를 복사했습니다.')}
+            >
+              <Copy className="mr-1.5 size-3.5" />
+              복사
+            </Button>
+          </div>
+        </div>
+        <dl className="grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
+            <dt className="text-xs font-bold text-text-muted">상태</dt>
+            <dd className="mt-1 font-bold text-text-primary">
+              {TASK_STATUS_LABELS[task.status]}
+            </dd>
+          </div>
+          <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
+            <dt className="text-xs font-bold text-text-muted">우선순위</dt>
+            <dd className="mt-1 font-bold text-text-primary">
+              {TASK_PRIORITY_LABELS[task.priority]}
+            </dd>
+          </div>
+          <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
+            <dt className="text-xs font-bold text-text-muted">담당자</dt>
+            <dd className="mt-1 font-bold text-text-primary">
+              {task.assigneeName ?? '미지정'}
+            </dd>
+          </div>
+          <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
+            <dt className="text-xs font-bold text-text-muted">마감일</dt>
+            <dd className="mt-1 font-bold text-text-primary">
+              {formatDate(task.dueDate)}
+            </dd>
+          </div>
+        </dl>
+        <div>
+          <p className="text-xs font-bold text-text-muted">내용</p>
+          <p className="mt-1 max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-secondary">
+            {task.content || '업무 내용이 없습니다.'}
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function TaskReviewPreview({
+  task,
   reviews,
+  activeReviewId,
+  detail,
   isLoading,
+  isDetailLoading,
+  onSelectReview,
+  onOpenPicker,
 }: {
+  task: Task
   reviews: CodeReviewSummary[]
+  activeReviewId: string | null
+  detail: CodeReviewDetail | null
   isLoading: boolean
+  isDetailLoading: boolean
+  onSelectReview: (reviewId: string) => void
+  onOpenPicker: () => void
 }) {
   if (isLoading) {
     return (
-      <div className="flex min-h-full items-center justify-center gap-2 text-sm text-text-muted">
-        <Loader2 className="size-4 animate-spin" />
-        코드 리뷰를 불러오는 중입니다.
-      </div>
+      <TaskReviewPanelFrame task={task} reviewCount={0} onOpenPicker={onOpenPicker}>
+        <div className="flex min-h-64 items-center justify-center gap-2 text-sm text-text-muted">
+          <Loader2 className="size-4 animate-spin" />
+          코드 리뷰를 불러오는 중입니다.
+        </div>
+      </TaskReviewPanelFrame>
     )
   }
 
   if (!reviews.length) {
     return (
-      <div className="flex min-h-full items-center justify-center">
-        <div className="w-full max-w-xl rounded-md border border-surface-border-soft bg-surface-muted p-6 text-center">
-          <Code2 className="mx-auto size-8 text-brand-primary" />
-          <h3 className="mt-3 text-base font-black text-text-primary">
-            등록된 코드 리뷰가 없습니다.
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-text-secondary">
-            왼쪽의 스킬 발동 예시를 복사해서 Codex에게 실행시키면 이 영역에 리뷰가 표시됩니다.
-          </p>
+      <TaskReviewPanelFrame task={task} reviewCount={0} onOpenPicker={onOpenPicker}>
+        <div className="flex min-h-64 items-center justify-center">
+          <div className="w-full max-w-xl rounded-md border border-surface-border-soft bg-surface-muted p-6 text-center">
+            <Code2 className="mx-auto size-8 text-brand-primary" />
+            <h3 className="mt-3 text-base font-black text-text-primary">
+              연결된 코드 리뷰가 없습니다.
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
+              오른쪽 상단의 코드 리뷰 가져오기로 이미 등록된 리뷰를 이 업무와 연결하세요.
+            </p>
+          </div>
         </div>
-      </div>
+      </TaskReviewPanelFrame>
     )
   }
 
   return (
+    <TaskReviewPanelFrame task={task} reviewCount={reviews.length} onOpenPicker={onOpenPicker}>
+      <div className="space-y-4">
+        {reviews.length > 1 ? (
+          <div className="flex flex-wrap gap-2">
+            {reviews.map((review) => (
+              <button
+                key={review.id}
+                type="button"
+                onClick={() => onSelectReview(review.id)}
+                className={clsx(
+                  'max-w-72 truncate rounded-sm border px-3 py-1.5 text-xs font-bold transition-colors',
+                  review.id === activeReviewId
+                    ? 'border-brand-border bg-brand-glass text-brand-primary'
+                    : 'border-surface-border-soft bg-surface-muted text-text-secondary hover:bg-surface-strong',
+                )}
+                title={review.title}
+              >
+                {review.title}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {isDetailLoading ? (
+          <div className="flex min-h-64 items-center justify-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted text-sm text-text-muted">
+            <Loader2 className="size-4 animate-spin" />
+            코드 리뷰 상세를 불러오는 중입니다.
+          </div>
+        ) : detail ? (
+          <TaskReviewDetailArticle detail={detail} />
+        ) : (
+          <div className="rounded-md border border-surface-border-soft bg-surface-muted p-8 text-center text-sm text-text-muted">
+            코드 리뷰 상세를 찾을 수 없습니다.
+          </div>
+        )}
+      </div>
+    </TaskReviewPanelFrame>
+  )
+}
+
+function TaskReviewPanelFrame({
+  task,
+  reviewCount,
+  onOpenPicker,
+  children,
+}: {
+  task: Task
+  reviewCount: number
+  onOpenPicker: () => void
+  children: ReactNode
+}) {
+  return (
     <div className="space-y-4">
       <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <h3 className="text-base font-black text-text-primary">
-              코드 리뷰
+              연결된 코드 리뷰
             </h3>
-            <p className="mt-1 text-sm text-text-secondary">
-              등록된 리뷰 {reviews.length}건을 최신순으로 표시합니다.
+            <p className="mt-1 truncate text-sm text-text-secondary">
+              {task.title}
             </p>
           </div>
-          <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-1 text-xs font-bold text-brand-primary">
-            리뷰 {reviews.length}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-1 text-xs font-bold text-brand-primary">
+              리뷰 {reviewCount}
+            </span>
+            <Button type="button" variant="secondary" size="sm" onClick={onOpenPicker}>
+              <Search className="mr-1.5 size-3.5" />
+              코드 리뷰 가져오기
+            </Button>
+          </div>
         </div>
       </div>
-
-      {reviews.map((review) => (
-        <TaskReviewArticle key={review.id} review={review} />
-      ))}
+      {children}
     </div>
   )
 }
@@ -307,50 +376,212 @@ function riskClassName(riskLevel: CodeReviewSummary['riskLevel']) {
   return 'border-surface-border-soft bg-surface-raised text-text-secondary'
 }
 
-function TaskReviewArticle({ review }: { review: CodeReviewSummary }) {
+function TaskReviewDetailArticle({ detail }: { detail: CodeReviewDetail }) {
   return (
     <article className="rounded-md border border-surface-border-soft bg-surface-muted">
       <header className="border-b border-surface-border-soft p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h4 className="text-lg font-black text-text-primary">
-              {review.title}
+              {detail.title}
             </h4>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-text-muted">
-              <span>{review.repository}</span>
-              <span>{formatDateTime(review.createdAt)}</span>
-              <span className={clsx('rounded-sm border px-2 py-0.5', riskClassName(review.riskLevel))}>
-                위험도 {riskLabel(review.riskLevel)}
+              <span>{detail.repository}</span>
+              <span>{detail.createdByName}</span>
+              <span>{formatDateTime(detail.createdAt)}</span>
+              <span className={clsx('rounded-sm border px-2 py-0.5', riskClassName(detail.riskLevel))}>
+                위험도 {riskLabel(detail.riskLevel)}
               </span>
             </div>
           </div>
-          <a
-            href={`/code-reviews/${review.id}`}
-            className="inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised px-3 text-xs font-bold text-text-primary hover:bg-surface-strong"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <ExternalLink className="mr-1.5 size-3.5" />
-            열기
-          </a>
+          <div className="flex shrink-0 items-center gap-2">
+            <a
+              href={detail.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-8 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised px-3 text-xs font-bold text-text-primary hover:bg-surface-strong"
+            >
+              <ExternalLink className="mr-1.5 size-3.5" />
+              원본
+            </a>
+            <a
+              href={`/code-reviews/${detail.id}`}
+              className="inline-flex h-8 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised px-3 text-xs font-bold text-text-primary hover:bg-surface-strong"
+            >
+              <ExternalLink className="mr-1.5 size-3.5" />
+              상세
+            </a>
+          </div>
         </div>
       </header>
-      <div className="space-y-3 p-4">
-        <p className="whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-secondary">
-          {review.summary}
-        </p>
-        <div className="flex flex-wrap gap-2 text-[11px] font-bold text-text-muted">
-          <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1">
-            평가 {review.findingCount}
-          </span>
-          <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1">
-            높음 {review.highSeverityCount}
-          </span>
-          <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1">
-            파일 {review.changedFileCount}
-          </span>
-        </div>
+      <div className="space-y-5 p-4">
+        <section>
+          <h5 className="text-sm font-black text-text-primary">전체 요약</h5>
+          <p className="mt-2 whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-secondary">
+            {detail.summary}
+          </p>
+        </section>
+        <section>
+          <h5 className="text-sm font-black text-text-primary">변경 파일</h5>
+          <div className="mt-2 rounded-md border border-surface-border-soft bg-surface-raised p-3">
+            {detail.changedFiles.length ? (
+              <ul className="space-y-1 font-mono text-xs text-text-secondary">
+                {detail.changedFiles.slice(0, 8).map((file) => (
+                  <li key={file.path} className="break-all">
+                    {file.path}
+                    <span className="ml-2 text-text-muted">
+                      +{file.additions}/-{file.deletions}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-text-muted">변경 파일 정보가 없습니다.</p>
+            )}
+          </div>
+        </section>
+        <section>
+          <h5 className="text-sm font-black text-text-primary">검토 항목</h5>
+          <div className="mt-2 space-y-2">
+            {detail.findings.length ? (
+              detail.findings.slice(0, 6).map((finding, index) => (
+                <TaskReviewFindingCard key={`${finding.title}-${index}`} finding={finding} />
+              ))
+            ) : (
+              <p className="rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm text-text-muted">
+                평가 항목이 없습니다.
+              </p>
+            )}
+          </div>
+        </section>
       </div>
     </article>
+  )
+}
+
+function TaskReviewFindingCard({ finding }: { finding: CodeReviewFinding }) {
+  return (
+    <div className="rounded-md border border-surface-border-soft bg-surface-raised p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[11px] font-bold text-brand-primary">
+            {finding.category ?? 'review'}
+          </span>
+          <h6 className="min-w-0 text-sm font-black text-text-primary">
+            {finding.title}
+          </h6>
+        </div>
+        <span className={clsx('rounded-sm border px-2 py-0.5 text-[11px] font-bold', riskClassName(finding.severity))}>
+          {riskLabel(finding.severity)}
+        </span>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
+        {finding.body}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-text-primary">
+        권장: {finding.recommendation}
+      </p>
+    </div>
+  )
+}
+
+function CodeReviewPickerDialog({
+  task,
+  linkedReviews,
+  onClose,
+  onLinked,
+}: {
+  task: Task
+  linkedReviews: CodeReviewSummary[]
+  onClose: () => void
+  onLinked: (reviewId: string) => void
+}) {
+  const [q, setQ] = useState('')
+  const reviewsQuery = useCodeReviewList({ q, page: 1, pageSize: 20 })
+  const linkMutation = useLinkCodeReviewToTask()
+  const linkedIds = new Set(linkedReviews.map((review) => review.id))
+
+  async function connect(reviewId: string) {
+    await linkMutation.mutateAsync({ reviewId, taskId: task.id })
+    toast.success('코드 리뷰를 업무에 연결했습니다.')
+    onLinked(reviewId)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <div className="absolute inset-0 ui-overlay" onClick={onClose} />
+      <div className="relative z-10 flex max-h-[min(760px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-md border border-surface-border bg-surface-raised shadow-xl">
+        <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="text-base font-extrabold text-text-primary">
+              코드 리뷰 가져오기
+            </h2>
+            <p className="mt-1 truncate text-xs text-text-muted">
+              {task.title}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="ui-icon-button">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 overflow-y-auto p-5">
+          <div className="flex items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
+            <Search className="size-4 text-text-muted" />
+            <input
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              placeholder="리뷰 제목, 저장소, 요약으로 검색"
+              className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+            />
+          </div>
+
+          <div className="space-y-2">
+            {reviewsQuery.isLoading ? (
+              <div className="flex items-center justify-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted p-8 text-sm text-text-muted">
+                <Loader2 className="size-4 animate-spin" />
+                코드 리뷰를 불러오는 중
+              </div>
+            ) : reviewsQuery.data?.items.length ? (
+              reviewsQuery.data.items.map((review) => {
+                const alreadyLinked = linkedIds.has(review.id)
+                return (
+                  <button
+                    key={review.id}
+                    type="button"
+                    onClick={() => connect(review.id)}
+                    disabled={alreadyLinked || linkMutation.isPending}
+                    className="w-full rounded-md border border-surface-border-soft bg-surface-muted p-3 text-left transition-colors hover:border-brand-border hover:bg-surface-strong disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-extrabold text-text-primary">
+                          {review.title}
+                        </p>
+                        <p className="mt-1 text-xs text-text-muted">
+                          {review.repository} · {formatDateTime(review.createdAt)}
+                        </p>
+                      </div>
+                      <span className={clsx('rounded-sm border px-2 py-0.5 text-[11px] font-bold', riskClassName(review.riskLevel))}>
+                        {alreadyLinked ? '연결됨' : riskLabel(review.riskLevel)}
+                      </span>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-text-muted">
+                      {review.summary}
+                    </p>
+                  </button>
+                )
+              })
+            ) : (
+              <div className="rounded-md border border-surface-border-soft bg-surface-muted p-8 text-center text-sm text-text-muted">
+                검색된 코드 리뷰가 없습니다.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
