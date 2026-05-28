@@ -22,7 +22,7 @@ import {
   type Row,
   type RowSelectionState,
 } from '@tanstack/react-table'
-import { Code2, Copy, ExternalLink, FileText, GripVertical, Loader2, Search, X } from 'lucide-react'
+import { Code2, Copy, ExternalLink, FileText, Folder, GripVertical, ListChecks, Loader2, Search, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import {
@@ -40,10 +40,18 @@ import {
   useTaskCodeReviewList,
 } from '../../../entities/code-review/api/code-review-api'
 import type { CodeReviewDetail, CodeReviewFinding, CodeReviewSummary } from '../../../entities/code-review/model/types'
+import {
+  useFeaturePlanDetail,
+  useFeaturePlanList,
+  useLinkFeaturePlanToTask,
+  useTaskFeaturePlanList,
+} from '../../../entities/feature-plan/api/feature-plan-api'
+import type { FeaturePlanDetail, FeaturePlanSummary } from '../../../entities/feature-plan/model/types'
 import type { Task, TaskPriority, TaskStatus } from '../../../entities/task/model/types'
 import type { AssignableUser } from '../../../shared/api/users'
 import { Button } from '../../../shared/ui/button'
 import { CompactSelect } from '../../../shared/ui/compact-select'
+import { Mermaid } from '../../../shared/ui/mermaid'
 import {
   useReorderTasks,
   useUpdateTaskAssignee,
@@ -88,21 +96,21 @@ function TaskReviewGuideDialog({
   task: Task | null
   onOpenChange: (open: boolean) => void
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [activeReviewId, setActiveReviewId] = useState<string | null>(null)
+  const [reviewState, setReviewState] = useState<{
+    taskId: string | null
+    activeReviewId: string | null
+    pickerOpen: boolean
+  }>({ taskId: null, activeReviewId: null, pickerOpen: false })
+  const currentTaskId = task?.id ?? null
+  const currentReviewState =
+    reviewState.taskId === currentTaskId
+      ? reviewState
+      : { taskId: currentTaskId, activeReviewId: null, pickerOpen: false }
   const reviewsQuery = useTaskCodeReviewList(task?.id ?? null)
   const reviews = reviewsQuery.data?.items ?? []
-  const activeReview = reviews.find((review) => review.id === activeReviewId) ?? reviews[0] ?? null
-  const detailQuery = useCodeReviewDetail(activeReview?.id ?? null)
-
-  useEffect(() => {
-    setActiveReviewId(null)
-    setPickerOpen(false)
-  }, [task?.id])
-
-  useEffect(() => {
-    if (!activeReviewId && reviews[0]) setActiveReviewId(reviews[0].id)
-  }, [activeReviewId, reviews])
+  const selectedReviewId =
+    currentReviewState.activeReviewId ?? reviews[0]?.id ?? null
+  const detailQuery = useCodeReviewDetail(selectedReviewId)
 
   return (
     <Dialog.Root open={Boolean(task)} onOpenChange={onOpenChange}>
@@ -139,21 +147,43 @@ function TaskReviewGuideDialog({
                 <TaskReviewPreview
                   task={task}
                   reviews={reviews}
-                  activeReviewId={activeReview?.id ?? null}
+                  activeReviewId={selectedReviewId}
                   detail={detailQuery.data ?? null}
                   isLoading={reviewsQuery.isLoading}
                   isDetailLoading={detailQuery.isLoading}
-                  onSelectReview={setActiveReviewId}
-                  onOpenPicker={() => setPickerOpen(true)}
+                  onSelectReview={(reviewId) =>
+                    setReviewState({
+                      taskId: currentTaskId,
+                      activeReviewId: reviewId,
+                      pickerOpen: false,
+                    })
+                  }
+                  onOpenPicker={() =>
+                    setReviewState({
+                      taskId: currentTaskId,
+                      activeReviewId: selectedReviewId,
+                      pickerOpen: true,
+                    })
+                  }
                 />
               </main>
-              {pickerOpen ? (
+              {currentReviewState.pickerOpen ? (
                 <CodeReviewPickerDialog
                   task={task}
                   linkedReviews={reviews}
-                  onClose={() => setPickerOpen(false)}
+                  onClose={() =>
+                    setReviewState({
+                      taskId: currentTaskId,
+                      activeReviewId: selectedReviewId,
+                      pickerOpen: false,
+                    })
+                  }
                   onLinked={(reviewId) => {
-                    setActiveReviewId(reviewId)
+                    setReviewState({
+                      taskId: currentTaskId,
+                      activeReviewId: reviewId,
+                      pickerOpen: false,
+                    })
                     void reviewsQuery.refetch()
                   }}
                 />
@@ -233,6 +263,546 @@ function TaskReviewTaskInfo({ task }: { task: Task }) {
         </div>
       </div>
     </section>
+  )
+}
+
+type FolderTreeNode = {
+  name: string
+  path: string
+  isFile: boolean
+  children: FolderTreeNode[]
+}
+
+type FolderTreeBuildNode = Omit<FolderTreeNode, 'children'> & {
+  childrenMap: Map<string, FolderTreeBuildNode>
+}
+
+function cleanFolderStructureLine(line: string) {
+  return line
+    .trim()
+    .replace(/^[\s├└│─]+/, '')
+    .replace(/^[-*]\s+/, '')
+    .replace(/^\d+\.\s+/, '')
+    .trim()
+}
+
+function buildFolderTree(value: string) {
+  const root = new Map<string, FolderTreeBuildNode>()
+
+  value
+    .split('\n')
+    .map(cleanFolderStructureLine)
+    .filter(Boolean)
+    .forEach((line) => {
+      const parts = line.split('/').map((part) => part.trim()).filter(Boolean)
+      let level = root
+      let currentPath = ''
+
+      parts.forEach((part, index) => {
+        currentPath = currentPath ? `${currentPath}/${part}` : part
+        const isLast = index === parts.length - 1
+        const existing = level.get(part)
+        const node =
+          existing ??
+          {
+            name: part,
+            path: currentPath,
+            isFile: isLast && part.includes('.'),
+            childrenMap: new Map<string, FolderTreeBuildNode>(),
+          }
+
+        if (isLast && part.includes('.')) node.isFile = true
+        level.set(part, node)
+
+        if (!isLast) {
+          level = node.childrenMap
+        }
+      })
+    })
+
+  const hydrate = (nodes: FolderTreeBuildNode[]): FolderTreeNode[] =>
+    nodes.map((node) => {
+      const children = hydrate(Array.from(node.childrenMap.values()))
+      return {
+        name: node.name,
+        path: node.path,
+        isFile: node.isFile && children.length === 0,
+        children,
+      }
+    })
+
+  return hydrate(Array.from(root.values()))
+}
+
+function FolderTreeItems({
+  nodes,
+  depth = 0,
+}: {
+  nodes: FolderTreeNode[]
+  depth?: number
+}) {
+  return (
+    <>
+      {nodes.map((node) => (
+        <li key={node.path}>
+          <div
+            className="flex min-h-6 items-center gap-2 rounded-sm px-1 text-xs text-text-primary"
+            style={{ paddingLeft: `${depth * 1.25}rem` }}
+          >
+            {node.isFile ? (
+              <FileText className="size-3.5 shrink-0 text-text-muted" />
+            ) : (
+              <Folder className="size-3.5 shrink-0 text-brand-primary" />
+            )}
+            <span className="whitespace-nowrap font-mono">{node.name}</span>
+          </div>
+          {node.children.length > 0 ? (
+            <ul className="space-y-0.5">
+              <FolderTreeItems nodes={node.children} depth={depth + 1} />
+            </ul>
+          ) : null}
+        </li>
+      ))}
+    </>
+  )
+}
+
+function FolderStructurePreview({ value }: { value: string }) {
+  const nodes = buildFolderTree(value)
+  if (nodes.length === 0) {
+    return (
+      <div className="flex min-h-32 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted px-4 py-6 text-center text-sm text-text-muted">
+        도식으로 표시할 경로가 없습니다.
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-h-80 overflow-auto rounded-md border border-surface-border-soft bg-surface-muted p-3">
+      <ul className="min-w-max space-y-0.5">
+        <FolderTreeItems nodes={nodes} />
+      </ul>
+    </div>
+  )
+}
+
+function TaskPlanDialog({
+  task,
+  onOpenChange,
+}: {
+  task: Task | null
+  onOpenChange: (open: boolean) => void
+}) {
+  const [planState, setPlanState] = useState<{
+    taskId: string | null
+    activePlanId: string | null
+    pickerOpen: boolean
+  }>({ taskId: null, activePlanId: null, pickerOpen: false })
+  const currentTaskId = task?.id ?? null
+  const currentPlanState =
+    planState.taskId === currentTaskId
+      ? planState
+      : { taskId: currentTaskId, activePlanId: null, pickerOpen: false }
+  const plansQuery = useTaskFeaturePlanList(task?.id ?? null)
+  const plans = plansQuery.data?.items ?? []
+  const selectedPlanId = currentPlanState.activePlanId ?? plans[0]?.id ?? null
+  const detailQuery = useFeaturePlanDetail(selectedPlanId)
+
+  return (
+    <Dialog.Root open={Boolean(task)} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
+        <Dialog.Content className="glass-panel fixed inset-3 z-[60] flex flex-col overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl md:inset-6">
+          <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
+            <div className="min-w-0">
+              <Dialog.Title className="text-lg font-black text-text-primary">
+                업무 계획
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-text-secondary">
+                업무 기본 정보와 연결된 기능 개발 계획을 한 화면에서 확인합니다.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="ui-icon-button size-8"
+                aria-label="닫기"
+              >
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          {task ? (
+            <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-surface-border-soft overflow-hidden lg:grid-cols-[minmax(360px,0.85fr)_minmax(0,1.45fr)] lg:divide-x lg:divide-y-0">
+              <aside className="min-h-0 overflow-y-auto bg-surface-raised p-5">
+                <TaskReviewTaskInfo task={task} />
+              </aside>
+
+              <main className="min-h-0 overflow-y-auto bg-background p-5">
+                <TaskPlanPreview
+                  task={task}
+                  plans={plans}
+                  activePlanId={selectedPlanId}
+                  detail={detailQuery.data ?? null}
+                  isLoading={plansQuery.isLoading}
+                  isDetailLoading={detailQuery.isLoading}
+                  onSelectPlan={(planId) =>
+                    setPlanState({
+                      taskId: currentTaskId,
+                      activePlanId: planId,
+                      pickerOpen: false,
+                    })
+                  }
+                  onOpenPicker={() =>
+                    setPlanState({
+                      taskId: currentTaskId,
+                      activePlanId: selectedPlanId,
+                      pickerOpen: true,
+                    })
+                  }
+                />
+              </main>
+              {currentPlanState.pickerOpen ? (
+                <FeaturePlanPickerDialog
+                  task={task}
+                  linkedPlans={plans}
+                  onClose={() =>
+                    setPlanState({
+                      taskId: currentTaskId,
+                      activePlanId: selectedPlanId,
+                      pickerOpen: false,
+                    })
+                  }
+                  onLinked={(planId) => {
+                    setPlanState({
+                      taskId: currentTaskId,
+                      activePlanId: planId,
+                      pickerOpen: false,
+                    })
+                    void plansQuery.refetch()
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
+function TaskPlanPreview({
+  task,
+  plans,
+  activePlanId,
+  detail,
+  isLoading,
+  isDetailLoading,
+  onSelectPlan,
+  onOpenPicker,
+}: {
+  task: Task
+  plans: FeaturePlanSummary[]
+  activePlanId: string | null
+  detail: FeaturePlanDetail | null
+  isLoading: boolean
+  isDetailLoading: boolean
+  onSelectPlan: (planId: string) => void
+  onOpenPicker: () => void
+}) {
+  if (isLoading) {
+    return (
+      <TaskPlanPanelFrame task={task} planCount={0} onOpenPicker={onOpenPicker}>
+        <div className="flex min-h-64 items-center justify-center gap-2 text-sm text-text-muted">
+          <Loader2 className="size-4 animate-spin" />
+          기능 개발 계획을 불러오는 중입니다.
+        </div>
+      </TaskPlanPanelFrame>
+    )
+  }
+
+  if (!plans.length) {
+    return (
+      <TaskPlanPanelFrame task={task} planCount={0} onOpenPicker={onOpenPicker}>
+        <div className="flex min-h-64 items-center justify-center">
+          <div className="w-full max-w-xl rounded-md border border-surface-border-soft bg-surface-muted p-6 text-center">
+            <ListChecks className="mx-auto size-8 text-brand-primary" />
+            <h3 className="mt-3 text-base font-black text-text-primary">
+              연결된 기능 개발 계획이 없습니다.
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
+              오른쪽 상단의 계획 가져오기로 이미 등록된 계획 파일을 이 업무와 연결하세요.
+            </p>
+          </div>
+        </div>
+      </TaskPlanPanelFrame>
+    )
+  }
+
+  return (
+    <TaskPlanPanelFrame task={task} planCount={plans.length} onOpenPicker={onOpenPicker}>
+      <div className="space-y-4">
+        {plans.length > 1 ? (
+          <div className="flex flex-wrap gap-2">
+            {plans.map((plan) => (
+              <button
+                key={plan.id}
+                type="button"
+                onClick={() => onSelectPlan(plan.id)}
+                className={clsx(
+                  'max-w-72 truncate rounded-sm border px-3 py-1.5 text-xs font-bold transition-colors',
+                  plan.id === activePlanId
+                    ? 'border-brand-border bg-brand-glass text-brand-primary'
+                    : 'border-surface-border-soft bg-surface-muted text-text-secondary hover:bg-surface-strong',
+                )}
+                title={plan.title}
+              >
+                {plan.title}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {isDetailLoading ? (
+          <div className="flex min-h-64 items-center justify-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted text-sm text-text-muted">
+            <Loader2 className="size-4 animate-spin" />
+            기능 개발 계획 상세를 불러오는 중입니다.
+          </div>
+        ) : detail ? (
+          <FeaturePlanDetailArticle detail={detail} />
+        ) : (
+          <div className="rounded-md border border-surface-border-soft bg-surface-muted p-8 text-center text-sm text-text-muted">
+            기능 개발 계획 상세를 찾을 수 없습니다.
+          </div>
+        )}
+      </div>
+    </TaskPlanPanelFrame>
+  )
+}
+
+function TaskPlanPanelFrame({
+  task,
+  planCount,
+  onOpenPicker,
+  children,
+}: {
+  task: Task
+  planCount: number
+  onOpenPicker: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-base font-black text-text-primary">
+              연결된 기능 개발 계획
+            </h3>
+            <p className="mt-1 truncate text-sm text-text-secondary">
+              {task.title}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-1 text-xs font-bold text-brand-primary">
+              계획 {planCount}
+            </span>
+            <Button type="button" variant="secondary" size="sm" onClick={onOpenPicker}>
+              <Search className="mr-1.5 size-3.5" />
+              계획 가져오기
+            </Button>
+          </div>
+        </div>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function FeaturePlanDetailArticle({ detail }: { detail: FeaturePlanDetail }) {
+  return (
+    <article className="rounded-md border border-surface-border-soft bg-surface-muted">
+      <header className="border-b border-surface-border-soft p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h4 className="text-lg font-black text-text-primary">
+              {detail.title}
+            </h4>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-text-muted">
+              <span>{detail.createdByName}</span>
+              <span>{formatDateTime(detail.createdAt)}</span>
+              {detail.sourceFileName ? <span>{detail.sourceFileName}</span> : null}
+            </div>
+          </div>
+          <a
+            href={`/feature-plans/${detail.id}`}
+            className="inline-flex h-8 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised px-3 text-xs font-bold text-text-primary hover:bg-surface-strong"
+          >
+            <ExternalLink className="mr-1.5 size-3.5" />
+            상세
+          </a>
+        </div>
+      </header>
+      <div className="space-y-5 p-4">
+        <FeaturePlanTextSection title="전체 요약" value={detail.summary} />
+        <FeaturePlanTextSection title="업무 배경" value={detail.content} />
+        <FeaturePlanTextSection title="완료 기준" value={detail.acceptanceCriteria} />
+        <FeaturePlanTextSection title="단계별 계획" value={detail.plan} />
+        {detail.folderStructure.trim() ? (
+          <section>
+            <h5 className="text-sm font-black text-text-primary">예상 파일 구조</h5>
+            <div className="mt-2">
+              <FolderStructurePreview value={detail.folderStructure} />
+            </div>
+          </section>
+        ) : null}
+        {detail.checklist.length ? (
+          <section>
+            <h5 className="text-sm font-black text-text-primary">체크리스트</h5>
+            <ul className="mt-2 space-y-2 rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-secondary">
+              {detail.checklist.map((item) => (
+                <li key={item} className="flex gap-2">
+                  <ListChecks className="mt-1 size-4 shrink-0 text-brand-primary" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {detail.mmdContent.trim() ? (
+          <section>
+            <h5 className="text-sm font-black text-text-primary">MMD</h5>
+            <div className="mt-2 rounded-md border border-surface-border-soft bg-surface-raised p-3">
+              <Mermaid chart={detail.mmdContent} className="min-h-48" />
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </article>
+  )
+}
+
+function FeaturePlanTextSection({
+  title,
+  value,
+}: {
+  title: string
+  value: string
+}) {
+  if (!value.trim()) return null
+  return (
+    <section>
+      <h5 className="text-sm font-black text-text-primary">{title}</h5>
+      <p className="mt-2 whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-secondary">
+        {value}
+      </p>
+    </section>
+  )
+}
+
+function FeaturePlanPickerDialog({
+  task,
+  linkedPlans,
+  onClose,
+  onLinked,
+}: {
+  task: Task
+  linkedPlans: FeaturePlanSummary[]
+  onClose: () => void
+  onLinked: (planId: string) => void
+}) {
+  const [q, setQ] = useState('')
+  const plansQuery = useFeaturePlanList({ q, page: 1, pageSize: 20 })
+  const linkMutation = useLinkFeaturePlanToTask()
+  const linkedIds = new Set(linkedPlans.map((plan) => plan.id))
+
+  async function connect(plan: FeaturePlanSummary) {
+    await linkMutation.mutateAsync({ planId: plan.id, taskId: task.id })
+    toast.success('기능 개발 계획을 업무에 연결했습니다.')
+    onLinked(plan.id)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <div className="absolute inset-0 ui-overlay" onClick={onClose} />
+      <div className="relative z-10 flex max-h-[min(760px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-md border border-surface-border bg-surface-raised shadow-xl">
+        <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="text-base font-extrabold text-text-primary">
+              기능 개발 계획 가져오기
+            </h2>
+            <p className="mt-1 truncate text-xs text-text-muted">
+              {task.title}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="ui-icon-button">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 overflow-y-auto p-5">
+          <div className="flex items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
+            <Search className="size-4 text-text-muted" />
+            <input
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              placeholder="계획 제목, 요약, 본문으로 검색"
+              className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+            />
+          </div>
+
+          <div className="space-y-2">
+            {plansQuery.isLoading ? (
+              <div className="flex items-center justify-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted p-8 text-sm text-text-muted">
+                <Loader2 className="size-4 animate-spin" />
+                기능 개발 계획을 불러오는 중
+              </div>
+            ) : plansQuery.data?.items.length ? (
+              plansQuery.data.items.map((plan) => {
+                const alreadyLinked = linkedIds.has(plan.id)
+                const linkedToOtherTask = Boolean(plan.linkedTaskId && plan.linkedTaskId !== task.id)
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => connect(plan)}
+                    disabled={alreadyLinked || linkedToOtherTask || linkMutation.isPending}
+                    className="w-full rounded-md border border-surface-border-soft bg-surface-muted p-3 text-left transition-colors hover:border-brand-border hover:bg-surface-strong disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-extrabold text-text-primary">
+                          {plan.title}
+                        </p>
+                        <p className="mt-1 text-xs text-text-muted">
+                          {plan.createdByName} · {formatDateTime(plan.createdAt)}
+                        </p>
+                      </div>
+                      <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[11px] font-bold text-brand-primary">
+                        {alreadyLinked
+                          ? '연결됨'
+                          : linkedToOtherTask
+                            ? '다른 업무'
+                            : `체크 ${plan.checklistCount}`}
+                      </span>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-text-muted">
+                      {plan.summary}
+                    </p>
+                  </button>
+                )
+              })
+            ) : (
+              <div className="rounded-md border border-surface-border-soft bg-surface-muted p-8 text-center text-sm text-text-muted">
+                검색된 기능 개발 계획이 없습니다.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -662,6 +1232,7 @@ export function TaskTableView({
   onSelectionChange?: (ids: string[]) => void
 }) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const [planTask, setPlanTask] = useState<Task | null>(null)
   const [reviewGuideTask, setReviewGuideTask] = useState<Task | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -860,6 +1431,20 @@ export function TaskTableView({
               variant="secondary"
               size="sm"
               className="h-8 px-3 text-xs"
+              title="계획 보기"
+              aria-label="계획 보기"
+              onClick={(event) => {
+                event.stopPropagation()
+                setPlanTask(row.original)
+              }}
+            >
+              계획
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 px-3 text-xs"
               title="리뷰 등록법"
               aria-label="리뷰 등록법"
               onClick={(event) => {
@@ -920,6 +1505,12 @@ export function TaskTableView({
 
   return (
     <div className="ui-panel overflow-hidden">
+      <TaskPlanDialog
+        task={planTask}
+        onOpenChange={(open) => {
+          if (!open) setPlanTask(null)
+        }}
+      />
       <TaskReviewGuideDialog
         task={reviewGuideTask}
         onOpenChange={(open) => {
@@ -941,7 +1532,7 @@ export function TaskTableView({
                 <col className="w-20" />
                 <col className="w-24" />
                 <col className="w-28" />
-                <col className="w-36" />
+                <col className="w-48" />
                 <col className="w-28" />
                 <col className="w-28" />
                 <col className="w-28" />

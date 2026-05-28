@@ -52,6 +52,10 @@ export class FeaturePlansService {
       if (keywordCondition) conditions.push(keywordCondition);
     }
 
+    if (query.taskId) {
+      conditions.push(eq(featurePlansTable.linkedTaskId, query.taskId));
+    }
+
     const where = conditions.length > 0 ? and(...conditions) : undefined;
     const offset = (query.page - 1) * query.pageSize;
     const rows = this.db
@@ -115,7 +119,10 @@ export class FeaturePlansService {
   delete(user: FeaturePlanUser, planId: string) {
     const row = this.ensurePlan(planId);
     this.ensureCanWrite(user, row);
-    this.db.delete(featurePlansTable).where(eq(featurePlansTable.id, planId)).run();
+    this.db
+      .delete(featurePlansTable)
+      .where(eq(featurePlansTable.id, planId))
+      .run();
     return { success: true, id: planId };
   }
 
@@ -173,7 +180,10 @@ export class FeaturePlansService {
       .from(featurePlansTable)
       .where(eq(featurePlansTable.id, planId))
       .get();
-    if (!row) throw new NotFoundException(`기능 개발 계획을 찾을 수 없습니다: ${planId}`);
+    if (!row)
+      throw new NotFoundException(
+        `기능 개발 계획을 찾을 수 없습니다: ${planId}`,
+      );
     return row;
   }
 

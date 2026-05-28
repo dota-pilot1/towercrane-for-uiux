@@ -8,17 +8,19 @@ import {
   CalendarDays,
   CheckSquare,
   Check,
-  Clipboard,
   Code2,
   Copy,
+  ExternalLink,
   FilePenLine,
   FileText,
   Folder,
   KeyRound,
   Link2,
+  Loader2,
   MessageSquareText,
   Paperclip,
   Save,
+  Search,
   Trash2,
   UserRound,
   X,
@@ -40,6 +42,17 @@ import type {
 } from '../../../entities/task/model/types'
 import { useAssignableUsers } from '../../../shared/api/users'
 import { useSessionStore } from '../../../shared/store/session-store'
+import {
+  useCodeReviewDetail,
+  useCodeReviewList,
+  useLinkCodeReviewToTask,
+  useTaskCodeReviewList,
+} from '../../../entities/code-review/api/code-review-api'
+import type {
+  CodeReviewDetail,
+  CodeReviewRiskLevel,
+  CodeReviewSummary,
+} from '../../../entities/code-review/model/types'
 import { BackLinkButton } from '../../../shared/ui/back-link-button'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
@@ -57,7 +70,6 @@ import { TaskCommentsPanel } from '../../../features/task/ui/task-comments-panel
 import {
   useArchiveTasks,
   useDeleteTask,
-  useTaskAiReviews,
   useRestoreTasks,
   useTaskDetail,
   useUpdateTask,
@@ -250,31 +262,6 @@ function FolderStructurePreview({ value }: { value: string }) {
   )
 }
 
-function PromptCopyBox({
-  title,
-  content,
-  onCopy,
-}: {
-  title: string
-  content: string
-  onCopy: () => void
-}) {
-  return (
-    <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-black text-text-secondary">{title}</p>
-        <Button type="button" variant="secondary" size="sm" onClick={onCopy}>
-          <Copy className="mr-1.5 size-3.5" />
-          복사
-        </Button>
-      </div>
-      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-primary">
-        {content}
-      </p>
-    </div>
-  )
-}
-
 function TaskSkillGuideDialog({
   open,
   onOpenChange,
@@ -371,6 +358,241 @@ function TaskSkillGuideDialog({
   )
 }
 
+function riskLabel(riskLevel: CodeReviewRiskLevel) {
+  if (riskLevel === 'high') return '높음'
+  if (riskLevel === 'medium') return '중간'
+  return '낮음'
+}
+
+function riskClassName(riskLevel: CodeReviewRiskLevel) {
+  if (riskLevel === 'high') return 'border-danger-border bg-danger-glass text-danger-500'
+  if (riskLevel === 'medium') return 'border-brand-border bg-brand-glass text-brand-primary'
+  return 'border-surface-border-soft bg-surface-raised text-text-secondary'
+}
+
+function TaskPlanSummary({ task }: { task: Task }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-black text-text-primary">단계별 계획</h3>
+        <p className="mt-2 min-h-24 whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-muted p-3 text-sm leading-6 text-text-secondary">
+          {task.plan || '등록된 단계별 계획이 없습니다.'}
+        </p>
+      </div>
+      <div>
+        <h3 className="text-sm font-black text-text-primary">예상 파일 구조</h3>
+        {task.folderStructure ? (
+          <div className="mt-2">
+            <FolderStructurePreview value={task.folderStructure} />
+          </div>
+        ) : (
+          <p className="mt-2 rounded-md border border-surface-border-soft bg-surface-muted p-3 text-sm text-text-muted">
+            등록된 예상 파일 구조가 없습니다.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TaskCodeReviewSelector({ taskId }: { taskId: string }) {
+  const [q, setQ] = useState('')
+  const [activeReviewId, setActiveReviewId] = useState<string | null>(null)
+  const linkedReviewsQuery = useTaskCodeReviewList(taskId)
+  const reviewListQuery = useCodeReviewList({ q, page: 1, pageSize: 12 })
+  const linkReview = useLinkCodeReviewToTask()
+  const linkedReviews = linkedReviewsQuery.data?.items ?? []
+  const selectedReviewId = activeReviewId ?? linkedReviews[0]?.id ?? null
+  const activeDetailQuery = useCodeReviewDetail(selectedReviewId)
+  const linkedIds = new Set(linkedReviews.map((review) => review.id))
+
+  async function connectReview(review: CodeReviewSummary) {
+    if (linkedIds.has(review.id)) {
+      setActiveReviewId(review.id)
+      return
+    }
+
+    setActiveReviewId(review.id)
+    await linkReview.mutateAsync({ reviewId: review.id, taskId })
+    toast.success('코드 리뷰를 업무에 연결했습니다.')
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2">
+        <Search className="size-4 text-text-muted" />
+        <input
+          value={q}
+          onChange={(event) => setQ(event.target.value)}
+          placeholder="리뷰 제목, 저장소, 요약 검색"
+          className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(260px,0.72fr)_minmax(0,1fr)]">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-black text-text-primary">리뷰 선택</h3>
+            <span className="text-xs font-bold text-text-muted">
+              연결 {linkedReviews.length}
+            </span>
+          </div>
+          <div className="max-h-[32rem] space-y-2 overflow-y-auto rounded-md border border-surface-border-soft bg-surface-raised p-2">
+            {reviewListQuery.isLoading ? (
+              <div className="flex items-center justify-center gap-2 p-8 text-sm text-text-muted">
+                <Loader2 className="size-4 animate-spin" />
+                코드 리뷰를 불러오는 중
+              </div>
+            ) : reviewListQuery.data?.items.length ? (
+              reviewListQuery.data.items.map((review) => {
+                const linked = linkedIds.has(review.id)
+                const active = selectedReviewId === review.id
+                return (
+                  <button
+                    key={review.id}
+                    type="button"
+                    onClick={() => connectReview(review)}
+                    disabled={linkReview.isPending}
+                    className={`w-full rounded-md border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      active
+                        ? 'border-brand-border bg-brand-glass'
+                        : 'border-surface-border-soft bg-surface-muted hover:border-brand-border hover:bg-brand-glass'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="min-w-0 text-sm font-black text-text-primary">
+                        {review.title}
+                      </p>
+                      <span className={`shrink-0 rounded-sm border px-2 py-0.5 text-[10px] font-bold ${linked ? 'border-brand-border bg-brand-glass text-brand-primary' : riskClassName(review.riskLevel)}`}>
+                        {linked ? '연결됨' : riskLabel(review.riskLevel)}
+                      </span>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-text-secondary">
+                      {review.summary}
+                    </p>
+                    <p className="mt-2 text-[11px] font-semibold text-text-muted">
+                      {review.repository} · {formatDateTime(review.createdAt)}
+                    </p>
+                  </button>
+                )
+              })
+            ) : (
+              <p className="p-8 text-center text-sm text-text-muted">
+                검색된 코드 리뷰가 없습니다.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <TaskCodeReviewDetail
+          detail={activeDetailQuery.data ?? null}
+          isLoading={linkedReviewsQuery.isLoading || activeDetailQuery.isLoading}
+        />
+      </div>
+    </div>
+  )
+}
+
+function TaskCodeReviewDetail({
+  detail,
+  isLoading,
+}: {
+  detail: CodeReviewDetail | null
+  isLoading: boolean
+}) {
+  if (isLoading) {
+    return (
+      <div className="flex min-h-64 items-center justify-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted text-sm text-text-muted">
+        <Loader2 className="size-4 animate-spin" />
+        연결된 리뷰를 불러오는 중
+      </div>
+    )
+  }
+
+  if (!detail) {
+    return (
+      <div className="flex min-h-64 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted p-6 text-center">
+        <div>
+          <Code2 className="mx-auto size-8 text-brand-primary" />
+          <p className="mt-3 text-sm font-black text-text-primary">
+            선택된 코드 리뷰가 없습니다.
+          </p>
+          <p className="mt-2 text-xs leading-5 text-text-secondary">
+            왼쪽 목록에서 코드 리뷰를 선택하면 이 업무와 연결되고 상세가 표시됩니다.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <article className="rounded-md border border-surface-border-soft bg-surface-muted">
+      <header className="border-b border-surface-border-soft p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-base font-black text-text-primary">
+              {detail.title}
+            </h3>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-text-muted">
+              <span>{detail.repository}</span>
+              <span>{formatDateTime(detail.createdAt)}</span>
+              <span className={`rounded-sm border px-2 py-0.5 ${riskClassName(detail.riskLevel)}`}>
+                위험도 {riskLabel(detail.riskLevel)}
+              </span>
+            </div>
+          </div>
+          <a
+            href={`/code-reviews/${detail.id}`}
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised px-3 text-xs font-bold text-text-primary hover:bg-surface-strong"
+          >
+            <ExternalLink className="mr-1.5 size-3.5" />
+            상세
+          </a>
+        </div>
+      </header>
+      <div className="space-y-4 p-4">
+        <div>
+          <h4 className="text-sm font-black text-text-primary">전체 요약</h4>
+          <p className="mt-2 whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-secondary">
+            {detail.summary}
+          </p>
+        </div>
+        <div>
+          <h4 className="text-sm font-black text-text-primary">검토 항목</h4>
+          <div className="mt-2 space-y-2">
+            {detail.findings.slice(0, 5).map((finding, index) => (
+              <div
+                key={`${finding.title}-${index}`}
+                className="rounded-md border border-surface-border-soft bg-surface-raised p-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-sm font-black text-text-primary">
+                    {finding.title}
+                  </p>
+                  <span className={`rounded-sm border px-2 py-0.5 text-[11px] font-bold ${riskClassName(finding.severity)}`}>
+                    {riskLabel(finding.severity)}
+                  </span>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
+                  {finding.body}
+                </p>
+                <p className="mt-2 text-sm font-semibold text-text-primary">
+                  권장: {finding.recommendation}
+                </p>
+              </div>
+            ))}
+            {!detail.findings.length ? (
+              <p className="rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm text-text-muted">
+                검토 항목이 없습니다.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </article>
+  )
+}
+
 export function TaskDetailPage() {
   const navigate = useNavigate()
   const params = useParams({ strict: false }) as { taskId?: string }
@@ -378,7 +600,6 @@ export function TaskDetailPage() {
   const userRole = useSessionStore((state) => state.userRole)
   const isAdmin = userRole === 'admin'
   const taskQuery = useTaskDetail(taskId)
-  const aiReviewsQuery = useTaskAiReviews(taskId)
   const assignableUsersQuery = useAssignableUsers()
   const updateTask = useUpdateTask()
   const archiveTasks = useArchiveTasks()
@@ -470,13 +691,6 @@ export function TaskDetailPage() {
       toast.error('복사에 실패했습니다.')
     }
   }
-
-  const implementationPrompt = task
-    ? `이 업무(${task.id})를 구현해줘. 업무 상세, 단계별 계획, 예상 파일 구조를 참고해서 작업하고, 완료 후 변경 요약과 검증 결과를 남겨줘.`
-    : ''
-  const reviewPrompt = task
-    ? `이 업무(${task.id})에 대한 구현 결과를 코드 리뷰로 등록해줘. 변경 파일, 주요 결정, 테스트 결과, 남은 리스크를 markdown으로 정리해줘.`
-    : ''
 
   const handleCopySkillExample = () =>
     copyText(TASK_SKILL_EXAMPLE_TEXT, '스킬 발동 예시를 복사했습니다.')
@@ -803,93 +1017,23 @@ export function TaskDetailPage() {
             <TaskChecklistPanel taskId={task.id} showHeader={false} />
           </SectionCard>
 
-          <SectionCard
-            title="Codex 요청"
-            description="업무 ID와 스킬 요청 문구를 복사합니다."
-            icon={Clipboard}
-          >
-            <div className="space-y-3">
-              <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-black text-text-secondary">
-                      업무 ID
-                    </p>
-                    <p className="mt-1 break-all font-mono text-sm text-text-primary">
-                      {task.id}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => copyText(task.id, '업무 ID를 복사했습니다.')}
-                  >
-                    <Copy className="mr-1.5 size-3.5" />
-                    복사
-                  </Button>
-                </div>
-              </div>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+            <SectionCard
+              title="계획"
+              description="단계별 계획과 예상 파일 구조를 확인합니다."
+              icon={CheckSquare}
+            >
+              <TaskPlanSummary task={task} />
+            </SectionCard>
 
-              <PromptCopyBox
-                title="구현 요청"
-                content={implementationPrompt}
-                onCopy={() =>
-                  copyText(
-                    implementationPrompt,
-                    '구현 요청 문구를 복사했습니다.',
-                  )
-                }
-              />
-              <PromptCopyBox
-                title="리뷰 등록 요청"
-                content={reviewPrompt}
-                onCopy={() =>
-                  copyText(reviewPrompt, '리뷰 등록 문구를 복사했습니다.')
-                }
-              />
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="코드 리뷰"
-            description="Codex가 등록한 구현 리뷰를 확인합니다."
-            icon={Code2}
-          >
-            {aiReviewsQuery.isLoading ? (
-              <p className="text-sm text-text-muted">
-                코드 리뷰를 불러오는 중입니다.
-              </p>
-            ) : aiReviewsQuery.data?.length ? (
-              <div className="space-y-3">
-                {aiReviewsQuery.data.map((review) => (
-                  <article
-                    key={review.id}
-                    className="rounded-md border border-surface-border-soft bg-surface-muted p-4"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-sm font-black text-text-primary">
-                        {review.title}
-                      </h3>
-                      <span className="rounded-md border border-surface-border-soft bg-surface-raised px-2 py-0.5 text-[11px] font-bold text-text-muted">
-                        {review.format}
-                      </span>
-                    </div>
-                    <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised p-3 text-sm leading-6 text-text-primary">
-                      {review.content}
-                    </pre>
-                    <p className="mt-2 text-xs text-text-muted">
-                      {formatDateTime(review.createdAt)}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-text-muted">
-                등록된 코드 리뷰가 없습니다.
-              </p>
-            )}
-          </SectionCard>
+            <SectionCard
+              title="연결된 코드 리뷰"
+              description="등록된 코드 리뷰를 선택해 이 업무와 연결합니다."
+              icon={Code2}
+            >
+              <TaskCodeReviewSelector taskId={task.id} />
+            </SectionCard>
+          </div>
 
           <SectionCard
             title="댓글"

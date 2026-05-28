@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const listFeaturePlansQuerySchema = z.object({
   q: z.string().trim().max(120).optional().default(''),
+  taskId: z.string().trim().max(80).optional().default(''),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -15,8 +16,21 @@ export const createFeaturePlanSchema = z.object({
   folderStructure: z.string().max(8000).optional().default(''),
   checklist: z.array(z.string().trim().min(1).max(1000)).optional().default([]),
   mmdContent: z.string().max(20000).optional().default(''),
-  sourceFileName: z.string().trim().max(300).nullable().optional().default(null),
-  linkedTaskId: z.string().trim().min(1).max(80).nullable().optional().default(null),
+  sourceFileName: z
+    .string()
+    .trim()
+    .max(300)
+    .nullable()
+    .optional()
+    .default(null),
+  linkedTaskId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .nullable()
+    .optional()
+    .default(null),
 });
 
 export const updateFeaturePlanSchema = createFeaturePlanSchema

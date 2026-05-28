@@ -19,6 +19,7 @@ export const featurePlanKeys = {
   all: ['feature-plans'] as const,
   lists: () => [...featurePlanKeys.all, 'list'] as const,
   list: (params: FeaturePlanListParams) => [...featurePlanKeys.lists(), params] as const,
+  taskList: (taskId: string | null) => [...featurePlanKeys.all, 'task', taskId] as const,
   detail: (planId: string) => [...featurePlanKeys.all, 'detail', planId] as const,
 }
 
@@ -28,6 +29,7 @@ function buildListQuery(params: FeaturePlanListParams) {
     pageSize: String(params.pageSize),
   })
   if (params.q) search.set('q', params.q)
+  if (params.taskId) search.set('taskId', params.taskId)
   return search.toString()
 }
 
@@ -40,6 +42,23 @@ export function useFeaturePlanList(params: FeaturePlanListParams) {
       apiRequest<FeaturePlanListResponse>(`/feature-plans?${buildListQuery(params)}`),
     enabled: isAuthenticated,
     placeholderData: keepPreviousData,
+  })
+}
+
+export function useTaskFeaturePlanList(taskId: string | null) {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
+
+  return useQuery({
+    queryKey: featurePlanKeys.taskList(taskId),
+    queryFn: () =>
+      apiRequest<FeaturePlanListResponse>(
+        `/feature-plans?${buildListQuery({
+          taskId: taskId as string,
+          page: 1,
+          pageSize: 50,
+        })}`,
+      ),
+    enabled: isAuthenticated && Boolean(taskId),
   })
 }
 
@@ -85,6 +104,23 @@ export function useUpdateFeaturePlan(planId: string | null) {
     onSuccess: (detail) => {
       queryClient.setQueryData(featurePlanKeys.detail(detail.id), detail)
       void queryClient.invalidateQueries({ queryKey: featurePlanKeys.lists() })
+    },
+  })
+}
+
+export function useLinkFeaturePlanToTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ planId, taskId }: { planId: string; taskId: string | null }) =>
+      apiRequest<FeaturePlanDetail>(`/feature-plans/${planId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ linkedTaskId: taskId }),
+      }),
+    onSuccess: (detail) => {
+      queryClient.setQueryData(featurePlanKeys.detail(detail.id), detail)
+      void queryClient.invalidateQueries({ queryKey: featurePlanKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: featurePlanKeys.all })
     },
   })
 }
