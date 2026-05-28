@@ -14,6 +14,7 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
+  Download,
   Trash2,
 } from 'lucide-react'
 import {
@@ -30,6 +31,7 @@ import type {
   TaskScope,
   TaskStatus,
   TaskType,
+  TaskWorkspace,
 } from '../../../entities/task/model/types'
 import { taskApi } from '../../../entities/task/api/task-api'
 import { useAssignableUsers } from '../../../shared/api/users'
@@ -41,6 +43,7 @@ import { TaskFormDialog } from '../../../features/task/ui/task-form-dialog'
 import { TaskKanbanView } from '../../../features/task/ui/task-kanban-view'
 import { TaskTableView } from '../../../features/task/ui/task-table-view'
 import { TaskToolbar, type TaskViewMode } from '../../../features/task/ui/task-toolbar'
+import { downloadTaskExcelWorkbook } from '../../../features/task/lib/task-excel-export'
 import {
   useArchiveTasks,
   useCreateTask,
@@ -56,6 +59,8 @@ import { PageHeader } from '../../../shared/ui/page-header'
 import { useSessionStore } from '../../../shared/store/session-store'
 
 type TaskScopeMode = 'all' | 'my' | 'user'
+
+const TASK_EXPORT_PAGE_SIZE = 100
 
 function getInitialFilters(scopeMode: TaskScopeMode, targetUserId?: string): TaskFilters {
   return {
@@ -76,6 +81,66 @@ function emptyMessage(filters: TaskFilters, scopeMode: TaskScopeMode) {
     return '검색 조건에 맞는 업무가 없습니다.'
   }
   return '등록된 업무가 없습니다.'
+}
+
+function getExportDate() {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+function sanitizeFileName(value: string) {
+  return value.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function getExportFilters(filters: TaskFilters): TaskFilters {
+  return {
+    ...filters,
+    page: 1,
+    pageSize: TASK_EXPORT_PAGE_SIZE,
+  }
+}
+
+async function fetchAllTasksForExport(filters: TaskFilters) {
+  const items: Task[] = []
+  let page = 1
+
+  while (true) {
+    const response = await taskApi.list({
+      ...filters,
+      page,
+      pageSize: TASK_EXPORT_PAGE_SIZE,
+    })
+    items.push(...response.items)
+    if (items.length >= response.total || response.items.length === 0) break
+    page += 1
+  }
+
+  return items
+}
+
+async function fetchAllWorkspaceTasksForExport(
+  workspaceId: string,
+  filters: TaskFilters,
+) {
+  const items: Task[] = []
+  let page = 1
+
+  while (true) {
+    const response = await taskApi.listWorkspaceTasks(workspaceId, {
+      ...filters,
+      page,
+      pageSize: TASK_EXPORT_PAGE_SIZE,
+    })
+    items.push(...response.items)
+    if (items.length >= response.total || response.items.length === 0) break
+    page += 1
+  }
+
+  return items
 }
 
 function formatActivityTime(value: string) {
@@ -535,6 +600,7 @@ export function TaskPage({
   )
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [exportMode, setExportMode] = useState<'current' | 'all' | null>(null)
   const currentUserId = useSessionStore((state) => state.userId)
   const currentUserName = useSessionStore((state) => state.userName)
   const currentUserRole = useSessionStore((state) => state.userRole)
@@ -551,8 +617,9 @@ export function TaskPage({
   )
 
   const workspacesQuery = useTaskWorkspaces()
+  const workspaces = workspacesQuery.data ?? []
   const currentWorkspace = workspaceId
-    ? (workspacesQuery.data ?? []).find((ws) => ws.id === workspaceId)
+    ? workspaces.find((ws) => ws.id === workspaceId)
     : null
   const allTasksQuery = useTasks(normalizedFilters)
   const wsTasksQuery = useWorkspaceTasks(workspaceId ?? '', normalizedFilters)
@@ -644,6 +711,72 @@ export function TaskPage({
     }
   }
 
+  const handleExportCurrent = async () => {
+    if (exportMode) return
+
+    setExportMode('current')
+    try {
+      const exportFilters = getExportFilters(normalizedFilters)
+      const exportTasks = workspaceId
+        ? await fetchAllWorkspaceTasksForExport(workspaceId, exportFilters)
+        : await fetchAllTasksForExport(exportFilters)
+      const sheetName = currentWorkspace?.name ?? scopeTitle
+      const fileBaseName = sanitizeFileName(`${sheetName}-업무-${getExportDate()}`)
+
+      await downloadTaskExcelWorkbook(
+        [{ name: sheetName, tasks: exportTasks }],
+        `${fileBaseName}.xlsx`,
+      )
+      toast.success(`업무 ${exportTasks.length}개를 엑셀로 내려받았습니다.`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '엑셀 다운로드에 실패했습니다.')
+    } finally {
+      setExportMode(null)
+    }
+  }
+
+  const handleExportAllWorkspaces = async () => {
+    if (exportMode) return
+
+    const exportWorkspaces = [...workspaces].sort(
+      (a: TaskWorkspace, b: TaskWorkspace) => a.orderIdx - b.orderIdx,
+    )
+    if (exportWorkspaces.length === 0) {
+      toast.error('다운로드할 워크스페이스가 없습니다.')
+      return
+    }
+
+    setExportMode('all')
+    try {
+      const exportFilters = getExportFilters(normalizedFilters)
+      const worksheets: Array<{ name: string; tasks: Task[] }> = []
+
+      for (const workspace of exportWorkspaces) {
+        const workspaceTasks = await fetchAllWorkspaceTasksForExport(
+          workspace.id,
+          exportFilters,
+        )
+        worksheets.push({ name: workspace.name, tasks: workspaceTasks })
+      }
+
+      await downloadTaskExcelWorkbook(
+        worksheets,
+        `업무-워크스페이스별-${getExportDate()}.xlsx`,
+      )
+      const totalExported = worksheets.reduce(
+        (sum, worksheet) => sum + worksheet.tasks.length,
+        0,
+      )
+      toast.success(
+        `워크스페이스 ${worksheets.length}개, 업무 ${totalExported}개를 엑셀로 내려받았습니다.`,
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '엑셀 다운로드에 실패했습니다.')
+    } finally {
+      setExportMode(null)
+    }
+  }
+
   return (
     <section className={`space-y-4 ui-page-bg ${tasks.length > 0 ? 'pb-20' : 'pb-8'}`}>
 
@@ -725,6 +858,32 @@ export function TaskPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-9"
+            disabled={Boolean(exportMode)}
+            onClick={handleExportCurrent}
+            title="현재 목록을 엑셀로 다운로드"
+            aria-label="현재 목록을 엑셀로 다운로드"
+          >
+            <Download className="mr-1.5 size-3.5" />
+            {exportMode === 'current' ? '내보내는 중...' : '엑셀'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-9"
+            disabled={Boolean(exportMode) || workspacesQuery.isLoading}
+            onClick={handleExportAllWorkspaces}
+            title="모든 워크스페이스를 시트별로 엑셀 다운로드"
+            aria-label="모든 워크스페이스를 시트별로 엑셀 다운로드"
+          >
+            <Download className="mr-1.5 size-3.5" />
+            {exportMode === 'all' ? '내보내는 중...' : '전체 엑셀'}
+          </Button>
           <Button
             type="button"
             variant="ghost"

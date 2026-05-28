@@ -1430,12 +1430,12 @@ export function TaskTableView({
         id: 'actions',
         header: '작업',
         cell: ({ row }) => (
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex flex-nowrap items-center justify-end gap-1.5">
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              className="h-8 px-3 text-xs"
+              className="h-8 min-w-12 whitespace-nowrap px-3 text-xs"
               title="상세 보기"
               aria-label="상세 보기"
               onClick={(event) => {
@@ -1449,7 +1449,7 @@ export function TaskTableView({
               type="button"
               variant="secondary"
               size="sm"
-              className="h-8 px-3 text-xs"
+              className="h-8 min-w-12 whitespace-nowrap px-3 text-xs"
               title="참고 URL 복사"
               aria-label="참고 URL 복사"
               onClick={(event) => {
@@ -1529,7 +1529,7 @@ export function TaskTableView({
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
-            <table className="w-full min-w-[1480px] table-fixed border-collapse text-left">
+            <table className="w-full min-w-[1540px] table-fixed border-collapse text-left">
               <colgroup>
                 <col className="w-16" />
                 <col className="w-12" />
@@ -1541,7 +1541,7 @@ export function TaskTableView({
                 <col className="w-28" />
                 <col className="w-28" />
                 <col className="w-28" />
-                <col className="w-24" />
+                <col className="w-36" />
               </colgroup>
               <thead className="bg-surface-muted">
                 {table.getHeaderGroups().map((headerGroup) => (
