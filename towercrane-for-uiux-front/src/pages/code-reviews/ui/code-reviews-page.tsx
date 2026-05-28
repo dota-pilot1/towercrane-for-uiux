@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import {
   Check,
   Code2,
+  Copy,
   ExternalLink,
   FileCode2,
   GitPullRequest,
@@ -62,6 +63,25 @@ function formatDateTime(value: string) {
 function truncate(value: string, length = 120) {
   if (value.length <= length) return value
   return `${value.slice(0, length).trim()}...`
+}
+
+const PUBLIC_FRONTEND_ORIGIN = 'https://hibot-docu.com'
+
+function publicReferenceUrl(path: string) {
+  const origin = window.location.origin
+  const baseOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    ? PUBLIC_FRONTEND_ORIGIN
+    : origin
+  return `${baseOrigin}${path}`
+}
+
+async function copyText(text: string, successMessage: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success(successMessage)
+  } catch {
+    toast.error('복사에 실패했습니다.')
+  }
 }
 
 function riskLabel(riskLevel: CodeReviewRiskLevel) {
@@ -1123,6 +1143,17 @@ function ReviewDetailPanel({
     navigate({ to: '/code-reviews' })
   }
 
+  function copyReferenceUrl() {
+    const lines = [
+      'Towercrane 코드 리뷰 참고',
+      `리뷰 ID: ${detail.id}`,
+      `제목: ${detail.title}`,
+      `URL: ${publicReferenceUrl(`/code-reviews/${detail.id}`)}`,
+    ]
+    if (detail.taskId) lines.splice(3, 0, `연결 업무 ID: ${detail.taskId}`)
+    void copyText(lines.join('\n'), '코드 리뷰 참고 URL을 복사했습니다.')
+  }
+
   return (
     <div className="flex h-full min-h-[28rem] flex-col">
       <div className="border-b border-surface-border-soft p-5">
@@ -1149,6 +1180,10 @@ function ReviewDetailPanel({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={copyReferenceUrl}>
+              <Copy className="mr-1.5 size-3.5" />
+              참고 URL
+            </Button>
             <Button
               variant="secondary"
               size="sm"

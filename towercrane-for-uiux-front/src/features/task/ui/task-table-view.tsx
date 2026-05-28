@@ -89,6 +89,25 @@ async function copyText(text: string, successMessage: string) {
   }
 }
 
+const PUBLIC_FRONTEND_ORIGIN = 'https://hibot-docu.com'
+
+function publicReferenceUrl(path: string) {
+  const origin = window.location.origin
+  const baseOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    ? PUBLIC_FRONTEND_ORIGIN
+    : origin
+  return `${baseOrigin}${path}`
+}
+
+function taskReferenceText(task: Task) {
+  return [
+    'Towercrane 업무 참고',
+    `업무 ID: ${task.id}`,
+    `제목: ${task.title}`,
+    `URL: ${publicReferenceUrl(`/task/${task.id}`)}`,
+  ].join('\n')
+}
+
 function TaskReviewGuideDialog({
   task,
   onOpenChange,
@@ -1426,6 +1445,20 @@ export function TaskTableView({
             >
               상세
             </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 px-3 text-xs"
+              title="참고 URL 복사"
+              aria-label="참고 URL 복사"
+              onClick={(event) => {
+                event.stopPropagation()
+                void copyText(taskReferenceText(row.original), '업무 참고 URL을 복사했습니다.')
+              }}
+            >
+              링크
+            </Button>
           </div>
         ),
       },
@@ -1502,7 +1535,7 @@ export function TaskTableView({
                 <col className="w-12" />
                 <col className="w-[520px]" />
                 <col className="w-20" />
-                <col className="w-24" />
+                <col className="w-32" />
                 <col className="w-28" />
                 <col className="w-48" />
                 <col className="w-28" />

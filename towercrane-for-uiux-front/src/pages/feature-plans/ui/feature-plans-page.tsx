@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import {
   CheckSquare,
+  Copy,
   FileText,
   Loader2,
   Pencil,
@@ -44,6 +45,25 @@ function formatDateTime(value: string) {
 function truncate(value: string, length = 120) {
   if (value.length <= length) return value
   return `${value.slice(0, length).trim()}...`
+}
+
+const PUBLIC_FRONTEND_ORIGIN = 'https://hibot-docu.com'
+
+function publicReferenceUrl(path: string) {
+  const origin = window.location.origin
+  const baseOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    ? PUBLIC_FRONTEND_ORIGIN
+    : origin
+  return `${baseOrigin}${path}`
+}
+
+async function copyText(text: string, successMessage: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success(successMessage)
+  } catch {
+    toast.error('복사에 실패했습니다.')
+  }
 }
 
 function parseFrontmatter(value: string) {
@@ -401,6 +421,18 @@ function FeaturePlanDetailPanel({
     navigate({ to: '/task/$taskId', params: { taskId: result.taskId } })
   }
 
+  function copyReferenceUrl() {
+    void copyText(
+      [
+        'Towercrane 기능 개발 계획 참고',
+        `계획 ID: ${detail.id}`,
+        `제목: ${detail.title}`,
+        `URL: ${publicReferenceUrl(`/feature-plans/${detail.id}`)}`,
+      ].join('\n'),
+      '기능 개발 계획 참고 URL을 복사했습니다.',
+    )
+  }
+
   return (
     <div className="flex h-full min-h-[28rem] flex-col">
       <div className="border-b border-surface-border-soft p-5">
@@ -423,6 +455,10 @@ function FeaturePlanDetailPanel({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={copyReferenceUrl}>
+              <Copy className="mr-1.5 size-3.5" />
+              참고 URL
+            </Button>
             {detail.linkedTaskId ? (
               <Button
                 variant="secondary"

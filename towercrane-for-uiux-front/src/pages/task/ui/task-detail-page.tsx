@@ -130,6 +130,16 @@ const TASK_SKILL_EXAMPLE_TEXT = TASK_SKILL_EXAMPLES.map(
   (example) => `${example.title}\n${example.content}`,
 ).join('\n\n')
 
+const PUBLIC_FRONTEND_ORIGIN = 'https://hibot-docu.com'
+
+function publicReferenceUrl(path: string) {
+  const origin = window.location.origin
+  const baseOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    ? PUBLIC_FRONTEND_ORIGIN
+    : origin
+  return `${baseOrigin}${path}`
+}
+
 function toDateInputValue(value?: string | null) {
   if (!value) return ''
   return value.slice(0, 10)
@@ -1110,13 +1120,26 @@ export function TaskDetailPage() {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href)
+      await navigator.clipboard.writeText(publicReferenceUrl(`/task/${task.id}`))
       setLinkCopied(true)
       window.setTimeout(() => setLinkCopied(false), 1600)
       toast.success('업무 링크를 복사했습니다.')
     } catch {
       toast.error('업무 링크 복사에 실패했습니다.')
     }
+  }
+
+  const handleCopyReferenceUrl = () => {
+    if (!task) return
+    void copyText(
+      [
+        'Towercrane 업무 참고',
+        `업무 ID: ${task.id}`,
+        `제목: ${task.title}`,
+        `URL: ${publicReferenceUrl(`/task/${task.id}`)}`,
+      ].join('\n'),
+      '업무 참고 URL을 복사했습니다.',
+    )
   }
 
   const copyText = async (text: string, successMessage: string) => {
@@ -1220,6 +1243,17 @@ export function TaskDetailPage() {
                 <Link2 className="mr-1.5 size-3.5" />
               )}
               {linkCopied ? '복사됨' : '링크 복사'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-9"
+              onClick={handleCopyReferenceUrl}
+              title="Codex 참고용 업무 URL 복사"
+            >
+              <Copy className="mr-1.5 size-3.5" />
+              참고 URL
             </Button>
             <Button
               type="button"
