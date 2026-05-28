@@ -6,6 +6,7 @@ import { SqlPracticeEmptyState } from '../../../features/sql-practice/ui/sql-pra
 import { SqlPracticeFooterDrawer } from '../../../features/sql-practice/ui/sql-practice-footer-drawer'
 import { SqlPracticePageHeader } from '../../../features/sql-practice/ui/sql-practice-page-header'
 import { SqlProblemPanel } from '../../../features/sql-practice/ui/sql-problem-panel'
+import { SqlHistoryItem as SqlHistoryItemView } from '../../../features/sql-practice/ui/sql-history-item'
 import { SqlQuizSidebar } from '../../../features/sql-practice/ui/sql-quiz-sidebar'
 import { SqlSchemaSidebar } from '../../../features/sql-practice/ui/sql-schema-sidebar'
 import type { SqlPracticeOfficialWorkbench } from '../model/use-sql-practice-official-workbench'
