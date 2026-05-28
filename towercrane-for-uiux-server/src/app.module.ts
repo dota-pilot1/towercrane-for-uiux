@@ -29,6 +29,7 @@ import { AiServiceRequestModule } from './ai-service-request/ai-service-request.
 import { DevManagementModule } from './dev-management/dev-management.module';
 import { DevMeetingMinutesModule } from './dev-meeting-minutes/dev-meeting-minutes.module';
 import { CodeReviewsModule } from './code-reviews/code-reviews.module';
+import { FeaturePlansModule } from './feature-plans/feature-plans.module';
 import { TaskIngestModule } from './task-ingest/task-ingest.module';
 
 @Module({
@@ -61,6 +62,7 @@ import { TaskIngestModule } from './task-ingest/task-ingest.module';
     DevManagementModule,
     DevMeetingMinutesModule,
     CodeReviewsModule,
+    FeaturePlansModule,
     TaskIngestModule,
   ],
   controllers: [AppController],

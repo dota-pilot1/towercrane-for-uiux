@@ -929,6 +929,31 @@ export const codeReviewsTable = sqliteTable('code_reviews', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export const featurePlansTable = sqliteTable('feature_plans', {
+  id: text('id').primaryKey(),
+  linkedTaskId: text('linked_task_id').references(() => tasksTable.id, {
+    onDelete: 'set null',
+  }),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  content: text('content').notNull().default(''),
+  acceptanceCriteria: text('acceptance_criteria').notNull().default(''),
+  plan: text('plan').notNull().default(''),
+  folderStructure: text('folder_structure').notNull().default(''),
+  checklist: text('checklist', { mode: 'json' })
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+  mmdContent: text('mmd_content').notNull().default(''),
+  sourceFileName: text('source_file_name'),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdByName: text('created_by_name').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const devManagementBotSettingsTable = sqliteTable(
   'dev_management_bot_settings',
   {
@@ -1846,6 +1871,7 @@ export const schema = {
   devManagementMessagesTable,
   devMeetingMinutesTable,
   codeReviewsTable,
+  featurePlansTable,
   devManagementBotSettingsTable,
   devManagementDmPairsTable,
   issuesTable,
@@ -2006,6 +2032,8 @@ export type DevMeetingMinutesInsert =
   typeof devMeetingMinutesTable.$inferInsert;
 export type CodeReviewRow = typeof codeReviewsTable.$inferSelect;
 export type CodeReviewInsert = typeof codeReviewsTable.$inferInsert;
+export type FeaturePlanRow = typeof featurePlansTable.$inferSelect;
+export type FeaturePlanInsert = typeof featurePlansTable.$inferInsert;
 export type DevManagementBotSettingsRow =
   typeof devManagementBotSettingsTable.$inferSelect;
 export type DevManagementBotSettingsInsert =

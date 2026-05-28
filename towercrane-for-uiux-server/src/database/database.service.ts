@@ -22,6 +22,7 @@ import {
   devChallengeSectionsTable,
   devChallengeAssignmentsTable,
   devChallengeAssignmentBlocksTable,
+  featurePlansTable,
   menusTable,
   prototypesTable,
   schema,
@@ -759,6 +760,32 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_code_reviews_repository_created
         ON code_reviews(repository, created_at);
+
+      CREATE TABLE IF NOT EXISTS feature_plans (
+        id TEXT PRIMARY KEY,
+        linked_task_id TEXT,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        acceptance_criteria TEXT NOT NULL DEFAULT '',
+        plan TEXT NOT NULL DEFAULT '',
+        folder_structure TEXT NOT NULL DEFAULT '',
+        checklist TEXT NOT NULL DEFAULT '[]',
+        mmd_content TEXT NOT NULL DEFAULT '',
+        source_file_name TEXT,
+        created_by TEXT,
+        created_by_name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(linked_task_id) REFERENCES tasks(id) ON DELETE SET NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_feature_plans_created
+        ON feature_plans(created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_feature_plans_linked_task
+        ON feature_plans(linked_task_id);
 
       CREATE TABLE IF NOT EXISTS dev_management_bot_settings (
         room_id TEXT PRIMARY KEY,
@@ -2160,25 +2187,25 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       sectionId: 'api_doc',
       name: 'Postman',
       icon: 'Send',
+      displayOrder: 4,
+      parentId: existingDevManagement.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'code_reviews',
+      name: '코드 리뷰',
+      icon: 'Code2',
+      displayOrder: 2,
+      parentId: existingDevManagement.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'feature_plans',
+      name: '기능 개발 계획',
+      icon: 'ListChecks',
       displayOrder: 3,
-      parentId: existingDevManagement.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
-      sectionId: 'code_reviews',
-      name: '코드 리뷰',
-      icon: 'Code2',
-      displayOrder: 2,
-      parentId: existingDevManagement.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
-      sectionId: 'code_reviews',
-      name: '코드 리뷰',
-      icon: 'Code2',
-      displayOrder: 2,
       parentId: existingDevManagement.id,
       requiredRole: null,
       now,
@@ -2187,7 +2214,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       sectionId: 'prototype',
       name: 'Prototype',
       icon: 'GitBranch',
-      displayOrder: 4,
+      displayOrder: 5,
       parentId: existingDevManagement.id,
       requiredRole: null,
       now,

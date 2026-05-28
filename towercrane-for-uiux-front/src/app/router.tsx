@@ -39,6 +39,7 @@ import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-
 import { DevManagementPage } from '../pages/dev-management/ui/dev-management-page'
 import { DevMeetingMinutesPage } from '../pages/dev-meeting-minutes/ui/dev-meeting-minutes-page'
 import { CodeReviewsPage } from '../pages/code-reviews/ui/code-reviews-page'
+import { FeaturePlansPage } from '../pages/feature-plans/ui/feature-plans-page'
 import { HomePage } from '../pages/home/ui/home-page'
 import { AiServiceRequestPage } from '../pages/ai-service-request/ui/ai-service-request-page'
 import { AiServiceMyPage } from '../pages/ai-service-my/ui/ai-service-my-page'
@@ -545,6 +546,23 @@ function CodeReviewDetailRoute() {
   return <CodeReviewsPage reviewId={reviewId} />
 }
 
+const featurePlansRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/feature-plans',
+  component: FeaturePlansPage,
+})
+
+const featurePlanDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/feature-plans/$planId',
+  component: FeaturePlanDetailRoute,
+})
+
+function FeaturePlanDetailRoute() {
+  const { planId } = featurePlanDetailRoute.useParams()
+  return <FeaturePlansPage planId={planId} />
+}
+
 // ─── /docu ───────────────────────────────────────────────────────────────────
 
 export const docuRoute = createRoute({
@@ -977,6 +995,8 @@ export const router = createRouter({
       devMeetingMinutesDetailRoute,
       codeReviewsRoute,
       codeReviewDetailRoute,
+      featurePlansRoute,
+      featurePlanDetailRoute,
       docuRoute,
       aiServiceRequestRoute,
       aiServiceMyRoute,
