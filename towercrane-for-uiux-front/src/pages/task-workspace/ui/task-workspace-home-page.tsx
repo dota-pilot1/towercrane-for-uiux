@@ -1,23 +1,104 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { ArrowRight, CheckSquare, LoaderCircle, Plus, ClipboardList, Activity } from 'lucide-react'
+import {
+  Activity,
+  ArrowRight,
+  CheckSquare,
+  ClipboardList,
+  Download,
+  LoaderCircle,
+  Plus,
+} from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
 
 import {
   useCreateTaskWorkspace,
   useTaskWorkspaces,
 } from '../../../features/task/model/use-task-queries'
-import type { TaskWorkspace } from '../../../entities/task/model/types'
+import { taskApi } from '../../../entities/task/api/task-api'
+import type { Task } from '../../../entities/task/model/types'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
+import { downloadTaskExcelWorkbook } from '../../../features/task/lib/task-excel-export'
+
+const TASK_EXPORT_PAGE_SIZE = 100
+
+function getExportDate() {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+async function fetchAllWorkspaceTasksForExport(workspaceId: string) {
+  const items: Task[] = []
+  let page = 1
+
+  while (true) {
+    const response = await taskApi.listWorkspaceTasks(workspaceId, {
+      archived: false,
+      sort: 'order',
+      scope: 'all',
+      page,
+      pageSize: TASK_EXPORT_PAGE_SIZE,
+    })
+    items.push(...response.items)
+    if (items.length >= response.total || response.items.length === 0) break
+    page += 1
+  }
+
+  return items
+}
 
 export function TaskWorkspaceHomePage() {
   const navigate = useNavigate()
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
   const workspacesQuery = useTaskWorkspaces()
   const workspaces = workspacesQuery.data ?? []
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExportAllWorkspaces = async () => {
+    if (isExporting) return
+
+    const exportWorkspaces = [...workspaces].sort(
+      (a, b) => a.orderIdx - b.orderIdx,
+    )
+    if (exportWorkspaces.length === 0) {
+      toast.error('다운로드할 워크스페이스가 없습니다.')
+      return
+    }
+
+    setIsExporting(true)
+    try {
+      const worksheets: Array<{ name: string; tasks: Task[] }> = []
+
+      for (const workspace of exportWorkspaces) {
+        const tasks = await fetchAllWorkspaceTasksForExport(workspace.id)
+        worksheets.push({ name: workspace.name, tasks })
+      }
+
+      await downloadTaskExcelWorkbook(
+        worksheets,
+        `업무-워크스페이스별-${getExportDate()}.xlsx`,
+      )
+      const totalExported = worksheets.reduce(
+        (sum, worksheet) => sum + worksheet.tasks.length,
+        0,
+      )
+      toast.success(
+        `워크스페이스 ${worksheets.length}개, 업무 ${totalExported}개를 엑셀로 내려받았습니다.`,
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '엑셀 다운로드에 실패했습니다.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   return (
     <div className="w-full min-w-0 ui-page-bg space-y-4">
@@ -35,7 +116,27 @@ export function TaskWorkspaceHomePage() {
             </p>
           </div>
         </div>
-        {isAuthenticated ? <CreateWorkspaceDialog /> : null}
+        {isAuthenticated ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={workspacesQuery.isLoading || isExporting}
+              onClick={handleExportAllWorkspaces}
+              title="모든 워크스페이스를 시트별로 엑셀 다운로드"
+              aria-label="모든 워크스페이스를 시트별로 엑셀 다운로드"
+            >
+              {isExporting ? (
+                <LoaderCircle className="mr-1.5 size-4 animate-spin" />
+              ) : (
+                <Download className="mr-1.5 size-4" />
+              )}
+              {isExporting ? '내보내는 중...' : '전체 엑셀'}
+            </Button>
+            <CreateWorkspaceDialog />
+          </div>
+        ) : null}
       </div>
 
       <div className="min-h-[calc(100dvh-180px)] rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm">
