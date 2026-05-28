@@ -1426,34 +1426,6 @@ export function TaskTableView({
             >
               상세
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-8 px-3 text-xs"
-              title="계획 보기"
-              aria-label="계획 보기"
-              onClick={(event) => {
-                event.stopPropagation()
-                setPlanTask(row.original)
-              }}
-            >
-              계획
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-8 px-3 text-xs"
-              title="리뷰 등록법"
-              aria-label="리뷰 등록법"
-              onClick={(event) => {
-                event.stopPropagation()
-                setReviewGuideTask(row.original)
-              }}
-            >
-              리뷰
-            </Button>
           </div>
         ),
       },
@@ -1536,7 +1508,7 @@ export function TaskTableView({
                 <col className="w-28" />
                 <col className="w-28" />
                 <col className="w-28" />
-                <col className="w-36" />
+                <col className="w-24" />
               </colgroup>
               <thead className="bg-surface-muted">
                 {table.getHeaderGroups().map((headerGroup) => (

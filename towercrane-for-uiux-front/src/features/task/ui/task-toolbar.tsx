@@ -1,4 +1,7 @@
-import { Plus, RefreshCcw } from 'lucide-react'
+import * as Dialog from '@radix-ui/react-dialog'
+import * as Tabs from '@radix-ui/react-tabs'
+import { type ChangeEvent, useRef, useState } from 'react'
+import { FileUp, HelpCircle, Loader2, Plus, RefreshCcw, X } from 'lucide-react'
 import {
   TASK_PRIORITY_LABELS,
   TASK_PRIORITY_ORDER,
@@ -20,6 +23,8 @@ type TaskToolbarProps = {
   assigneeLabel?: string
   isFetching?: boolean
   onCreate: () => void
+  onCreateFromFile?: (file: File) => void | Promise<void>
+  isCreateFromFilePending?: boolean
   onRefresh: () => void
   showAssigneeFilter?: boolean
 }
@@ -43,12 +48,23 @@ export function TaskToolbar({
   assigneeLabel,
   isFetching,
   onCreate,
+  onCreateFromFile,
+  isCreateFromFilePending,
   onRefresh,
   showAssigneeFilter = true,
 }: TaskToolbarProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [helpOpen, setHelpOpen] = useState(false)
   const controlClassName = 'h-9 min-h-9 rounded-md'
   const controlButtonClassName =
     'h-9 min-h-9 rounded-md px-4 py-0 text-sm font-bold leading-none'
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !onCreateFromFile) return
+    await onCreateFromFile(file)
+  }
 
   return (
     <div className="rounded-md border border-surface-border bg-surface-muted p-4 shadow-sm">
@@ -139,6 +155,13 @@ export function TaskToolbar({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".md,.markdown,.txt,text/markdown,text/plain"
+            className="hidden"
+            onChange={handleFileChange}
+          />
           <Button
             type="button"
             variant="ghost"
@@ -154,9 +177,132 @@ export function TaskToolbar({
           <Button type="button" className={controlButtonClassName} onClick={onCreate}>
             <Plus className="mr-2 size-4" />새 업무
           </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className={controlButtonClassName}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!onCreateFromFile || isCreateFromFilePending}
+          >
+            {isCreateFromFilePending ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <FileUp className="mr-2 size-4" />
+            )}
+            파일로 등록
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 min-h-9 w-9 rounded-md border-surface-border-soft bg-surface-raised text-text-primary shadow-none hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
+            title="업무 등록 도움말"
+            aria-label="업무 등록 도움말"
+            onClick={() => setHelpOpen(true)}
+          >
+            <HelpCircle className="size-4" />
+          </Button>
         </div>
       </div>
 
+      <Dialog.Root open={helpOpen} onOpenChange={setHelpOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.45)]" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(720px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-md border border-surface-border bg-surface-raised shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft px-6 py-5">
+              <div>
+                <Dialog.Title className="text-xl font-black text-text-primary">
+                  업무 등록 방법
+                </Dialog.Title>
+                <Dialog.Description className="mt-1 text-sm text-text-secondary">
+                  직접 입력하거나 정해진 마크다운 파일을 올려 업무를 만들 수 있습니다.
+                </Dialog.Description>
+              </div>
+              <Dialog.Close asChild>
+                <Button variant="secondary" size="icon" aria-label="닫기">
+                  <X className="size-4" />
+                </Button>
+              </Dialog.Close>
+            </div>
+
+            <Tabs.Root defaultValue="form" className="px-6 py-5">
+              <Tabs.List className="grid grid-cols-2 rounded-md border border-surface-border-soft bg-surface-muted p-1">
+                <Tabs.Trigger
+                  value="form"
+                  className="rounded-sm px-3 py-2 text-sm font-bold text-text-secondary data-[state=active]:bg-brand-primary data-[state=active]:text-text-on-brand"
+                >
+                  직접 등록
+                </Tabs.Trigger>
+                <Tabs.Trigger
+                  value="file"
+                  className="rounded-sm px-3 py-2 text-sm font-bold text-text-secondary data-[state=active]:bg-brand-primary data-[state=active]:text-text-on-brand"
+                >
+                  파일로 등록
+                </Tabs.Trigger>
+              </Tabs.List>
+
+              <Tabs.Content value="form" className="mt-5 space-y-4">
+                <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                  <h3 className="text-sm font-black text-text-primary">새 업무</h3>
+                  <p className="mt-2 text-sm leading-6 text-text-secondary">
+                    제목, 내용, 유형, 상태, 우선순위, 담당자, 마감일을 화면에서 입력합니다.
+                    빠르게 한두 개 업무를 만들거나 사람이 직접 내용을 다듬어야 할 때 적합합니다.
+                  </p>
+                </div>
+                <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                  <h3 className="text-sm font-black text-text-primary">권장 사용</h3>
+                  <p className="mt-2 text-sm leading-6 text-text-secondary">
+                    업무 설명만 간단히 잡고, 세부 계획과 리뷰는 업무 상세의 계획/리뷰 탭에서
+                    파일로 추가하거나 별도 화면에서 연결합니다.
+                  </p>
+                </div>
+              </Tabs.Content>
+
+              <Tabs.Content value="file" className="mt-5 space-y-4">
+                <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                  <h3 className="text-sm font-black text-text-primary">지원 파일</h3>
+                  <p className="mt-2 text-sm leading-6 text-text-secondary">
+                    `.md`, `.markdown`, `.txt` 파일을 올릴 수 있습니다. 제목은 frontmatter의
+                    `title`, 첫 번째 `# 제목`, 파일명 순서로 결정됩니다.
+                  </p>
+                </div>
+                <pre className="max-h-[320px] overflow-auto rounded-md border border-surface-border-soft bg-surface-strong p-4 text-xs leading-6 text-text-primary">
+{`---
+title: 프로토타입 워크스페이스 삭제 기능
+type: FEATURE
+status: TODO
+priority: MEDIUM
+dueDate: 2026-06-01
+---
+
+# 프로토타입 워크스페이스 삭제 기능
+
+## 내용
+업무 배경과 구현 범위를 짧게 적습니다.
+
+## 단계별 계획
+1. 현재 구조 확인
+2. 삭제 API 연결
+3. 캐시 갱신 검증
+
+## 예상 파일 구조
+\`\`\`txt
+towercrane-for-uiux-front/src/...
+towercrane-for-uiux-server/src/...
+\`\`\`
+
+## MMD
+\`\`\`mermaid
+flowchart TD
+  A[삭제 클릭] --> B[확인 다이어로그]
+  B --> C[삭제 API 호출]
+\`\`\``}
+                </pre>
+              </Tabs.Content>
+            </Tabs.Root>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   )
 }

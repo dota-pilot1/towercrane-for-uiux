@@ -1,5 +1,6 @@
+import * as Dialog from '@radix-ui/react-dialog'
 import { useState, type FormEvent } from 'react'
-import { Check, Pencil, Send, Trash2, X } from 'lucide-react'
+import { Check, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { Button } from '../../../shared/ui/button'
 import { LexicalEditor } from '../../../shared/ui/lexical/lexical-editor'
@@ -50,7 +51,104 @@ function hasLexicalContent(value: string) {
   return false
 }
 
-export function TaskCommentsPanel({ taskId }: { taskId: string | null }) {
+function CommentForm({
+  content,
+  draftVersion,
+  isPending,
+  onChange,
+  onSubmit,
+}: {
+  content: string
+  draftVersion: number
+  isPending: boolean
+  onChange: (value: string) => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
+  return (
+    <form onSubmit={onSubmit} className="space-y-2">
+      <div className="overflow-hidden rounded-md border border-surface-border-soft">
+        <LexicalEditor
+          key={`comment-draft-${draftVersion}`}
+          initialState={content}
+          onChange={onChange}
+          minHeight="120px"
+          placeholder="댓글을 입력하세요."
+        />
+      </div>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={isPending}>
+          <Send className="mr-2 size-4" />
+          등록
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+export function TaskCommentCreateButton({ taskId }: { taskId: string | null }) {
+  const [open, setOpen] = useState(false)
+  const [content, setContent] = useState('')
+  const [draftVersion, setDraftVersion] = useState(0)
+  const createComment = useCreateTaskComment(taskId)
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!hasLexicalContent(content)) return
+    await createComment.mutateAsync(content.trim())
+    setContent('')
+    setDraftVersion((value) => value + 1)
+    setOpen(false)
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger asChild>
+        <Button type="button" size="sm" disabled={!taskId}>
+          <Plus className="mr-1.5 size-3.5" />
+          댓글 작성
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[60] flex w-[min(760px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
+            <div>
+              <Dialog.Title className="text-lg font-black text-text-primary">
+                댓글 작성
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-text-secondary">
+                업무 논의와 결정 내용을 남깁니다.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button type="button" className="ui-icon-button size-8" aria-label="닫기">
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="p-5">
+            <CommentForm
+              content={content}
+              draftVersion={draftVersion}
+              isPending={createComment.isPending}
+              onChange={setContent}
+              onSubmit={handleSubmit}
+            />
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
+export function TaskCommentsPanel({
+  taskId,
+  showComposer = true,
+}: {
+  taskId: string | null
+  showComposer?: boolean
+}) {
   const currentUserId = useSessionStore((state) => state.userId)
   const userRole = useSessionStore((state) => state.userRole)
   const [content, setContent] = useState('')
@@ -80,23 +178,15 @@ export function TaskCommentsPanel({ taskId }: { taskId: string | null }) {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <div className="overflow-hidden rounded-md border border-surface-border-soft">
-          <LexicalEditor
-            key={`comment-draft-${draftVersion}`}
-            initialState={content}
-            onChange={setContent}
-            minHeight="120px"
-            placeholder="댓글을 입력하세요."
-          />
-        </div>
-        <div className="flex justify-end">
-          <Button type="submit" disabled={createComment.isPending}>
-            <Send className="mr-2 size-4" />
-            등록
-          </Button>
-        </div>
-      </form>
+      {showComposer ? (
+        <CommentForm
+          content={content}
+          draftVersion={draftVersion}
+          isPending={createComment.isPending}
+          onChange={setContent}
+          onSubmit={handleSubmit}
+        />
+      ) : null}
 
       <div className="space-y-3">
         {commentsQuery.isLoading ? (

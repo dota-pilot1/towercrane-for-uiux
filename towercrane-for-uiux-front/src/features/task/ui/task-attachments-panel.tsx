@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Tabs from '@radix-ui/react-tabs'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Download,
   Eye,
@@ -43,24 +43,24 @@ function formatDateTime(value: string) {
   }).format(date)
 }
 
+function createMmdState(task: Task) {
+  const source = task.mmdContent ?? ''
+  return {
+    taskId: task.id,
+    source,
+    value: source,
+    showPreview: Boolean(source.trim()),
+  }
+}
+
 export function TaskAttachmentsPanel({ task }: { task: Task }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [mmdDraft, setMmdDraft] = useState(task.mmdContent ?? '')
-  const [showPreview, setShowPreview] = useState(Boolean(task.mmdContent?.trim()))
-  const [mmdDialogOpen, setMmdDialogOpen] = useState(false)
-  const [mmdDialogTab, setMmdDialogTab] = useState<'preview' | 'code'>('preview')
   const taskId = task.id
   const attachmentsQuery = useTaskAttachments(taskId)
   const createAttachment = useCreateTaskAttachment(taskId)
   const deleteAttachment = useDeleteTaskAttachment(taskId)
-  const updateTask = useUpdateTask()
   const attachments = attachmentsQuery.data ?? []
-
-  useEffect(() => {
-    setMmdDraft(task.mmdContent ?? '')
-    setShowPreview(Boolean(task.mmdContent?.trim()))
-  }, [task.id, task.mmdContent])
 
   const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -84,21 +84,6 @@ export function TaskAttachmentsPanel({ task }: { task: Task }) {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
-
-  const handleSaveMmd = async () => {
-    await updateTask.mutateAsync({
-      id: task.id,
-      body: { mmdContent: mmdDraft },
-    })
-  }
-
-  const handleOpenMmdDialog = () => {
-    setMmdDialogTab(showPreview ? 'preview' : 'code')
-    setMmdDialogOpen(true)
-  }
-
-  const hasMmdChanges = mmdDraft !== (task.mmdContent ?? '')
-  const hasMmdContent = Boolean(mmdDraft.trim())
 
   return (
     <div className="space-y-4">
@@ -206,8 +191,44 @@ export function TaskAttachmentsPanel({ task }: { task: Task }) {
           })}
         </div>
       )}
+    </div>
+  )
+}
 
-      <section className="space-y-3 border-t border-surface-border-soft pt-4">
+export function TaskMmdPanel({ task }: { task: Task }) {
+  const [mmdState, setMmdState] = useState(() => createMmdState(task))
+  const [mmdDialogOpen, setMmdDialogOpen] = useState(false)
+  const [mmdDialogTab, setMmdDialogTab] = useState<'preview' | 'code'>(
+    'preview',
+  )
+  const updateTask = useUpdateTask()
+  const currentMmdContent = task.mmdContent ?? ''
+  const effectiveMmdState =
+    mmdState.taskId === task.id && mmdState.source === currentMmdContent
+      ? mmdState
+      : createMmdState(task)
+  const mmdDraft = effectiveMmdState.value
+  const showPreview = effectiveMmdState.showPreview
+
+  const handleSaveMmd = async () => {
+    await updateTask.mutateAsync({
+      id: task.id,
+      body: { mmdContent: mmdDraft },
+    })
+  }
+
+  const handleOpenMmdDialog = () => {
+    setMmdDialogTab(showPreview ? 'preview' : 'code')
+    setMmdDialogOpen(true)
+  }
+
+  const hasMmdChanges = mmdDraft !== (task.mmdContent ?? '')
+  const hasMmdContent = Boolean(mmdDraft.trim())
+
+  return (
+    <div className="space-y-4">
+
+      <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-bold text-text-primary">MMD 내용</p>
@@ -217,7 +238,12 @@ export function TaskAttachmentsPanel({ task }: { task: Task }) {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setShowPreview((value) => !value)}
+              onClick={() =>
+                setMmdState({
+                  ...effectiveMmdState,
+                  showPreview: !effectiveMmdState.showPreview,
+                })
+              }
               disabled={!hasMmdContent}
             >
               <Eye className="mr-2 size-4" />
@@ -250,7 +276,12 @@ export function TaskAttachmentsPanel({ task }: { task: Task }) {
         ) : (
           <Textarea
             value={mmdDraft}
-            onChange={(event) => setMmdDraft(event.target.value)}
+            onChange={(event) =>
+              setMmdState({
+                ...effectiveMmdState,
+                value: event.target.value,
+              })
+            }
             placeholder={`flowchart TD\n  A[첨부 확인] --> B[MMD 내용 작성]\n  B --> C[미리보기]`}
             className="min-h-56 resize-y font-mono text-sm"
           />

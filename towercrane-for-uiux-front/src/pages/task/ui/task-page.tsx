@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueries } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   Activity,
   AlertTriangle,
@@ -20,7 +21,16 @@ import {
   TASK_STATUS_LABELS,
   TASK_STATUS_ORDER,
 } from '../../../entities/task/model/constants'
-import type { Task, TaskActivityLog, TaskFilters, TaskStatus } from '../../../entities/task/model/types'
+import type {
+  CreateTaskRequest,
+  Task,
+  TaskActivityLog,
+  TaskFilters,
+  TaskPriority,
+  TaskScope,
+  TaskStatus,
+  TaskType,
+} from '../../../entities/task/model/types'
 import { taskApi } from '../../../entities/task/api/task-api'
 import { useAssignableUsers } from '../../../shared/api/users'
 import { Button } from '../../../shared/ui/button'
@@ -33,6 +43,8 @@ import { TaskTableView } from '../../../features/task/ui/task-table-view'
 import { TaskToolbar, type TaskViewMode } from '../../../features/task/ui/task-toolbar'
 import {
   useArchiveTasks,
+  useCreateTask,
+  useCreateWorkspaceTask,
   useDeleteTasks,
   useRestoreTasks,
   taskQueryKeys,
@@ -75,6 +87,117 @@ function formatActivityTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
+}
+
+function stripExtension(fileName: string) {
+  return fileName.replace(/\.[^.]+$/, '').trim()
+}
+
+function parseFrontmatter(markdown: string) {
+  const match = markdown.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/)
+  if (!match) return { meta: {} as Record<string, string>, body: markdown }
+
+  const meta = match[1].split('\n').reduce<Record<string, string>>((acc, line) => {
+    const separatorIndex = line.indexOf(':')
+    if (separatorIndex < 0) return acc
+    const key = line.slice(0, separatorIndex).trim()
+    const value = line.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, '')
+    if (key) acc[key] = value
+    return acc
+  }, {})
+
+  return {
+    meta,
+    body: markdown.slice(match[0].length),
+  }
+}
+
+function getMarkdownTitle(markdown: string, fallback: string) {
+  const title = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim()
+  return title || stripExtension(fallback) || '새 업무'
+}
+
+function readMarkdownSection(markdown: string, sectionNames: string[]) {
+  for (const name of sectionNames) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const match = markdown.match(
+      new RegExp(`(?:^|\\n)#{2,3}\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n#{2,3}\\s+|$)`, 'i'),
+    )
+    if (match?.[1]?.trim()) return match[1].trim()
+  }
+  return ''
+}
+
+function stripMarkdownFence(value: string) {
+  const match = value.trim().match(/^```[a-zA-Z0-9_-]*\s*\n([\s\S]*?)\n```$/)
+  return (match?.[1] ?? value).trim()
+}
+
+function normalizeTaskType(value?: string): TaskType {
+  const normalized = value?.trim().toUpperCase()
+  if (normalized === 'BUG' || value === '버그') return 'BUG'
+  if (normalized === 'DOCS' || value === '문서') return 'DOCS'
+  if (normalized === 'DESIGN' || value === '디자인') return 'DESIGN'
+  if (normalized === 'REFACTOR' || value === '리팩터링') return 'REFACTOR'
+  if (normalized === 'QA' || value === '테스트') return 'QA'
+  if (normalized === 'CHORE' || value === '작업') return 'CHORE'
+  return 'FEATURE'
+}
+
+function normalizeTaskStatus(value?: string): TaskStatus {
+  const normalized = value?.trim().toUpperCase()
+  if (normalized === 'IN_PROGRESS' || normalized === 'PROGRESS' || value === '진행 중') return 'IN_PROGRESS'
+  if (normalized === 'REVIEW' || value === '검토') return 'REVIEW'
+  if (normalized === 'DONE' || value === '완료') return 'DONE'
+  if (normalized === 'HOLD' || value === '보류') return 'HOLD'
+  return 'TODO'
+}
+
+function normalizeTaskPriority(value?: string): TaskPriority {
+  const normalized = value?.trim().toUpperCase()
+  if (normalized === 'LOW' || value === '낮음') return 'LOW'
+  if (normalized === 'HIGH' || value === '높음') return 'HIGH'
+  if (normalized === 'URGENT' || value === '긴급') return 'URGENT'
+  return 'MEDIUM'
+}
+
+function buildTaskPayloadFromFile(
+  fileName: string,
+  markdown: string,
+  defaultScope: TaskScope,
+  currentUserId?: string | null,
+  lockAssigneeToCurrentUser = false,
+): CreateTaskRequest {
+  const { meta, body } = parseFrontmatter(markdown)
+  const title = meta.title || getMarkdownTitle(body, fileName)
+  const content =
+    readMarkdownSection(body, ['내용', '업무 내용', '업무 배경', '배경', 'Content', 'Summary']) ||
+    body
+      .replace(/^#\s+.+$/m, '')
+      .trim()
+      .slice(0, 500)
+  const plan = readMarkdownSection(body, ['단계별 계획', '구현 계획', '계획', 'Plan'])
+  const folderStructure = stripMarkdownFence(
+    readMarkdownSection(body, ['예상 파일 구조', '파일 구조', '폴더 구조', 'Folder Structure']),
+  )
+  const mmdContent = stripMarkdownFence(
+    readMarkdownSection(body, ['MMD', 'Mermaid', '흐름도', 'Flow']),
+  )
+
+  return {
+    title,
+    content,
+    plan,
+    folderStructure,
+    mmdContent,
+    taskType: normalizeTaskType(meta.type || meta.taskType),
+    status: normalizeTaskStatus(meta.status),
+    priority: normalizeTaskPriority(meta.priority),
+    scope: defaultScope,
+    visibility: defaultScope === 'PERSONAL' ? 'PRIVATE' : 'TEAM',
+    assigneeId: lockAssigneeToCurrentUser ? currentUserId : (meta.assigneeId || null),
+    dueDate: meta.dueDate || meta.due || null,
+  }
 }
 
 type ActivityWithTask = TaskActivityLog & {
@@ -438,19 +561,25 @@ export function TaskPage({
   const archiveTasks = useArchiveTasks()
   const restoreTasks = useRestoreTasks()
   const deleteTasks = useDeleteTasks()
+  const createTask = useCreateTask()
+  const createWorkspaceTask = useCreateWorkspaceTask(workspaceId ?? '')
   const tasks = tasksQuery.data?.items ?? []
   const users = assignableUsersQuery.data ?? []
   const targetUser = targetUserId
     ? users.find((user) => user.id === targetUserId)
     : null
   const scopeTitle =
-    scopeMode === 'my'
+    workspaceId
+      ? `${currentWorkspace?.name ?? '워크스페이스'} 업무`
+      : scopeMode === 'my'
       ? `${currentUserName || '내'}의 업무`
       : scopeMode === 'user'
         ? `${targetUser?.name ?? '선택한 사용자'}의 업무`
         : '전체 업무'
   const scopeDescription =
-    scopeMode === 'my'
+    workspaceId
+      ? (currentWorkspace?.description ?? '워크스페이스에 묶인 업무를 관리합니다.')
+      : scopeMode === 'my'
       ? '내가 담당하거나 개인으로 등록한 업무를 관리합니다.'
       : scopeMode === 'user'
         ? '선택한 담당자의 팀 업무를 확인합니다.'
@@ -489,6 +618,32 @@ export function TaskPage({
     navigate({ to: `/task/${taskId}` })
   }
 
+  const handleCreateTaskFromFile = async (file: File) => {
+    try {
+      const markdown = await file.text()
+      const payload = buildTaskPayloadFromFile(
+        file.name,
+        markdown,
+        scopeMode === 'my' ? 'PERSONAL' : 'TEAM',
+        currentUserId,
+        scopeMode === 'my',
+      )
+
+      if (!payload.title.trim()) {
+        toast.error('파일에서 업무 제목을 찾을 수 없습니다.')
+        return
+      }
+
+      if (workspaceId) {
+        await createWorkspaceTask.mutateAsync(payload)
+      } else {
+        await createTask.mutateAsync(payload)
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '업무 파일 등록에 실패했습니다.')
+    }
+  }
+
   return (
     <section className={`space-y-4 ui-page-bg ${tasks.length > 0 ? 'pb-20' : 'pb-8'}`}>
 
@@ -516,6 +671,8 @@ export function TaskPage({
         assigneeLabel={scopeMode === 'user' ? (targetUser?.name ?? '담당자') : '내 업무'}
         isFetching={tasksQuery.isFetching}
         onCreate={() => setIsFormOpen(true)}
+        onCreateFromFile={handleCreateTaskFromFile}
+        isCreateFromFilePending={createTask.isPending || createWorkspaceTask.isPending}
         onRefresh={() => tasksQuery.refetch()}
         showAssigneeFilter={scopeMode === 'all'}
       />
