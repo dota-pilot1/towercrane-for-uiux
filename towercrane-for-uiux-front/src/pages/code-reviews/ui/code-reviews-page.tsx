@@ -270,6 +270,60 @@ function filesToChangedFiles(files: UploadedReviewFile[]) {
   }))
 }
 
+type FindingCategory = NonNullable<CodeReviewFinding['category']>
+
+function markdownHeadingCategory(title: string): FindingCategory {
+  const normalized = title.replace(/^\d+\.\s*/, '').toLowerCase()
+  if (/변경|파일|structure/.test(normalized)) return 'structure'
+  if (/프로세스|흐름|process/.test(normalized)) return 'process'
+  if (/로직|코드|code/.test(normalized)) return 'code'
+  if (/문법|syntax/.test(normalized)) return 'syntax'
+  if (/아키텍처|클린|설계|architecture|clean/.test(normalized)) return 'architecture'
+  if (/mmd|mermaid|다이어그램|diagram/.test(normalized)) return 'diagram'
+  if (/리스크|위험|risk/.test(normalized)) return 'risk'
+  return 'code'
+}
+
+function markdownHeadingRecommendation(category: FindingCategory) {
+  if (category === 'structure') return '변경 파일 범위가 기능 단위로 모였는지 확인하세요.'
+  if (category === 'process') return '사용자 액션부터 저장/갱신까지 주요 흐름이 끊기지 않는지 확인하세요.'
+  if (category === 'architecture') return '프론트, 서버, DB 책임이 한 흐름으로 과하게 묶이지 않았는지 확인하세요.'
+  if (category === 'diagram') return '다이어그램이 실제 구현 흐름과 같은지 확인하세요.'
+  if (category === 'risk') return '리스크 항목은 배포 전 재현 조건과 완화 방법을 분리해 확인하세요.'
+  return '핵심 구현 로직이 요구사항과 예외 상황을 모두 처리하는지 확인하세요.'
+}
+
+function buildMarkdownReviewFindings(
+  body: string,
+  filePath: string,
+  riskLevel: CodeReviewRiskLevel,
+) {
+  const headings = Array.from(body.matchAll(/^#{2,3}\s+(.+)$/gm))
+  const findings: CodeReviewFinding[] = []
+
+  headings.forEach((heading, index) => {
+    const title = heading[1]?.trim()
+    const start = (heading.index ?? 0) + heading[0].length
+    const end = headings[index + 1]?.index ?? body.length
+    const content = body.slice(start, end).trim()
+    if (!title || !content) return
+    if (/^(전체\s*)?요약|summary|테스트|검증|tests?$/i.test(title)) return
+
+    const category = markdownHeadingCategory(title)
+    findings.push({
+      category,
+      severity: category === 'risk' ? riskLevel : 'low',
+      title: truncate(title.replace(/^\d+\.\s*/, ''), 157),
+      body: truncate(content, 11997),
+      filePath,
+      lineNumber: null,
+      recommendation: markdownHeadingRecommendation(category),
+    })
+  })
+
+  return findings
+}
+
 function buildPayloadFromJson(
   value: unknown,
   uploadedFiles: UploadedReviewFile[],
@@ -361,6 +415,33 @@ async function buildUploadedReviewPayload(
   const combinedSnapshot = uploadedFiles
     .map((file) => `# ${file.name}\n\n${file.text}`)
     .join('\n\n---\n\n')
+  const riskLevel = safeRiskLevel(metadata.riskLevel || metadata.risk_level)
+  const markdownFindings = buildMarkdownReviewFindings(body, primaryFile.name, riskLevel)
+  const fallbackFindings: CodeReviewFinding[] = [
+    {
+      category: 'process',
+      severity: riskLevel,
+      title: '리뷰 요약',
+      body: summary,
+      filePath: primaryFile.name,
+      lineNumber: null,
+      recommendation: '요약 기준으로 구현 의도와 실제 변경 흐름을 대조하세요.',
+    },
+    {
+      category: 'structure',
+      severity: 'low',
+      title: '업로드 파일 구조',
+      body: truncate(
+        changedFiles
+          .map((file) => `- ${file.path} (${file.additions} lines)`)
+          .join('\n'),
+        11997,
+      ),
+      filePath: null,
+      lineNumber: null,
+      recommendation: '업로드 파일이 실제 변경 범위와 맞는지 확인하세요.',
+    },
+  ]
 
   return {
     taskId: metadata.taskId || metadata.task_id || null,
@@ -369,31 +450,9 @@ async function buildUploadedReviewPayload(
     repository,
     title: truncate(metadata.title || `파일 업로드 코드 리뷰 - ${primaryFile.name}`, 177),
     summary,
-    riskLevel: safeRiskLevel(metadata.riskLevel || metadata.risk_level),
+    riskLevel,
     findings: [
-      {
-        category: 'process',
-        severity: safeRiskLevel(metadata.riskLevel || metadata.risk_level),
-        title: '리뷰 요약',
-        body: summary,
-        filePath: primaryFile.name,
-        lineNumber: null,
-        recommendation: '요약 기준으로 구현 의도와 실제 변경 흐름을 대조하세요.',
-      },
-      {
-        category: 'structure',
-        severity: 'low',
-        title: '업로드 파일 구조',
-        body: truncate(
-          changedFiles
-            .map((file) => `- ${file.path} (${file.additions} lines)`)
-            .join('\n'),
-          11997,
-        ),
-        filePath: null,
-        lineNumber: null,
-        recommendation: '업로드 파일이 실제 변경 범위와 맞는지 확인하세요.',
-      },
+      ...(markdownFindings.length ? markdownFindings : fallbackFindings),
       ...(relatedFiles.length
         ? [
             {
