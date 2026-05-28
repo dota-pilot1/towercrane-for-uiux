@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import {
   closestCenter,
   DndContext,
@@ -21,8 +22,9 @@ import {
   type Row,
   type RowSelectionState,
 } from '@tanstack/react-table'
-import { FileSearch, GripVertical } from 'lucide-react'
+import { Copy, GripVertical, X } from 'lucide-react'
 import { clsx } from 'clsx'
+import { toast } from 'sonner'
 import {
   TASK_PRIORITY_LABELS,
   TASK_PRIORITY_ORDER,
@@ -43,11 +45,128 @@ import {
 } from '../model/use-task-queries'
 import { TaskTypeBadge } from './task-badges'
 
+const REVIEW_FOLDER_EXAMPLE =
+  'docs-for-5차 mvp/코드 리뷰 폴더'
+
 function formatDate(value?: string | null, fallback = '-') {
   if (!value) return fallback
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return new Intl.DateTimeFormat('ko-KR').format(date)
+}
+
+function buildReviewSkillPrompt(taskId: string) {
+  return `/pms-task-review ${REVIEW_FOLDER_EXAMPLE} ${taskId}
+코드 리뷰 폴더의 리뷰.md 또는 REVIEW.md를 읽고 이 업무에 코드 리뷰로 등록해줘.`
+}
+
+async function copyText(text: string, successMessage: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success(successMessage)
+  } catch {
+    toast.error('복사에 실패했습니다.')
+  }
+}
+
+function TaskReviewGuideDialog({
+  task,
+  onOpenChange,
+}: {
+  task: Task | null
+  onOpenChange: (open: boolean) => void
+}) {
+  const prompt = task ? buildReviewSkillPrompt(task.id) : ''
+
+  return (
+    <Dialog.Root open={Boolean(task)} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[60] w-[min(620px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
+            <div className="min-w-0">
+              <Dialog.Title className="text-lg font-black text-text-primary">
+                PMS 코드 리뷰 등록
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-text-secondary">
+                코드 리뷰 폴더와 업무 ID를 기반으로 Codex가 리뷰를 등록합니다.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="ui-icon-button size-8"
+                aria-label="닫기"
+              >
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          {task ? (
+            <div className="space-y-4 px-5 py-5">
+              <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-sm font-black text-text-primary">
+                    업무 ID
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => copyText(task.id, '업무 ID를 복사했습니다.')}
+                  >
+                    <Copy className="mr-1.5 size-3.5" />
+                    복사
+                  </Button>
+                </div>
+                <p className="break-all rounded-md border border-surface-border-soft bg-surface-muted p-3 font-mono text-sm text-text-primary">
+                  {task.id}
+                </p>
+              </section>
+
+              <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-sm font-black text-text-primary">
+                    스킬 발동 예시
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      copyText(prompt, '리뷰 스킬 발동 예시를 복사했습니다.')
+                    }
+                  >
+                    <Copy className="mr-1.5 size-3.5" />
+                    예시 복사
+                  </Button>
+                </div>
+                <p className="whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-muted p-3 font-mono text-sm leading-6 text-text-primary">
+                  {prompt}
+                </p>
+              </section>
+
+              <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+                <p className="text-sm leading-6 text-text-secondary">
+                  리뷰 폴더에는 `리뷰.md`, `REVIEW.md`, `review.md` 또는
+                  HTML 리뷰 파일을 둘 수 있습니다. API 공유 키나 스킬 설치
+                  방법이 필요하면{' '}
+                  <a
+                    href="mailto:terecal@daum.net"
+                    className="font-bold text-brand-primary underline-offset-4 hover:underline"
+                  >
+                    terecal@daum.net
+                  </a>
+                  으로 문의하세요.
+                </p>
+              </section>
+            </div>
+          ) : null}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
 }
 
 function SortableTableRow({
@@ -127,6 +246,7 @@ export function TaskTableView({
   onSelectionChange?: (ids: string[]) => void
 }) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const [reviewGuideTask, setReviewGuideTask] = useState<Task | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -301,23 +421,39 @@ export function TaskTableView({
         ),
       },
       {
-        id: 'open',
-        header: '',
+        id: 'actions',
+        header: '작업',
         cell: ({ row }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-9 min-h-9 w-9 rounded-md"
-            title="상세 보기"
-            aria-label="상세 보기"
-            onClick={(event) => {
-              event.stopPropagation()
-              onOpenTask(row.original.id)
-            }}
-          >
-            <FileSearch className="size-4" />
-          </Button>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 px-3 text-xs"
+              title="상세 보기"
+              aria-label="상세 보기"
+              onClick={(event) => {
+                event.stopPropagation()
+                onOpenTask(row.original.id)
+              }}
+            >
+              상세
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 px-3 text-xs"
+              title="리뷰 등록법"
+              aria-label="리뷰 등록법"
+              onClick={(event) => {
+                event.stopPropagation()
+                setReviewGuideTask(row.original)
+              }}
+            >
+              리뷰
+            </Button>
+          </div>
         ),
       },
     ],
@@ -368,6 +504,12 @@ export function TaskTableView({
 
   return (
     <div className="ui-panel overflow-hidden">
+      <TaskReviewGuideDialog
+        task={reviewGuideTask}
+        onOpenChange={(open) => {
+          if (!open) setReviewGuideTask(null)
+        }}
+      />
       <div className="overflow-x-auto">
         <DndContext
           sensors={sensors}
@@ -375,7 +517,7 @@ export function TaskTableView({
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
-            <table className="w-full min-w-[1320px] table-fixed border-collapse text-left">
+            <table className="w-full min-w-[1480px] table-fixed border-collapse text-left">
               <colgroup>
                 <col className="w-16" />
                 <col className="w-12" />
@@ -387,7 +529,7 @@ export function TaskTableView({
                 <col className="w-28" />
                 <col className="w-28" />
                 <col className="w-28" />
-                <col className="w-16" />
+                <col className="w-36" />
               </colgroup>
               <thead className="bg-surface-muted">
                 {table.getHeaderGroups().map((headerGroup) => (
