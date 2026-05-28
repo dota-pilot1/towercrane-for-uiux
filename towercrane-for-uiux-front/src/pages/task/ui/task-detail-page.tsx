@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import {
   Archive,
   ArchiveRestore,
+  Bot,
   CalendarDays,
   CheckSquare,
   Check,
@@ -12,12 +14,14 @@ import {
   FilePenLine,
   FileText,
   Folder,
+  KeyRound,
   Link2,
   MessageSquareText,
   Paperclip,
   Save,
   Trash2,
   UserRound,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -81,6 +85,9 @@ type FolderTreeNode = {
 type FolderTreeBuildNode = Omit<FolderTreeNode, 'children'> & {
   childrenMap: Map<string, FolderTreeBuildNode>
 }
+
+const TASK_SKILL_EXAMPLE =
+  '이 내용을 Towercrane 업무로 등록해줘. 단계별 계획, 예상 파일 구조, MMD 흐름도까지 같이 만들어줘.'
 
 function toDateInputValue(value?: string | null) {
   if (!value) return ''
@@ -254,6 +261,92 @@ function PromptCopyBox({
   )
 }
 
+function TaskSkillGuideDialog({
+  open,
+  onOpenChange,
+  onCopyExample,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onCopyExample: () => void
+}) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[60] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
+            <div className="min-w-0">
+              <Dialog.Title className="text-lg font-black text-text-primary">
+                Codex 스킬로 업무 입력
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-text-secondary">
+                Codex에게 업무 내용을 말하면 Towercrane 업무로 바로 등록합니다.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="ui-icon-button size-8"
+                aria-label="닫기"
+              >
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="space-y-4 px-5 py-5">
+            <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Bot className="size-4 text-brand-primary" />
+                <p className="text-sm font-black text-text-primary">
+                  스킬 발동 예시
+                </p>
+              </div>
+              <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
+                <p className="whitespace-pre-wrap font-mono text-sm leading-6 text-text-primary">
+                  {TASK_SKILL_EXAMPLE}
+                </p>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={onCopyExample}
+                >
+                  <Copy className="mr-1.5 size-3.5" />
+                  예시 복사
+                </Button>
+              </div>
+            </section>
+
+            <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <KeyRound className="size-4 text-brand-primary" />
+                <p className="text-sm font-black text-text-primary">
+                  공유 키 문의
+                </p>
+              </div>
+              <p className="text-sm leading-6 text-text-secondary">
+                업무 입력 API는 공유 키가 필요합니다. 스킬 설치 방법이나 키가
+                필요하면{' '}
+                <a
+                  href="mailto:terecal@daum.net"
+                  className="font-bold text-brand-primary underline-offset-4 hover:underline"
+                >
+                  terecal@daum.net
+                </a>
+                으로 문의하세요.
+              </p>
+            </section>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
 export function TaskDetailPage() {
   const navigate = useNavigate()
   const params = useParams({ strict: false }) as { taskId?: string }
@@ -274,6 +367,7 @@ export function TaskDetailPage() {
     values: FormState
   } | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [skillGuideOpen, setSkillGuideOpen] = useState(false)
   const form = task
     ? draft?.taskId === task.id
       ? draft.values
@@ -357,6 +451,9 @@ export function TaskDetailPage() {
     ? `이 업무(${task.id})에 대한 구현 결과를 코드 리뷰로 등록해줘. 변경 파일, 주요 결정, 테스트 결과, 남은 리스크를 markdown으로 정리해줘.`
     : ''
 
+  const handleCopySkillExample = () =>
+    copyText(TASK_SKILL_EXAMPLE, '스킬 발동 예시를 복사했습니다.')
+
   const handleDelete = async () => {
     if (!task) return
     const confirmed = window.confirm(
@@ -426,6 +523,17 @@ export function TaskDetailPage() {
               variant="secondary"
               size="sm"
               className="h-9"
+              onClick={() => setSkillGuideOpen(true)}
+              title="Codex 스킬 업무 입력법"
+            >
+              <Bot className="mr-1.5 size-3.5" />
+              스킬 입력법
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-9"
               onClick={handleCopyLink}
               title="업무 링크 복사"
             >
@@ -475,6 +583,12 @@ export function TaskDetailPage() {
           </div>
         </div>
       </header>
+
+      <TaskSkillGuideDialog
+        open={skillGuideOpen}
+        onOpenChange={setSkillGuideOpen}
+        onCopyExample={handleCopySkillExample}
+      />
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <main className="space-y-4">
