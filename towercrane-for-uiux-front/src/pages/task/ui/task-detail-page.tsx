@@ -219,19 +219,19 @@ function FolderTreeItems({
 
 function FolderStructurePreview({ value }: { value: string }) {
   const nodes = buildFolderTree(value)
-  if (nodes.length === 0) return null
+  if (nodes.length === 0) {
+    return (
+      <div className="flex min-h-32 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted px-4 py-6 text-center text-sm text-text-muted">
+        도식으로 표시할 경로가 없습니다.
+      </div>
+    )
+  }
 
   return (
-    <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
-      <div className="mb-2 flex items-center gap-2">
-        <Folder className="size-4 text-brand-primary" />
-        <p className="text-xs font-black text-text-secondary">도식 미리보기</p>
-      </div>
-      <div className="max-h-64 overflow-auto rounded-md border border-surface-border-soft bg-surface-raised p-2">
-        <ul className="min-w-max space-y-0.5">
-          <FolderTreeItems nodes={nodes} />
-        </ul>
-      </div>
+    <div className="max-h-72 overflow-auto rounded-md border border-surface-border-soft bg-surface-muted p-3">
+      <ul className="min-w-max space-y-0.5">
+        <FolderTreeItems nodes={nodes} />
+      </ul>
     </div>
   )
 }
@@ -368,6 +368,9 @@ export function TaskDetailPage() {
   } | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
   const [skillGuideOpen, setSkillGuideOpen] = useState(false)
+  const [folderStructureMode, setFolderStructureMode] = useState<
+    'text' | 'tree'
+  >('text')
   const form = task
     ? draft?.taskId === task.id
       ? draft.values
@@ -634,16 +637,45 @@ export function TaskDetailPage() {
                 </label>
 
                 <div className="block space-y-1.5 md:col-span-2">
-                  <FieldLabel>예상 파일 구조</FieldLabel>
-                  <Textarea
-                    value={form.folderStructure}
-                    onChange={(event) =>
-                      updateDraft({ folderStructure: event.target.value })
-                    }
-                    className="min-h-32 resize-y font-mono text-sm leading-6"
-                    placeholder="towercrane-for-uiux-front/src/...&#10;towercrane-for-uiux-server/src/..."
-                  />
-                  <FolderStructurePreview value={form.folderStructure} />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <FieldLabel>예상 파일 구조</FieldLabel>
+                    <div className="inline-flex rounded-sm border border-surface-border-soft bg-surface-muted p-0.5">
+                      {[
+                        ['text', '폴더 구조'],
+                        ['tree', '도식'],
+                      ].map(([value, label]) => {
+                        const active = folderStructureMode === value
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            className={`rounded-sm px-3 py-1.5 text-xs font-bold transition-colors ${
+                              active
+                                ? 'bg-brand-primary text-text-on-brand'
+                                : 'text-text-secondary hover:bg-surface-strong hover:text-text-primary'
+                            }`}
+                            onClick={() =>
+                              setFolderStructureMode(value as 'text' | 'tree')
+                            }
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {folderStructureMode === 'text' ? (
+                    <Textarea
+                      value={form.folderStructure}
+                      onChange={(event) =>
+                        updateDraft({ folderStructure: event.target.value })
+                      }
+                      className="min-h-32 resize-y font-mono text-sm leading-6"
+                      placeholder="towercrane-for-uiux-front/src/...&#10;towercrane-for-uiux-server/src/..."
+                    />
+                  ) : (
+                    <FolderStructurePreview value={form.folderStructure} />
+                  )}
                 </div>
 
                 <label className="block space-y-1.5">
