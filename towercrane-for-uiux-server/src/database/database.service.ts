@@ -4467,7 +4467,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `
           UPDATE menus
           SET is_visible = 0, updated_at = ?
-          WHERE section_id = 'task_issues'
+          WHERE section_id IN ('task_issues', 'kanban')
         `,
       )
       .run(now);
