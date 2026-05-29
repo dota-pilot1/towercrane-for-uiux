@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import type { Request } from 'express';
 import { and, asc, desc, eq, like, or, sql, type SQL } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import {
@@ -99,7 +100,7 @@ export class TasksService {
     return this.toTaskDto(task, this.getUsersById());
   }
 
-  getTaskPlanReference(taskId: string) {
+  getTaskPlanReference(taskId: string, request?: Request) {
     const task = this.ensureTask(taskId);
     const usersById = this.getUsersById();
     const reporter = usersById.get(task.reporterId);
@@ -121,6 +122,17 @@ export class TasksService {
         asc(taskChecklistsTable.createdAt),
       )
       .all();
+    const checklistItems = checklists.map((item) => ({
+      id: item.id,
+      content: item.content,
+      completed: item.completed,
+      orderIdx: item.orderIdx,
+    }));
+    const apiUrl = this.buildPublicApiUrl(
+      request,
+      `/api/public/tasks/${task.id}/plan-reference`,
+    );
+    const detailUrl = `https://hibot-docu.com/task/${task.id}`;
 
     return {
       kind: 'towercrane.taskPlanReference',
@@ -156,14 +168,24 @@ export class TasksService {
         steps: task.plan,
         folderStructure: task.folderStructure,
         mermaid: task.mmdContent,
+        checklists: checklistItems,
       },
-      checklists: checklists.map((item) => ({
-        id: item.id,
-        content: item.content,
-        completed: item.completed,
-        orderIdx: item.orderIdx,
-      })),
+      checklists: checklistItems,
+      links: {
+        detail: detailUrl,
+        api: apiUrl,
+      },
     };
+  }
+
+  private buildPublicApiUrl(request: Request | undefined, path: string) {
+    if (!request) return `https://api.hibot-docu.com${path}`;
+
+    const protocol = request.get('x-forwarded-proto') ?? request.protocol;
+    const host = request.get('host');
+
+    if (!host) return `https://api.hibot-docu.com${path}`;
+    return `${protocol}://${host}${path}`;
   }
 
   createTask(user: TaskUser, payload: unknown) {
