@@ -99,15 +99,6 @@ function publicReferenceUrl(path: string) {
   return `${baseOrigin}${path}`
 }
 
-function taskReferenceText(task: Task) {
-  return [
-    'Towercrane 업무 참고',
-    `업무 ID: ${task.id}`,
-    `제목: ${task.title}`,
-    `URL: ${publicReferenceUrl(`/task/${task.id}`)}`,
-  ].join('\n')
-}
-
 function TaskReviewGuideDialog({
   task,
   onOpenChange,
@@ -1454,7 +1445,7 @@ export function TaskTableView({
               aria-label="참고 URL 복사"
               onClick={(event) => {
                 event.stopPropagation()
-                void copyText(taskReferenceText(row.original), '업무 참고 URL을 복사했습니다.')
+                void copyText(publicReferenceUrl(`/task/${row.original.id}`), '상세 URL을 복사했습니다.')
               }}
             >
               링크

@@ -198,6 +198,20 @@ function stripMarkdownFence(value: string) {
   return (match?.[1] ?? value).trim()
 }
 
+function markdownListItems(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^[-*]\s+\[[ xX]\]\s+/, '')
+        .replace(/^[-*]\s+/, '')
+        .replace(/^\d+[.)]\s+/, '')
+        .trim(),
+    )
+    .filter(Boolean)
+}
+
 function normalizeTaskType(value?: string): TaskType {
   const normalized = value?.trim().toUpperCase()
   if (normalized === 'BUG' || value === '버그') return 'BUG'
@@ -226,15 +240,25 @@ function normalizeTaskPriority(value?: string): TaskPriority {
   return 'MEDIUM'
 }
 
+type ParsedTaskFile = {
+  payload: CreateTaskRequest
+  checklistItems: string[]
+}
+
 function buildTaskPayloadFromFile(
   fileName: string,
   markdown: string,
   defaultScope: TaskScope,
   currentUserId?: string | null,
   lockAssigneeToCurrentUser = false,
-): CreateTaskRequest {
+): ParsedTaskFile {
   const { meta, body } = parseFrontmatter(markdown)
   const title = meta.title || getMarkdownTitle(body, fileName)
+  const acceptanceCriteria = readMarkdownSection(body, [
+    '완료 기준',
+    '인수 조건',
+    'Acceptance Criteria',
+  ])
   const content =
     readMarkdownSection(body, ['내용', '업무 내용', '업무 배경', '배경', 'Content', 'Summary']) ||
     body
@@ -242,6 +266,9 @@ function buildTaskPayloadFromFile(
       .trim()
       .slice(0, 500)
   const plan = readMarkdownSection(body, ['단계별 계획', '구현 계획', '계획', 'Plan'])
+  const checklistItems = markdownListItems(
+    readMarkdownSection(body, ['체크리스트', '검증 체크리스트', 'Checklist']),
+  )
   const folderStructure = stripMarkdownFence(
     readMarkdownSection(body, ['예상 파일 구조', '파일 구조', '폴더 구조', 'Folder Structure']),
   )
@@ -250,18 +277,22 @@ function buildTaskPayloadFromFile(
   )
 
   return {
-    title,
-    content,
-    plan,
-    folderStructure,
-    mmdContent,
-    taskType: normalizeTaskType(meta.type || meta.taskType),
-    status: normalizeTaskStatus(meta.status),
-    priority: normalizeTaskPriority(meta.priority),
-    scope: defaultScope,
-    visibility: defaultScope === 'PERSONAL' ? 'PRIVATE' : 'TEAM',
-    assigneeId: lockAssigneeToCurrentUser ? currentUserId : (meta.assigneeId || null),
-    dueDate: meta.dueDate || meta.due || null,
+    payload: {
+      title,
+      content,
+      acceptanceCriteria,
+      plan,
+      folderStructure,
+      mmdContent,
+      taskType: normalizeTaskType(meta.type || meta.taskType),
+      status: normalizeTaskStatus(meta.status),
+      priority: normalizeTaskPriority(meta.priority),
+      scope: defaultScope,
+      visibility: defaultScope === 'PERSONAL' ? 'PRIVATE' : 'TEAM',
+      assigneeId: lockAssigneeToCurrentUser ? currentUserId : (meta.assigneeId || null),
+      dueDate: meta.dueDate || meta.due || null,
+    },
+    checklistItems,
   }
 }
 
@@ -688,7 +719,7 @@ export function TaskPage({
   const handleCreateTaskFromFile = async (file: File) => {
     try {
       const markdown = await file.text()
-      const payload = buildTaskPayloadFromFile(
+      const parsed = buildTaskPayloadFromFile(
         file.name,
         markdown,
         scopeMode === 'my' ? 'PERSONAL' : 'TEAM',
@@ -696,15 +727,17 @@ export function TaskPage({
         scopeMode === 'my',
       )
 
-      if (!payload.title.trim()) {
+      if (!parsed.payload.title.trim()) {
         toast.error('파일에서 업무 제목을 찾을 수 없습니다.')
         return
       }
 
-      if (workspaceId) {
-        await createWorkspaceTask.mutateAsync(payload)
-      } else {
-        await createTask.mutateAsync(payload)
+      const createdTask = workspaceId
+        ? await createWorkspaceTask.mutateAsync(parsed.payload)
+        : await createTask.mutateAsync(parsed.payload)
+
+      for (const item of parsed.checklistItems) {
+        await taskApi.createChecklist(createdTask.id, item)
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '업무 파일 등록에 실패했습니다.')

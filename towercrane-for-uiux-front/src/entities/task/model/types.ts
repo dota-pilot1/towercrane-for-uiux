@@ -42,6 +42,7 @@ export type Task = {
   id: string
   title: string
   content: string
+  acceptanceCriteria: string
   plan: string
   folderStructure: string
   mmdContent: string
@@ -90,6 +91,7 @@ export type TaskFilters = {
 export type CreateTaskRequest = {
   title: string
   content?: string
+  acceptanceCriteria?: string
   plan?: string
   folderStructure?: string
   mmdContent?: string

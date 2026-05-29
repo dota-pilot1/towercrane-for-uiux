@@ -86,6 +86,7 @@ export class TaskIngestService {
       workspaceId: input.workspaceId ?? null,
       title: input.title,
       content: input.content,
+      acceptanceCriteria: input.acceptanceCriteria,
       plan: input.plan,
       folderStructure: input.folderStructure,
       mmdContent: input.mmdContent,

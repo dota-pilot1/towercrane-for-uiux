@@ -429,6 +429,7 @@ export const tasksTable = sqliteTable('tasks', {
   }),
   title: text('title').notNull(),
   content: text('content').notNull().default(''),
+  acceptanceCriteria: text('acceptance_criteria').notNull().default(''),
   plan: text('plan').notNull().default(''),
   folderStructure: text('folder_structure').notNull().default(''),
   mmdContent: text('mmd_content').notNull().default(''),

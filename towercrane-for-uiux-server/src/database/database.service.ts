@@ -416,6 +416,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         workspace_id TEXT,
         title TEXT NOT NULL,
         content TEXT NOT NULL DEFAULT '',
+        acceptance_criteria TEXT NOT NULL DEFAULT '',
         plan TEXT NOT NULL DEFAULT '',
         folder_structure TEXT NOT NULL DEFAULT '',
         mmd_content TEXT NOT NULL DEFAULT '',
@@ -2815,6 +2816,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'tasks',
       'visibility',
       "ALTER TABLE tasks ADD COLUMN visibility TEXT DEFAULT 'TEAM' NOT NULL",
+    );
+    this.ensureColumn(
+      'tasks',
+      'acceptance_criteria',
+      "ALTER TABLE tasks ADD COLUMN acceptance_criteria TEXT DEFAULT '' NOT NULL",
     );
     this.ensureColumn(
       'tasks',

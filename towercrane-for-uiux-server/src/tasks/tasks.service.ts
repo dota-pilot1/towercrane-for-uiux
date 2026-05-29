@@ -122,6 +122,7 @@ export class TasksService {
       id: `task-${randomUUID().slice(0, 12)}`,
       title: input.title,
       content: input.content,
+      acceptanceCriteria: input.acceptanceCriteria,
       plan: input.plan,
       folderStructure: input.folderStructure,
       mmdContent: input.mmdContent,
@@ -166,6 +167,9 @@ export class TasksService {
 
     if (input.title !== undefined) changes.title = input.title;
     if (input.content !== undefined) changes.content = input.content;
+    if (input.acceptanceCriteria !== undefined) {
+      changes.acceptanceCriteria = input.acceptanceCriteria;
+    }
     if (input.plan !== undefined) changes.plan = input.plan;
     if (input.folderStructure !== undefined) {
       changes.folderStructure = input.folderStructure;
@@ -1140,6 +1144,7 @@ export class TasksService {
       workspaceId,
       title: input.title,
       content: input.content,
+      acceptanceCriteria: input.acceptanceCriteria,
       plan: input.plan,
       folderStructure: input.folderStructure,
       mmdContent: input.mmdContent,

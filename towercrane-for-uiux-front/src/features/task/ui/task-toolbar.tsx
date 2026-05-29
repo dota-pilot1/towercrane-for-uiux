@@ -1,7 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Tabs from '@radix-ui/react-tabs'
 import { type ChangeEvent, useRef, useState } from 'react'
-import { FileUp, HelpCircle, Loader2, Plus, RefreshCcw, X } from 'lucide-react'
+import { Check, Copy, FileUp, HelpCircle, Loader2, Plus, RefreshCcw, X } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   TASK_PRIORITY_LABELS,
   TASK_PRIORITY_ORDER,
@@ -15,6 +16,48 @@ import { CompactSelect } from '../../../shared/ui/compact-select'
 import { SearchField } from '../../../shared/ui/search-field'
 
 export type TaskViewMode = 'table' | 'kanban' | 'card'
+
+const TASK_FILE_TEMPLATE = `---
+title: 프로토타입 워크스페이스 삭제 기능
+type: FEATURE
+status: TODO
+priority: MEDIUM
+dueDate: 2026-06-01
+---
+
+# 프로토타입 워크스페이스 삭제 기능
+
+## 내용
+업무 배경과 구현 범위를 짧게 적습니다.
+
+## 완료 기준
+- 사용자가 대상 워크스페이스를 확인하고 삭제할 수 있습니다.
+- 삭제 성공 후 목록이 갱신됩니다.
+- 실패 시 오류 메시지가 표시됩니다.
+
+## 단계별 계획
+1. 현재 구조 확인
+2. 삭제 API 연결
+3. 캐시 갱신 검증
+
+## 예상 파일 구조
+\`\`\`txt
+towercrane-for-uiux-front/src/...
+towercrane-for-uiux-server/src/...
+\`\`\`
+
+## 체크리스트
+- 현재 구조 확인
+- 삭제 API 연결
+- 캐시 갱신 검증
+- 로컬 테스트
+
+## MMD
+\`\`\`mermaid
+flowchart TD
+  A[삭제 클릭] --> B[확인 다이어로그]
+  B --> C[삭제 API 호출]
+\`\`\``
 
 type TaskToolbarProps = {
   filters: TaskFilters
@@ -55,6 +98,7 @@ export function TaskToolbar({
 }: TaskToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [templateCopied, setTemplateCopied] = useState(false)
   const controlClassName = 'h-9 min-h-9 rounded-md'
   const controlButtonClassName =
     'h-9 min-h-9 rounded-md px-4 py-0 text-sm font-bold leading-none'
@@ -64,6 +108,17 @@ export function TaskToolbar({
     event.target.value = ''
     if (!file || !onCreateFromFile) return
     await onCreateFromFile(file)
+  }
+
+  const handleCopyTemplate = async () => {
+    try {
+      await navigator.clipboard.writeText(TASK_FILE_TEMPLATE)
+      setTemplateCopied(true)
+      toast.success('참고 형식을 복사했습니다.')
+      window.setTimeout(() => setTemplateCopied(false), 1500)
+    } catch {
+      toast.error('복사에 실패했습니다.')
+    }
   }
 
   return (
@@ -263,41 +318,29 @@ export function TaskToolbar({
                   <h3 className="text-sm font-black text-text-primary">지원 파일</h3>
                   <p className="mt-2 text-sm leading-6 text-text-secondary">
                     `.md`, `.markdown`, `.txt` 파일을 올릴 수 있습니다. 제목은 frontmatter의
-                    `title`, 첫 번째 `# 제목`, 파일명 순서로 결정됩니다.
+                    `title`, 첫 번째 `# 제목`, 파일명 순서로 결정됩니다. 완료 기준과
+                    체크리스트는 테스트 탭에 함께 등록됩니다.
                   </p>
                 </div>
-                <pre className="max-h-[320px] overflow-auto rounded-md border border-surface-border-soft bg-surface-strong p-4 text-xs leading-6 text-text-primary">
-{`---
-title: 프로토타입 워크스페이스 삭제 기능
-type: FEATURE
-status: TODO
-priority: MEDIUM
-dueDate: 2026-06-01
----
-
-# 프로토타입 워크스페이스 삭제 기능
-
-## 내용
-업무 배경과 구현 범위를 짧게 적습니다.
-
-## 단계별 계획
-1. 현재 구조 확인
-2. 삭제 API 연결
-3. 캐시 갱신 검증
-
-## 예상 파일 구조
-\`\`\`txt
-towercrane-for-uiux-front/src/...
-towercrane-for-uiux-server/src/...
-\`\`\`
-
-## MMD
-\`\`\`mermaid
-flowchart TD
-  A[삭제 클릭] --> B[확인 다이어로그]
-  B --> C[삭제 API 호출]
-\`\`\``}
-                </pre>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={handleCopyTemplate}
+                    className="ui-icon-button absolute right-2 top-2 z-10 flex items-center gap-1 px-2 py-1 text-xs font-bold"
+                    title="참고 형식 복사"
+                    aria-label="참고 형식 복사"
+                  >
+                    {templateCopied ? (
+                      <Check className="h-3.5 w-3.5 text-brand-primary" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                    <span>{templateCopied ? '복사됨' : '복사'}</span>
+                  </button>
+                  <pre className="max-h-[320px] overflow-auto rounded-md border border-surface-border-soft bg-surface-strong p-4 pt-12 text-xs leading-6 text-text-primary">
+{TASK_FILE_TEMPLATE}
+                  </pre>
+                </div>
               </Tabs.Content>
             </Tabs.Root>
           </Dialog.Content>

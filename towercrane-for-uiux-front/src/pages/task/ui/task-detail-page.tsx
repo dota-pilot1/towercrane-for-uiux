@@ -84,6 +84,7 @@ import {
 } from '../../../features/task/ui/task-comments-panel'
 import {
   useArchiveTasks,
+  useCreateTaskChecklist,
   useDeleteTask,
   useRestoreTasks,
   useTaskDetail,
@@ -93,6 +94,7 @@ import {
 type FormState = {
   title: string
   content: string
+  acceptanceCriteria: string
   plan: string
   folderStructure: string
   taskType: TaskType
@@ -149,6 +151,7 @@ function toFormState(task: Task): FormState {
   return {
     title: task.title,
     content: task.content,
+    acceptanceCriteria: task.acceptanceCriteria ?? '',
     plan: task.plan ?? '',
     folderStructure: task.folderStructure ?? '',
     taskType: task.taskType,
@@ -232,13 +235,35 @@ function stripMarkdownFence(value: string) {
   return lines.join('\n').trim()
 }
 
+function markdownListItems(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^[-*]\s+\[[ xX]\]\s+/, '')
+        .replace(/^[-*]\s+/, '')
+        .replace(/^\d+[.)]\s+/, '')
+        .trim(),
+    )
+    .filter(Boolean)
+}
+
 function buildTaskPlanFields(fileName: string, text: string) {
   const { body } = parseMarkdownFrontmatter(text)
   return {
     content:
       markdownSection(body, ['업무 배경', '배경', '내용', 'content']) ||
       markdownSection(body, ['전체 요약', '요약', 'summary']),
+    acceptanceCriteria: markdownSection(body, [
+      '완료 기준',
+      '인수 조건',
+      'Acceptance Criteria',
+    ]),
     plan: markdownSection(body, ['단계별 계획', '구현 계획', 'plan']),
+    checklistItems: markdownListItems(
+      markdownSection(body, ['체크리스트', '검증 체크리스트', 'Checklist']),
+    ),
     folderStructure: stripMarkdownFence(
       markdownSection(body, ['예상 파일 구조', '파일 구조', 'folder structure']),
     ),
@@ -1015,6 +1040,7 @@ export function TaskDetailPage() {
   const taskQuery = useTaskDetail(taskId)
   const assignableUsersQuery = useAssignableUsers()
   const updateTask = useUpdateTask()
+  const createChecklist = useCreateTaskChecklist(taskId)
   const archiveTasks = useArchiveTasks()
   const restoreTasks = useRestoreTasks()
   const deleteTask = useDeleteTask()
@@ -1064,6 +1090,7 @@ export function TaskDetailPage() {
       body: {
         title: form.title.trim(),
         content: form.content,
+        acceptanceCriteria: form.acceptanceCriteria,
         plan: form.plan,
         folderStructure: form.folderStructure,
         taskType: form.taskType,
@@ -1089,6 +1116,8 @@ export function TaskDetailPage() {
         body: {
           title: form.title.trim(),
           content: form.content,
+          acceptanceCriteria:
+            parsed.acceptanceCriteria || form.acceptanceCriteria,
           plan: parsed.plan || form.plan,
           folderStructure: parsed.folderStructure || form.folderStructure,
           mmdContent: parsed.mmdContent || task.mmdContent,
@@ -1099,6 +1128,9 @@ export function TaskDetailPage() {
           dueDate: form.dueDate || null,
         },
       })
+      for (const item of parsed.checklistItems) {
+        await createChecklist.mutateAsync(item)
+      }
       setDraft(null)
       toast.success('계획 파일을 업무에 반영했습니다.')
     } catch (error) {
@@ -1192,8 +1224,6 @@ export function TaskDetailPage() {
 
   return (
     <section className="mx-auto w-full max-w-7xl space-y-4 ui-page-bg pb-8">
-      <BackLinkButton onClick={goBack} />
-
       <header className="rounded-md border border-surface-border bg-surface-raised shadow-sm">
         <div className="flex flex-col gap-4 px-5 py-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
@@ -1218,6 +1248,7 @@ export function TaskDetailPage() {
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <BackLinkButton onClick={goBack} />
             <Button
               type="button"
               variant="secondary"
@@ -1577,13 +1608,42 @@ export function TaskDetailPage() {
         </Tabs.Content>
 
         <Tabs.Content value="test" className="focus:outline-none">
-          <SectionCard
-            title="테스트"
-            description="검증 항목과 완료 여부를 체크리스트로 관리합니다."
-            icon={CheckSquare}
-          >
-            <TaskChecklistPanel taskId={task.id} showHeader={false} />
-          </SectionCard>
+          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <SectionCard
+              title="완료 기준"
+              description="파일 등록의 완료 기준 섹션을 검증 기준으로 관리합니다."
+              icon={CheckSquare}
+            >
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <label className="block space-y-1.5">
+                  <FieldLabel>완료 기준</FieldLabel>
+                  <Textarea
+                    value={form.acceptanceCriteria}
+                    onChange={(event) =>
+                      updateDraft({ acceptanceCriteria: event.target.value })
+                    }
+                    className="min-h-56 resize-y font-mono text-sm leading-6"
+                    placeholder="- 사용자가 검증할 수 있는 완료 조건&#10;- 오류와 빈 상태가 처리됨&#10;- 로컬 검증이 완료됨"
+                  />
+                </label>
+
+                <div className="flex justify-end border-t border-surface-border-soft pt-4">
+                  <Button type="submit" disabled={updateTask.isPending}>
+                    <Save className="mr-1.5 size-4" />
+                    완료 기준 저장
+                  </Button>
+                </div>
+              </form>
+            </SectionCard>
+
+            <SectionCard
+              title="체크리스트"
+              description="실행 항목과 완료 여부를 관리합니다."
+              icon={CheckSquare}
+            >
+              <TaskChecklistPanel taskId={task.id} showHeader={false} />
+            </SectionCard>
+          </div>
         </Tabs.Content>
 
         <Tabs.Content value="review" className="focus:outline-none">
