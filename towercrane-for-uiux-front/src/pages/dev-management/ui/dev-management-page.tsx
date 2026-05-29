@@ -12,8 +12,12 @@ import {
   Brain,
   ClipboardList,
   Code2,
+  ExternalLink,
+  FileText,
+  FileUp,
   FileSearch,
   Hash,
+  Library,
   MessageSquare,
   Plus,
   Send,
@@ -44,7 +48,9 @@ import type {
 import { Button } from '../../../shared/ui/button'
 import { Textarea } from '../../../shared/ui/textarea'
 import { useAssignableUsers, type AssignableUser } from '../../../shared/api/users'
+import { uploadFile } from '../../../shared/api/upload'
 import { useSessionStore } from '../../../shared/store/session-store'
+import { toast } from 'sonner'
 
 const quickActions = [
   {
@@ -63,6 +69,55 @@ const quickActions = [
     prompt: '최근 업무 히스토리 기준으로 기술 부채 후보를 분석해줘.',
   },
 ]
+
+const DEV_MANAGEMENT_RESOURCES_STORAGE_KEY = 'dev-management-room-resources:v1'
+
+type RoomResource = {
+  id: string
+  roomId: string
+  fileName: string
+  fileUrl: string
+  contentType: string
+  fileSize: number
+  createdAt: string
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function loadStoredResources() {
+  try {
+    const raw = window.localStorage.getItem(DEV_MANAGEMENT_RESOURCES_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((item): item is RoomResource => {
+      if (!item || typeof item !== 'object') return false
+      const candidate = item as Record<string, unknown>
+      return (
+        typeof candidate.id === 'string' &&
+        typeof candidate.roomId === 'string' &&
+        typeof candidate.fileName === 'string' &&
+        typeof candidate.fileUrl === 'string' &&
+        typeof candidate.contentType === 'string' &&
+        typeof candidate.fileSize === 'number' &&
+        typeof candidate.createdAt === 'string'
+      )
+    })
+  } catch {
+    return []
+  }
+}
+
+function saveStoredResources(resources: RoomResource[]) {
+  window.localStorage.setItem(
+    DEV_MANAGEMENT_RESOURCES_STORAGE_KEY,
+    JSON.stringify(resources),
+  )
+}
 
 function initials(name: string) {
   return name.slice(0, 1).toUpperCase()
@@ -406,6 +461,156 @@ function MeetingMinutesSummaryDialog({
   )
 }
 
+function RoomResourceDialog({
+  room,
+  resources,
+  isUploading,
+  onUpload,
+  onRemove,
+}: {
+  room: DevManagementRoom | null
+  resources: RoomResource[]
+  isUploading: boolean
+  onUpload: (files: FileList | null) => void
+  onRemove: (resourceId: string) => void
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const resourceLabel = room ? `${room.name} 자료실` : '자료실'
+
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger asChild>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={!room}
+          title={resourceLabel}
+          className="max-w-44"
+        >
+          <Library className="mr-1.5 size-3.5" />
+          <span className="min-w-0 truncate">{resourceLabel}</span>
+          {resources.length > 0 ? (
+            <span className="ml-1 shrink-0 rounded-sm border border-brand-border bg-brand-glass px-1.5 py-0.5 text-[10px] font-black text-brand-primary">
+              {resources.length}
+            </span>
+          ) : null}
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 ui-overlay" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[min(760px,calc(100vh-2rem))] w-[min(760px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-md border border-surface-border bg-surface-raised shadow-2xl">
+          <div className="flex items-start justify-between gap-3 border-b border-surface-border-soft px-5 py-4">
+            <div className="min-w-0">
+              <Dialog.Title className="truncate text-lg font-black text-text-primary">
+                {room?.name ?? '채널'} 자료실
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-text-secondary">
+                현재 방에서만 보이는 참고 문서를 관리합니다.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button type="button" className="ui-icon-button size-8" aria-label="닫기">
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="border-b border-surface-border-soft px-5 py-4">
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                onUpload(event.target.files)
+                event.target.value = ''
+              }}
+            />
+            <button
+              type="button"
+              disabled={!room || isUploading}
+              onClick={() => inputRef.current?.click()}
+              className="flex w-full items-center justify-between gap-4 rounded-md border border-dashed border-brand-border bg-brand-glass px-4 py-4 text-left transition hover:bg-brand-glass disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border bg-surface-raised text-brand-primary">
+                  <FileUp className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-black text-text-primary">
+                    {isUploading ? '업로드 중...' : '문서 업로드'}
+                  </span>
+                  <span className="block truncate text-xs text-text-secondary">
+                    PDF, 문서, 이미지, 링크 자료 원본 파일을 이 방에 연결합니다.
+                  </span>
+                </span>
+              </span>
+              <span className="shrink-0 text-xs font-bold text-brand-primary">
+                파일 선택
+              </span>
+            </button>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-5">
+            {resources.length === 0 ? (
+              <div className="flex min-h-52 flex-col items-center justify-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-4 py-10 text-center">
+                <FileText className="size-8 text-text-muted" />
+                <p className="mt-3 text-sm font-bold text-text-primary">
+                  등록된 자료가 없습니다.
+                </p>
+                <p className="mt-1 text-xs text-text-secondary">
+                  이 방에서 자주 참고하는 문서를 업로드하세요.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {resources.map((resource) => (
+                  <div
+                    key={resource.id}
+                    className="flex items-center gap-3 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-3"
+                  >
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-raised text-text-secondary">
+                      <FileText className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-text-primary">
+                        {resource.fileName}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-text-muted">
+                        {formatFileSize(resource.fileSize)} · {resource.contentType || 'file'}
+                      </p>
+                    </div>
+                    <a
+                      href={resource.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ui-icon-button size-8 shrink-0"
+                      aria-label="자료 열기"
+                      title="자료 열기"
+                    >
+                      <ExternalLink className="size-4" />
+                    </a>
+                    <button
+                      type="button"
+                      className="ui-icon-button-danger size-8 shrink-0"
+                      onClick={() => onRemove(resource.id)}
+                      aria-label="자료 삭제"
+                      title="자료 삭제"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
 function MessageBubble({
   currentUserId,
   message,
@@ -674,6 +879,10 @@ export function DevManagementPage() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [botSelected, setBotSelected] = useState(false)
+  const [resources, setResources] = useState<RoomResource[]>(() =>
+    loadStoredResources(),
+  )
+  const [isUploadingResource, setIsUploadingResource] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const isComposingRef = useRef(false)
@@ -701,6 +910,10 @@ export function DevManagementPage() {
   useDevManagementWebSocket(roomId)
 
   const messages = messagesQuery.data ?? []
+  const roomResources = useMemo(
+    () => resources.filter((resource) => resource.roomId === roomId),
+    [resources, roomId],
+  )
   const members = useMemo(
     () => {
       const rawMembers = membersQuery.data ?? []
@@ -815,20 +1028,61 @@ export function DevManagementPage() {
     })
   }
 
+  const uploadRoomResources = async (files: FileList | null) => {
+    if (!roomId || !files || files.length === 0 || isUploadingResource) return
+    const uploadRoomId = roomId
+    const uploadFiles = Array.from(files)
+
+    setIsUploadingResource(true)
+    try {
+      const uploaded = await Promise.all(
+        uploadFiles.map(async (file) => ({
+          id: crypto.randomUUID(),
+          roomId: uploadRoomId,
+          fileName: file.name,
+          fileUrl: await uploadFile(file),
+          contentType: file.type || 'application/octet-stream',
+          fileSize: file.size,
+          createdAt: new Date().toISOString(),
+        })),
+      )
+
+      setResources((current) => {
+        const next = [...uploaded, ...current]
+        saveStoredResources(next)
+        return next
+      })
+      toast.success(`자료 ${uploaded.length}개를 업로드했습니다.`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '자료 업로드에 실패했습니다.')
+    } finally {
+      setIsUploadingResource(false)
+    }
+  }
+
+  const removeRoomResource = (resourceId: string) => {
+    setResources((current) => {
+      const next = current.filter((resource) => resource.id !== resourceId)
+      saveStoredResources(next)
+      return next
+    })
+  }
+
   return (
     <div className="flex h-[calc(100vh-8.75rem)] min-h-0 flex-col gap-3">
-      <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="mb-1 inline-flex items-center gap-2 rounded-md border border-brand-border bg-brand-glass px-2.5 py-1 text-xs font-bold text-brand-primary">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-2 rounded-md border border-brand-border bg-brand-glass px-2.5 py-1 text-xs font-bold text-brand-primary">
             <BotMessageSquare className="size-3.5" />
             개발 도구
           </div>
-          <h1 className="text-xl font-black ui-text-primary">개발 채팅</h1>
-          <p className="mt-0.5 text-sm ui-text-secondary">
-            회의실 구조를 참고한 저장형 개발 채팅입니다. 챗봇은 서버에서 활성화 상태와 멘션 조건을 확인합니다.
+          <h1 className="text-lg font-black ui-text-primary">개발 채팅</h1>
+          <span className="hidden h-4 w-px bg-surface-border-soft md:block" />
+          <p className="min-w-0 text-sm ui-text-secondary">
+            저장형 개발 채팅 · 봇 멘션 조건 서버 판정
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {quickActions.map((action) => {
             const Icon = action.icon
             return (
@@ -977,6 +1231,13 @@ export function DevManagementPage() {
                 <Users className="size-4" />
                 {members.length}명 참가
               </div>
+              <RoomResourceDialog
+                room={selectedRoom}
+                resources={roomResources}
+                isUploading={isUploadingResource}
+                onUpload={uploadRoomResources}
+                onRemove={removeRoomResource}
+              />
               <Button
                 type="button"
                 variant="ghost"

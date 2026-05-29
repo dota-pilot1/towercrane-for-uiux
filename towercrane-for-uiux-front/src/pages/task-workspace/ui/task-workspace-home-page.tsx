@@ -29,6 +29,30 @@ import { downloadTaskExcelWorkbook } from '../../../features/task/lib/task-excel
 
 const TASK_EXPORT_PAGE_SIZE = 100
 
+type AccentStyle = React.CSSProperties & {
+  '--task-accent': string
+  '--task-accent-soft': string
+  '--task-accent-muted': string
+  '--task-accent-border': string
+  '--task-accent-border-strong': string
+  '--task-accent-border-subtle': string
+  '--task-accent-shadow': string
+  '--task-accent-wash': string
+}
+
+function getTaskAccentStyle(): AccentStyle {
+  return {
+    '--task-accent': 'var(--primary)',
+    '--task-accent-soft': 'color-mix(in srgb, var(--primary) 4%, transparent)',
+    '--task-accent-muted': 'color-mix(in srgb, var(--primary) 10%, transparent)',
+    '--task-accent-border': 'color-mix(in srgb, var(--primary) 82%, transparent)',
+    '--task-accent-border-strong': 'var(--primary)',
+    '--task-accent-border-subtle': 'color-mix(in srgb, var(--primary) 48%, transparent)',
+    '--task-accent-shadow': 'color-mix(in srgb, var(--primary) 10%, transparent)',
+    '--task-accent-wash': 'color-mix(in srgb, var(--primary) 2%, transparent)',
+  }
+}
+
 function getExportDate() {
   return new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Asia/Seoul',
@@ -109,17 +133,20 @@ export function TaskWorkspaceHomePage() {
   }
 
   return (
-    <div className="w-full min-w-0 ui-page-bg space-y-4">
-      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+    <div
+      style={getTaskAccentStyle()}
+      className="w-full min-w-0 space-y-4 bg-background"
+    >
+      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-lg border-2 bg-surface-raised px-6 py-5 shadow-2xs [border-color:var(--task-accent-border)]">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary text-primary-foreground shadow-sm">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-[var(--task-accent)] text-primary-foreground shadow-2xs [border-color:var(--task-accent-border-strong)]">
             <CheckSquare className="size-5" />
           </div>
-          <div className="min-w-0 space-y-0.5">
-            <h1 className="text-lg font-bold tracking-tight text-text-primary">
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-2xl font-black tracking-tight text-text-primary">
               Task Workspaces
             </h1>
-            <p className="text-xs ui-text-secondary">
+            <p className="text-base font-medium leading-6 ui-text-secondary">
               팀별 업무를 워크스페이스로 분리해 관리합니다.
             </p>
           </div>
@@ -163,14 +190,13 @@ export function TaskWorkspaceHomePage() {
             icon={<Activity className="size-4" />}
             label="진행 중"
             value={totalOpen}
-            accent
           />
           <SummaryTile
             icon={<CheckCircle2 className="size-4" />}
             label="완료"
             value={totalCompleted}
             trailing={
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary">
+              <span className="inline-flex items-center gap-1 rounded-full border bg-[var(--task-accent-muted)] px-2 py-0.5 text-[11px] font-bold text-[var(--task-accent)] [border-color:var(--task-accent-border)]">
                 <TrendingUp className="size-3" />
                 {overallPct}%
               </span>
@@ -179,7 +205,7 @@ export function TaskWorkspaceHomePage() {
         </div>
       ) : null}
 
-      <div className="min-h-[calc(100dvh-300px)] rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm">
+      <div className="min-h-[calc(100dvh-300px)] rounded-xl border-2 bg-surface-raised p-6 shadow-2xs [border-color:var(--task-accent-border)]">
         {workspacesQuery.isLoading ? (
           <div className="flex min-h-[320px] items-center justify-center text-sm ui-text-muted">
             <LoaderCircle className="mr-2 size-4 animate-spin" />
@@ -215,33 +241,25 @@ type SummaryTileProps = {
   icon: React.ReactNode
   label: string
   value: number
-  accent?: boolean
   trailing?: React.ReactNode
 }
 
-function SummaryTile({ icon, label, value, accent, trailing }: SummaryTileProps) {
+function SummaryTile({ icon, label, value, trailing }: SummaryTileProps) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-surface-border bg-surface-raised px-4 py-3.5 shadow-2xs transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-border hover:shadow-md hover:shadow-text-primary/5">
+    <div
+      style={getTaskAccentStyle()}
+      className="group relative overflow-hidden rounded-lg border-2 bg-surface-raised px-4 py-3.5 shadow-2xs transition-all duration-300 [border-color:var(--task-accent-border)] hover:-translate-y-0.5 hover:bg-[var(--task-accent-soft)] hover:shadow-[0_8px_20px_var(--task-accent-shadow)] hover:[border-color:var(--task-accent-border-strong)]"
+    >
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">
-          <span
-            className={`flex size-7 shrink-0 items-center justify-center rounded-lg border ${
-              accent
-                ? 'border-brand-border bg-brand-glass text-brand-primary'
-                : 'border-surface-border-soft bg-surface-muted text-text-secondary'
-            }`}
-          >
+        <div className="flex items-center gap-2.5 text-xs font-black uppercase tracking-[0.1em] text-text-muted">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-[var(--task-accent-muted)] text-[var(--task-accent)] [border-color:var(--task-accent-border-subtle)]">
             {icon}
           </span>
           {label}
         </div>
         {trailing}
       </div>
-      <div
-        className={`mt-2 text-2xl font-black tracking-tight ${
-          accent ? 'text-brand-primary' : 'text-text-primary'
-        }`}
-      >
+      <div className="mt-2 text-3xl font-black tracking-tight text-text-primary">
         {value}
       </div>
     </div>
@@ -251,91 +269,75 @@ function SummaryTile({ icon, label, value, accent, trailing }: SummaryTileProps)
 function TaskWorkspaceCard({ workspace, onOpen }: TaskWorkspaceCardProps) {
   const completedCount = Math.max(0, workspace.taskCount - workspace.openTaskCount)
   const progressPct = workspace.taskCount > 0 ? (completedCount / workspace.taskCount) * 100 : 0
+  const remainingCount = Math.max(0, workspace.openTaskCount)
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      style={{
-        '--accent-color': 'var(--color-brand-primary)',
-        '--accent-glass': 'var(--color-brand-glass)',
-        '--accent-glass-strong': 'color-mix(in srgb, var(--color-brand-primary) 18%, transparent)',
-        '--accent-border': 'var(--color-brand-border)',
-        '--accent-border-hover': 'color-mix(in srgb, var(--color-brand-primary) 55%, transparent)',
-      } as React.CSSProperties}
-      className="group relative overflow-hidden flex flex-col justify-between min-h-[200px] rounded-2xl border border-surface-border bg-surface-raised text-left shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:border-[var(--accent-border-hover)] hover:shadow-md hover:shadow-text-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-color)] p-0"
+      style={getTaskAccentStyle()}
+      className="group relative flex min-h-[228px] flex-col overflow-hidden rounded-lg border-2 bg-surface-raised p-5 text-left shadow-2xs transition-all duration-300 [border-color:var(--task-accent-border)] hover:-translate-y-0.5 hover:bg-[var(--task-accent-soft)] hover:shadow-[0_10px_24px_var(--task-accent-shadow)] hover:[border-color:var(--task-accent-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--task-accent)]"
     >
-
-      {/* 1. Header Panel - Clearly divided area */}
-      <div className="w-full px-5 py-3.5 border-b border-surface-border-soft/60 bg-surface-raised flex items-center justify-between gap-4">
+      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,var(--task-accent-wash)_0%,transparent_34%)]" />
+      <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          {/* Accent-colored squircle icon wrapper */}
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--accent-border)] bg-[var(--accent-glass)] text-[var(--accent-color)] transition-all duration-500 group-hover:scale-105 group-hover:bg-[var(--accent-color)] group-hover:text-background group-hover:shadow-[0_4px_12px_color-mix(in_srgb,var(--accent-color)_25%,transparent)]">
-            <CheckSquare className="size-4.5" />
+          <div className="relative flex size-11 shrink-0 items-center justify-center rounded-xl border bg-[var(--task-accent-muted)] text-[var(--task-accent)] transition-all duration-300 [border-color:var(--task-accent-border-subtle)] group-hover:scale-105 group-hover:bg-[var(--task-accent)] group-hover:text-primary-foreground group-hover:shadow-[0_10px_24px_var(--task-accent-shadow)]">
+            <CheckSquare className="size-5" />
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-base font-black text-text-primary group-hover:text-[var(--accent-color)] transition-colors leading-tight">
+            <h2 className="truncate text-lg font-black leading-tight text-text-primary transition-colors group-hover:text-[var(--task-accent)]">
               {workspace.name}
             </h2>
-            <p className="mt-1 line-clamp-1 text-[11px] text-text-muted">
+            <p className="mt-1 line-clamp-1 text-sm font-medium leading-5 text-text-secondary">
               {workspace.description ?? '팀 업무 워크스페이스'}
             </p>
           </div>
         </div>
-
-        {/* Small compact chevron on the right */}
-        <div className="flex size-6 shrink-0 items-center justify-center rounded-full border border-surface-border-soft bg-surface-muted/30 text-text-muted transition-all duration-300 group-hover:translate-x-0.5 group-hover:border-[var(--accent-border)] group-hover:bg-[var(--accent-glass)] group-hover:text-[var(--accent-color)]">
-          <ArrowRight className="size-3" />
+        <div className="relative flex size-8 shrink-0 items-center justify-center rounded-full border bg-surface-raised text-text-muted transition-all duration-300 [border-color:var(--task-accent-border-subtle)] group-hover:translate-x-0.5 group-hover:bg-[var(--task-accent-muted)] group-hover:text-[var(--task-accent)]">
+          <ArrowRight className="size-3.5" />
         </div>
       </div>
 
-      {/* 2. Middle Body Panel - Compact statistics inside tinted container */}
-      <div className="w-full px-5 py-3.5 bg-surface-muted/10 flex-1 flex flex-col justify-center">
-        <div className="grid grid-cols-2 gap-2.5">
-          {/* Total Tasks Box */}
-          <div className="rounded-xl border border-surface-border-soft/60 bg-surface-raised/50 p-2.5 transition-all duration-300 group-hover:bg-surface-raised/90 group-hover:border-surface-border-soft">
-            <div className="flex items-center gap-1.5 truncate text-[9px] font-bold uppercase tracking-[0.12em] text-text-muted">
-              <ClipboardList className="size-3 text-text-muted" />
-              전체 업무
-            </div>
-            <div className="mt-0.5 text-lg font-black text-text-primary">
-              {workspace.taskCount}
-            </div>
+      <div className="relative mt-5 grid grid-cols-2 overflow-hidden rounded-xl border bg-surface-raised/70 [border-color:var(--task-accent-border-subtle)]">
+        <div className="min-w-0 px-3 py-3">
+          <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.1em] text-text-muted">
+            <ClipboardList className="size-3" />
+            전체 업무
           </div>
-
-          {/* Active Tasks Box */}
-          <div className="rounded-xl border border-surface-border-soft/60 bg-surface-raised/50 p-2.5 transition-all duration-300 group-hover:bg-surface-raised/90 group-hover:border-surface-border-soft">
-            <div className="flex items-center gap-1.5 justify-between">
-              <div className="flex items-center gap-1.5 truncate text-[9px] font-bold uppercase tracking-[0.12em] text-text-muted">
-                <Activity className="size-3 text-[var(--accent-color)]" />
-                진행 중
-              </div>
-              {/* Pulsing Active Dot with accent color */}
-              {workspace.openTaskCount > 0 && (
-                <span className="relative flex size-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--accent-border)] opacity-75"></span>
-                  <span className="relative inline-flex size-2 rounded-full bg-[var(--accent-color)]"></span>
-                </span>
-              )}
+          <div className="mt-1 text-2xl font-black tracking-tight text-text-primary">
+            {workspace.taskCount}
+          </div>
+        </div>
+        <div className="min-w-0 border-l px-3 py-3 [border-color:var(--task-accent-border-subtle)]">
+          <div className="flex items-center justify-between gap-2 text-xs font-black uppercase tracking-[0.1em] text-text-muted">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Activity className="size-3 text-[var(--task-accent)]" />
+              진행 중
             </div>
-            <div className="mt-0.5 text-lg font-black text-[var(--accent-color)]">
-              {workspace.openTaskCount}
-            </div>
+            {workspace.openTaskCount > 0 ? (
+              <span className="size-1.5 shrink-0 rounded-full bg-[var(--task-accent)] shadow-[0_0_0_3px_var(--task-accent-muted)]" />
+            ) : null}
+          </div>
+          <div className="mt-1 text-2xl font-black tracking-tight text-[var(--task-accent)]">
+            {workspace.openTaskCount}
           </div>
         </div>
       </div>
 
-      {/* 3. Bottom Footer Panel - Integrated progress bar */}
-      <div className="w-full px-5 py-3 border-t border-surface-border-soft bg-surface-muted/20">
-        <div className="flex items-center justify-between text-[9px] font-bold text-text-muted mb-1.5">
-          <span>워크스페이스 완료율</span>
-          <span className="text-[var(--accent-color)]">{Math.round(progressPct)}% ({completedCount}/{workspace.taskCount})</span>
+      <div className="relative mt-5 rounded-xl border bg-[var(--task-accent-soft)] px-3.5 py-3 [border-color:var(--task-accent-border-subtle)]">
+        <div className="flex items-center justify-between gap-3 text-xs font-black">
+          <span className="text-text-secondary">완료율</span>
+          <span className="text-[var(--task-accent)]">{Math.round(progressPct)}%</span>
         </div>
-        <div className="h-1.5 w-full rounded-full bg-surface-muted overflow-hidden">
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-raised/90">
           <div
-            className="h-full bg-[var(--accent-color)] rounded-full transition-all duration-500 ease-out shadow-[0_0_6px_var(--accent-color)]"
+            className="h-full rounded-full bg-[var(--task-accent)] transition-all duration-500 ease-out"
             style={{ width: `${progressPct}%` }}
           />
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-3 text-xs font-semibold text-text-muted">
+          <span>{completedCount}개 완료</span>
+          <span>{remainingCount}개 남음</span>
         </div>
       </div>
     </button>
