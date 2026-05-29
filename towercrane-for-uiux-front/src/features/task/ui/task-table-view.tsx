@@ -1195,7 +1195,7 @@ function SortableTableRow({
       }}
       onClick={() => onOpenTask(row.original.id)}
       className={clsx(
-        'cursor-pointer transition-colors hover:bg-surface-muted',
+        'cursor-pointer transition-colors hover:bg-brand-glass',
         row.index % 2 === 0 ? 'bg-background' : 'bg-surface-raised',
         isDragging && 'relative z-10 opacity-70 shadow-lg',
       )}

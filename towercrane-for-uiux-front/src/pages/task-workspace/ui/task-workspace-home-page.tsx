@@ -2,11 +2,14 @@ import * as Dialog from '@radix-ui/react-dialog'
 import {
   Activity,
   ArrowRight,
+  CheckCircle2,
   CheckSquare,
   ClipboardList,
   Download,
+  LayoutGrid,
   LoaderCircle,
   Plus,
+  TrendingUp,
 } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
@@ -61,6 +64,11 @@ export function TaskWorkspaceHomePage() {
   const workspacesQuery = useTaskWorkspaces()
   const workspaces = workspacesQuery.data ?? []
   const [isExporting, setIsExporting] = useState(false)
+
+  const totalTasks = workspaces.reduce((sum, w) => sum + w.taskCount, 0)
+  const totalOpen = workspaces.reduce((sum, w) => sum + w.openTaskCount, 0)
+  const totalCompleted = Math.max(0, totalTasks - totalOpen)
+  const overallPct = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0
 
   const handleExportAllWorkspaces = async () => {
     if (isExporting) return
@@ -139,14 +147,46 @@ export function TaskWorkspaceHomePage() {
         ) : null}
       </div>
 
-      <div className="min-h-[calc(100dvh-180px)] rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm">
+      {!workspacesQuery.isLoading && workspaces.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <SummaryTile
+            icon={<LayoutGrid className="size-4" />}
+            label="워크스페이스"
+            value={workspaces.length}
+          />
+          <SummaryTile
+            icon={<ClipboardList className="size-4" />}
+            label="전체 업무"
+            value={totalTasks}
+          />
+          <SummaryTile
+            icon={<Activity className="size-4" />}
+            label="진행 중"
+            value={totalOpen}
+            accent
+          />
+          <SummaryTile
+            icon={<CheckCircle2 className="size-4" />}
+            label="완료"
+            value={totalCompleted}
+            trailing={
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-primary">
+                <TrendingUp className="size-3" />
+                {overallPct}%
+              </span>
+            }
+          />
+        </div>
+      ) : null}
+
+      <div className="min-h-[calc(100dvh-300px)] rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm">
         {workspacesQuery.isLoading ? (
           <div className="flex min-h-[320px] items-center justify-center text-sm ui-text-muted">
             <LoaderCircle className="mr-2 size-4 animate-spin" />
             워크스페이스 불러오는 중...
           </div>
         ) : workspaces.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {workspaces.map((workspace) => (
               <TaskWorkspaceCard
                 key={workspace.id}
@@ -166,6 +206,43 @@ export function TaskWorkspaceHomePage() {
             {isAuthenticated ? <CreateWorkspaceDialog /> : null}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+type SummaryTileProps = {
+  icon: React.ReactNode
+  label: string
+  value: number
+  accent?: boolean
+  trailing?: React.ReactNode
+}
+
+function SummaryTile({ icon, label, value, accent, trailing }: SummaryTileProps) {
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-surface-border bg-surface-raised px-4 py-3.5 shadow-2xs transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-border hover:shadow-md hover:shadow-text-primary/5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">
+          <span
+            className={`flex size-7 shrink-0 items-center justify-center rounded-lg border ${
+              accent
+                ? 'border-brand-border bg-brand-glass text-brand-primary'
+                : 'border-surface-border-soft bg-surface-muted text-text-secondary'
+            }`}
+          >
+            {icon}
+          </span>
+          {label}
+        </div>
+        {trailing}
+      </div>
+      <div
+        className={`mt-2 text-2xl font-black tracking-tight ${
+          accent ? 'text-brand-primary' : 'text-text-primary'
+        }`}
+      >
+        {value}
       </div>
     </div>
   )

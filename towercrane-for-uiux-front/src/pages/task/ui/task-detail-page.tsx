@@ -462,6 +462,95 @@ function FolderStructurePreview({ value }: { value: string }) {
   )
 }
 
+function PlanReferencePreviewDialog({
+  open,
+  onOpenChange,
+  apiUrl,
+  isLoading,
+  statusText,
+  error,
+  preview,
+  onCopy,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  apiUrl: string
+  isLoading: boolean
+  statusText: string | null
+  error: string | null
+  preview: string
+  onCopy: () => void
+}) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[60] flex h-[min(82vh,760px)] w-[min(960px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
+            <div className="min-w-0">
+              <Dialog.Title className="text-lg font-black text-text-primary">
+                AI 참고 URL 테스트
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 break-all text-sm text-text-secondary">
+                {apiUrl}
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="ui-icon-button size-8"
+                aria-label="닫기"
+              >
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm font-bold text-text-primary">
+                {isLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="size-4 animate-spin" />
+                    JSON을 불러오는 중입니다.
+                  </span>
+                ) : error ? (
+                  <span className="text-destructive">요청 실패</span>
+                ) : statusText ? (
+                  <span>{statusText}</span>
+                ) : (
+                  <span>대기 중</span>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-8"
+                onClick={onCopy}
+                disabled={!preview}
+              >
+                <FileJson className="mr-1.5 size-3.5" />
+                JSON 복사
+              </Button>
+            </div>
+
+            {error ? (
+              <pre className="min-h-40 overflow-auto whitespace-pre-wrap rounded-md border border-destructive/40 bg-danger-glass px-4 py-3 font-mono text-xs leading-5 text-destructive">
+                {error}
+              </pre>
+            ) : (
+              <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-raised px-4 py-3 font-mono text-xs leading-5 text-text-secondary">
+                {preview || '아직 응답이 없습니다.'}
+              </pre>
+            )}
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
 function riskLabel(riskLevel: CodeReviewRiskLevel) {
   if (riskLevel === 'high') return '높음'
   if (riskLevel === 'medium') return '중간'
@@ -947,6 +1036,17 @@ export function TaskDetailPage() {
     values: FormState
   } | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [planReferencePreviewOpen, setPlanReferencePreviewOpen] =
+    useState(false)
+  const [planReferencePreviewLoading, setPlanReferencePreviewLoading] =
+    useState(false)
+  const [planReferencePreviewStatus, setPlanReferencePreviewStatus] = useState<
+    string | null
+  >(null)
+  const [planReferencePreviewError, setPlanReferencePreviewError] = useState<
+    string | null
+  >(null)
+  const [planReferencePreview, setPlanReferencePreview] = useState('')
   const planFileInputRef = useRef<HTMLInputElement>(null)
   const [folderStructureMode, setFolderStructureMode] = useState<
     'text' | 'tree'
@@ -1056,12 +1156,59 @@ export function TaskDetailPage() {
     }
   }
 
+  const getPlanApiUrl = () =>
+    task ? publicApiReferenceUrl(`/public/tasks/${task.id}/plan-reference`) : ''
+
   const handleCopyPlanApiUrl = () => {
     if (!task) return
     void copyText(
-      publicApiReferenceUrl(`/public/tasks/${task.id}/plan-reference`),
+      getPlanApiUrl(),
       'AI 참조용 업무 계획 API URL을 복사했습니다.',
     )
+  }
+
+  const handleTestPlanApiUrl = async () => {
+    const apiUrl = getPlanApiUrl()
+    if (!apiUrl) return
+
+    setPlanReferencePreviewOpen(true)
+    setPlanReferencePreviewLoading(true)
+    setPlanReferencePreviewStatus(null)
+    setPlanReferencePreviewError(null)
+    setPlanReferencePreview('')
+
+    try {
+      const response = await fetch(apiUrl, {
+        headers: { Accept: 'application/json' },
+      })
+      const text = await response.text()
+      let formatted = text
+
+      if (text) {
+        try {
+          formatted = JSON.stringify(JSON.parse(text), null, 2)
+        } catch {
+          formatted = text
+        }
+      }
+
+      setPlanReferencePreviewStatus(
+        `HTTP ${response.status} ${response.statusText}`,
+      )
+
+      if (!response.ok) {
+        setPlanReferencePreviewError(formatted || '응답 본문이 없습니다.')
+        return
+      }
+
+      setPlanReferencePreview(formatted || '응답 본문이 없습니다.')
+    } catch (error) {
+      setPlanReferencePreviewError(
+        error instanceof Error ? error.message : 'AI 참고 URL 요청에 실패했습니다.',
+      )
+    } finally {
+      setPlanReferencePreviewLoading(false)
+    }
   }
 
   const copyText = async (text: string, successMessage: string) => {
@@ -1167,6 +1314,22 @@ export function TaskDetailPage() {
               variant="secondary"
               size="sm"
               className="h-9"
+              onClick={handleTestPlanApiUrl}
+              disabled={planReferencePreviewLoading}
+              title="AI 참고 URL JSON 응답 테스트"
+            >
+              {planReferencePreviewLoading ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <Search className="mr-1.5 size-3.5" />
+              )}
+              AI URL 테스트
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-9"
               onClick={handleArchive}
               disabled={
                 archiveTasks.isPending ||
@@ -1202,6 +1365,19 @@ export function TaskDetailPage() {
         </div>
       </header>
 
+      <PlanReferencePreviewDialog
+        open={planReferencePreviewOpen}
+        onOpenChange={setPlanReferencePreviewOpen}
+        apiUrl={getPlanApiUrl()}
+        isLoading={planReferencePreviewLoading}
+        statusText={planReferencePreviewStatus}
+        error={planReferencePreviewError}
+        preview={planReferencePreview}
+        onCopy={() =>
+          copyText(planReferencePreview, 'AI 참고 URL 응답 JSON을 복사했습니다.')
+        }
+      />
+
       <Tabs.Root defaultValue="basic" className="space-y-4">
         <Tabs.List className="flex flex-wrap gap-1 rounded-md border border-surface-border-soft bg-surface-muted p-1">
           {[
@@ -1221,7 +1397,7 @@ export function TaskDetailPage() {
         </Tabs.List>
 
         <Tabs.Content value="basic" className="focus:outline-none">
-          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
             <main className="space-y-4">
               <SectionCard
                 title="기본 정보"
