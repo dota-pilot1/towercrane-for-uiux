@@ -889,6 +889,24 @@ export function TaskPage({
               label={normalizedFilters.archived ? '보관함 보기' : '진행 업무 보기'}
             />
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-9"
+            onClick={() =>
+              setFilters({
+                page: 1,
+                pageSize: normalizedFilters.pageSize ?? 50,
+                archived: false,
+                sort: 'order',
+                scope: scopeMode,
+                userId: scopeMode === 'user' ? targetUserId : undefined,
+              })
+            }
+          >
+            필터 초기화
+          </Button>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -905,23 +923,6 @@ export function TaskPage({
             {exportMode === 'current' ? '내보내는 중...' : '엑셀'}
           </Button>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              setFilters({
-                page: 1,
-                pageSize: normalizedFilters.pageSize ?? 50,
-                archived: false,
-                sort: 'order',
-                scope: scopeMode,
-                userId: scopeMode === 'user' ? targetUserId : undefined,
-              })
-            }
-          >
-            필터 초기화
-          </Button>
           {viewMode === 'table' && (
             <>
               <Button
