@@ -99,6 +99,73 @@ export class TasksService {
     return this.toTaskDto(task, this.getUsersById());
   }
 
+  getTaskPlanReference(taskId: string) {
+    const task = this.ensureTask(taskId);
+    const usersById = this.getUsersById();
+    const reporter = usersById.get(task.reporterId);
+    const assignee = task.assigneeId ? usersById.get(task.assigneeId) : null;
+    const owner = task.ownerId ? usersById.get(task.ownerId) : null;
+    const workspace = task.workspaceId
+      ? this.db
+          .select()
+          .from(taskWorkspacesTable)
+          .where(eq(taskWorkspacesTable.id, task.workspaceId))
+          .get()
+      : null;
+    const checklists = this.db
+      .select()
+      .from(taskChecklistsTable)
+      .where(eq(taskChecklistsTable.taskId, taskId))
+      .orderBy(
+        asc(taskChecklistsTable.orderIdx),
+        asc(taskChecklistsTable.createdAt),
+      )
+      .all();
+
+    return {
+      kind: 'towercrane.taskPlanReference',
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      task: {
+        id: task.id,
+        title: task.title,
+        content: task.content,
+        type: task.taskType,
+        status: task.status,
+        priority: task.priority,
+        scope: task.scope,
+        visibility: task.visibility,
+        dueDate: task.dueDate,
+        archived: task.archived,
+        orderIdx: task.orderIdx,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+        reporterName: reporter?.name ?? null,
+        assigneeName: assignee?.name ?? null,
+        ownerName: owner?.name ?? null,
+        workspace: workspace
+          ? {
+              id: workspace.id,
+              name: workspace.name,
+              description: workspace.description,
+            }
+          : null,
+      },
+      plan: {
+        acceptanceCriteria: task.acceptanceCriteria,
+        steps: task.plan,
+        folderStructure: task.folderStructure,
+        mermaid: task.mmdContent,
+      },
+      checklists: checklists.map((item) => ({
+        id: item.id,
+        content: item.content,
+        completed: item.completed,
+        orderIdx: item.orderIdx,
+      })),
+    };
+  }
+
   createTask(user: TaskUser, payload: unknown) {
     const input = createTaskSchema.parse(payload);
     const isPersonalTask = input.scope === 'PERSONAL';

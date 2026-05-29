@@ -15,6 +15,7 @@ import {
   Code2,
   Copy,
   ExternalLink,
+  FileJson,
   FilePenLine,
   FileText,
   Folder,
@@ -90,6 +91,7 @@ import {
   useTaskDetail,
   useUpdateTask,
 } from '../../../features/task/model/use-task-queries'
+import { API_BASE_URL } from '../../../shared/api/http'
 
 type FormState = {
   title: string
@@ -133,6 +135,7 @@ const TASK_SKILL_EXAMPLE_TEXT = TASK_SKILL_EXAMPLES.map(
 ).join('\n\n')
 
 const PUBLIC_FRONTEND_ORIGIN = 'https://hibot-docu.com'
+const PUBLIC_API_BASE_URL = 'https://api.hibot-docu.com/api'
 
 function publicReferenceUrl(path: string) {
   const origin = window.location.origin
@@ -140,6 +143,15 @@ function publicReferenceUrl(path: string) {
     ? PUBLIC_FRONTEND_ORIGIN
     : origin
   return `${baseOrigin}${path}`
+}
+
+function publicApiReferenceUrl(path: string) {
+  const baseUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/api$/.test(
+    API_BASE_URL,
+  )
+    ? PUBLIC_API_BASE_URL
+    : API_BASE_URL.replace(/\/+$/, '')
+  return `${baseUrl}${path}`
 }
 
 function toDateInputValue(value?: string | null) {
@@ -1174,6 +1186,14 @@ export function TaskDetailPage() {
     )
   }
 
+  const handleCopyPlanApiUrl = () => {
+    if (!task) return
+    void copyText(
+      publicApiReferenceUrl(`/public/tasks/${task.id}/plan-reference`),
+      'AI 참조용 업무 계획 API URL을 복사했습니다.',
+    )
+  }
+
   const copyText = async (text: string, successMessage: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -1285,6 +1305,17 @@ export function TaskDetailPage() {
             >
               <Copy className="mr-1.5 size-3.5" />
               참고 URL
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-9"
+              onClick={handleCopyPlanApiUrl}
+              title="로그인 없이 GET으로 조회할 수 있는 업무 계획 JSON URL 복사"
+            >
+              <FileJson className="mr-1.5 size-3.5" />
+              AI 참조 URL
             </Button>
             <Button
               type="button"
