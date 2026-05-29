@@ -324,9 +324,9 @@ export function TaskToolbar({
                   </p>
                 </div>
                 <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
-                  <h3 className="text-sm font-black text-text-primary">AI 참조 URL</h3>
+                  <h3 className="text-sm font-black text-text-primary">AI 참고 URL</h3>
                   <p className="mt-2 text-sm leading-6 text-text-secondary">
-                    파일 등록 후 업무 상세 헤더의 `AI 참조 URL` 버튼을 누르면 로그인 없이
+                    파일 등록 후 업무 상세 헤더의 `AI 참고 URL` 버튼을 누르면 로그인 없이
                     GET으로 조회할 수 있는 JSON 주소가 복사됩니다. GPT나 Codex가 해당 URL을
                     열어 업무 내용, 완료 기준, 계획, 파일 구조, MMD, 체크리스트를 한 번에
                     참고할 수 있습니다.

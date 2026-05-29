@@ -8,18 +8,15 @@ import remarkGfm from 'remark-gfm'
 import {
   Archive,
   ArchiveRestore,
-  Bot,
   CalendarDays,
   CheckSquare,
   Check,
   Code2,
-  Copy,
   ExternalLink,
   FileJson,
   FilePenLine,
   FileText,
   Folder,
-  KeyRound,
   Link2,
   Loader2,
   MessageSquareText,
@@ -116,23 +113,6 @@ type FolderTreeNode = {
 type FolderTreeBuildNode = Omit<FolderTreeNode, 'children'> & {
   childrenMap: Map<string, FolderTreeBuildNode>
 }
-
-const TASK_SKILL_EXAMPLES = [
-  {
-    title: '바로 PMS 등록',
-    content:
-      'PMS에 업무 등록해줘. 개발 채팅 페이지에서 GPT, Gemini, Claude를 선택해서 말걸 수 있는 기능을 구현하려고 해. 구현 계획, 예상 파일 구조, MMD 흐름도까지 만들어서 등록해줘.',
-  },
-  {
-    title: '계획 폴더 기반 등록',
-    content:
-      '/pms-task-register docs-for-5차 mvp/개발 채팅에서 gpt, gemini, claude 선택해서 말걸수 있게 하기\n구현 계획 폴더의 계획.md 또는 PLAN.md를 읽고 PMS 업무로 등록해줘.',
-  },
-]
-
-const TASK_SKILL_EXAMPLE_TEXT = TASK_SKILL_EXAMPLES.map(
-  (example) => `${example.title}\n${example.content}`,
-).join('\n\n')
 
 const PUBLIC_FRONTEND_ORIGIN = 'https://hibot-docu.com'
 const PUBLIC_API_BASE_URL = 'https://api.hibot-docu.com/api'
@@ -479,102 +459,6 @@ function FolderStructurePreview({ value }: { value: string }) {
         <FolderTreeItems nodes={nodes} />
       </ul>
     </div>
-  )
-}
-
-function TaskSkillGuideDialog({
-  open,
-  onOpenChange,
-  onCopyExample,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onCopyExample: () => void
-}) {
-  return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
-        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[60] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
-          <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
-            <div className="min-w-0">
-              <Dialog.Title className="text-lg font-black text-text-primary">
-                Codex 스킬로 업무 입력
-              </Dialog.Title>
-              <Dialog.Description className="mt-1 text-sm text-text-secondary">
-                Codex에게 PMS 등록 요청을 말하면 Towercrane 업무로 바로 등록합니다.
-              </Dialog.Description>
-            </div>
-            <Dialog.Close asChild>
-              <button
-                type="button"
-                className="ui-icon-button size-8"
-                aria-label="닫기"
-              >
-                <X className="size-4" />
-              </button>
-            </Dialog.Close>
-          </div>
-
-          <div className="space-y-4 px-5 py-5">
-            <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <Bot className="size-4 text-brand-primary" />
-                <p className="text-sm font-black text-text-primary">
-                  스킬 발동 예시
-                </p>
-              </div>
-              <div className="space-y-2">
-                {TASK_SKILL_EXAMPLES.map((example) => (
-                  <div
-                    key={example.title}
-                    className="rounded-md border border-surface-border-soft bg-surface-muted p-3"
-                  >
-                    <p className="mb-1 text-xs font-black text-text-secondary">
-                      {example.title}
-                    </p>
-                    <p className="whitespace-pre-wrap font-mono text-sm leading-6 text-text-primary">
-                      {example.content}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 flex justify-end">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={onCopyExample}
-                >
-                  <Copy className="mr-1.5 size-3.5" />
-                  예시 전체 복사
-                </Button>
-              </div>
-            </section>
-
-            <section className="rounded-md border border-surface-border-soft bg-surface-raised p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <KeyRound className="size-4 text-brand-primary" />
-                <p className="text-sm font-black text-text-primary">
-                  공유 키 문의
-                </p>
-              </div>
-              <p className="text-sm leading-6 text-text-secondary">
-                업무 입력 API는 공유 키가 필요합니다. 스킬 설치 방법이나 키가
-                필요하면{' '}
-                <a
-                  href="mailto:terecal@daum.net"
-                  className="font-bold text-brand-primary underline-offset-4 hover:underline"
-                >
-                  terecal@daum.net
-                </a>
-                으로 문의하세요.
-              </p>
-            </section>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
   )
 }
 
@@ -1063,7 +947,6 @@ export function TaskDetailPage() {
     values: FormState
   } | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
-  const [skillGuideOpen, setSkillGuideOpen] = useState(false)
   const planFileInputRef = useRef<HTMLInputElement>(null)
   const [folderStructureMode, setFolderStructureMode] = useState<
     'text' | 'tree'
@@ -1167,23 +1050,10 @@ export function TaskDetailPage() {
       await navigator.clipboard.writeText(publicReferenceUrl(`/task/${task.id}`))
       setLinkCopied(true)
       window.setTimeout(() => setLinkCopied(false), 1600)
-      toast.success('업무 링크를 복사했습니다.')
+      toast.success('상세 페이지 링크를 복사했습니다.')
     } catch {
-      toast.error('업무 링크 복사에 실패했습니다.')
+      toast.error('상세 페이지 링크 복사에 실패했습니다.')
     }
-  }
-
-  const handleCopyReferenceUrl = () => {
-    if (!task) return
-    void copyText(
-      [
-        'Towercrane 업무 참고',
-        `업무 ID: ${task.id}`,
-        `제목: ${task.title}`,
-        `URL: ${publicReferenceUrl(`/task/${task.id}`)}`,
-      ].join('\n'),
-      '업무 참고 URL을 복사했습니다.',
-    )
   }
 
   const handleCopyPlanApiUrl = () => {
@@ -1202,9 +1072,6 @@ export function TaskDetailPage() {
       toast.error('복사에 실패했습니다.')
     }
   }
-
-  const handleCopySkillExample = () =>
-    copyText(TASK_SKILL_EXAMPLE_TEXT, '스킬 발동 예시를 복사했습니다.')
 
   const handleDelete = async () => {
     if (!task) return
@@ -1274,37 +1141,15 @@ export function TaskDetailPage() {
               variant="secondary"
               size="sm"
               className="h-9"
-              onClick={() => setSkillGuideOpen(true)}
-              title="Codex 스킬 업무 입력법"
-            >
-              <Bot className="mr-1.5 size-3.5" />
-              스킬 입력법
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9"
               onClick={handleCopyLink}
-              title="업무 링크 복사"
+              title="상세 페이지 링크 복사"
             >
               {linkCopied ? (
                 <Check className="mr-1.5 size-3.5 text-brand-primary" />
               ) : (
                 <Link2 className="mr-1.5 size-3.5" />
               )}
-              {linkCopied ? '복사됨' : '링크 복사'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9"
-              onClick={handleCopyReferenceUrl}
-              title="Codex 참고용 업무 URL 복사"
-            >
-              <Copy className="mr-1.5 size-3.5" />
-              참고 URL
+              {linkCopied ? '복사됨' : '상세 링크 복사'}
             </Button>
             <Button
               type="button"
@@ -1315,7 +1160,7 @@ export function TaskDetailPage() {
               title="로그인 없이 GET으로 조회할 수 있는 업무 계획 JSON URL 복사"
             >
               <FileJson className="mr-1.5 size-3.5" />
-              AI 참조 URL
+              AI 참고 URL
             </Button>
             <Button
               type="button"
@@ -1356,12 +1201,6 @@ export function TaskDetailPage() {
           </div>
         </div>
       </header>
-
-      <TaskSkillGuideDialog
-        open={skillGuideOpen}
-        onOpenChange={setSkillGuideOpen}
-        onCopyExample={handleCopySkillExample}
-      />
 
       <Tabs.Root defaultValue="basic" className="space-y-4">
         <Tabs.List className="flex flex-wrap gap-1 rounded-md border border-surface-border-soft bg-surface-muted p-1">
