@@ -184,7 +184,7 @@ export function StudyDiarySectionList({ workspaceId, categoryId, selectedSection
   }
 
   return (
-    <Card className="w-[260px] overflow-y-auto rounded-md p-0">
+    <Card className="w-[420px] overflow-y-auto rounded-md p-0">
       <div className="sticky top-0 border-b border-surface-border bg-surface-muted p-3">
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold ui-text-primary">2차 주제 ({sections.length})</p>
