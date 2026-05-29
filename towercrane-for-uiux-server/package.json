@@ -28,6 +28,7 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "express": "^4.19.0",
     "better-sqlite3": "^12.9.0",
     "drizzle-orm": "^0.45.2",
     "nodemailer": "^8.0.7",
