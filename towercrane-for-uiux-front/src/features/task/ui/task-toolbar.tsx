@@ -270,7 +270,7 @@ export function TaskToolbar({
                   업무 등록 방법
                 </Dialog.Title>
                 <Dialog.Description className="mt-1 text-sm text-text-secondary">
-                  직접 입력하거나 정해진 마크다운 파일을 올려 업무를 만들 수 있습니다.
+                  직접 입력하거나 정해진 마크다운 파일을 올려 업무와 구현 계획을 함께 만들 수 있습니다.
                 </Dialog.Description>
               </div>
               <Dialog.Close asChild>
@@ -301,14 +301,14 @@ export function TaskToolbar({
                   <h3 className="text-sm font-black text-text-primary">새 업무</h3>
                   <p className="mt-2 text-sm leading-6 text-text-secondary">
                     제목, 내용, 유형, 상태, 우선순위, 담당자, 마감일을 화면에서 입력합니다.
-                    빠르게 한두 개 업무를 만들거나 사람이 직접 내용을 다듬어야 할 때 적합합니다.
+                    빠르게 업무를 만들거나 등록 후 계획/테스트/리뷰 탭에서 내용을 직접 다듬을 때 적합합니다.
                   </p>
                 </div>
                 <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
                   <h3 className="text-sm font-black text-text-primary">권장 사용</h3>
                   <p className="mt-2 text-sm leading-6 text-text-secondary">
-                    업무 설명만 간단히 잡고, 세부 계획과 리뷰는 업무 상세의 계획/리뷰 탭에서
-                    파일로 추가하거나 별도 화면에서 연결합니다.
+                    세부 구현 계획이 아직 없을 때 사용합니다. 이후 업무 상세에서 완료 기준,
+                    단계별 계획, 체크리스트, 리뷰를 순서대로 채워 넣습니다.
                   </p>
                 </div>
               </Tabs.Content>
@@ -318,8 +318,18 @@ export function TaskToolbar({
                   <h3 className="text-sm font-black text-text-primary">지원 파일</h3>
                   <p className="mt-2 text-sm leading-6 text-text-secondary">
                     `.md`, `.markdown`, `.txt` 파일을 올릴 수 있습니다. 제목은 frontmatter의
-                    `title`, 첫 번째 `# 제목`, 파일명 순서로 결정됩니다. 완료 기준과
-                    체크리스트는 테스트 탭에 함께 등록됩니다.
+                    `title`, 첫 번째 `# 제목`, 파일명 순서로 결정됩니다. `내용`은 기본 탭,
+                    `단계별 계획`, `예상 파일 구조`, `MMD`는 계획 탭, `완료 기준`과
+                    `체크리스트`는 테스트 탭에 등록됩니다.
+                  </p>
+                </div>
+                <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                  <h3 className="text-sm font-black text-text-primary">AI 참조 URL</h3>
+                  <p className="mt-2 text-sm leading-6 text-text-secondary">
+                    파일 등록 후 업무 상세 헤더의 `AI 참조 URL` 버튼을 누르면 로그인 없이
+                    GET으로 조회할 수 있는 JSON 주소가 복사됩니다. GPT나 Codex가 해당 URL을
+                    열어 업무 내용, 완료 기준, 계획, 파일 구조, MMD, 체크리스트를 한 번에
+                    참고할 수 있습니다.
                   </p>
                 </div>
                 <div className="relative">
