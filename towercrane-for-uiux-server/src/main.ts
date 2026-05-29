@@ -4,7 +4,9 @@ import { DevManagementGateway } from './dev-management/dev-management.gateway';
 import { MeetingGateway } from './meeting/meeting.gateway';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.use(require('express').json({ limit: '10mb' }));
+  app.use(require('express').urlencoded({ limit: '10mb', extended: true }));
   app.setGlobalPrefix('api');
   app.enableCors({
     origin: [

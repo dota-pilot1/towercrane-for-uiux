@@ -38,7 +38,7 @@ function ShareButton({ diary }: { diary: { id: string; visibility: string } | un
       {isShared && (
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded-md border border-background/20 bg-background/10 px-3 py-1.5 text-xs text-background transition-colors hover:bg-background/20"
+          className="flex items-center gap-1.5 rounded-md border border-surface-border bg-surface-muted px-3 py-1.5 text-xs ui-text-secondary transition-colors hover:bg-surface-raised hover:border-brand-border hover:text-brand-primary"
         >
           {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
           {copied ? '복사됨' : '링크 복사'}
@@ -47,10 +47,10 @@ function ShareButton({ diary }: { diary: { id: string; visibility: string } | un
       <button
         onClick={handleToggleShare}
         disabled={updateDiary.isPending}
-        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+        className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
           isShared
-            ? 'bg-background/20 border border-background/20 text-background hover:bg-background/30'
-            : 'border border-background/20 bg-background/10 text-background/70 hover:bg-background/20'
+            ? 'border-brand-border bg-brand-glass text-brand-primary hover:bg-surface-raised'
+            : 'border-surface-border bg-surface-muted ui-text-secondary hover:bg-surface-raised hover:border-brand-border hover:text-brand-primary'
         }`}
       >
         {isShared ? <Globe className="size-3.5" /> : <Lock className="size-3.5" />}
@@ -118,7 +118,7 @@ export function StudyDiaryPage() {
             <button
               type="button"
               onClick={() => navigate({ to: '/study-diary' })}
-              className="flex items-center gap-1.5 rounded-md border border-background/20 bg-background/10 px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-background/20"
+              className="flex items-center gap-1.5 rounded-md border border-surface-border bg-surface-muted px-3 py-1.5 text-xs font-medium ui-text-secondary transition-colors hover:bg-surface-raised hover:border-brand-border hover:text-brand-primary"
               aria-label="워크스페이스 목록으로 돌아가기"
               title="워크스페이스 목록"
             >
