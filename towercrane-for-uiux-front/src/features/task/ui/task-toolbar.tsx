@@ -91,13 +91,44 @@ const TASK_AI_CURL_EXAMPLE = `curl -X POST "${TASK_INGEST_ENDPOINT}" \\
   -H "Content-Type: application/json" \\
   -d @task.json`
 
-const TASK_AI_PROMPT_EXAMPLE = `아래 요구사항을 Towercrane 업무 등록 API payload JSON으로 만들어줘.
+const TASK_AI_PROMPT_EXAMPLE = `[여기에 업무 주제 입력]에 대해 Towercrane 업무 등록해줘.
 
-규칙:
-- POST ${TASK_INGEST_ENDPOINT} 로 전송할 body만 JSON으로 출력한다.
-- 필드는 title, content, acceptanceCriteria, plan, folderStructure, mmdContent, checklists, taskType, status, priority, dueDate, assigneeEmail, workspaceId를 사용한다.
+방법:
+- POST 요청으로 아래 URL에 요청한다.
+  ${TASK_INGEST_ENDPOINT}
+- Header는 아래처럼 보낸다.
+  x-towercrane-ingest-key: .env의 TASK_INGEST_KEY 값 참고
+  Content-Type: application/json
+- Body는 JSON으로 아래 형식을 채워서 요청한다.
+- TASK_INGEST_KEY는 로컬 프로젝트 .env 또는 ~/.codex/task-ingest.env에서 참고한다.
+- 업무는 한 번에 1개만 등록한다.
+
+body json 예시:
+{
+  "title": "프로토타입 워크스페이스 삭제 기능 구현",
+  "content": "관리자가 프로토타입 워크스페이스를 안전하게 삭제할 수 있도록 삭제 API, 확인 다이어로그, 목록 갱신 흐름을 구현한다.",
+  "acceptanceCriteria": "- 삭제 버튼은 권한이 있는 사용자에게만 보인다.\\n- 삭제 전 워크스페이스명을 확인한다.\\n- 삭제 성공 후 워크스페이스 목록과 선택 상태가 갱신된다.\\n- 실패 시 사용자가 이해할 수 있는 오류 메시지를 보여준다.",
+  "plan": "1. 현재 워크스페이스 목록/상세/삭제 관련 서버 구조를 확인한다.\\n2. 서버에 삭제 가능 조건과 삭제 API를 연결한다.\\n3. 프론트에 확인 다이어로그와 삭제 액션을 추가한다.\\n4. 삭제 후 캐시 무효화와 라우팅 복귀를 검증한다.\\n5. 실패 케이스와 권한 케이스를 테스트한다.",
+  "folderStructure": "towercrane-for-uiux-server/src/tasks/\\ntowercrane-for-uiux-front/src/pages/task-workspace/\\ntowercrane-for-uiux-front/src/features/task/",
+  "mmdContent": "flowchart TD\\n  A[삭제 버튼 클릭] --> B[확인 다이어로그]\\n  B --> C[DELETE API 호출]\\n  C --> D[목록 캐시 갱신]\\n  D --> E[워크스페이스 목록 이동]",
+  "checklists": [
+    "삭제 권한 조건 확인",
+    "삭제 확인 다이어로그 구현",
+    "DELETE API 연동",
+    "삭제 후 목록 갱신 검증",
+    "실패 메시지 검증"
+  ],
+  "taskType": "FEATURE",
+  "status": "TODO",
+  "priority": "MEDIUM",
+  "dueDate": "2026-06-01",
+  "assigneeEmail": "owner@example.com",
+  "workspaceId": "task-workspace-default"
+}
+
+필드 규칙:
 - title은 120자 이내로 쓴다.
-- content는 업무 배경과 범위를 구체적으로 쓴다.
+- content는 업무 배경과 구현 범위를 구체적으로 쓴다.
 - acceptanceCriteria는 완료 기준을 줄바꿈 문자열로 쓴다.
 - plan은 단계별 구현 계획을 번호 목록 문자열로 쓴다.
 - folderStructure는 예상 수정 경로를 줄바꿈 문자열로 쓴다.
@@ -105,10 +136,7 @@ const TASK_AI_PROMPT_EXAMPLE = `아래 요구사항을 Towercrane 업무 등록 
 - taskType은 FEATURE, BUG, DOCS, DESIGN, REFACTOR, QA, CHORE 중 하나다.
 - status는 TODO, IN_PROGRESS, REVIEW, DONE, HOLD 중 하나다.
 - priority는 LOW, MEDIUM, HIGH, URGENT 중 하나다.
-- 최종 답변은 설명 없이 JSON만 출력한다.
-
-요구사항:
-[여기에 업무 요구사항 입력]`
+- 요청 성공 후 생성된 업무 URL과 taskId를 알려준다.`
 
 type TaskToolbarProps = {
   filters: TaskFilters
