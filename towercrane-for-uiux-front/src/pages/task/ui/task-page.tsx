@@ -836,6 +836,8 @@ export function TaskPage({
         filters={normalizedFilters}
         onFiltersChange={setFilters}
         users={users}
+        currentWorkspaceId={workspaceId}
+        currentWorkspaceName={currentWorkspace?.name}
         assigneeLabel={scopeMode === 'user' ? (targetUser?.name ?? '담당자') : '내 업무'}
         isFetching={tasksQuery.isFetching}
         onCreate={() => setIsFormOpen(true)}

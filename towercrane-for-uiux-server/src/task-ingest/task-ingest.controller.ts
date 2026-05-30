@@ -1,9 +1,16 @@
-import { Body, Controller, Headers, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
 import { TaskIngestService } from './task-ingest.service';
 
 @Controller('public/task-ingest')
 export class TaskIngestController {
   constructor(private readonly taskIngestService: TaskIngestService) {}
+
+  @Get('workspaces')
+  listWorkspaces(
+    @Headers('x-towercrane-ingest-key') ingestKey: string | undefined,
+  ) {
+    return this.taskIngestService.listWorkspaces(ingestKey);
+  }
 
   @Post()
   ingestTask(

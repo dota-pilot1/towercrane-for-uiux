@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { CodeReviewsService } from '../code-reviews/code-reviews.service';
 import { DatabaseService } from '../database/database.service';
 import {
@@ -33,6 +33,43 @@ export class TaskIngestService {
 
   private get db() {
     return this.databaseService.db;
+  }
+
+  listWorkspaces(ingestKey?: string) {
+    this.assertIngestKey(ingestKey);
+
+    return this.db
+      .select()
+      .from(taskWorkspacesTable)
+      .orderBy(
+        asc(taskWorkspacesTable.orderIdx),
+        asc(taskWorkspacesTable.createdAt),
+      )
+      .all()
+      .map((workspace) => {
+        const taskCount = this.db
+          .select({ count: sql<number>`count(*)` })
+          .from(tasksTable)
+          .where(
+            sql`${tasksTable.workspaceId} = ${workspace.id} AND ${tasksTable.archived} = 0`,
+          )
+          .get();
+        const openTaskCount = this.db
+          .select({ count: sql<number>`count(*)` })
+          .from(tasksTable)
+          .where(
+            sql`${tasksTable.workspaceId} = ${workspace.id} AND ${tasksTable.archived} = 0 AND ${tasksTable.status} IN ('TODO','IN_PROGRESS','REVIEW')`,
+          )
+          .get();
+
+        return {
+          id: workspace.id,
+          name: workspace.name,
+          description: workspace.description,
+          taskCount: Number(taskCount?.count ?? 0),
+          openTaskCount: Number(openTaskCount?.count ?? 0),
+        };
+      });
   }
 
   ingestTask(rawPayload: unknown, ingestKey?: string) {

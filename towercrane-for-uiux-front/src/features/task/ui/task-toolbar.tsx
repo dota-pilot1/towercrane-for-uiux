@@ -20,6 +20,7 @@ export type TaskViewMode = 'table' | 'kanban' | 'card'
 type TaskHelpTab = 'form' | 'file' | 'ai'
 
 const TASK_INGEST_ENDPOINT = 'https://api.hibot-docu.com/api/public/task-ingest'
+const TASK_INGEST_WORKSPACES_ENDPOINT = `${TASK_INGEST_ENDPOINT}/workspaces`
 
 const TASK_FILE_TEMPLATE = `---
 title: 프로토타입 워크스페이스 삭제 기능
@@ -63,35 +64,28 @@ flowchart TD
   B --> C[삭제 API 호출]
 \`\`\``
 
-const TASK_AI_JSON_EXAMPLE = `{
-  "title": "프로토타입 워크스페이스 삭제 기능 구현",
-  "content": "관리자가 프로토타입 워크스페이스를 안전하게 삭제할 수 있도록 삭제 API, 확인 다이어로그, 목록 갱신 흐름을 구현한다.",
-  "acceptanceCriteria": "- 삭제 버튼은 권한이 있는 사용자에게만 보인다.\\n- 삭제 전 워크스페이스명을 확인한다.\\n- 삭제 성공 후 워크스페이스 목록과 선택 상태가 갱신된다.\\n- 실패 시 사용자가 이해할 수 있는 오류 메시지를 보여준다.",
-  "plan": "1. 현재 워크스페이스 목록/상세/삭제 관련 서버 구조를 확인한다.\\n2. 서버에 삭제 가능 조건과 삭제 API를 연결한다.\\n3. 프론트에 확인 다이어로그와 삭제 액션을 추가한다.\\n4. 삭제 후 캐시 무효화와 라우팅 복귀를 검증한다.\\n5. 실패 케이스와 권한 케이스를 테스트한다.",
-  "folderStructure": "towercrane-for-uiux-server/src/tasks/\\ntowercrane-for-uiux-front/src/pages/task-workspace/\\ntowercrane-for-uiux-front/src/features/task/",
-  "mmdContent": "flowchart TD\\n  A[삭제 버튼 클릭] --> B[확인 다이어로그]\\n  B --> C[DELETE API 호출]\\n  C --> D[목록 캐시 갱신]\\n  D --> E[워크스페이스 목록 이동]",
-  "checklists": [
-    "삭제 권한 조건 확인",
-    "삭제 확인 다이어로그 구현",
-    "DELETE API 연동",
-    "삭제 후 목록 갱신 검증",
-    "실패 메시지 검증"
-  ],
-  "taskType": "FEATURE",
-  "status": "TODO",
-  "priority": "MEDIUM",
-  "dueDate": "2026-06-01",
-  "workspaceId": "task-workspace-default"
-}`
-
 const TASK_AI_CURL_EXAMPLE = `curl -X POST "${TASK_INGEST_ENDPOINT}" \\
   -H "x-towercrane-ingest-key: <TASK_INGEST_KEY>" \\
   -H "Content-Type: application/json" \\
   -d @task.json`
 
-const TASK_AI_PROMPT_EXAMPLE = `[여기에 업무 주제 입력]에 대해 Towercrane 업무 등록해줘.
+function buildTaskAiPromptExample(currentWorkspaceId?: string, currentWorkspaceName?: string) {
+  const workspaceInstruction = currentWorkspaceId
+    ? `- 현재 화면 워크스페이스: ${currentWorkspaceName ?? '이 워크스페이스'} (${currentWorkspaceId})
+- Body의 workspaceId에는 반드시 "${currentWorkspaceId}"를 넣는다.`
+    : `- 특정 워크스페이스에 넣어야 하는데 workspaceId를 모르면 먼저 GET 요청으로 워크스페이스 목록을 조회한다.
+  ${TASK_INGEST_WORKSPACES_ENDPOINT}
+  Header:
+    x-towercrane-ingest-key: .env의 TASK_INGEST_KEY 값 참고`
+  const workspaceJson = currentWorkspaceId
+    ? `,
+  "workspaceId": "${currentWorkspaceId}"`
+    : ''
+
+  return `[여기에 업무 주제 입력]에 대해 Towercrane 업무 등록해줘.
 
 방법:
+${workspaceInstruction}
 - POST 요청으로 아래 URL에 요청한다.
   ${TASK_INGEST_ENDPOINT}
 - Header는 아래처럼 보낸다.
@@ -119,8 +113,7 @@ body json 예시:
   "taskType": "FEATURE",
   "status": "TODO",
   "priority": "MEDIUM",
-  "dueDate": "2026-06-01",
-  "workspaceId": "task-workspace-default"
+  "dueDate": "2026-06-01"${workspaceJson}
 }
 
 필드 규칙:
@@ -134,12 +127,16 @@ body json 예시:
 - status는 TODO, IN_PROGRESS, REVIEW, DONE, HOLD 중 하나다.
 - priority는 LOW, MEDIUM, HIGH, URGENT 중 하나다.
 - assigneeEmail은 실제 등록된 사용자 이메일이 있을 때만 넣고, 없으면 필드 자체를 생략한다.
+- workspaceId는 워크스페이스 목록 GET 응답의 id를 사용한다. 특정 워크스페이스가 없으면 생략한다.
 - 요청 성공 후 생성된 업무 URL과 taskId를 알려준다.`
+}
 
 type TaskToolbarProps = {
   filters: TaskFilters
   onFiltersChange: (filters: TaskFilters) => void
   users: AssignableUser[]
+  currentWorkspaceId?: string
+  currentWorkspaceName?: string
   assigneeLabel?: string
   isFetching?: boolean
   onCreate: () => void
@@ -165,6 +162,8 @@ export function TaskToolbar({
   filters,
   onFiltersChange,
   users,
+  currentWorkspaceId,
+  currentWorkspaceName,
   assigneeLabel,
   isFetching,
   onCreate,
@@ -178,6 +177,7 @@ export function TaskToolbar({
   const [helpTab, setHelpTab] = useState<TaskHelpTab>('form')
   const [templateCopied, setTemplateCopied] = useState(false)
   const [aiCopiedKey, setAiCopiedKey] = useState<string | null>(null)
+  const aiPromptExample = buildTaskAiPromptExample(currentWorkspaceId, currentWorkspaceName)
   const controlClassName = 'h-9 min-h-9 rounded-md'
   const controlButtonClassName =
     'h-9 min-h-9 rounded-md px-4 py-0 text-sm font-bold leading-none'
@@ -469,8 +469,18 @@ export function TaskToolbar({
                       로그인 세션 없이 ingest key로 업무 1개를 등록합니다. 업무 하나가 구현
                       범위와 단계별 계획을 크게 가질 수 있으므로 여러 건 배치 등록은 쓰지 않습니다.
                     </p>
+                    {currentWorkspaceId ? (
+                      <div className="mt-3 rounded-md border border-brand-border bg-brand-glass px-3 py-2 text-xs leading-5 text-text-primary">
+                        <p className="font-bold">현재 워크스페이스</p>
+                        <p className="mt-1">{currentWorkspaceName ?? '이 워크스페이스'}</p>
+                        <p className="font-mono">{currentWorkspaceId}</p>
+                      </div>
+                    ) : null}
                     <p className="mt-3 break-all rounded-md border border-surface-border-soft bg-surface-raised px-3 py-2 font-mono text-xs text-text-primary">
                       POST {TASK_INGEST_ENDPOINT}
+                    </p>
+                    <p className="mt-2 break-all rounded-md border border-surface-border-soft bg-surface-raised px-3 py-2 font-mono text-xs text-text-primary">
+                      GET {TASK_INGEST_WORKSPACES_ENDPOINT}
                     </p>
                   </div>
 
@@ -520,34 +530,16 @@ export function TaskToolbar({
                       </div>
                       <div>
                         <dt className="inline font-mono font-semibold text-text-primary">workspaceId</dt>
-                        <dd className="inline text-text-secondary"> — 특정 워크스페이스에 넣을 때 사용.</dd>
+                        <dd className="inline text-text-secondary">
+                          {' '}
+                          — `GET /workspaces` 응답의 id. 특정 워크스페이스가 없으면 생략.
+                        </dd>
                       </div>
                     </dl>
                   </div>
                 </div>
 
                 <div className="min-w-0 space-y-4">
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyAiText('json', 'JSON 예시', TASK_AI_JSON_EXAMPLE)}
-                      className="ui-icon-button absolute right-2 top-2 z-10 flex items-center gap-1 px-2 py-1 text-xs font-bold"
-                      title="JSON 예시 복사"
-                      aria-label="JSON 예시 복사"
-                    >
-                      {aiCopiedKey === 'json' ? (
-                        <Check className="h-3.5 w-3.5 text-brand-primary" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                      <span>{aiCopiedKey === 'json' ? '복사됨' : '복사'}</span>
-                    </button>
-                    <h3 className="mb-2 text-sm font-black text-text-primary">JSON body 예시</h3>
-                    <pre className="max-h-[360px] overflow-auto rounded-md border border-surface-border-soft bg-surface-strong p-4 pt-12 text-xs leading-5 text-text-primary">
-{TASK_AI_JSON_EXAMPLE}
-                    </pre>
-                  </div>
-
                   <div className="relative">
                     <button
                       type="button"
@@ -572,7 +564,7 @@ export function TaskToolbar({
                   <div className="relative">
                     <button
                       type="button"
-                      onClick={() => handleCopyAiText('prompt', 'AI 생성 프롬프트', TASK_AI_PROMPT_EXAMPLE)}
+                      onClick={() => handleCopyAiText('prompt', 'AI 생성 프롬프트', aiPromptExample)}
                       className="ui-icon-button absolute right-2 top-2 z-10 flex items-center gap-1 px-2 py-1 text-xs font-bold"
                       title="AI 생성 프롬프트 복사"
                       aria-label="AI 생성 프롬프트 복사"
@@ -585,8 +577,8 @@ export function TaskToolbar({
                       <span>{aiCopiedKey === 'prompt' ? '복사됨' : '복사'}</span>
                     </button>
                     <h3 className="mb-2 text-sm font-black text-text-primary">AI 생성 프롬프트</h3>
-                    <pre className="max-h-[260px] overflow-auto rounded-md border border-surface-border-soft bg-surface-strong p-4 pt-12 text-xs leading-5 text-text-primary">
-{TASK_AI_PROMPT_EXAMPLE}
+                    <pre className="max-h-[520px] overflow-auto rounded-md border border-surface-border-soft bg-surface-strong p-4 pt-12 text-xs leading-5 text-text-primary">
+{aiPromptExample}
                     </pre>
                   </div>
                 </div>
