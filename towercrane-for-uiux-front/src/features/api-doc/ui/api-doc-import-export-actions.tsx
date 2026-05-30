@@ -18,8 +18,8 @@ import { useExportApiDoc, useImportApiDoc } from "../model/use-api-doc-queries";
 const IMPORT_ENDPOINT = `${API_BASE_URL}/api-doc/import`;
 
 // 에이전트(Codex/Claude Code)가 그대로 실행할 수 있는 cURL 예제.
-// payload.json = "파일로 가져오기" 탭의 예제와 동일한 형식.
-const CURL_EXAMPLE = `# 1) payload.json 작성 (아래 '형식·예제' 탭의 구조 그대로)
+// payload.json = "업로드 스펙" 탭의 예제와 동일한 형식.
+const CURL_EXAMPLE = `# 1) payload.json 작성 (아래 '업로드 스펙' 탭의 구조 그대로)
 # 2) 로그인 후 발급된 토큰으로 아래 요청 실행
 
 curl -X POST "${IMPORT_ENDPOINT}" \\
@@ -27,93 +27,161 @@ curl -X POST "${IMPORT_ENDPOINT}" \\
   -H "Content-Type: application/json" \\
   -d @payload.json`;
 
-// Agent가 Towercrane Postman Lite에 여러 API를 한 번에 등록할 때 쓰는 업로드 스펙.
-const IMPORT_EXAMPLE = `{
-  "version": 2,
-  "source": "towercrane-api-spec",
-  "workspaces": [
-    {
-      "name": "예약 도메인",
-      "description": "예약, 일정, 취소 API",
-      "icon": "CalendarDays",
-      "collections": [
-        {
-          "name": "예약 관리",
-          "endpoints": [
-            {
-              "title": "예약 목록 조회",
-              "method": "GET",
-              "path": "/api/reservations",
-              "request": {
-                "method": "GET",
-                "url": "{{API_BASE}}/api/reservations",
-                "authEnabled": true,
-                "headers": [
-                  { "key": "Content-Type", "value": "application/json", "enabled": true }
-                ],
-                "params": [
-                  { "key": "page", "value": "1", "enabled": true, "description": "페이지 번호" }
-                ],
-                "body": { "type": "none", "content": "" },
-                "description": "예약 목록을 페이지 단위로 조회합니다."
-              }
-            },
-            {
-              "title": "예약 생성",
-              "method": "POST",
-              "path": "/api/reservations",
-              "request": {
-                "method": "POST",
-                "url": "{{API_BASE}}/api/reservations",
-                "authEnabled": true,
-                "headers": [
-                  { "key": "Content-Type", "value": "application/json", "enabled": true }
-                ],
-                "params": [],
-                "body": {
-                  "type": "json",
-                  "content": "{\\n  \\"customerName\\": \\"홍길동\\",\\n  \\"reservedAt\\": \\"2026-06-01T10:00:00+09:00\\"\\n}"
-                },
-                "description": "신규 예약을 생성합니다."
-              }
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}`;
-
-const PROMPT_EXAMPLE = `아래 도메인의 API 명세를 Towercrane API Spec JSON v2 형식으로 생성해줘.
-
-규칙:
-- 최상위는 version: 2, source: "towercrane-api-spec"로 둔다.
-- workspaces에는 도메인 1개 이상을 넣는다.
-- collections는 1차 업무 카테고리 기준으로 나눈다.
-- endpoints에는 실제 API 요청을 넣는다.
-- method는 GET, POST, PUT, PATCH, DELETE 중 하나만 쓴다.
-- path는 서버 path만 쓴다. 예: /api/reservations
-- request.url은 {{API_BASE}} + path 형식으로 쓴다.
-- JSON body가 있으면 body.type은 "json", body.content는 문자열 형태의 valid JSON으로 넣는다.
-- 최종 답변은 설명 없이 JSON만 출력한다.
-
-도메인:
-[여기에 도메인 설명 입력]`;
-
 const FIELD_GUIDE: { name: string; desc: string }[] = [
   { name: "version", desc: "파일 버전. 신규 파일은 2로 둡니다." },
   { name: "source", desc: 'Agent 업로드용 고정값 "towercrane-api-spec".' },
   { name: "workspaces[].name", desc: "도메인 또는 워크스페이스 이름." },
+  { name: "workspaces[].description", desc: "도메인 설명. 비워도 됩니다." },
+  { name: "workspaces[].icon", desc: "표시 아이콘 이름. 모르면 생략 가능합니다." },
   { name: "workspaces[].collections[].name", desc: "컬렉션(1차 카테고리) 이름." },
   { name: "endpoints[].title", desc: "API 항목 이름." },
   { name: "endpoints[].method", desc: "GET · POST · PUT · PATCH · DELETE 중 하나." },
-  { name: "endpoints[].path", desc: "표시용 경로 (예: /api/users)." },
+  { name: "endpoints[].path", desc: "표시용 서버 path (예: /api/users)." },
+  { name: "request.method", desc: "실행할 HTTP 메서드. 보통 endpoints[].method와 동일합니다." },
   { name: "request.url", desc: "Postman Lite 실행 URL. 보통 {{API_BASE}} + path." },
   { name: "request.authEnabled", desc: "인증 토큰 자동 첨부 여부 (true/false)." },
-  { name: "request.headers / params", desc: "{ key, value, enabled } 객체 배열." },
+  { name: "request.headers / params", desc: "{ key, value, enabled, description } 객체 배열." },
   { name: "request.body.type", desc: '"none" · "json" · "raw".' },
-  { name: "request.body.content", desc: "본문 문자열 (json이면 JSON 문자열)." },
+  { name: "request.body.content", desc: "본문 문자열. json이면 valid JSON을 문자열로 넣습니다." },
+  { name: "request.description", desc: "요청 설명. 비워도 됩니다." },
 ];
+
+const METHOD_EXAMPLES = [
+  {
+    key: "post",
+    label: "POST",
+    text: `http method: POST
+url: http://xxx/api/reservations
+body:
+"""
+{
+  "customer": {
+    "name": "홍길동",
+    "phone": "010-1234-5678",
+    "email": "hong@example.com"
+  },
+  "service": {
+    "id": 12,
+    "name": "프리미엄 상담",
+    "durationMinutes": 60
+  },
+  "schedule": {
+    "reservedAt": "2026-06-01T10:00:00+09:00",
+    "timezone": "Asia/Seoul"
+  },
+  "staffId": 3,
+  "payment": {
+    "method": "CARD",
+    "amount": 50000,
+    "currency": "KRW"
+  },
+  "memo": "첫 방문 고객. 알림톡 발송 필요",
+  "notification": {
+    "sendKakao": true,
+    "sendSms": false
+  },
+  "metadata": {
+    "source": "agent-upload",
+    "campaignCode": "MVP_TEST"
+  }
+}
+"""`,
+  },
+  {
+    key: "read",
+    label: "READ",
+    text: `http method: GET
+url: http://xxx/api/reservations?page=1&size=20
+body:
+""`,
+  },
+  {
+    key: "delete",
+    label: "DELETE",
+    text: `http method: DELETE
+url: http://xxx/api/reservations/{reservationId}
+body:
+"""
+{
+  "reason": "고객 요청",
+  "requestedBy": "admin",
+  "notifyCustomer": true,
+  "refund": {
+    "required": true,
+    "amount": 50000,
+    "method": "ORIGINAL_PAYMENT"
+  }
+}
+"""`,
+  },
+  {
+    key: "patch",
+    label: "PATCH",
+    text: `http method: PATCH
+url: http://xxx/api/reservations/{reservationId}/status
+body:
+"""
+{
+  "status": "CANCELED",
+  "reason": "고객 요청",
+  "changedBy": "admin",
+  "notifyCustomer": true,
+  "changes": {
+    "reservedAt": {
+      "before": "2026-06-01T10:00:00+09:00",
+      "after": null
+    },
+    "staffId": {
+      "before": 3,
+      "after": null
+    }
+  },
+  "audit": {
+    "requestId": "req_20260601_001",
+    "source": "console"
+  }
+}
+"""`,
+  },
+  {
+    key: "put",
+    label: "PUT",
+    text: `http method: PUT
+url: http://xxx/api/reservations/{reservationId}
+body:
+"""
+{
+  "customer": {
+    "name": "홍길동",
+    "phone": "010-9999-8888",
+    "email": "hong.updated@example.com"
+  },
+  "service": {
+    "id": 15,
+    "name": "VIP 상담",
+    "durationMinutes": 90
+  },
+  "schedule": {
+    "reservedAt": "2026-06-02T14:00:00+09:00",
+    "timezone": "Asia/Seoul"
+  },
+  "staffId": 7,
+  "status": "CONFIRMED",
+  "payment": {
+    "method": "CARD",
+    "amount": 80000,
+    "currency": "KRW",
+    "paid": true
+  },
+  "memo": "예약 전체 수정",
+  "notification": {
+    "sendKakao": true,
+    "sendSms": true
+  }
+}
+"""`,
+  },
+] as const;
 
 function getImportCollections(data: ApiDocImportExportFile): ApiDocImportCollection[] {
   if (data.version === 1) return data.collections;
@@ -166,9 +234,13 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 }
 
 type HelpTab = "format" | "api";
+type MethodExampleKey = (typeof METHOD_EXAMPLES)[number]["key"];
 
 function ImportHelpDialog({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<HelpTab>("format");
+  const [methodTab, setMethodTab] = useState<MethodExampleKey>("post");
+  const activeMethodExample =
+    METHOD_EXAMPLES.find((item) => item.key === methodTab) ?? METHOD_EXAMPLES[0];
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -185,17 +257,16 @@ function ImportHelpDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--text-primary)_40%,transparent)] p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--text-primary)_35%,transparent)] p-4"
       role="dialog"
       aria-modal="true"
       aria-label="가져오기 형식 안내"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-2xl"
+        className="flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* header */}
         <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft px-5 pt-4">
           <div className="min-w-0">
             <h2 className="text-sm font-bold text-text-primary">Agent용 Postman 업로드 스펙</h2>
@@ -203,18 +274,18 @@ function ImportHelpDialog({ onClose }: { onClose: () => void }) {
               Codex/Claude가 이 JSON 스펙을 만들거나 import API를 직접 호출해서 여러 API를 한 번에 등록합니다.
             </p>
             <div className="mt-3 flex gap-1">
-              {tabs.map((t) => (
+              {tabs.map((item) => (
                 <button
-                  key={t.key}
+                  key={item.key}
                   type="button"
-                  onClick={() => setTab(t.key)}
+                  onClick={() => setTab(item.key)}
                   className={`-mb-px border-b-2 px-3 py-2 text-xs font-bold transition-colors ${
-                    tab === t.key
+                    tab === item.key
                       ? "border-brand-primary text-text-primary"
                       : "border-transparent text-text-secondary hover:text-text-primary"
                   }`}
                 >
-                  {t.label}
+                  {item.label}
                 </button>
               ))}
             </div>
@@ -229,13 +300,12 @@ function ImportHelpDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* body */}
         {tab === "format" ? (
           <div className="grid min-h-0 flex-1 gap-0 md:grid-cols-2">
             <div className="overflow-y-auto border-b border-surface-border-soft p-5 md:border-b-0 md:border-r">
               <h3 className="text-xs font-bold text-text-primary">Agent 파일 업로드 방식</h3>
               <ol className="mt-2 space-y-1.5 text-xs leading-5 text-text-secondary">
-                <li>1. 우측 예제 JSON 또는 프롬프트를 복사합니다.</li>
+                <li>1. 우측 HTTP 메서드 예시를 참고해서 API 요청 목록을 만듭니다.</li>
                 <li>2. Codex/Claude Code에 원하는 도메인 API 목록을 이 형식으로 만들게 합니다.</li>
                 <li>
                   3. 받은 내용을 <code className="rounded bg-surface-muted px-1">.json</code> 파일로
@@ -246,29 +316,49 @@ function ImportHelpDialog({ onClose }: { onClose: () => void }) {
 
               <h3 className="mt-5 text-xs font-bold text-text-primary">필드 설명</h3>
               <dl className="mt-2 space-y-1.5">
-                {FIELD_GUIDE.map((f) => (
-                  <div key={f.name} className="text-xs leading-5">
-                    <dt className="inline font-mono font-semibold text-text-primary">{f.name}</dt>
-                    <dd className="inline text-text-secondary"> — {f.desc}</dd>
+                {FIELD_GUIDE.map((item) => (
+                  <div key={item.name} className="text-xs leading-5">
+                    <dt className="inline font-mono font-semibold text-text-primary">{item.name}</dt>
+                    <dd className="inline text-text-secondary"> — {item.desc}</dd>
                   </div>
                 ))}
               </dl>
             </div>
 
             <div className="flex min-h-0 flex-col p-5">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-xs font-bold text-text-primary">예제 JSON</h3>
-                <CopyButton text={IMPORT_EXAMPLE} label="예제 JSON" />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-bold text-text-primary">HTTP 메서드별 요청 예시</h3>
+                  <p className="mt-1 text-xs leading-5 text-text-secondary">
+                    아래 형식으로 요청 정보를 주면 Agent가 업로드용 JSON 스펙으로 변환합니다.
+                  </p>
+                </div>
+                <CopyButton
+                  text={activeMethodExample.text}
+                  label={`${activeMethodExample.label} 예시`}
+                />
               </div>
-              <pre className="min-h-0 flex-1 overflow-auto rounded-md border border-surface-border-soft bg-surface-muted p-3 text-[11px] leading-4 text-text-primary">
-                <code>{IMPORT_EXAMPLE}</code>
-              </pre>
-              <div className="mt-3 flex items-center justify-between">
-                <h3 className="text-xs font-bold text-text-primary">AI 생성 프롬프트</h3>
-                <CopyButton text={PROMPT_EXAMPLE} label="AI 생성 프롬프트" />
+              <div className="mt-2 flex flex-wrap gap-1">
+                {METHOD_EXAMPLES.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setMethodTab(item.key)}
+                    className={`h-8 rounded-md border px-3 text-xs font-black transition-colors ${
+                      methodTab === item.key
+                        ? "border-brand-border bg-brand-glass text-brand-primary"
+                        : "border-surface-border-soft bg-surface-muted text-text-secondary hover:bg-surface-strong hover:text-text-primary"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
-              <pre className="mt-2 max-h-44 overflow-auto rounded-md border border-surface-border-soft bg-surface-muted p-3 text-[11px] leading-4 text-text-primary">
-                <code>{PROMPT_EXAMPLE}</code>
+              <p className="mt-3 text-xs leading-5 text-text-secondary">
+                READ는 실제 HTTP 메서드로 GET을 사용합니다.
+              </p>
+              <pre className="mt-2 min-h-0 flex-1 overflow-auto rounded-md border border-surface-border-soft bg-surface-muted p-3 text-[11px] leading-4 text-text-primary">
+                <code>{activeMethodExample.text}</code>
               </pre>
             </div>
           </div>
