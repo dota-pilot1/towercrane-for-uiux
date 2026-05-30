@@ -16,6 +16,7 @@ import {
   type ApiDocCategoryInsert,
   type ApiDocEndpointInsert,
   type ApiDocTeamInsert,
+  type ApiDocTeamRow,
 } from '../database/schema';
 import {
   createCategorySchema,
@@ -32,6 +33,8 @@ import {
   apiDocImportExportFileSchema,
   type ApiBlockContentImport,
   type ApiDocImportExportFile,
+  type ApiDocImportExportV1File,
+  type ApiDocImportExportV2File,
 } from './api-doc.import-export.schemas';
 
 export type ApiDocUser = {
@@ -395,6 +398,11 @@ export class ApiDocService {
   }
 
   exportAll(): ApiDocImportExportFile {
+    const teams = this.db
+      .select()
+      .from(apiDocTeamsTable)
+      .orderBy(asc(apiDocTeamsTable.orderIdx), asc(apiDocTeamsTable.createdAt))
+      .all();
     const categories = this.db
       .select()
       .from(apiDocCategoriesTable)
@@ -419,33 +427,47 @@ export class ApiDocService {
         asc(apiDocBlocksTable.createdAt),
       )
       .all();
+    const fallbackTeamId =
+      teams.find((team) => team.id === 'api-team-prototype-console')?.id ??
+      teams[0]?.id;
 
     return {
-      version: 1,
-      source: 'towercrane-postman-lite',
+      version: 2,
+      source: 'towercrane-api-spec',
       exportedAt: new Date().toISOString(),
-      collections: categories.map((category) => ({
-        name: category.name,
-        icon: category.icon,
-        emoji: category.emoji,
-        endpoints: endpoints
-          .filter((endpoint) => endpoint.categoryId === category.id)
-          .map((endpoint) => {
-            const block = blocks.find(
-              (item) =>
-                item.endpointId === endpoint.id && item.blockType === 'API',
-            );
-            return {
-              title: endpoint.title,
-              method: endpoint.method,
-              path: endpoint.path,
-              request: this.normalizeRequestContent(
-                endpoint.method,
-                endpoint.path,
-                block?.content,
-              ),
-            };
-          }),
+      workspaces: teams.map((team) => ({
+        name: team.name,
+        description: team.description,
+        icon: team.icon,
+        emoji: team.emoji,
+        collections: categories
+          .filter(
+            (category) => (category.teamId ?? fallbackTeamId) === team.id,
+          )
+          .map((category) => ({
+            name: category.name,
+            icon: category.icon,
+            emoji: category.emoji,
+            endpoints: endpoints
+              .filter((endpoint) => endpoint.categoryId === category.id)
+              .map((endpoint) => {
+                const block = blocks.find(
+                  (item) =>
+                    item.endpointId === endpoint.id &&
+                    item.blockType === 'API',
+                );
+                return {
+                  title: endpoint.title,
+                  method: endpoint.method,
+                  path: endpoint.path,
+                  request: this.normalizeRequestContent(
+                    endpoint.method,
+                    endpoint.path,
+                    block?.content,
+                  ),
+                };
+              }),
+          })),
       })),
     };
   }
@@ -462,7 +484,16 @@ export class ApiDocService {
     const input = parsed.data;
     this.validateJsonBodies(input);
 
+    if (input.version === 1) {
+      return this.importV1(user, input);
+    }
+
+    return this.importV2(user, input);
+  }
+
+  private importV1(user: ApiDocUser, input: ApiDocImportExportV1File) {
     const now = new Date().toISOString();
+    const defaultTeamId = this.getDefaultTeamId();
     const existingNames = new Set(
       this.db
         .select({ name: apiDocCategoriesTable.name })
@@ -494,7 +525,7 @@ export class ApiDocService {
         tx.insert(apiDocCategoriesTable)
           .values({
             id: categoryId,
-            teamId: this.getDefaultTeamId(),
+            teamId: defaultTeamId,
             name: categoryName,
             icon: collection.icon ?? 'Folder',
             emoji: collection.emoji ?? null,
@@ -545,9 +576,156 @@ export class ApiDocService {
 
     return {
       success: true,
+      importedWorkspaces: 0,
       importedCollections,
       importedEndpoints,
       importedBlocks,
+      importedWorkspaceIds: [defaultTeamId],
+      importedCategoryIds,
+    };
+  }
+
+  private importV2(user: ApiDocUser, input: ApiDocImportExportV2File) {
+    const now = new Date().toISOString();
+    const existingTeams = this.db
+      .select()
+      .from(apiDocTeamsTable)
+      .orderBy(asc(apiDocTeamsTable.orderIdx), asc(apiDocTeamsTable.createdAt))
+      .all();
+    const teamsByName = new Map<string, ApiDocTeamRow>();
+    existingTeams.forEach((team) => {
+      if (!teamsByName.has(team.name)) teamsByName.set(team.name, team);
+    });
+    let nextTeamOrder =
+      existingTeams.reduce((max, row) => Math.max(max, row.orderIdx), -1) + 1;
+
+    const categoryRows = this.db
+      .select({
+        teamId: apiDocCategoriesTable.teamId,
+        name: apiDocCategoriesTable.name,
+        orderIdx: apiDocCategoriesTable.orderIdx,
+      })
+      .from(apiDocCategoriesTable)
+      .all();
+    const categoryNamesByTeamId = new Map<string, Set<string>>();
+    const nextCategoryOrderByTeamId = new Map<string, number>();
+    categoryRows.forEach((row) => {
+      if (!row.teamId) return;
+      const names = categoryNamesByTeamId.get(row.teamId) ?? new Set<string>();
+      names.add(row.name);
+      categoryNamesByTeamId.set(row.teamId, names);
+      nextCategoryOrderByTeamId.set(
+        row.teamId,
+        Math.max(nextCategoryOrderByTeamId.get(row.teamId) ?? 0, row.orderIdx + 1),
+      );
+    });
+
+    let importedCollections = 0;
+    let importedEndpoints = 0;
+    let importedBlocks = 0;
+    const importedWorkspaceIds: string[] = [];
+    const importedCategoryIds: string[] = [];
+
+    this.db.transaction((tx) => {
+      input.workspaces.forEach((workspace) => {
+        const existingTeam = teamsByName.get(workspace.name);
+        const teamId = existingTeam?.id ?? `api-team-${randomUUID().slice(0, 12)}`;
+        importedWorkspaceIds.push(teamId);
+
+        if (!existingTeam) {
+          const team: ApiDocTeamRow = {
+            id: teamId,
+            name: workspace.name,
+            description: workspace.description ?? null,
+            icon: workspace.icon ?? 'FileJson',
+            emoji: workspace.emoji ?? null,
+            orderIdx: nextTeamOrder,
+            createdBy: user.id,
+            createdAt: now,
+            updatedAt: now,
+          };
+          nextTeamOrder += 1;
+          teamsByName.set(workspace.name, team);
+          categoryNamesByTeamId.set(teamId, new Set<string>());
+          nextCategoryOrderByTeamId.set(teamId, 0);
+
+          tx.insert(apiDocTeamsTable).values(team).run();
+        }
+
+        const categoryNames =
+          categoryNamesByTeamId.get(teamId) ?? new Set<string>();
+        let nextCategoryOrder = nextCategoryOrderByTeamId.get(teamId) ?? 0;
+
+        workspace.collections.forEach((collection) => {
+          const categoryId = `api-cat-${randomUUID().slice(0, 12)}`;
+          const categoryName = this.getUniqueName(collection.name, categoryNames);
+          categoryNames.add(categoryName);
+          importedCategoryIds.push(categoryId);
+
+          tx.insert(apiDocCategoriesTable)
+            .values({
+              id: categoryId,
+              teamId,
+              name: categoryName,
+              icon: collection.icon ?? 'Folder',
+              emoji: collection.emoji ?? null,
+              orderIdx: nextCategoryOrder,
+              createdBy: user.id,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .run();
+          nextCategoryOrder += 1;
+          importedCollections += 1;
+
+          collection.endpoints.forEach((endpoint, endpointIndex) => {
+            const endpointId = `api-end-${randomUUID().slice(0, 12)}`;
+            tx.insert(apiDocEndpointsTable)
+              .values({
+                id: endpointId,
+                categoryId,
+                title: endpoint.title,
+                method: endpoint.method,
+                path: endpoint.path,
+                orderIdx: endpointIndex,
+                createdBy: user.id,
+                createdAt: now,
+                updatedAt: now,
+              })
+              .run();
+            importedEndpoints += 1;
+
+            tx.insert(apiDocBlocksTable)
+              .values({
+                id: `api-block-${randomUUID().slice(0, 12)}`,
+                endpointId,
+                blockType: 'API',
+                content: JSON.stringify({
+                  ...endpoint.request,
+                  method: endpoint.method,
+                  lastResponse: null,
+                }),
+                orderIdx: 0,
+                createdAt: now,
+                updatedAt: now,
+              })
+              .run();
+            importedBlocks += 1;
+          });
+        });
+
+        categoryNamesByTeamId.set(teamId, categoryNames);
+        nextCategoryOrderByTeamId.set(teamId, nextCategoryOrder);
+      });
+    });
+
+    return {
+      success: true,
+      importedWorkspaces: input.workspaces.length,
+      importedCollections,
+      importedEndpoints,
+      importedBlocks,
+      importedWorkspaceIds: Array.from(new Set(importedWorkspaceIds)),
       importedCategoryIds,
     };
   }
@@ -668,22 +846,36 @@ export class ApiDocService {
   }
 
   private validateJsonBodies(input: ApiDocImportExportFile) {
-    for (const collection of input.collections) {
-      for (const endpoint of collection.endpoints) {
-        const body = endpoint.request.body;
-        if (body.type !== 'json' || !body.content.trim()) continue;
-        try {
-          JSON.parse(body.content);
-        } catch {
-          throw new BadRequestException(
-            `${collection.name} > ${endpoint.title} body.content must be valid JSON.`,
-          );
+    const workspaces =
+      input.version === 1
+        ? [{ name: null, collections: input.collections }]
+        : input.workspaces;
+
+    for (const workspace of workspaces) {
+      for (const collection of workspace.collections) {
+        for (const endpoint of collection.endpoints) {
+          const body = endpoint.request.body;
+          if (body.type !== 'json' || !body.content.trim()) continue;
+          try {
+            JSON.parse(body.content);
+          } catch {
+            const prefix = workspace.name
+              ? `${workspace.name} > ${collection.name}`
+              : collection.name;
+            throw new BadRequestException(
+              `${prefix} > ${endpoint.title} body.content must be valid JSON.`,
+            );
+          }
         }
       }
     }
   }
 
   private getUniqueCategoryName(name: string, existingNames: Set<string>) {
+    return this.getUniqueName(name, existingNames);
+  }
+
+  private getUniqueName(name: string, existingNames: Set<string>) {
     if (!existingNames.has(name)) return name;
     const suffix = new Date().toISOString().slice(0, 16).replace('T', ' ');
     let candidate = `${name} (import ${suffix})`;

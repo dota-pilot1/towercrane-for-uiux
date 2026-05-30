@@ -16,12 +16,16 @@ export class UploadService {
   private readonly s3Client: S3Client
   private readonly bucket: string
   private readonly region: string
+  private readonly prefix: string
 
   constructor(private readonly configService: ConfigService) {
     const accessKeyId = configService.get<string>('AWS_ACCESS_KEY_ID')
     const secretAccessKey = configService.get<string>('AWS_SECRET_ACCESS_KEY')
     const region = configService.get<string>('AWS_S3_REGION')
     const bucket = configService.get<string>('AWS_S3_BUCKET_NAME')
+    const prefix =
+      configService.get<string>('AWS_S3_PREFIX')?.replace(/^\/+|\/+$/g, '') ||
+      'towercrane-docu'
 
     if (!accessKeyId || !secretAccessKey || !region || !bucket) {
       throw new InternalServerErrorException(
@@ -31,6 +35,7 @@ export class UploadService {
 
     this.region = region
     this.bucket = bucket
+    this.prefix = prefix
     this.s3Client = new S3Client({
       region,
       credentials: { accessKeyId, secretAccessKey },
@@ -42,7 +47,7 @@ export class UploadService {
     contentType: string,
   ): Promise<PresignedUrlResponse> {
     const safeName = filename.replace(/[^\w.\-]/g, '_')
-    const key = `towercrane-docu/${randomUUID()}-${safeName}`
+    const key = `${this.prefix}/${randomUUID()}-${safeName}`
 
     const command = new PutObjectCommand({
       Bucket: this.bucket,

@@ -78,8 +78,12 @@ export function useImportApiDoc() {
     mutationFn: (body: ApiDocImportExportFile) => apiDocApi.importAll(body),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: apiDocQueryKeys.all });
+      const workspaceText =
+        result.importedWorkspaces > 0
+          ? `${result.importedWorkspaces}개 워크스페이스, `
+          : "";
       toast.success(
-        `${result.importedCollections}개 컬렉션, ${result.importedEndpoints}개 API를 가져왔습니다.`,
+        `${workspaceText}${result.importedCollections}개 컬렉션, ${result.importedEndpoints}개 API를 가져왔습니다.`,
       );
     },
     onError: (error) =>

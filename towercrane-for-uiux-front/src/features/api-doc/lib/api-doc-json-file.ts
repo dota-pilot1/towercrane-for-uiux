@@ -16,10 +16,10 @@ export function downloadJsonFile(fileName: string, data: unknown) {
 
 export async function readJsonFile<T>(file: File): Promise<T> {
   if (!file.name.toLowerCase().endsWith('.json')) {
-    throw new Error('JSON 파일만 가져올 수 있습니다.')
+    throw new Error('API Spec JSON 파일만 가져올 수 있습니다.')
   }
   if (file.size > MAX_JSON_FILE_SIZE) {
-    throw new Error('2MB 이하의 JSON 파일만 가져올 수 있습니다.')
+    throw new Error('2MB 이하의 API Spec JSON 파일만 가져올 수 있습니다.')
   }
 
   const text = await file.text()
@@ -44,5 +44,5 @@ export function createApiDocExportFileName(date = new Date()) {
     String(date.getMinutes()).padStart(2, '0'),
   ].join('')
 
-  return `towercrane-postman-lite-${stamp}.json`
+  return `towercrane-api-spec-${stamp}.json`
 }
