@@ -11,7 +11,6 @@ import {
 } from '../../../entities/task/model/constants'
 import type { TaskFilters, TaskPriority, TaskType } from '../../../entities/task/model/types'
 import type { AssignableUser } from '../../../shared/api/users'
-import { API_BASE_URL } from '../../../shared/api/http'
 import { Button } from '../../../shared/ui/button'
 import { CompactSelect } from '../../../shared/ui/compact-select'
 import { SearchField } from '../../../shared/ui/search-field'
@@ -20,7 +19,7 @@ import { AssigneeSelect } from './assignee-select'
 export type TaskViewMode = 'table' | 'kanban' | 'card'
 type TaskHelpTab = 'form' | 'file' | 'ai'
 
-const TASK_INGEST_ENDPOINT = `${API_BASE_URL}/public/task-ingest`
+const TASK_INGEST_ENDPOINT = 'https://api.hibot-docu.com/api/public/task-ingest'
 
 const TASK_FILE_TEMPLATE = `---
 title: 프로토타입 워크스페이스 삭제 기능
@@ -100,7 +99,7 @@ const TASK_AI_PROMPT_EXAMPLE = `[여기에 업무 주제 입력]에 대해 Tower
   x-towercrane-ingest-key: .env의 TASK_INGEST_KEY 값 참고
   Content-Type: application/json
 - Body는 JSON으로 아래 형식을 채워서 요청한다.
-- TASK_INGEST_KEY는 로컬 프로젝트 .env 또는 ~/.codex/task-ingest.env에서 참고한다.
+- TASK_INGEST_KEY는 운영 서버 .env 또는 Agent 실행 환경의 ~/.codex/task-ingest.env에서 참고한다.
 - 업무는 한 번에 1개만 등록한다.
 
 body json 예시:
@@ -479,8 +478,8 @@ export function TaskToolbar({
                   <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
                     <h3 className="text-sm font-black text-text-primary">필수 헤더</h3>
                     <p className="mt-2 text-sm leading-6 text-text-secondary">
-                      실제 키는 로컬/운영 서버의 <code className="rounded bg-surface-raised px-1">.env</code>
-                      에 있는 <code className="rounded bg-surface-raised px-1">TASK_INGEST_KEY</code> 값을
+                      실제 키는 운영 서버의 <code className="rounded bg-surface-raised px-1">.env</code>
+                      또는 Agent 실행 환경에 있는 <code className="rounded bg-surface-raised px-1">TASK_INGEST_KEY</code> 값을
                       사용합니다. 프론트 화면에는 키를 직접 노출하지 않습니다.
                     </p>
                     <ul className="mt-2 space-y-1 font-mono text-xs leading-6 text-text-secondary">
