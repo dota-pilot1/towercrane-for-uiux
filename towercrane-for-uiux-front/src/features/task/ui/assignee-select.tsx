@@ -132,7 +132,7 @@ export function AssigneeSelect({
               left: `${coords.left}px`,
               width: `${Math.max(288, coords.width)}px`, // w-72 is 288px, or stretch to match button if button is wider
             }}
-            className="z-[9999] max-h-60 origin-top-left overflow-y-auto rounded-lg border border-surface-border bg-surface-raised p-1 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150"
+            className="z-[9999] max-h-60 origin-top-left overflow-y-auto rounded-lg border border-surface-border bg-surface-raised p-1 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
           >
             <div className="grid gap-0.5">
               {/* Unassigned/All Option */}
