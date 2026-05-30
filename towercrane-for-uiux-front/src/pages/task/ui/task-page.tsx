@@ -668,7 +668,7 @@ export function TaskPage({
     : null
   const scopeTitle =
     workspaceId
-      ? `${currentWorkspace?.name ?? '워크스페이스'} 업무`
+      ? `${currentWorkspace?.name ?? '워크스페이스'} ${scopeMode === 'my' ? '내 업무' : '업무'}`
       : scopeMode === 'my'
       ? `${currentUserName || '내'}의 업무`
       : scopeMode === 'user'
@@ -676,7 +676,9 @@ export function TaskPage({
         : '전체 업무'
   const scopeDescription =
     workspaceId
-      ? (currentWorkspace?.description ?? '워크스페이스에 묶인 업무를 관리합니다.')
+      ? scopeMode === 'my'
+        ? '이 워크스페이스에서 내가 담당하거나 개인으로 등록한 업무를 관리합니다.'
+        : (currentWorkspace?.description ?? '워크스페이스에 묶인 업무를 관리합니다.')
       : scopeMode === 'my'
       ? '내가 담당하거나 개인으로 등록한 업무를 관리합니다.'
       : scopeMode === 'user'
@@ -821,7 +823,7 @@ export function TaskPage({
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => navigate({ to: '/task' })}
+            onClick={() => navigate({ to: scopeMode === 'my' ? '/task/my' : '/task' })}
             className="gap-1.5 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <ChevronLeft className="size-3.5" />

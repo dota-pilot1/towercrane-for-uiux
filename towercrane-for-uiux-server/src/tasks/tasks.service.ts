@@ -1034,7 +1034,8 @@ export class TasksService {
 
   // ── Task Workspaces ──────────────────────────────────────────────────────
 
-  listWorkspaces() {
+  listWorkspaces(user?: TaskUser, rawQuery?: unknown) {
+    const query = listTasksQuerySchema.parse(rawQuery ?? {});
     const workspaces = this.db
       .select()
       .from(taskWorkspacesTable)
@@ -1045,27 +1046,31 @@ export class TasksService {
       .all();
 
     return workspaces.map((ws) => {
+      const taskConditions: SQL[] = [
+        eq(tasksTable.workspaceId, ws.id),
+        eq(tasksTable.archived, false),
+      ];
+      const openTaskConditions: SQL[] = [
+        eq(tasksTable.workspaceId, ws.id),
+        eq(tasksTable.archived, false),
+        sql`${tasksTable.status} IN ('TODO','IN_PROGRESS','REVIEW')`,
+      ];
+
+      if (user && query.scope !== 'all') {
+        taskConditions.push(...this.buildListConditions(user, query));
+        openTaskConditions.push(...this.buildListConditions(user, query));
+      }
+
       const taskCount = this.db
         .select({ count: sql<number>`count(*)` })
         .from(tasksTable)
-        .where(
-          and(
-            eq(tasksTable.workspaceId, ws.id),
-            eq(tasksTable.archived, false),
-          ),
-        )
+        .where(and(...taskConditions))
         .get();
 
       const openTaskCount = this.db
         .select({ count: sql<number>`count(*)` })
         .from(tasksTable)
-        .where(
-          and(
-            eq(tasksTable.workspaceId, ws.id),
-            eq(tasksTable.archived, false),
-            sql`${tasksTable.status} IN ('TODO','IN_PROGRESS','REVIEW')`,
-          ),
-        )
+        .where(and(...openTaskConditions))
         .get();
 
       return {

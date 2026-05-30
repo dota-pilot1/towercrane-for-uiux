@@ -168,7 +168,13 @@ export const taskApi = {
     ),
 
   // ── Workspace ────────────────────────────────────────────────────────────
-  listWorkspaces: () => apiRequest<TaskWorkspace[]>('/tasks/workspaces'),
+  listWorkspaces: (filters?: Pick<TaskFilters, 'scope' | 'userId' | 'archived'>) => {
+    const params = toSearchParams(filters)
+    const query = params.toString()
+    return apiRequest<TaskWorkspace[]>(
+      `/tasks/workspaces${query ? `?${query}` : ''}`,
+    )
+  },
 
   createWorkspace: (body: CreateTaskWorkspaceRequest) =>
     apiRequest<TaskWorkspace>('/tasks/workspaces', {

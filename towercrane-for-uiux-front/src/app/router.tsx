@@ -728,7 +728,13 @@ function TaskWorkspaceRoute() {
 const myTaskRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/task/my',
-  component: () => <TaskPage scopeMode="my" />,
+  component: () => <TaskWorkspaceHomePage scopeMode="my" />,
+})
+
+const myTaskWorkspaceRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/task/my/workspaces/$workspaceId',
+  component: MyTaskWorkspaceRoute,
 })
 
 const taskDetailRoute = createRoute({
@@ -746,6 +752,11 @@ const userTaskRoute = createRoute({
 function UserTaskRoute() {
   const { userId } = userTaskRoute.useParams()
   return <TaskPage scopeMode="user" targetUserId={userId} />
+}
+
+function MyTaskWorkspaceRoute() {
+  const { workspaceId } = myTaskWorkspaceRoute.useParams()
+  return <TaskPage scopeMode="my" workspaceId={workspaceId} />
 }
 
 // ─── /issues ─────────────────────────────────────────────────────────────────
@@ -1018,6 +1029,7 @@ export const router = createRouter({
       taskRoute,
       taskWorkspaceRoute,
       myTaskRoute,
+      myTaskWorkspaceRoute,
       taskDetailRoute,
       userTaskRoute,
       prototypeIssuesRoute,

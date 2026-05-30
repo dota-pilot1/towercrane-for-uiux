@@ -21,13 +21,15 @@ import {
   useTaskWorkspaces,
 } from '../../../features/task/model/use-task-queries'
 import { taskApi } from '../../../entities/task/api/task-api'
-import type { Task } from '../../../entities/task/model/types'
+import type { Task, TaskFilters, TaskWorkspace } from '../../../entities/task/model/types'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 import { downloadTaskExcelWorkbook } from '../../../features/task/lib/task-excel-export'
 
 const TASK_EXPORT_PAGE_SIZE = 100
+
+type TaskWorkspaceHomeMode = 'all' | 'my'
 
 type AccentStyle = React.CSSProperties & {
   '--task-accent': string
@@ -62,15 +64,18 @@ function getExportDate() {
   }).format(new Date())
 }
 
-async function fetchAllWorkspaceTasksForExport(workspaceId: string) {
+async function fetchAllWorkspaceTasksForExport(
+  workspaceId: string,
+  filters: TaskFilters,
+) {
   const items: Task[] = []
   let page = 1
 
   while (true) {
     const response = await taskApi.listWorkspaceTasks(workspaceId, {
+      ...filters,
       archived: false,
       sort: 'order',
-      scope: 'all',
       page,
       pageSize: TASK_EXPORT_PAGE_SIZE,
     })
@@ -82,10 +87,16 @@ async function fetchAllWorkspaceTasksForExport(workspaceId: string) {
   return items
 }
 
-export function TaskWorkspaceHomePage() {
+export function TaskWorkspaceHomePage({
+  scopeMode = 'all',
+}: {
+  scopeMode?: TaskWorkspaceHomeMode
+}) {
   const navigate = useNavigate()
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
-  const workspacesQuery = useTaskWorkspaces()
+  const isMyMode = scopeMode === 'my'
+  const workspaceFilters = isMyMode ? ({ scope: 'my' } as const) : undefined
+  const workspacesQuery = useTaskWorkspaces(workspaceFilters)
   const workspaces = workspacesQuery.data ?? []
   const [isExporting, setIsExporting] = useState(false)
 
@@ -108,15 +119,23 @@ export function TaskWorkspaceHomePage() {
     setIsExporting(true)
     try {
       const worksheets: Array<{ name: string; tasks: Task[] }> = []
+      const exportFilters: TaskFilters = {
+        archived: false,
+        sort: 'order',
+        scope: scopeMode,
+      }
 
       for (const workspace of exportWorkspaces) {
-        const tasks = await fetchAllWorkspaceTasksForExport(workspace.id)
+        const tasks = await fetchAllWorkspaceTasksForExport(
+          workspace.id,
+          exportFilters,
+        )
         worksheets.push({ name: workspace.name, tasks })
       }
 
       await downloadTaskExcelWorkbook(
         worksheets,
-        `업무-워크스페이스별-${getExportDate()}.xlsx`,
+        `${isMyMode ? '내업무' : '업무'}-워크스페이스별-${getExportDate()}.xlsx`,
       )
       const totalExported = worksheets.reduce(
         (sum, worksheet) => sum + worksheet.tasks.length,
@@ -137,17 +156,22 @@ export function TaskWorkspaceHomePage() {
       style={getTaskAccentStyle()}
       className="w-full min-w-0 space-y-4 bg-background"
     >
-      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-lg border-2 bg-surface-raised px-6 py-5 shadow-2xs [border-color:var(--task-accent-border)]">
+      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-md border border-surface-border bg-surface-muted px-4 py-3.5 shadow-sm">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-[var(--task-accent)] text-primary-foreground shadow-2xs [border-color:var(--task-accent-border-strong)]">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-md border border-brand-border/40 bg-brand-glass text-brand-primary shadow-sm shadow-brand-primary/5">
             <CheckSquare className="size-5" />
           </div>
-          <div className="min-w-0 space-y-1">
-            <h1 className="text-2xl font-black tracking-tight text-text-primary">
-              Task Workspaces
+          <div className="min-w-0">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-brand-primary">
+              {isMyMode ? 'My Task Workspaces' : 'Task Workspaces'}
+            </p>
+            <h1 className="mt-0.5 text-lg font-black tracking-tight text-text-primary">
+              {isMyMode ? '내 업무 워크스페이스' : 'Task Workspaces'}
             </h1>
-            <p className="text-base font-medium leading-6 ui-text-secondary">
-              팀별 업무를 워크스페이스로 분리해 관리합니다.
+            <p className="mt-0.5 text-xs text-text-secondary">
+              {isMyMode
+                ? '내가 담당하거나 개인으로 등록한 업무를 워크스페이스별로 확인합니다.'
+                : '팀별 업무를 워크스페이스로 분리해 관리합니다.'}
             </p>
           </div>
         </div>
@@ -169,7 +193,7 @@ export function TaskWorkspaceHomePage() {
               )}
               {isExporting ? '내보내는 중...' : '전체 엑셀'}
             </Button>
-            <CreateWorkspaceDialog />
+            {isMyMode ? null : <CreateWorkspaceDialog />}
           </div>
         ) : null}
       </div>
@@ -183,7 +207,7 @@ export function TaskWorkspaceHomePage() {
           />
           <SummaryTile
             icon={<ClipboardList className="size-4" />}
-            label="전체 업무"
+            label={isMyMode ? '내 업무' : '전체 업무'}
             value={totalTasks}
           />
           <SummaryTile
@@ -205,7 +229,7 @@ export function TaskWorkspaceHomePage() {
         </div>
       ) : null}
 
-      <div className="min-h-[calc(100dvh-300px)] rounded-xl border-2 bg-surface-raised p-6 shadow-2xs [border-color:var(--task-accent-border)]">
+      <div className="min-h-[calc(100dvh-300px)] ui-panel p-6 shadow-sm">
         {workspacesQuery.isLoading ? (
           <div className="flex min-h-[320px] items-center justify-center text-sm ui-text-muted">
             <LoaderCircle className="mr-2 size-4 animate-spin" />
@@ -217,9 +241,12 @@ export function TaskWorkspaceHomePage() {
               <TaskWorkspaceCard
                 key={workspace.id}
                 workspace={workspace}
+                scopeMode={scopeMode}
                 onOpen={() =>
                   navigate({
-                    to: '/task/workspaces/$workspaceId',
+                    to: isMyMode
+                      ? '/task/my/workspaces/$workspaceId'
+                      : '/task/workspaces/$workspaceId',
                     params: { workspaceId: workspace.id },
                   })
                 }
@@ -229,7 +256,7 @@ export function TaskWorkspaceHomePage() {
         ) : (
           <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-md border border-dashed border-surface-border bg-surface-muted text-sm ui-text-muted">
             <p>생성된 워크스페이스가 없습니다.</p>
-            {isAuthenticated ? <CreateWorkspaceDialog /> : null}
+            {isAuthenticated && !isMyMode ? <CreateWorkspaceDialog /> : null}
           </div>
         )}
       </div>
@@ -248,11 +275,11 @@ function SummaryTile({ icon, label, value, trailing }: SummaryTileProps) {
   return (
     <div
       style={getTaskAccentStyle()}
-      className="group relative overflow-hidden rounded-lg border-2 bg-surface-raised px-4 py-3.5 shadow-2xs transition-all duration-300 [border-color:var(--task-accent-border)] hover:-translate-y-0.5 hover:bg-[var(--task-accent-soft)] hover:shadow-[0_8px_20px_var(--task-accent-shadow)] hover:[border-color:var(--task-accent-border-strong)]"
+      className="group relative overflow-hidden rounded-md border border-surface-border bg-surface-raised px-4 py-3.5 shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-border hover:bg-surface-muted/30 hover:shadow-xs"
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 text-xs font-black uppercase tracking-[0.1em] text-text-muted">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-[var(--task-accent-muted)] text-[var(--task-accent)] [border-color:var(--task-accent-border-subtle)]">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-[var(--task-accent-muted)] text-[var(--task-accent)] [border-color:var(--task-accent-border-subtle)]">
             {icon}
           </span>
           {label}
@@ -266,7 +293,18 @@ function SummaryTile({ icon, label, value, trailing }: SummaryTileProps) {
   )
 }
 
-function TaskWorkspaceCard({ workspace, onOpen }: TaskWorkspaceCardProps) {
+type TaskWorkspaceCardProps = {
+  workspace: TaskWorkspace
+  scopeMode: TaskWorkspaceHomeMode
+  onOpen: () => void
+}
+
+function TaskWorkspaceCard({
+  workspace,
+  scopeMode,
+  onOpen,
+}: TaskWorkspaceCardProps) {
+  const isMyMode = scopeMode === 'my'
   const completedCount = Math.max(0, workspace.taskCount - workspace.openTaskCount)
   const progressPct = workspace.taskCount > 0 ? (completedCount / workspace.taskCount) * 100 : 0
   const remainingCount = Math.max(0, workspace.openTaskCount)
@@ -276,12 +314,12 @@ function TaskWorkspaceCard({ workspace, onOpen }: TaskWorkspaceCardProps) {
       type="button"
       onClick={onOpen}
       style={getTaskAccentStyle()}
-      className="group relative flex min-h-[228px] flex-col overflow-hidden rounded-lg border-2 bg-surface-raised p-5 text-left shadow-2xs transition-all duration-300 [border-color:var(--task-accent-border)] hover:-translate-y-0.5 hover:bg-[var(--task-accent-soft)] hover:shadow-[0_10px_24px_var(--task-accent-shadow)] hover:[border-color:var(--task-accent-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--task-accent)]"
+      className="group relative flex min-h-[228px] flex-col overflow-hidden rounded-md border border-surface-border bg-surface-raised p-5 text-left shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-border hover:bg-surface-muted/30 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
     >
       <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,var(--task-accent-wash)_0%,transparent_34%)]" />
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="relative flex size-11 shrink-0 items-center justify-center rounded-xl border bg-[var(--task-accent-muted)] text-[var(--task-accent)] transition-all duration-300 [border-color:var(--task-accent-border-subtle)] group-hover:scale-105 group-hover:bg-[var(--task-accent)] group-hover:text-primary-foreground group-hover:shadow-[0_10px_24px_var(--task-accent-shadow)]">
+          <div className="relative flex size-11 shrink-0 items-center justify-center rounded-md border bg-[var(--task-accent-muted)] text-[var(--task-accent)] transition-all duration-300 [border-color:var(--task-accent-border-subtle)] group-hover:scale-105 group-hover:bg-[var(--task-accent)] group-hover:text-primary-foreground group-hover:shadow-[0_10px_24px_var(--task-accent-shadow)]">
             <CheckSquare className="size-5" />
           </div>
           <div className="min-w-0">
@@ -293,22 +331,22 @@ function TaskWorkspaceCard({ workspace, onOpen }: TaskWorkspaceCardProps) {
             </p>
           </div>
         </div>
-        <div className="relative flex size-8 shrink-0 items-center justify-center rounded-full border bg-surface-raised text-text-muted transition-all duration-300 [border-color:var(--task-accent-border-subtle)] group-hover:translate-x-0.5 group-hover:bg-[var(--task-accent-muted)] group-hover:text-[var(--task-accent)]">
+        <div className="relative flex size-8 shrink-0 items-center justify-center rounded-full border border-surface-border-soft bg-surface-raised text-text-muted transition-all duration-300 group-hover:translate-x-0.5 group-hover:bg-[var(--task-accent-muted)] group-hover:text-[var(--task-accent)]">
           <ArrowRight className="size-3.5" />
         </div>
       </div>
 
-      <div className="relative mt-5 grid grid-cols-2 overflow-hidden rounded-xl border bg-surface-raised/70 [border-color:var(--task-accent-border-subtle)]">
+      <div className="relative mt-5 grid grid-cols-2 overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised/70">
         <div className="min-w-0 px-3 py-3">
           <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.1em] text-text-muted">
             <ClipboardList className="size-3" />
-            전체 업무
+            {isMyMode ? '내 업무' : '전체 업무'}
           </div>
           <div className="mt-1 text-2xl font-black tracking-tight text-text-primary">
             {workspace.taskCount}
           </div>
         </div>
-        <div className="min-w-0 border-l px-3 py-3 [border-color:var(--task-accent-border-subtle)]">
+        <div className="min-w-0 border-l px-3 py-3 border-surface-border-soft">
           <div className="flex items-center justify-between gap-2 text-xs font-black uppercase tracking-[0.1em] text-text-muted">
             <div className="flex min-w-0 items-center gap-1.5">
               <Activity className="size-3 text-[var(--task-accent)]" />
@@ -324,7 +362,7 @@ function TaskWorkspaceCard({ workspace, onOpen }: TaskWorkspaceCardProps) {
         </div>
       </div>
 
-      <div className="relative mt-5 rounded-xl border bg-[var(--task-accent-soft)] px-3.5 py-3 [border-color:var(--task-accent-border-subtle)]">
+      <div className="relative mt-5 rounded-md border border-surface-border-soft bg-brand-glass px-3.5 py-3">
         <div className="flex items-center justify-between gap-3 text-xs font-black">
           <span className="text-text-secondary">완료율</span>
           <span className="text-[var(--task-accent)]">{Math.round(progressPct)}%</span>
@@ -376,7 +414,7 @@ function CreateWorkspaceDialog() {
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 ui-overlay" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-surface-border bg-surface-raised p-6 shadow-2xl">
+        <Dialog.Content className="fixed left-1/2 top-1/2 w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-md border border-surface-border bg-surface-raised p-6 shadow-2xl">
           <Dialog.Title className="text-lg font-black text-text-primary">
             워크스페이스 생성
           </Dialog.Title>

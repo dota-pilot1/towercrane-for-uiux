@@ -41,8 +41,11 @@ export class TasksController {
   // ── Workspace endpoints (정적 라우트 — :taskId 보다 먼저 등록) ─────────────
 
   @Get('workspaces')
-  listWorkspacesEarly() {
-    return this.tasksService.listWorkspaces();
+  listWorkspacesEarly(
+    @CurrentUser() user: TaskUser,
+    @Query() query: Record<string, unknown>,
+  ) {
+    return this.tasksService.listWorkspaces(user, query);
   }
 
   @Post('workspaces')

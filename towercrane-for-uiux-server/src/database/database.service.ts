@@ -2233,20 +2233,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .run(now);
 
     // 루트 메뉴 표시 순서 고정:
-    // 0:업무관리, 1:개발도구(Postman+Prototype+개발채팅), 2:AI 서비스 신청,
-    // 3:회의실, 4:게시판, 5:Dev Study(Challenge+SQL+학습일지), 6:지식채널, 7:챗봇, 8:Admin
+    // 0:업무관리, 1:개발도구(Postman+Prototype+개발채팅), 2:회의실,
+    // 3:게시판, 4:Dev Study(Challenge+SQL+학습일지), 5:지식채널, 6:챗봇,
+    // 7:AI 서비스 신청, 8:Admin
     const rootMenuOrder: Array<{
       sectionId: string | string[];
       displayOrder: number;
     }> = [
       { sectionId: ['task_group', 'task'], displayOrder: 0 },
       { sectionId: 'dev_management', displayOrder: 1 },
-      { sectionId: 'ai_service_group', displayOrder: 2 },
-      { sectionId: 'meeting', displayOrder: 3 },
-      { sectionId: 'boards', displayOrder: 4 },
-      { sectionId: 'dev_study', displayOrder: 5 },
-      { sectionId: 'knowledge_channel', displayOrder: 6 },
-      { sectionId: 'chatbot_pilot', displayOrder: 7 },
+      { sectionId: 'meeting', displayOrder: 2 },
+      { sectionId: 'boards', displayOrder: 3 },
+      { sectionId: 'dev_study', displayOrder: 4 },
+      { sectionId: 'knowledge_channel', displayOrder: 5 },
+      { sectionId: 'chatbot_pilot', displayOrder: 6 },
+      { sectionId: 'ai_service_group', displayOrder: 7 },
       { sectionId: 'admin_dropdown', displayOrder: 8 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
@@ -3578,7 +3579,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'AI 서비스 신청',
           sectionId: 'ai_service_group',
           icon: 'ClipboardList',
-          displayOrder: 1,
+          displayOrder: 7,
           isVisible: true,
           requiredRole: null,
           parentId: null,

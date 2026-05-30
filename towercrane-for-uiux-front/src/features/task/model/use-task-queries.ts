@@ -24,7 +24,8 @@ export const taskQueryKeys = {
     ['tasks', 'ai-reviews', taskId] as const,
   attachments: (taskId: string | null) =>
     ['tasks', 'attachments', taskId] as const,
-  workspaces: () => ['tasks', 'workspaces'] as const,
+  workspaces: (filters?: Pick<TaskFilters, 'scope' | 'userId' | 'archived'>) =>
+    ['tasks', 'workspaces', filters ?? {}] as const,
   workspaceTasks: (workspaceId: string, filters: TaskFilters) =>
     ['tasks', 'workspaces', workspaceId, 'tasks', filters] as const,
 }
@@ -416,10 +417,12 @@ export function useDeleteTaskAttachment(taskId: string | null) {
 
 // ── Workspace Hooks ───────────────────────────────────────────────────────
 
-export function useTaskWorkspaces() {
+export function useTaskWorkspaces(
+  filters?: Pick<TaskFilters, 'scope' | 'userId' | 'archived'>,
+) {
   return useQuery({
-    queryKey: taskQueryKeys.workspaces(),
-    queryFn: () => taskApi.listWorkspaces(),
+    queryKey: taskQueryKeys.workspaces(filters),
+    queryFn: () => taskApi.listWorkspaces(filters),
   })
 }
 
