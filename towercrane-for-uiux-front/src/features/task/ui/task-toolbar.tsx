@@ -81,7 +81,6 @@ const TASK_AI_JSON_EXAMPLE = `{
   "status": "TODO",
   "priority": "MEDIUM",
   "dueDate": "2026-06-01",
-  "assigneeEmail": "owner@example.com",
   "workspaceId": "task-workspace-default"
 }`
 
@@ -121,7 +120,6 @@ body json 예시:
   "status": "TODO",
   "priority": "MEDIUM",
   "dueDate": "2026-06-01",
-  "assigneeEmail": "owner@example.com",
   "workspaceId": "task-workspace-default"
 }
 
@@ -135,6 +133,7 @@ body json 예시:
 - taskType은 FEATURE, BUG, DOCS, DESIGN, REFACTOR, QA, CHORE 중 하나다.
 - status는 TODO, IN_PROGRESS, REVIEW, DONE, HOLD 중 하나다.
 - priority는 LOW, MEDIUM, HIGH, URGENT 중 하나다.
+- assigneeEmail은 실제 등록된 사용자 이메일이 있을 때만 넣고, 없으면 필드 자체를 생략한다.
 - 요청 성공 후 생성된 업무 URL과 taskId를 알려준다.`
 
 type TaskToolbarProps = {
