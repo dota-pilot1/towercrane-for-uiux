@@ -3,6 +3,7 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { Send, Mic, MicOff, X, Bot, Loader2 } from 'lucide-react'
 import { useSpeechRecognition } from '../lib/use-speech-recognition'
+import { MarkdownContent } from './markdown-content'
 import { API_BASE_URL } from '../../../shared/api/http'
 import { useSessionStore } from '../../../shared/store/session-store'
 
@@ -76,17 +77,20 @@ export function TaskChatbotPanel({ onClose }: { onClose: () => void }) {
             className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed shadow-xs ${
+              className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed shadow-xs ${
                 m.role === 'user'
-                  ? 'bg-brand-primary text-text-on-brand'
+                  ? 'whitespace-pre-wrap bg-brand-primary text-text-on-brand'
                   : 'bg-surface-raised text-text-primary'
               }`}
             >
-              {m.parts
-                .filter((p) => p.type === 'text')
-                .map((p, i) => (
-                  <span key={i}>{(p as { text: string }).text}</span>
-                ))}
+              {(() => {
+                const text = m.parts
+                  .filter((p) => p.type === 'text')
+                  .map((p) => (p as { text: string }).text)
+                  .join('')
+                // 사용자 메시지는 그대로, 비서 답변은 마크다운 렌더링.
+                return m.role === 'user' ? text : <MarkdownContent text={text} />
+              })()}
             </div>
           </div>
         ))}
