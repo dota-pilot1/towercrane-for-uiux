@@ -1,7 +1,19 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Tabs from '@radix-ui/react-tabs'
-import { type ChangeEvent, useRef, useState } from 'react'
-import { Bot, Check, Copy, FileUp, HelpCircle, Loader2, Plus, RefreshCcw, X } from 'lucide-react'
+import { type ChangeEvent, useMemo, useRef, useState } from 'react'
+import {
+  AlertCircle,
+  Bot,
+  Check,
+  Copy,
+  FileText,
+  FileUp,
+  HelpCircle,
+  Loader2,
+  Plus,
+  RefreshCcw,
+  X,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import {
   TASK_PRIORITY_LABELS,
@@ -11,16 +23,20 @@ import {
 } from '../../../entities/task/model/constants'
 import type { TaskFilters, TaskPriority, TaskType } from '../../../entities/task/model/types'
 import type { AssignableUser } from '../../../shared/api/users'
+import { API_BASE_URL } from '../../../shared/api/http'
 import { Button } from '../../../shared/ui/button'
 import { CompactSelect } from '../../../shared/ui/compact-select'
 import { SearchField } from '../../../shared/ui/search-field'
+import { Textarea } from '../../../shared/ui/textarea'
+import { validateTaskMarkdown } from '../lib/task-markdown'
 import { AssigneeSelect } from './assignee-select'
 
 export type TaskViewMode = 'table' | 'kanban' | 'card'
-type TaskHelpTab = 'form' | 'file' | 'ai'
+type TaskHelpTab = 'markdown' | 'file' | 'codex'
 
-const TASK_INGEST_ENDPOINT = 'https://api.hibot-docu.com/api/public/task-ingest'
-const TASK_INGEST_WORKSPACES_ENDPOINT = `${TASK_INGEST_ENDPOINT}/workspaces`
+function getCodexCommitTasksEndpoint(workspaceId?: string) {
+  return `${API_BASE_URL}/public/tasks/agent/workspaces/${workspaceId ?? '<workspaceId>'}/commit-tasks`
+}
 
 const TASK_FILE_TEMPLATE = `---
 title: 프로토타입 워크스페이스 삭제 기능
@@ -64,71 +80,66 @@ flowchart TD
   B --> C[삭제 API 호출]
 \`\`\``
 
-const TASK_AI_CURL_EXAMPLE = `curl -X POST "${TASK_INGEST_ENDPOINT}" \\
-  -H "x-towercrane-ingest-key: <TASK_INGEST_KEY>" \\
+function buildCodexCurlExample(currentWorkspaceId?: string) {
+  return `curl -X POST "${getCodexCommitTasksEndpoint(currentWorkspaceId)}" \\
+  -H "x-towercrane-agent-key: <TOWERCRANE_AGENT_KEY>" \\
   -H "Content-Type: application/json" \\
-  -d @task.json`
+  -d @agent-commit-tasks.json`
+}
 
-function buildTaskAiPromptExample(currentWorkspaceId?: string, currentWorkspaceName?: string) {
+function buildCodexCommitPromptExample(currentWorkspaceId?: string, currentWorkspaceName?: string) {
+  const endpoint = getCodexCommitTasksEndpoint(currentWorkspaceId)
   const workspaceInstruction = currentWorkspaceId
-    ? `- 현재 화면 워크스페이스: ${currentWorkspaceName ?? '이 워크스페이스'} (${currentWorkspaceId})
-- Body의 workspaceId에는 반드시 "${currentWorkspaceId}"를 넣는다.`
-    : `- 특정 워크스페이스에 넣어야 하는데 workspaceId를 모르면 먼저 GET 요청으로 워크스페이스 목록을 조회한다.
-  ${TASK_INGEST_WORKSPACES_ENDPOINT}
-  Header:
-    x-towercrane-ingest-key: .env의 TASK_INGEST_KEY 값 참고`
-  const workspaceJson = currentWorkspaceId
-    ? `,
-  "workspaceId": "${currentWorkspaceId}"`
-    : ''
+    ? `- 현재 워크스페이스: ${currentWorkspaceName ?? '이 워크스페이스'} (${currentWorkspaceId})
+- 요청 URL path의 workspaceId는 반드시 "${currentWorkspaceId}"를 사용한다.`
+    : `- workspaceId가 없으면 현재 URL의 /task/workspaces/{workspaceId} 구간에서 workspaceId를 먼저 확인한다.`
 
-  return `[여기에 업무 주제 입력]에 대해 Towercrane 업무 등록해줘.
+  return `커밋을 만들 때마다 이번 커밋에서 남은 할일/후속 작업을 Towercrane에 올려줘.
 
 방법:
 ${workspaceInstruction}
-- POST 요청으로 아래 URL에 요청한다.
-  ${TASK_INGEST_ENDPOINT}
-- Header는 아래처럼 보낸다.
-  x-towercrane-ingest-key: .env의 TASK_INGEST_KEY 값 참고
+- POST 요청으로 아래 전용 API에 요청한다.
+  ${endpoint}
+- Header는 아래처럼 보낸다. 로그인 토큰이 아니라 Agent 전용 키를 사용한다.
+  x-towercrane-agent-key: <TOWERCRANE_AGENT_KEY>
   Content-Type: application/json
 - Body는 JSON으로 아래 형식을 채워서 요청한다.
-- TASK_INGEST_KEY는 운영 서버 .env 또는 Agent 실행 환경의 ~/.codex/task-ingest.env에서 참고한다.
-- 업무는 한 번에 1개만 등록한다.
+- tasks 배열에는 커밋 후 실제로 추적해야 하는 할일만 넣는다.
+- 할일이 없으면 API를 호출하지 말고 "등록할 할일 없음"이라고 보고한다.
+- 한 번에 최대 50개까지 보낼 수 있다.
 
 body json 예시:
 {
-  "title": "프로토타입 워크스페이스 삭제 기능 구현",
-  "content": "관리자가 프로토타입 워크스페이스를 안전하게 삭제할 수 있도록 삭제 API, 확인 다이어로그, 목록 갱신 흐름을 구현한다.",
-  "acceptanceCriteria": "- 삭제 버튼은 권한이 있는 사용자에게만 보인다.\\n- 삭제 전 워크스페이스명을 확인한다.\\n- 삭제 성공 후 워크스페이스 목록과 선택 상태가 갱신된다.\\n- 실패 시 사용자가 이해할 수 있는 오류 메시지를 보여준다.",
-  "plan": "1. 현재 워크스페이스 목록/상세/삭제 관련 서버 구조를 확인한다.\\n2. 서버에 삭제 가능 조건과 삭제 API를 연결한다.\\n3. 프론트에 확인 다이어로그와 삭제 액션을 추가한다.\\n4. 삭제 후 캐시 무효화와 라우팅 복귀를 검증한다.\\n5. 실패 케이스와 권한 케이스를 테스트한다.",
-  "folderStructure": "towercrane-for-uiux-server/src/tasks/\\ntowercrane-for-uiux-front/src/pages/task-workspace/\\ntowercrane-for-uiux-front/src/features/task/",
-  "mmdContent": "flowchart TD\\n  A[삭제 버튼 클릭] --> B[확인 다이어로그]\\n  B --> C[DELETE API 호출]\\n  C --> D[목록 캐시 갱신]\\n  D --> E[워크스페이스 목록 이동]",
-  "checklists": [
-    "삭제 권한 조건 확인",
-    "삭제 확인 다이어로그 구현",
-    "DELETE API 연동",
-    "삭제 후 목록 갱신 검증",
-    "실패 메시지 검증"
-  ],
-  "taskType": "FEATURE",
-  "status": "TODO",
-  "priority": "MEDIUM",
-  "dueDate": "2026-06-01"${workspaceJson}
+  "commitHash": "$(git rev-parse HEAD)",
+  "commitMessage": "$(git log -1 --pretty=%s)",
+  "source": "agent",
+  "tasks": [
+    {
+      "title": "완료 목록 다이어로그 모바일 폭 검증",
+      "content": "이번 커밋에서 완료 목록 다이어로그 배경과 버튼 높이를 조정했으므로 모바일/좁은 화면에서 레이아웃 깨짐 여부를 확인한다.",
+      "acceptanceCriteria": "- 390px 폭에서 버튼 줄바꿈이 자연스럽다.\\n- 다이어로그 배경은 블러 없이 살짝 어둡다.\\n- 닫기와 등록 버튼 높이가 동일하다.",
+      "plan": "1. 모바일 viewport로 완료 목록 다이어로그를 연다.\\n2. 헤더 버튼과 테이블 영역의 줄바꿈을 확인한다.\\n3. 필요 시 spacing을 조정한다.",
+      "folderStructure": "towercrane-for-uiux-front/src/features/task/ui/completed-tasks-dialog.tsx",
+      "taskType": "QA",
+      "status": "TODO",
+      "priority": "MEDIUM",
+      "dueDate": null
+    }
+  ]
 }
 
 필드 규칙:
-- title은 120자 이내로 쓴다.
+- tasks[].title은 필수이며 120자 이내로 쓴다.
 - content는 업무 배경과 구현 범위를 구체적으로 쓴다.
 - acceptanceCriteria는 완료 기준을 줄바꿈 문자열로 쓴다.
 - plan은 단계별 구현 계획을 번호 목록 문자열로 쓴다.
 - folderStructure는 예상 수정 경로를 줄바꿈 문자열로 쓴다.
-- checklists는 검증 가능한 작업 단위 배열로 쓴다.
 - taskType은 FEATURE, BUG, DOCS, DESIGN, REFACTOR, QA, CHORE 중 하나다.
 - status는 TODO, IN_PROGRESS, REVIEW, DONE, HOLD 중 하나다.
 - priority는 LOW, MEDIUM, HIGH, URGENT 중 하나다.
 - assigneeEmail은 실제 등록된 사용자 이메일이 있을 때만 넣고, 없으면 필드 자체를 생략한다.
-- workspaceId는 워크스페이스 목록 GET 응답의 id를 사용한다. 특정 워크스페이스가 없으면 생략한다.
-- 요청 성공 후 생성된 업무 URL과 taskId를 알려준다.`
+- completed가 true이면 DONE 상태로 등록된다.
+- 요청 성공 후 createdCount와 생성된 taskId 목록을 알려준다.`
 }
 
 type TaskToolbarProps = {
@@ -141,6 +152,7 @@ type TaskToolbarProps = {
   isFetching?: boolean
   onCreate: () => void
   onCreateFromFile?: (file: File) => void | Promise<void>
+  onCreateFromMarkdown?: (markdown: string) => void | Promise<void>
   isCreateFromFilePending?: boolean
   onRefresh: () => void
   showAssigneeFilter?: boolean
@@ -168,16 +180,31 @@ export function TaskToolbar({
   isFetching,
   onCreate,
   onCreateFromFile,
+  onCreateFromMarkdown,
   isCreateFromFilePending,
   onRefresh,
   showAssigneeFilter = true,
 }: TaskToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
-  const [helpTab, setHelpTab] = useState<TaskHelpTab>('form')
+  const [helpTab, setHelpTab] = useState<TaskHelpTab>('markdown')
+  const [markdownInput, setMarkdownInput] = useState('')
+  const [markdownTouched, setMarkdownTouched] = useState(false)
+  const [isMarkdownSubmitting, setIsMarkdownSubmitting] = useState(false)
   const [templateCopied, setTemplateCopied] = useState(false)
   const [aiCopiedKey, setAiCopiedKey] = useState<string | null>(null)
-  const aiPromptExample = buildTaskAiPromptExample(currentWorkspaceId, currentWorkspaceName)
+  const codexCurlExample = buildCodexCurlExample(currentWorkspaceId)
+  const codexPromptExample = buildCodexCommitPromptExample(currentWorkspaceId, currentWorkspaceName)
+  const markdownValidation = useMemo(
+    () => validateTaskMarkdown(markdownInput, '붙여넣기 입력.md'),
+    [markdownInput],
+  )
+  const markdownHasText = markdownInput.trim().length > 0
+  const markdownCanSubmit =
+    markdownHasText &&
+    markdownValidation.errors.length === 0 &&
+    Boolean(onCreateFromMarkdown) &&
+    !isMarkdownSubmitting
   const controlClassName = 'h-9 min-h-9 rounded-md'
   const controlButtonClassName =
     'h-9 min-h-9 rounded-md px-4 py-0 text-sm font-bold leading-none'
@@ -197,6 +224,33 @@ export function TaskToolbar({
       window.setTimeout(() => setTemplateCopied(false), 1500)
     } catch {
       toast.error('복사에 실패했습니다.')
+    }
+  }
+
+  const handleSubmitMarkdown = async () => {
+    setMarkdownTouched(true)
+    if (!onCreateFromMarkdown) return
+
+    if (!markdownHasText) {
+      toast.error('마크다운 내용을 입력하세요.')
+      return
+    }
+
+    if (markdownValidation.errors.length > 0) {
+      toast.error(markdownValidation.errors[0])
+      return
+    }
+
+    setIsMarkdownSubmitting(true)
+    try {
+      await onCreateFromMarkdown(markdownInput)
+      setMarkdownInput('')
+      setMarkdownTouched(false)
+      setHelpOpen(false)
+    } catch {
+      // 등록 실패 시 입력값을 유지합니다. 오류 메시지는 상위 등록 핸들러에서 표시합니다.
+    } finally {
+      setIsMarkdownSubmitting(false)
     }
   }
 
@@ -325,10 +379,19 @@ export function TaskToolbar({
             type="button"
             variant="secondary"
             className={controlButtonClassName}
-            onClick={() => openHelp('ai')}
+            onClick={() => openHelp('markdown')}
+          >
+            <FileText className="mr-2 size-4" />
+            MD 등록
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className={controlButtonClassName}
+            onClick={() => openHelp('codex')}
           >
             <Bot className="mr-2 size-4" />
-            AI 등록
+            Agent 입력
           </Button>
           <Button
             type="button"
@@ -351,7 +414,7 @@ export function TaskToolbar({
             className="h-9 min-h-9 w-9 rounded-md border-surface-border-soft bg-surface-raised text-text-primary shadow-none hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
             title="업무 등록 도움말"
             aria-label="업무 등록 도움말"
-            onClick={() => openHelp('form')}
+            onClick={() => openHelp('markdown')}
           >
             <HelpCircle className="size-4" />
           </Button>
@@ -368,14 +431,41 @@ export function TaskToolbar({
                   업무 등록 방법
                 </Dialog.Title>
                 <Dialog.Description className="mt-1 text-sm text-text-secondary">
-                  직접 입력하거나 정해진 마크다운 파일을 올려 업무와 구현 계획을 함께 만들 수 있습니다.
+                  마크다운을 직접 붙여넣거나 파일을 올려 업무와 구현 계획을 함께 만들 수 있습니다.
                 </Dialog.Description>
               </div>
-              <Dialog.Close asChild>
-                <Button variant="secondary" size="icon" aria-label="닫기">
-                  <X className="size-4" />
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-9"
+                  onClick={() =>
+                    helpTab === 'codex'
+                      ? handleCopyAiText('prompt', 'Agent 입력 프롬프트', codexPromptExample)
+                      : handleCopyTemplate()
+                  }
+                >
+                  {(helpTab === 'codex' && aiCopiedKey === 'prompt') ||
+                  (helpTab !== 'codex' && templateCopied) ? (
+                    <Check className="mr-1.5 size-3.5 text-brand-primary" />
+                  ) : (
+                    <Copy className="mr-1.5 size-3.5" />
+                  )}
+                  {helpTab === 'codex'
+                    ? aiCopiedKey === 'prompt'
+                      ? '복사됨'
+                      : '프롬프트 복사'
+                    : templateCopied
+                      ? '복사됨'
+                      : '형식 복사'}
                 </Button>
-              </Dialog.Close>
+                <Dialog.Close asChild>
+                  <Button variant="secondary" size="icon" aria-label="닫기">
+                    <X className="size-4" />
+                  </Button>
+                </Dialog.Close>
+              </div>
             </div>
 
             <Tabs.Root
@@ -385,10 +475,10 @@ export function TaskToolbar({
             >
               <Tabs.List className="grid grid-cols-3 rounded-md border border-surface-border-soft bg-surface-muted p-1">
                 <Tabs.Trigger
-                  value="form"
+                  value="markdown"
                   className="rounded-sm px-3 py-2 text-sm font-bold text-text-secondary data-[state=active]:bg-brand-primary data-[state=active]:text-text-on-brand"
                 >
-                  직접 등록
+                  MD 직접 입력
                 </Tabs.Trigger>
                 <Tabs.Trigger
                   value="file"
@@ -397,27 +487,140 @@ export function TaskToolbar({
                   파일로 등록
                 </Tabs.Trigger>
                 <Tabs.Trigger
-                  value="ai"
+                  value="codex"
                   className="rounded-sm px-3 py-2 text-sm font-bold text-text-secondary data-[state=active]:bg-brand-primary data-[state=active]:text-text-on-brand"
                 >
-                  AI 등록
+                  Agent 입력
                 </Tabs.Trigger>
               </Tabs.List>
 
-              <Tabs.Content value="form" className="mt-5 space-y-4">
-                <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
-                  <h3 className="text-sm font-black text-text-primary">새 업무</h3>
-                  <p className="mt-2 text-sm leading-6 text-text-secondary">
-                    제목, 내용, 유형, 상태, 우선순위, 담당자, 마감일을 화면에서 입력합니다.
-                    빠르게 업무를 만들거나 등록 후 계획/테스트/리뷰 탭에서 내용을 직접 다듬을 때 적합합니다.
-                  </p>
-                </div>
-                <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
-                  <h3 className="text-sm font-black text-text-primary">권장 사용</h3>
-                  <p className="mt-2 text-sm leading-6 text-text-secondary">
-                    세부 구현 계획이 아직 없을 때 사용합니다. 이후 업무 상세에서 완료 기준,
-                    단계별 계획, 체크리스트, 리뷰를 순서대로 채워 넣습니다.
-                  </p>
+              <Tabs.Content value="markdown" className="mt-5 space-y-4">
+                <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-black text-text-primary">마크다운 붙여넣기</h3>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="h-8"
+                        onClick={() => setMarkdownInput(TASK_FILE_TEMPLATE)}
+                      >
+                        예시 채우기
+                      </Button>
+                    </div>
+                    <Textarea
+                      value={markdownInput}
+                      onChange={(event) => {
+                        setMarkdownInput(event.target.value)
+                        setMarkdownTouched(true)
+                      }}
+                      placeholder="업무 등록 Markdown을 붙여넣으세요."
+                      className="min-h-[420px] resize-y font-mono text-xs leading-5"
+                      spellCheck={false}
+                    />
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-xs text-text-muted">
+                        {markdownHasText
+                          ? `${markdownInput.length.toLocaleString()}자 입력됨`
+                          : '등록 전에 필수 섹션과 frontmatter 값을 검사합니다.'}
+                      </div>
+                      <Button
+                        type="button"
+                        className="h-9"
+                        onClick={handleSubmitMarkdown}
+                        disabled={!markdownCanSubmit || isCreateFromFilePending}
+                      >
+                        {isMarkdownSubmitting || isCreateFromFilePending ? (
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                        ) : (
+                          <Check className="mr-2 size-4" />
+                        )}
+                        검증 후 등록
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div
+                      className={`rounded-md border p-4 ${
+                        markdownHasText && markdownValidation.errors.length === 0
+                          ? 'border-brand-border bg-brand-glass'
+                          : 'border-surface-border-soft bg-surface-muted'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        {markdownHasText && markdownValidation.errors.length === 0 ? (
+                          <Check className="mt-0.5 size-4 shrink-0 text-brand-primary" />
+                        ) : (
+                          <AlertCircle className="mt-0.5 size-4 shrink-0 text-text-muted" />
+                        )}
+                        <div>
+                          <h3 className="text-sm font-black text-text-primary">
+                            {markdownHasText && markdownValidation.errors.length === 0
+                              ? '등록 가능'
+                              : '형식 검사'}
+                          </h3>
+                          <p className="mt-1 text-xs leading-5 text-text-secondary">
+                            필수 섹션은 제목, 내용, 완료 기준, 단계별 계획입니다.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {markdownTouched && markdownValidation.errors.length > 0 ? (
+                      <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                        <h3 className="text-sm font-black text-text-primary">수정 필요</h3>
+                        <ul className="mt-2 space-y-1 text-xs leading-5 text-text-secondary">
+                          {markdownValidation.errors.map((issue) => (
+                            <li key={issue}>- {issue}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {markdownHasText && markdownValidation.warnings.length > 0 ? (
+                      <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                        <h3 className="text-sm font-black text-text-primary">확인 권장</h3>
+                        <ul className="mt-2 space-y-1 text-xs leading-5 text-text-secondary">
+                          {markdownValidation.warnings.map((issue) => (
+                            <li key={issue}>- {issue}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {markdownValidation.parsed ? (
+                      <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
+                        <h3 className="text-sm font-black text-text-primary">파싱 결과</h3>
+                        <dl className="mt-2 space-y-1 text-xs leading-5">
+                          <div>
+                            <dt className="inline font-bold text-text-primary">제목</dt>
+                            <dd className="inline text-text-secondary">
+                              {' '}
+                              {markdownValidation.parsed.payload.title}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="inline font-bold text-text-primary">유형/상태/우선순위</dt>
+                            <dd className="inline text-text-secondary">
+                              {' '}
+                              {markdownValidation.parsed.payload.taskType} /{' '}
+                              {markdownValidation.parsed.payload.status} /{' '}
+                              {markdownValidation.parsed.payload.priority}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="inline font-bold text-text-primary">체크리스트</dt>
+                            <dd className="inline text-text-secondary">
+                              {' '}
+                              {markdownValidation.parsed.checklistItems.length}개
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </Tabs.Content>
 
@@ -461,13 +664,13 @@ export function TaskToolbar({
                 </div>
               </Tabs.Content>
 
-              <Tabs.Content value="ai" className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+              <Tabs.Content value="codex" className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
                 <div className="space-y-4">
                   <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
-                    <h3 className="text-sm font-black text-text-primary">Agent 직접 등록 API</h3>
+                    <h3 className="text-sm font-black text-text-primary">Agent 할일 입력 API</h3>
                     <p className="mt-2 text-sm leading-6 text-text-secondary">
-                      로그인 세션 없이 ingest key로 업무 1개를 등록합니다. 업무 하나가 구현
-                      범위와 단계별 계획을 크게 가질 수 있으므로 여러 건 배치 등록은 쓰지 않습니다.
+                      커밋 후 남은 할일이나 후속 검증 항목을 현재 워크스페이스에 여러 건 등록하는
+                      전용 POST API입니다. Agent에게 아래 프롬프트를 그대로 전달하면 됩니다.
                     </p>
                     {currentWorkspaceId ? (
                       <div className="mt-3 rounded-md border border-brand-border bg-brand-glass px-3 py-2 text-xs leading-5 text-text-primary">
@@ -477,22 +680,19 @@ export function TaskToolbar({
                       </div>
                     ) : null}
                     <p className="mt-3 break-all rounded-md border border-surface-border-soft bg-surface-raised px-3 py-2 font-mono text-xs text-text-primary">
-                      POST {TASK_INGEST_ENDPOINT}
-                    </p>
-                    <p className="mt-2 break-all rounded-md border border-surface-border-soft bg-surface-raised px-3 py-2 font-mono text-xs text-text-primary">
-                      GET {TASK_INGEST_WORKSPACES_ENDPOINT}
+                      POST {getCodexCommitTasksEndpoint(currentWorkspaceId)}
                     </p>
                   </div>
 
                   <div className="rounded-md border border-surface-border-soft bg-surface-muted p-4">
                     <h3 className="text-sm font-black text-text-primary">필수 헤더</h3>
                     <p className="mt-2 text-sm leading-6 text-text-secondary">
-                      실제 키는 운영 서버의 <code className="rounded bg-surface-raised px-1">.env</code>
-                      또는 Agent 실행 환경에 있는 <code className="rounded bg-surface-raised px-1">TASK_INGEST_KEY</code> 값을
-                      사용합니다. 프론트 화면에는 키를 직접 노출하지 않습니다.
+                      이 API는 브라우저 로그인 토큰 대신 Agent 전용 키를 사용합니다.
+                      서버 환경 변수 <code className="rounded bg-surface-raised px-1">TOWERCRANE_AGENT_KEY</code>와
+                      같은 값을 요청 헤더에 넣게 지시하세요.
                     </p>
                     <ul className="mt-2 space-y-1 font-mono text-xs leading-6 text-text-secondary">
-                      <li>x-towercrane-ingest-key: &lt;TASK_INGEST_KEY&gt;</li>
+                      <li>x-towercrane-agent-key: &lt;TOWERCRANE_AGENT_KEY&gt;</li>
                       <li>Content-Type: application/json</li>
                     </ul>
                   </div>
@@ -525,15 +725,12 @@ export function TaskToolbar({
                         <dd className="inline text-text-secondary"> — Mermaid 흐름도.</dd>
                       </div>
                       <div>
-                        <dt className="inline font-mono font-semibold text-text-primary">checklists</dt>
-                        <dd className="inline text-text-secondary"> — 체크리스트 문자열 배열.</dd>
+                        <dt className="inline font-mono font-semibold text-text-primary">commitHash</dt>
+                        <dd className="inline text-text-secondary"> — 선택. 현재 커밋 SHA.</dd>
                       </div>
                       <div>
-                        <dt className="inline font-mono font-semibold text-text-primary">workspaceId</dt>
-                        <dd className="inline text-text-secondary">
-                          {' '}
-                          — `GET /workspaces` 응답의 id. 특정 워크스페이스가 없으면 생략.
-                        </dd>
+                        <dt className="inline font-mono font-semibold text-text-primary">tasks</dt>
+                        <dd className="inline text-text-secondary"> — 등록할 할일 배열. 1~50개.</dd>
                       </div>
                     </dl>
                   </div>
@@ -543,7 +740,7 @@ export function TaskToolbar({
                   <div className="relative">
                     <button
                       type="button"
-                      onClick={() => handleCopyAiText('curl', 'cURL 예시', TASK_AI_CURL_EXAMPLE)}
+                      onClick={() => handleCopyAiText('curl', 'cURL 예시', codexCurlExample)}
                       className="ui-icon-button absolute right-2 top-2 z-10 flex items-center gap-1 px-2 py-1 text-xs font-bold"
                       title="cURL 예시 복사"
                       aria-label="cURL 예시 복사"
@@ -557,17 +754,17 @@ export function TaskToolbar({
                     </button>
                     <h3 className="mb-2 text-sm font-black text-text-primary">Agent 호출 예시</h3>
                     <pre className="overflow-auto rounded-md border border-surface-border-soft bg-surface-strong p-4 pt-12 text-xs leading-5 text-text-primary">
-{TASK_AI_CURL_EXAMPLE}
+{codexCurlExample}
                     </pre>
                   </div>
 
                   <div className="relative">
                     <button
                       type="button"
-                      onClick={() => handleCopyAiText('prompt', 'AI 생성 프롬프트', aiPromptExample)}
+                      onClick={() => handleCopyAiText('prompt', 'Agent 입력 프롬프트', codexPromptExample)}
                       className="ui-icon-button absolute right-2 top-2 z-10 flex items-center gap-1 px-2 py-1 text-xs font-bold"
-                      title="AI 생성 프롬프트 복사"
-                      aria-label="AI 생성 프롬프트 복사"
+                      title="Agent 입력 프롬프트 복사"
+                      aria-label="Agent 입력 프롬프트 복사"
                     >
                       {aiCopiedKey === 'prompt' ? (
                         <Check className="h-3.5 w-3.5 text-brand-primary" />
@@ -576,9 +773,9 @@ export function TaskToolbar({
                       )}
                       <span>{aiCopiedKey === 'prompt' ? '복사됨' : '복사'}</span>
                     </button>
-                    <h3 className="mb-2 text-sm font-black text-text-primary">AI 생성 프롬프트</h3>
+                    <h3 className="mb-2 text-sm font-black text-text-primary">Agent에게 입력할 프롬프트</h3>
                     <pre className="max-h-[520px] overflow-auto rounded-md border border-surface-border-soft bg-surface-strong p-4 pt-12 text-xs leading-5 text-text-primary">
-{aiPromptExample}
+{codexPromptExample}
                     </pre>
                   </div>
                 </div>

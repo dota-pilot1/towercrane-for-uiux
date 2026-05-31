@@ -38,11 +38,20 @@ export function Mermaid({ chart, className = '' }: MermaidProps) {
       } catch (error) {
         if (cancelled) return
         const message = error instanceof Error ? error.message : String(error)
+        const isDevServerModuleError =
+          message.includes('Failed to fetch dynamically imported module') ||
+          message.includes('/node_modules/.vite/deps/')
+        const title = isDevServerModuleError
+          ? 'Mermaid 모듈 로딩 실패'
+          : 'Mermaid 렌더링 실패'
+        const description = isDevServerModuleError
+          ? '개발 서버 캐시가 갱신되는 중입니다. 새로고침 후 다시 확인하세요.'
+          : message
         if (containerRef.current) {
           containerRef.current.innerHTML = `
             <div class="p-3 rounded-lg border border-rose-500/30 bg-rose-500/5 text-xs text-rose-200">
-              <p class="font-semibold mb-1.5">❌ Mermaid 렌더링 실패</p>
-              <pre class="whitespace-pre-wrap text-[11px] text-rose-200/80 font-mono">${escapeHtml(message)}</pre>
+              <p class="font-semibold mb-1.5">${escapeHtml(title)}</p>
+              <pre class="whitespace-pre-wrap text-[11px] text-rose-200/80 font-mono">${escapeHtml(description)}</pre>
             </div>
           `
         }

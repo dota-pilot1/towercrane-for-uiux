@@ -4,6 +4,7 @@ import {
   createRouter,
   Outlet,
   useNavigate,
+  useRouterState,
   useSearch,
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
@@ -11,6 +12,7 @@ import { FileText, UserCog } from 'lucide-react'
 import { Toaster } from 'sonner'
 
 import { AppHeader } from '../widgets/app-header/ui/app-header'
+import { TaskChatbotButton } from '../widgets/task-chatbot/ui/task-chatbot-button'
 import { LoginPage } from '../pages/auth/ui/login-page'
 import { WorkbenchPage } from '../pages/workbench/ui/workbench-page'
 import { PrototypeWorkspaceHomePage } from '../pages/prototype-workspace/ui/prototype-workspace-home-page'
@@ -191,6 +193,7 @@ function AppLayout() {
   const themeColor = useUiStore((s) => s.themeColor)
   const navigate = useNavigate()
   const currentUserQuery = useCurrentUser(hasHydrated && token.length > 0)
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
 
   useEffect(() => {
     document.documentElement.setAttribute(
@@ -216,12 +219,15 @@ function AppLayout() {
 
   if (!hasHydrated || !isAuthenticated) return null
 
+  const isTaskArea = pathname === '/task' || pathname.startsWith('/task/')
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="w-full min-w-0 px-4 pb-10 pt-5 sm:px-5 lg:px-6">
         <Outlet />
       </main>
+      {isTaskArea && <TaskChatbotButton />}
     </div>
   )
 }

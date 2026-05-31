@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { taskApi } from '../../../entities/task/api/task-api'
 import type {
+  CreateCompletedTasksRequest,
   CreateTaskRequest,
   CreateTaskWorkspaceRequest,
   Task,
@@ -59,6 +60,22 @@ export function useCreateTask() {
     },
     onError: (error) =>
       toast.error(messageFromError(error, '업무 생성에 실패했습니다.')),
+  })
+}
+
+export function useCreateCompletedTasks(workspaceId?: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateCompletedTasksRequest) =>
+      workspaceId
+        ? taskApi.createWorkspaceCompletedTasks(workspaceId, body)
+        : taskApi.createCompleted(body),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.all })
+      toast.success(`완료 업무 ${result.createdCount}개가 등록되었습니다.`)
+    },
+    onError: (error) =>
+      toast.error(messageFromError(error, '완료 업무 등록에 실패했습니다.')),
   })
 }
 

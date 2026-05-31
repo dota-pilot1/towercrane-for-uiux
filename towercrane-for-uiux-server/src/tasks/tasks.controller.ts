@@ -38,6 +38,11 @@ export class TasksController {
     return this.tasksService.restoreTasks(user, body);
   }
 
+  @Post('completed/bulk')
+  createCompletedTasks(@CurrentUser() user: TaskUser, @Body() body: unknown) {
+    return this.tasksService.createCompletedTasks(user, null, body);
+  }
+
   // ── Workspace endpoints (정적 라우트 — :taskId 보다 먼저 등록) ─────────────
 
   @Get('workspaces')
@@ -91,6 +96,33 @@ export class TasksController {
     @Body() body: unknown,
   ) {
     return this.tasksService.createWorkspaceTask(user, workspaceId, body);
+  }
+
+  @Post('workspaces/:workspaceId/completed/bulk')
+  createWorkspaceCompletedTasksEarly(
+    @CurrentUser() user: TaskUser,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.tasksService.createCompletedTasks(user, workspaceId, body);
+  }
+
+  @Post('workspaces/:workspaceId/codex/commit-tasks')
+  createWorkspaceCodexCommitTasksEarly(
+    @CurrentUser() user: TaskUser,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.tasksService.createCodexCommitTasks(user, workspaceId, body);
+  }
+
+  @Post('workspaces/:workspaceId/agent/commit-tasks')
+  createWorkspaceAgentCommitTasksEarly(
+    @CurrentUser() user: TaskUser,
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.tasksService.createCodexCommitTasks(user, workspaceId, body);
   }
 
   @Get(':taskId')

@@ -21,6 +21,7 @@ import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 import { Select } from '../../../shared/ui/select'
 import { Textarea } from '../../../shared/ui/textarea'
+import { AssigneeSelect } from './assignee-select'
 import {
   useCreateTask,
   useCreateWorkspaceTask,
@@ -271,25 +272,19 @@ export function TaskFormDialog({
                   <span className="text-xs font-bold text-text-secondary">
                     담당자
                   </span>
-                  <Select
+                  <AssigneeSelect
                     value={form.assigneeId}
+                    users={users}
                     disabled={
                       lockAssigneeToCurrentUser || form.scope === 'PERSONAL'
                     }
-                    onChange={(event) =>
+                    onChange={(assigneeId) =>
                       setForm((prev) => ({
                         ...prev,
-                        assigneeId: event.target.value,
+                        assigneeId,
                       }))
                     }
-                  >
-                    <option value="">미지정</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name}
-                      </option>
-                    ))}
-                  </Select>
+                  />
                 </label>
 
                 <label className="block space-y-1.5 sm:col-span-2">

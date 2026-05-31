@@ -32,19 +32,19 @@ export function PrototypeWorkspaceHomePage() {
 
   return (
     <div className="w-full min-w-0 ui-page-bg space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-surface-border bg-surface-muted px-4 py-3.5 shadow-sm">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
             <GitBranch className="size-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-widest text-brand-primary">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-brand-primary">
               Prototype Workspaces
             </p>
-            <h2 className="mt-1 text-2xl font-black leading-tight text-text-primary">
+            <h2 className="mt-0.5 text-lg font-black leading-tight text-text-primary tracking-tight">
               설계 및 프로토타입 공간
             </h2>
-            <p className="mt-1 text-sm text-text-secondary">
+            <p className="mt-0.5 text-xs text-text-secondary">
               팀별 프로토타입과 설계 문서를 워크스페이스로 분리하여 체계적으로 카탈로그를 빌드합니다.
             </p>
           </div>
@@ -52,7 +52,7 @@ export function PrototypeWorkspaceHomePage() {
         {isAuthenticated ? <CreateWorkspaceDialog /> : null}
       </div>
 
-      <div className="min-h-[calc(100dvh-180px)] rounded-2xl border border-surface-border-soft bg-surface-raised/20 p-6 backdrop-blur-sm shadow-sm">
+      <div className="min-h-[calc(100dvh-180px)] ui-panel p-6 shadow-sm">
         {workspacesQuery.isLoading ? (
           <div className="flex min-h-[320px] items-center justify-center text-sm ui-text-muted">
             <LoaderCircle className="mr-2 size-4 animate-spin" />
@@ -74,8 +74,8 @@ export function PrototypeWorkspaceHomePage() {
             ))}
           </div>
         ) : (
-          <div className="flex min-h-[320px] flex-col items-center justify-center text-center rounded-2xl border border-dashed border-surface-border-soft bg-surface-raised/40 p-12">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-brand-glass border border-brand-border text-brand-primary mb-4">
+          <div className="flex min-h-[320px] flex-col items-center justify-center text-center rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-12 py-14">
+            <div className="flex size-14 items-center justify-center rounded-md bg-brand-glass border border-brand-border text-brand-primary mb-4">
               <GitBranch className="size-7" />
             </div>
             <h3 className="text-base font-bold ui-text-primary mb-1">
@@ -102,7 +102,7 @@ function PrototypeWorkspaceCard({ workspace, onOpen }: PrototypeWorkspaceCardPro
   const canManage = workspace.role === 'owner'
 
   return (
-    <div className="group flex min-h-[196px] flex-col justify-between rounded-xl border border-surface-border bg-surface-raised p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:bg-brand-glass hover:shadow-[0_12px_24px_color-mix(in_srgb,var(--primary)_8%,transparent)]">
+    <div className="group flex min-h-[196px] flex-col justify-between rounded-md border border-surface-border bg-surface-raised p-5 text-left shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-border hover:bg-surface-muted/30 hover:shadow-xs">
       <div className="flex items-start justify-between gap-3">
         <button
           type="button"
@@ -171,7 +171,7 @@ function PrototypeWorkspaceCard({ workspace, onOpen }: PrototypeWorkspaceCardPro
         onClick={onOpen}
         className="mt-6 grid w-full grid-cols-2 gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
       >
-        <div className="rounded-xl border border-surface-border-soft bg-surface-raised px-4 py-3 transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div className="rounded-md border border-surface-border-soft bg-surface-raised px-4 py-3 transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">
             Categories
           </div>
@@ -179,7 +179,7 @@ function PrototypeWorkspaceCard({ workspace, onOpen }: PrototypeWorkspaceCardPro
             {workspace.categoryCount}
           </div>
         </div>
-        <div className="rounded-xl border border-surface-border-soft bg-surface-raised px-4 py-3 transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div className="rounded-md border border-surface-border-soft bg-surface-raised px-4 py-3 transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">
             Prototypes
           </div>

@@ -310,15 +310,15 @@ function ApiWorkspaceHome({
   return (
     <section className="ui-page-bg min-h-[calc(100vh-8rem)] pb-10">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-1 sm:px-2">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-surface-border bg-surface-muted px-4 py-3.5 shadow-sm">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-widest text-brand-primary">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-brand-primary">
               Postman Workspaces
             </p>
-            <h2 className="mt-1 text-2xl font-black leading-tight text-text-primary">
+            <h2 className="mt-0.5 text-lg font-black leading-tight text-text-primary tracking-tight">
               팀별 API 요청 공간
             </h2>
-            <p className="mt-1 text-sm text-text-secondary">
+            <p className="mt-0.5 text-xs text-text-secondary">
               워크스페이스를 선택하면 해당 팀의 컬렉션과 요청을 관리합니다.
             </p>
           </div>
@@ -330,13 +330,13 @@ function ApiWorkspaceHome({
               onClick={() => setAdding(true)}
             >
               <Plus className="mr-1.5 size-4" />
-              워크스페이스
+              워크스페이스 추가
             </Button>
           ) : null}
         </div>
 
         {adding ? (
-          <div className="ui-panel p-5 bg-surface-raised border border-brand-border shadow-md rounded-xl animate-fade-in">
+          <div className="ui-panel p-5 bg-surface-raised border border-surface-border shadow-md rounded-md animate-fade-in">
             <div className="grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] md:items-end">
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-text-secondary">
@@ -418,13 +418,13 @@ function ApiWorkspaceHome({
                 key={team.id}
                 type="button"
                 onClick={() => onOpenWorkspace(team.id)}
-                className="group flex min-h-[176px] flex-col justify-between rounded-xl border border-surface-border bg-surface-raised p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:bg-brand-glass hover:shadow-[0_12px_24px_color-mix(in_srgb,var(--primary)_8%,transparent)]"
+                className="group flex min-h-[176px] flex-col justify-between rounded-md border border-surface-border bg-surface-raised p-5 text-left shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-border hover:bg-surface-muted/30 hover:shadow-xs"
               >
                 <div className="flex items-start justify-between gap-3 w-full">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
                     <FileJson className="size-5" />
                   </span>
-                  <span className="rounded-full bg-brand-glass border border-brand-border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-brand-primary">
+                  <span className="rounded-full bg-brand-glass border border-brand-border/40 px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-brand-primary">
                     Workspace
                   </span>
                 </div>
@@ -442,7 +442,7 @@ function ApiWorkspaceHome({
                     <span className="opacity-45 text-[10px]">•</span>
                     <span>{team.endpointCount ?? 0} requests</span>
                   </div>
-                  <span className="flex items-center gap-1 text-xs font-black text-brand-primary bg-brand-glass border border-brand-border rounded-lg px-2.5 py-1.5 transition-all group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-[0_2px_8px_color-mix(in_srgb,var(--primary)_20%,transparent)]">
+                  <span className="flex items-center gap-1 text-xs font-black text-brand-primary bg-brand-glass border border-brand-border rounded-md px-2.5 py-1.5 transition-all group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-[0_2px_8px_color-mix(in_srgb,var(--primary)_20%,transparent)]">
                     Open
                     <Send className="size-3 transition-transform group-hover:translate-x-0.5" />
                   </span>

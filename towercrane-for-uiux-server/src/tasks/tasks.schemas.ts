@@ -22,6 +22,38 @@ export const taskPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
 export const taskScopeSchema = z.enum(['TEAM', 'PERSONAL']);
 export const taskVisibilitySchema = z.enum(['TEAM', 'PRIVATE']);
 
+function linesFromText(value: unknown) {
+  if (typeof value !== 'string') return [];
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((title) => ({ title }));
+}
+
+function normalizeBulkCompletedPayload(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return value;
+  }
+
+  const payload = value as Record<string, unknown>;
+  const textItems = [
+    ...linesFromText(payload.text),
+    ...linesFromText(payload.textarea),
+    ...linesFromText(payload.completedText),
+  ];
+  const arrayItems = Array.isArray(payload.items)
+    ? payload.items
+    : Array.isArray(payload.titles)
+      ? payload.titles
+      : [];
+
+  return {
+    ...payload,
+    items: [...arrayItems, ...textItems],
+  };
+}
+
 const queryBooleanSchema = z.preprocess((value) => {
   if (value === undefined || value === null || value === '') return undefined;
   if (value === true || value === 'true') return true;
@@ -60,6 +92,85 @@ export const createTaskSchema = z.object({
   assigneeId: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
 });
+
+export const createCompletedTasksSchema = z.object({
+  scope: taskScopeSchema.default('TEAM'),
+  visibility: taskVisibilitySchema.optional(),
+  assigneeId: z.string().nullable().optional(),
+  items: z
+    .array(
+      z
+        .union([
+          z.string().trim().min(1).max(120),
+          z.object({
+            title: z.string().trim().min(1).max(120),
+          }),
+        ])
+        .transform((item) =>
+          typeof item === 'string' ? { title: item } : item,
+        ),
+    )
+    .min(1)
+    .max(50),
+});
+
+export const createCompletedTasksRequestSchema = z.preprocess(
+  normalizeBulkCompletedPayload,
+  createCompletedTasksSchema,
+);
+
+const codexCommitTaskSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  content: z.string().max(5000).optional().default(''),
+  acceptanceCriteria: z.string().max(8000).optional().default(''),
+  plan: z.string().max(8000).optional().default(''),
+  folderStructure: z.string().max(8000).optional().default(''),
+  mmdContent: z.string().max(20000).optional().default(''),
+  taskType: taskTypeSchema.default('CHORE'),
+  status: taskStatusSchema.default('TODO'),
+  priority: taskPrioritySchema.default('MEDIUM'),
+  assigneeId: z.string().nullable().optional(),
+  assigneeEmail: z.string().email().optional(),
+  dueDate: z.string().nullable().optional(),
+  completed: z.boolean().optional().default(false),
+});
+
+function normalizeCodexCommitPayload(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return value;
+  }
+
+  const payload = value as Record<string, unknown>;
+  const textTasks = linesFromText(payload.completedText).map((item) => ({
+    ...item,
+    completed: true,
+    taskType: 'CHORE',
+    status: 'DONE',
+  }));
+  const arrayTasks = Array.isArray(payload.tasks)
+    ? payload.tasks
+    : Array.isArray(payload.items)
+      ? payload.items
+      : [];
+
+  return {
+    ...payload,
+    tasks: [...arrayTasks, ...textTasks],
+  };
+}
+
+export const createCodexCommitTasksSchema = z.preprocess(
+  normalizeCodexCommitPayload,
+  z.object({
+    commitHash: z.string().trim().max(80).optional(),
+    commitMessage: z.string().trim().max(300).optional(),
+    source: z.string().trim().max(80).optional().default('codex'),
+    tasks: z
+      .array(codexCommitTaskSchema)
+      .min(1)
+      .max(50),
+  }),
+);
 
 export const updateTaskSchema = createTaskSchema
   .partial()
@@ -148,6 +259,12 @@ export const reorderTaskWorkspacesSchema = z.object({
 
 export type ListTasksQuery = z.infer<typeof listTasksQuerySchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+export type CreateCompletedTasksInput = z.infer<
+  typeof createCompletedTasksRequestSchema
+>;
+export type CreateCodexCommitTasksInput = z.infer<
+  typeof createCodexCommitTasksSchema
+>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type CreateTaskWorkspaceInput = z.infer<
   typeof createTaskWorkspaceSchema

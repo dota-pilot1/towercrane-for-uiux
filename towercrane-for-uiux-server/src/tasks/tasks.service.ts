@@ -2,7 +2,10 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import type { Request } from 'express';
 import { and, asc, desc, eq, like, or, sql, type SQL } from 'drizzle-orm';
@@ -33,7 +36,9 @@ import {
 import {
   createChecklistSchema,
   createAttachmentSchema,
+  createCodexCommitTasksSchema,
   createCommentSchema,
+  createCompletedTasksRequestSchema,
   createTaskSchema,
   createTaskWorkspaceSchema,
   listTasksQuerySchema,
@@ -58,7 +63,10 @@ export type TaskUser = {
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly configService: ConfigService,
+  ) {}
 
   private get db() {
     return this.databaseService.db;
@@ -978,6 +986,7 @@ export class TasksService {
     const reporter = usersById.get(task.reporterId);
     const assignee = task.assigneeId ? usersById.get(task.assigneeId) : null;
     const owner = task.ownerId ? usersById.get(task.ownerId) : null;
+    const completion = this.getTaskCompletionMeta(task, usersById);
 
     return {
       ...task,
@@ -987,6 +996,47 @@ export class TasksService {
       assigneeEmail: assignee?.email ?? null,
       ownerName: owner?.name ?? null,
       ownerEmail: owner?.email ?? null,
+      completedById: completion.completedById,
+      completedByName: completion.completedByName,
+      completedAt: completion.completedAt,
+    };
+  }
+
+  private getTaskCompletionMeta(task: TaskRow, usersById: Map<string, UserRow>) {
+    if (task.status !== 'DONE') {
+      return {
+        completedById: null,
+        completedByName: null,
+        completedAt: null,
+      };
+    }
+
+    const doneLog = this.db
+      .select()
+      .from(taskActivityLogsTable)
+      .where(
+        and(
+          eq(taskActivityLogsTable.taskId, task.id),
+          eq(taskActivityLogsTable.activityType, 'STATUS'),
+          eq(taskActivityLogsTable.toValue, 'DONE'),
+        ),
+      )
+      .orderBy(desc(taskActivityLogsTable.createdAt))
+      .limit(1)
+      .get();
+
+    const completedById =
+      doneLog?.actorId ?? task.assigneeId ?? task.reporterId ?? null;
+    const completedBy = completedById ? usersById.get(completedById) : null;
+    const fallbackCompletedBy =
+      (task.assigneeId ? usersById.get(task.assigneeId) : null) ??
+      usersById.get(task.reporterId) ??
+      null;
+
+    return {
+      completedById,
+      completedByName: completedBy?.name ?? fallbackCompletedBy?.name ?? null,
+      completedAt: doneLog?.createdAt ?? task.updatedAt,
     };
   }
 
@@ -1267,6 +1317,252 @@ export class TasksService {
     });
 
     return this.getTaskDetail(user, row.id);
+  }
+
+  createCompletedTasks(
+    user: TaskUser,
+    workspaceId: string | null,
+    payload: unknown,
+  ) {
+    if (workspaceId) this.ensureWorkspace(workspaceId);
+    const input = createCompletedTasksRequestSchema.parse(payload);
+    const isPersonalTask = input.scope === 'PERSONAL';
+    const assigneeId = isPersonalTask
+      ? (input.assigneeId ?? user.id)
+      : (input.assigneeId ?? null);
+    const ownerId = isPersonalTask ? user.id : null;
+    const visibility =
+      input.visibility ?? (isPersonalTask ? 'PRIVATE' : 'TEAM');
+
+    this.ensureAssignableUser(assigneeId);
+
+    const now = new Date().toISOString();
+    const orderQuery = this.db
+      .select({ orderIdx: tasksTable.orderIdx })
+      .from(tasksTable);
+    const maxOrder = (workspaceId
+      ? orderQuery.where(eq(tasksTable.workspaceId, workspaceId)).all()
+      : orderQuery.all()
+    ).reduce((max, row) => Math.max(max, row.orderIdx), -1);
+
+    const rows = input.items.map((item, index): TaskRow => ({
+      id: `task-${randomUUID().slice(0, 12)}`,
+      workspaceId: workspaceId ?? null,
+      title: item.title,
+      content: '',
+      acceptanceCriteria: '',
+      plan: '',
+      folderStructure: '',
+      mmdContent: '',
+      taskType: 'CHORE',
+      status: 'DONE',
+      priority: 'MEDIUM',
+      scope: input.scope,
+      ownerId,
+      visibility,
+      reporterId: user.id,
+      assigneeId,
+      dueDate: null,
+      orderIdx: maxOrder + index + 1,
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+    if (rows.length > 0) {
+      this.db.insert(tasksTable).values(rows).run();
+    }
+
+    for (const row of rows) {
+      this.recordActivity({
+        taskId: row.id,
+        actorId: user.id,
+        activityType: 'CREATED',
+        toValue: row.id,
+        message: '완료 업무가 생성되었습니다.',
+      });
+      this.recordActivity({
+        taskId: row.id,
+        actorId: user.id,
+        activityType: 'STATUS',
+        fromValue: 'TODO',
+        toValue: 'DONE',
+        message: '업무 상태가 완료로 등록되었습니다.',
+      });
+    }
+
+    const usersById = this.getUsersById();
+    return {
+      success: true,
+      createdCount: rows.length,
+      failedCount: 0,
+      items: rows.map((task) => this.toTaskDto(task, usersById)),
+    };
+  }
+
+  createCodexCommitTasks(
+    user: TaskUser,
+    workspaceId: string,
+    payload: unknown,
+  ) {
+    this.ensureWorkspace(workspaceId);
+    const input = createCodexCommitTasksSchema.parse(payload);
+    const usersById = this.getUsersById();
+    const usersByEmail = new Map(
+      Array.from(usersById.values()).map((targetUser) => [
+        targetUser.email,
+        targetUser,
+      ]),
+    );
+    const now = new Date().toISOString();
+    const maxOrder = this.db
+      .select({ orderIdx: tasksTable.orderIdx })
+      .from(tasksTable)
+      .where(eq(tasksTable.workspaceId, workspaceId))
+      .all()
+      .reduce((max, row) => Math.max(max, row.orderIdx), -1);
+
+    const rows = input.tasks.map((item, index): TaskRow => {
+      const emailAssigneeId = item.assigneeEmail
+        ? (usersByEmail.get(item.assigneeEmail)?.id ?? null)
+        : null;
+      const assigneeId = item.assigneeId ?? emailAssigneeId;
+      this.ensureAssignableUser(assigneeId ?? null);
+
+      return {
+        id: `task-${randomUUID().slice(0, 12)}`,
+        workspaceId,
+        title: item.title,
+        content: item.content,
+        acceptanceCriteria: item.acceptanceCriteria,
+        plan: item.plan,
+        folderStructure: item.folderStructure,
+        mmdContent: item.mmdContent,
+        taskType: item.taskType,
+        status: item.completed ? 'DONE' : item.status,
+        priority: item.priority,
+        scope: 'TEAM',
+        ownerId: null,
+        visibility: 'TEAM',
+        reporterId: user.id,
+        assigneeId,
+        dueDate: item.dueDate ?? null,
+        orderIdx: maxOrder + index + 1,
+        archived: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+    });
+
+    if (rows.length > 0) {
+      this.db.insert(tasksTable).values(rows).run();
+    }
+
+    const commitLabel = input.commitHash
+      ? ` (${input.commitHash.slice(0, 12)})`
+      : '';
+    for (const row of rows) {
+      this.recordActivity({
+        taskId: row.id,
+        actorId: user.id,
+        activityType: 'CREATED',
+        toValue: row.id,
+        message: `${input.source} 커밋 할일로 생성되었습니다${commitLabel}.`,
+      });
+      if (row.status === 'DONE') {
+        this.recordActivity({
+          taskId: row.id,
+          actorId: user.id,
+          activityType: 'STATUS',
+          fromValue: 'TODO',
+          toValue: 'DONE',
+          message: 'Codex 커밋 할일이 완료 상태로 등록되었습니다.',
+        });
+      }
+    }
+
+    return {
+      success: true,
+      workspaceId,
+      source: input.source,
+      commitHash: input.commitHash ?? null,
+      commitMessage: input.commitMessage ?? null,
+      createdCount: rows.length,
+      taskIds: rows.map((task) => task.id),
+      items: rows.map((task) => this.toTaskDto(task, usersById)),
+    };
+  }
+
+  createAgentCommitTasks(
+    agentKey: string | undefined,
+    workspaceId: string,
+    payload: unknown,
+  ) {
+    this.assertAgentKey(agentKey);
+    return this.createCodexCommitTasks(
+      this.resolveAgentReporter(),
+      workspaceId,
+      payload,
+    );
+  }
+
+  private assertAgentKey(inputKey?: string) {
+    const expectedKey =
+      this.configService.get<string>('TOWERCRANE_AGENT_KEY') ??
+      this.configService.get<string>('TASK_INGEST_KEY');
+
+    if (!expectedKey) {
+      throw new ServiceUnavailableException(
+        'TOWERCRANE_AGENT_KEY is not configured',
+      );
+    }
+
+    if (!inputKey || inputKey !== expectedKey) {
+      throw new UnauthorizedException('Invalid Towercrane agent key');
+    }
+  }
+
+  private resolveAgentReporter(): TaskUser {
+    const reporterEmail =
+      this.configService.get<string>('TOWERCRANE_AGENT_REPORTER_EMAIL') ??
+      this.configService.get<string>('TASK_INGEST_REPORTER_EMAIL');
+
+    if (reporterEmail) {
+      const reporter = this.db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.email, reporterEmail))
+        .get();
+      if (reporter) return this.toTaskUser(reporter);
+    }
+
+    const admin = this.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.role, 'admin'))
+      .orderBy(asc(usersTable.createdAt))
+      .get();
+    if (admin) return this.toTaskUser(admin);
+
+    const firstUser = this.db
+      .select()
+      .from(usersTable)
+      .orderBy(asc(usersTable.createdAt))
+      .get();
+    if (firstUser) return this.toTaskUser(firstUser);
+
+    throw new ServiceUnavailableException(
+      'No user exists for Towercrane agent ingest',
+    );
+  }
+
+  private toTaskUser(user: UserRow): TaskUser {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role === 'admin' ? 'admin' : 'user',
+    };
   }
 
   private ensureWorkspace(workspaceId: string) {

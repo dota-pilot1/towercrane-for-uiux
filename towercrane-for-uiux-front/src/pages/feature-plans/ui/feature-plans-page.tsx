@@ -200,35 +200,39 @@ export function FeaturePlansPage({ planId = null }: FeaturePlansPageProps) {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-7xl flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <PageHeader icon={CheckSquare} title="기능 개발 계획" />
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept=".md,.markdown,.txt"
-            onChange={uploadPlanFile}
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={createMutation.isPending}
-          >
-            {createMutation.isPending ? (
-              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-            ) : (
-              <Upload className="mr-1.5 size-3.5" />
-            )}
-            계획 파일 업로드
-          </Button>
-        </div>
-      </div>
+    <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-full flex-col gap-4">
+      <PageHeader
+        icon={CheckSquare}
+        title="기능 개발 계획"
+        description="Markdown 형식의 설계 문서를 업로드하여 기능 요구사항, 완료 조건 및 세부 구현 계획을 체계적으로 관리합니다."
+        actions={
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".md,.markdown,.txt"
+              onChange={uploadPlanFile}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <Upload className="mr-1.5 size-3.5" />
+              )}
+              계획 파일 업로드
+            </Button>
+          </div>
+        }
+      />
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[460px_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
         <section className="flex min-h-0 flex-col rounded-md border border-surface-border bg-surface-raised">
           <div className="flex shrink-0 items-center justify-between border-b border-surface-border-soft px-4 py-2.5">
             <div className="flex items-center gap-2 text-xs font-extrabold text-text-primary">

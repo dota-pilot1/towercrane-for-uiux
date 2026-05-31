@@ -60,6 +60,9 @@ export type Task = {
   ownerId?: string | null
   ownerName?: string | null
   ownerEmail?: string | null
+  completedById?: string | null
+  completedByName?: string | null
+  completedAt?: string | null
   dueDate?: string | null
   orderIdx: number
   archived: boolean
@@ -102,6 +105,57 @@ export type CreateTaskRequest = {
   visibility?: TaskVisibility
   assigneeId?: string | null
   dueDate?: string | null
+}
+
+export type CreateCompletedTasksRequest = {
+  scope?: TaskScope
+  visibility?: TaskVisibility
+  assigneeId?: string | null
+  text?: string
+  textarea?: string
+  completedText?: string
+  titles?: string[]
+  items?: Array<string | { title: string }>
+}
+
+export type CreateCompletedTasksResponse = {
+  success: boolean
+  createdCount: number
+  failedCount: number
+  items: Task[]
+}
+
+export type CreateCodexCommitTasksRequest = {
+  commitHash?: string
+  commitMessage?: string
+  source?: string
+  completedText?: string
+  tasks?: Array<{
+    title: string
+    content?: string
+    acceptanceCriteria?: string
+    plan?: string
+    folderStructure?: string
+    mmdContent?: string
+    taskType?: TaskType
+    status?: TaskStatus
+    priority?: TaskPriority
+    assigneeId?: string | null
+    assigneeEmail?: string
+    dueDate?: string | null
+    completed?: boolean
+  }>
+}
+
+export type CreateCodexCommitTasksResponse = {
+  success: boolean
+  workspaceId: string
+  source: string
+  commitHash: string | null
+  commitMessage: string | null
+  createdCount: number
+  taskIds: string[]
+  items: Task[]
 }
 
 export type UpdateTaskRequest = Partial<CreateTaskRequest>

@@ -1,5 +1,9 @@
 import { apiRequest } from '../../../shared/api/http'
 import type {
+  CreateCompletedTasksRequest,
+  CreateCompletedTasksResponse,
+  CreateCodexCommitTasksRequest,
+  CreateCodexCommitTasksResponse,
   CreateTaskRequest,
   CreateTaskWorkspaceRequest,
   Task,
@@ -38,6 +42,12 @@ export const taskApi = {
 
   create: (body: CreateTaskRequest) =>
     apiRequest<Task>('/tasks', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  createCompleted: (body: CreateCompletedTasksRequest) =>
+    apiRequest<CreateCompletedTasksResponse>('/tasks/completed/bulk', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
@@ -212,4 +222,28 @@ export const taskApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  createWorkspaceCompletedTasks: (
+    workspaceId: string,
+    body: CreateCompletedTasksRequest,
+  ) =>
+    apiRequest<CreateCompletedTasksResponse>(
+      `/tasks/workspaces/${workspaceId}/completed/bulk`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    ),
+
+  createWorkspaceCodexCommitTasks: (
+    workspaceId: string,
+    body: CreateCodexCommitTasksRequest,
+  ) =>
+    apiRequest<CreateCodexCommitTasksResponse>(
+      `/tasks/workspaces/${workspaceId}/agent/commit-tasks`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    ),
 }

@@ -154,7 +154,7 @@ export function TaskWorkspaceHomePage({
   return (
     <div
       style={getTaskAccentStyle()}
-      className="w-full min-w-0 space-y-4 bg-background"
+      className="w-full min-w-0 space-y-4 bg-background pb-8"
     >
       <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-md border border-surface-border bg-surface-muted px-4 py-3.5 shadow-sm">
         <div className="flex min-w-0 items-start gap-3">
@@ -229,7 +229,7 @@ export function TaskWorkspaceHomePage({
         </div>
       ) : null}
 
-      <div className="min-h-[calc(100dvh-300px)] ui-panel p-6 shadow-sm">
+      <div className="min-h-[360px] xl:min-h-[calc(100dvh-380px)] ui-panel p-6 shadow-sm">
         {workspacesQuery.isLoading ? (
           <div className="flex min-h-[320px] items-center justify-center text-sm ui-text-muted">
             <LoaderCircle className="mr-2 size-4 animate-spin" />

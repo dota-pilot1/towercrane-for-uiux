@@ -57,7 +57,7 @@ export function AdminShell({ workspaceId, categoryId, prototypeId }: AdminShellP
 
   return (
     <div className="w-full min-w-0 ui-page-bg space-y-3">
-      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-brand-border bg-brand-glass px-6 py-5 shadow-sm">
+      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-md border border-surface-border bg-surface-muted px-4 py-3.5 shadow-sm">
         <div className="flex min-w-0 items-start gap-3">
           {workspaceId ? (
             <Button
@@ -71,7 +71,7 @@ export function AdminShell({ workspaceId, categoryId, prototypeId }: AdminShellP
               <ArrowLeft className="size-4" />
             </Button>
           ) : null}
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary text-primary-foreground shadow-sm">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-brand-border/40 bg-brand-glass text-brand-primary shadow-sm shadow-brand-primary/5">
             <GitBranch className="size-5" />
           </div>
           <div className="min-w-0 space-y-0.5">

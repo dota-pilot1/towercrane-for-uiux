@@ -21,6 +21,7 @@ import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 import { Select } from '../../../shared/ui/select'
 import { Textarea } from '../../../shared/ui/textarea'
+import { AssigneeSelect } from './assignee-select'
 import {
   useArchiveTasks,
   useRestoreTasks,
@@ -298,19 +299,13 @@ export function TaskDetailDialog({
 
                       <label className="block space-y-1.5">
                         <span className="text-xs font-bold text-text-secondary">담당자</span>
-                        <Select
+                        <AssigneeSelect
                           value={form.assigneeId}
-                          onChange={(event) =>
-                            updateDraft({ assigneeId: event.target.value })
+                          users={users}
+                          onChange={(assigneeId) =>
+                            updateDraft({ assigneeId })
                           }
-                        >
-                          <option value="">미지정</option>
-                          {users.map((user) => (
-                            <option key={user.id} value={user.id}>
-                              {user.name}
-                            </option>
-                          ))}
-                        </Select>
+                        />
                       </label>
 
                       <label className="block space-y-1.5 md:col-span-2">

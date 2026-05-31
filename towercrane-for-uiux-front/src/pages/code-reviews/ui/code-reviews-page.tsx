@@ -821,46 +821,50 @@ export function CodeReviewsPage({ reviewId = null }: CodeReviewsPageProps) {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-7xl flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <PageHeader icon={Code2} title="코드 리뷰 게시판" />
-        <div className="flex items-center gap-2">
-          <input
-            ref={reviewFileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            accept=".json,.md,.markdown,.txt,.ts,.tsx,.js,.jsx,.css,.html,.mmd,.mermaid,.java,.kt,.py,.go,.rs,.sql,.yml,.yaml"
-            onChange={uploadReviewFiles}
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => reviewFileInputRef.current?.click()}
-            disabled={analyzeMutation.isPending || createReviewMutation.isPending}
-          >
-            {createReviewMutation.isPending ? (
-              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-            ) : (
-              <Upload className="mr-1.5 size-3.5" />
-            )}
-            리뷰 파일 업로드
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowUploadGuide(true)}
-          >
-            <Info className="mr-1.5 size-3.5" />
-            직접 저장하기 구현 계획
-          </Button>
-        </div>
-      </div>
+    <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-full flex-col gap-4">
+      <PageHeader
+        icon={Code2}
+        title="코드 리뷰 게시판"
+        description="GitHub commit URL 또는 직접 작성한 리뷰 파일을 분석하여 AI 코드 리뷰 히스토리를 저장하고 공유합니다."
+        actions={
+          <div className="flex items-center gap-2">
+            <input
+              ref={reviewFileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              accept=".json,.md,.markdown,.txt,.ts,.tsx,.js,.jsx,.css,.html,.mmd,.mermaid,.java,.kt,.py,.go,.rs,.sql,.yml,.yaml"
+              onChange={uploadReviewFiles}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => reviewFileInputRef.current?.click()}
+              disabled={analyzeMutation.isPending || createReviewMutation.isPending}
+            >
+              {createReviewMutation.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <Upload className="mr-1.5 size-3.5" />
+              )}
+              리뷰 파일 업로드
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowUploadGuide(true)}
+            >
+              <Info className="mr-1.5 size-3.5" />
+              직접 저장하기 구현 계획
+            </Button>
+          </div>
+        }
+      />
       {showUploadGuide && <UploadGuideDialog onClose={() => setShowUploadGuide(false)} />}
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[460px_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
         {/* 왼쪽: 입력 폼 + 목록 */}
         <section className="flex min-h-0 flex-col rounded-md border border-surface-border bg-surface-raised">
           {/* 패널 헤더 */}

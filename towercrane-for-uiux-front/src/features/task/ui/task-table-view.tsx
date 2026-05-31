@@ -59,6 +59,7 @@ import {
   useUpdateTaskStatus,
 } from '../model/use-task-queries'
 import { TaskTypeBadge } from './task-badges'
+import { AssigneeSelect } from './assignee-select'
 
 function formatDate(value?: string | null, fallback = '-') {
   if (!value) return fallback
@@ -1369,24 +1370,16 @@ export function TaskTableView({
         header: '담당자',
         cell: ({ row }) => (
           <div onClick={(event) => event.stopPropagation()}>
-            <CompactSelect
+            <AssigneeSelect
               value={row.original.assigneeId ?? ''}
-              className="h-8 min-h-8 pl-2.5 pr-7 text-sm font-medium"
-              onChange={(event) =>
+              users={users}
+              onChange={(assigneeId) =>
                 updateAssignee.mutate({
                   id: row.original.id,
-                  assigneeId: event.target.value || null,
+                  assigneeId: assigneeId || null,
                 })
               }
-              aria-label="담당자 변경"
-            >
-              <option value="">미지정</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </CompactSelect>
+            />
           </div>
         ),
       },

@@ -31,6 +31,7 @@ import { DevMeetingMinutesModule } from './dev-meeting-minutes/dev-meeting-minut
 import { CodeReviewsModule } from './code-reviews/code-reviews.module';
 import { FeaturePlansModule } from './feature-plans/feature-plans.module';
 import { TaskIngestModule } from './task-ingest/task-ingest.module';
+import { TaskChatModule } from './task-chat/task-chat.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { TaskIngestModule } from './task-ingest/task-ingest.module';
     CodeReviewsModule,
     FeaturePlansModule,
     TaskIngestModule,
+    TaskChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,6 +1,7 @@
 import { type ElementType, useMemo, useRef, useState } from 'react'
 import * as LucideIcons from 'lucide-react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
+import { clsx } from 'clsx'
 import { HeaderAuthButtons } from '../../../features/auth/ui/inline-auth-bar'
 import { useLogout } from '../../../shared/api/auth'
 import { useSessionStore } from '../../../shared/store/session-store'
@@ -162,6 +163,50 @@ function getIcon(iconName: string | null): ElementType {
   return Icon || LucideIcons.FileText
 }
 
+type HeaderNavLinkProps = {
+  active?: boolean
+  onClick?: () => void
+  onMouseEnter?: () => void
+  icon?: ElementType
+  trailingIcon?: React.ReactNode
+  children: React.ReactNode
+}
+
+function HeaderNavLink({
+  active,
+  onClick,
+  onMouseEnter,
+  icon: Icon,
+  trailingIcon,
+  children,
+}: HeaderNavLinkProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      className={clsx(
+        "inline-flex h-8 items-center gap-1.5 rounded-md px-3.5 text-[13px] font-medium transition-all duration-200 shrink-0 select-none cursor-pointer border border-transparent",
+        active
+          ? "bg-brand-glass text-brand-primary font-semibold border-brand-border/20 shadow-sm"
+          : "text-text-secondary hover:text-text-primary hover:bg-foreground/[0.04] dark:hover:bg-white/[0.04]"
+      )}
+    >
+      {Icon && (
+        <Icon 
+          className={clsx(
+            "size-3.5 transition-colors", 
+            active ? "text-brand-primary" : "text-text-secondary opacity-70 group-hover:text-text-primary"
+          )} 
+          aria-hidden 
+        />
+      )}
+      <span className="hidden sm:inline">{children}</span>
+      {trailingIcon}
+    </button>
+  )
+}
+
 function MegaNavDropdown({
   item,
   activeSection,
@@ -191,27 +236,29 @@ function MegaNavDropdown({
 
   return (
     <div className="relative" onMouseLeave={scheduleClose} onMouseEnter={cancelClose}>
-      <HeaderPill
+      <HeaderNavLink
         icon={Icon}
-        variant={isActive ? 'active' : 'default'}
+        active={isActive}
         onClick={() => setIsOpen(!isOpen)}
         onMouseEnter={() => { cancelClose(); setIsOpen(true) }}
-        labelClassName="hidden sm:inline"
         trailingIcon={
           <LucideIcons.ChevronDown
-            className={`size-3 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+            className={clsx(
+              "size-3 transition-transform duration-200 text-text-secondary opacity-50",
+              isOpen && "rotate-180 text-brand-primary opacity-100"
+            )}
           />
         }
       >
         {item.name}
-      </HeaderPill>
+      </HeaderNavLink>
 
       {isOpen && (
         <>
           {/* 투명 브릿지 */}
           <div className="absolute left-0 top-full z-50 h-2 w-full" />
           <div
-            className="absolute left-0 top-full z-50 mt-2 origin-top-left animate-in zoom-in-95 rounded-xl border border-surface-border bg-surface-raised shadow-2xl duration-150 fade-in overflow-hidden"
+            className="absolute left-0 top-full z-50 mt-2 origin-top-left animate-in zoom-in-95 rounded-md border border-surface-border bg-surface-raised shadow-2xl duration-150 fade-in overflow-hidden"
           >
             {isPaired ? (
               /* 좌우 페어링 레이아웃 (챗봇) */
@@ -228,7 +275,7 @@ function MegaNavDropdown({
                         style={!isChildActive ? { color: 'var(--foreground)' } : undefined}
                         onMouseEnter={e => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--foreground) 7%, transparent)' } }}
                         onMouseLeave={e => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = '' } }}
-                        className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
+                        className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
                           isChildActive ? 'bg-brand-glass text-brand-primary' : ''
                         }`}
                       >
@@ -255,7 +302,7 @@ function MegaNavDropdown({
                         style={!isGuideActive ? { color: 'var(--foreground)' } : undefined}
                         onMouseEnter={e => { if (!isGuideActive) { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--primary) 10%, transparent)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--primary)' } }}
                         onMouseLeave={e => { if (!isGuideActive) { (e.currentTarget as HTMLButtonElement).style.background = ''; (e.currentTarget as HTMLButtonElement).style.color = 'var(--foreground)' } }}
-                        className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
+                        className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
                           isGuideActive ? 'bg-brand-glass text-brand-primary' : ''
                         }`}
                       >
@@ -280,7 +327,7 @@ function MegaNavDropdown({
                       style={!isChildActive ? { color: 'var(--foreground)' } : undefined}
                       onMouseEnter={e => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--foreground) 7%, transparent)' } }}
                       onMouseLeave={e => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = '' } }}
-                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
+                      className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
                         isChildActive ? 'bg-brand-glass text-brand-primary' : ''
                       }`}
                     >
@@ -336,7 +383,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-[100] w-full border-b border-surface-border bg-surface-muted px-2 py-2 shadow-md backdrop-blur-md sm:px-4 sm:py-3">
+    <header className="sticky top-0 z-[100] w-full border-b border-surface-border bg-surface-muted/95 px-2 py-2.5 shadow-sm backdrop-blur-md sm:px-4 sm:py-3">
       <div className="flex items-center justify-between gap-2 sm:gap-4">
         <button
           type="button"
@@ -352,7 +399,7 @@ export function AppHeader() {
           </div>
         </button>
 
-        <nav className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1.5 lg:flex">
+        <nav className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1 lg:flex">
           {menuTree.map((item) => {
             if (item.children && item.children.length > 0) {
               return (
@@ -366,16 +413,16 @@ export function AppHeader() {
             }
 
             const Icon = getIcon(item.icon)
+            const isItemActive = activeSection === normalizeSectionId(item.sectionId)
             return (
-              <HeaderPill
+              <HeaderNavLink
                 key={item.id}
                 icon={Icon}
-                variant={activeSection === normalizeSectionId(item.sectionId) ? 'active' : 'default'}
+                active={isItemActive}
                 onClick={() => item.sectionId && handleNavigation(item.sectionId)}
-                labelClassName="hidden sm:inline"
               >
                 {item.name}
-              </HeaderPill>
+              </HeaderNavLink>
             )
           })}
         </nav>

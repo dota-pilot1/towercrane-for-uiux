@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Archive,
   ArchiveRestore,
+  CheckCircle2,
   CheckSquare,
   ChevronDown,
   ChevronsLeft,
@@ -23,14 +24,10 @@ import {
   TASK_STATUS_ORDER,
 } from '../../../entities/task/model/constants'
 import type {
-  CreateTaskRequest,
   Task,
   TaskActivityLog,
   TaskFilters,
-  TaskPriority,
-  TaskScope,
   TaskStatus,
-  TaskType,
   TaskWorkspace,
 } from '../../../entities/task/model/types'
 import { taskApi } from '../../../entities/task/api/task-api'
@@ -39,11 +36,16 @@ import { Button } from '../../../shared/ui/button'
 import { Switch } from '../../../shared/ui/switch'
 import { ToggleGroup } from '../../../shared/ui/toggle-group'
 import { TaskCardView } from '../../../features/task/ui/task-card-view'
+import { CompletedTasksDialog } from '../../../features/task/ui/completed-tasks-dialog'
 import { TaskFormDialog } from '../../../features/task/ui/task-form-dialog'
 import { TaskKanbanView } from '../../../features/task/ui/task-kanban-view'
 import { TaskTableView } from '../../../features/task/ui/task-table-view'
 import { TaskToolbar, type TaskViewMode } from '../../../features/task/ui/task-toolbar'
 import { downloadTaskExcelWorkbook } from '../../../features/task/lib/task-excel-export'
+import {
+  buildTaskPayloadFromMarkdown,
+  validateTaskMarkdown,
+} from '../../../features/task/lib/task-markdown'
 import {
   useArchiveTasks,
   useCreateTask,
@@ -152,148 +154,6 @@ function formatActivityTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
-}
-
-function stripExtension(fileName: string) {
-  return fileName.replace(/\.[^.]+$/, '').trim()
-}
-
-function parseFrontmatter(markdown: string) {
-  const match = markdown.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/)
-  if (!match) return { meta: {} as Record<string, string>, body: markdown }
-
-  const meta = match[1].split('\n').reduce<Record<string, string>>((acc, line) => {
-    const separatorIndex = line.indexOf(':')
-    if (separatorIndex < 0) return acc
-    const key = line.slice(0, separatorIndex).trim()
-    const value = line.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, '')
-    if (key) acc[key] = value
-    return acc
-  }, {})
-
-  return {
-    meta,
-    body: markdown.slice(match[0].length),
-  }
-}
-
-function getMarkdownTitle(markdown: string, fallback: string) {
-  const title = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim()
-  return title || stripExtension(fallback) || '새 업무'
-}
-
-function readMarkdownSection(markdown: string, sectionNames: string[]) {
-  for (const name of sectionNames) {
-    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const match = markdown.match(
-      new RegExp(`(?:^|\\n)#{2,3}\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n#{2,3}\\s+|$)`, 'i'),
-    )
-    if (match?.[1]?.trim()) return match[1].trim()
-  }
-  return ''
-}
-
-function stripMarkdownFence(value: string) {
-  const match = value.trim().match(/^```[a-zA-Z0-9_-]*\s*\n([\s\S]*?)\n```$/)
-  return (match?.[1] ?? value).trim()
-}
-
-function markdownListItems(value: string) {
-  return value
-    .split(/\r?\n/)
-    .map((line) =>
-      line
-        .trim()
-        .replace(/^[-*]\s+\[[ xX]\]\s+/, '')
-        .replace(/^[-*]\s+/, '')
-        .replace(/^\d+[.)]\s+/, '')
-        .trim(),
-    )
-    .filter(Boolean)
-}
-
-function normalizeTaskType(value?: string): TaskType {
-  const normalized = value?.trim().toUpperCase()
-  if (normalized === 'BUG' || value === '버그') return 'BUG'
-  if (normalized === 'DOCS' || value === '문서') return 'DOCS'
-  if (normalized === 'DESIGN' || value === '디자인') return 'DESIGN'
-  if (normalized === 'REFACTOR' || value === '리팩터링') return 'REFACTOR'
-  if (normalized === 'QA' || value === '테스트') return 'QA'
-  if (normalized === 'CHORE' || value === '작업') return 'CHORE'
-  return 'FEATURE'
-}
-
-function normalizeTaskStatus(value?: string): TaskStatus {
-  const normalized = value?.trim().toUpperCase()
-  if (normalized === 'IN_PROGRESS' || normalized === 'PROGRESS' || value === '진행 중') return 'IN_PROGRESS'
-  if (normalized === 'REVIEW' || value === '검토') return 'REVIEW'
-  if (normalized === 'DONE' || value === '완료') return 'DONE'
-  if (normalized === 'HOLD' || value === '보류') return 'HOLD'
-  return 'TODO'
-}
-
-function normalizeTaskPriority(value?: string): TaskPriority {
-  const normalized = value?.trim().toUpperCase()
-  if (normalized === 'LOW' || value === '낮음') return 'LOW'
-  if (normalized === 'HIGH' || value === '높음') return 'HIGH'
-  if (normalized === 'URGENT' || value === '긴급') return 'URGENT'
-  return 'MEDIUM'
-}
-
-type ParsedTaskFile = {
-  payload: CreateTaskRequest
-  checklistItems: string[]
-}
-
-function buildTaskPayloadFromFile(
-  fileName: string,
-  markdown: string,
-  defaultScope: TaskScope,
-  currentUserId?: string | null,
-  lockAssigneeToCurrentUser = false,
-): ParsedTaskFile {
-  const { meta, body } = parseFrontmatter(markdown)
-  const title = meta.title || getMarkdownTitle(body, fileName)
-  const acceptanceCriteria = readMarkdownSection(body, [
-    '완료 기준',
-    '인수 조건',
-    'Acceptance Criteria',
-  ])
-  const content =
-    readMarkdownSection(body, ['내용', '업무 내용', '업무 배경', '배경', 'Content', 'Summary']) ||
-    body
-      .replace(/^#\s+.+$/m, '')
-      .trim()
-      .slice(0, 500)
-  const plan = readMarkdownSection(body, ['단계별 계획', '구현 계획', '계획', 'Plan'])
-  const checklistItems = markdownListItems(
-    readMarkdownSection(body, ['체크리스트', '검증 체크리스트', 'Checklist']),
-  )
-  const folderStructure = stripMarkdownFence(
-    readMarkdownSection(body, ['예상 파일 구조', '파일 구조', '폴더 구조', 'Folder Structure']),
-  )
-  const mmdContent = stripMarkdownFence(
-    readMarkdownSection(body, ['MMD', 'Mermaid', '흐름도', 'Flow']),
-  )
-
-  return {
-    payload: {
-      title,
-      content,
-      acceptanceCriteria,
-      plan,
-      folderStructure,
-      mmdContent,
-      taskType: normalizeTaskType(meta.type || meta.taskType),
-      status: normalizeTaskStatus(meta.status),
-      priority: normalizeTaskPriority(meta.priority),
-      scope: defaultScope,
-      visibility: defaultScope === 'PERSONAL' ? 'PRIVATE' : 'TEAM',
-      assigneeId: lockAssigneeToCurrentUser ? currentUserId : (meta.assigneeId || null),
-      dueDate: meta.dueDate || meta.due || null,
-    },
-    checklistItems,
-  }
 }
 
 type ActivityWithTask = TaskActivityLog & {
@@ -630,6 +490,7 @@ export function TaskPage({
     getInitialFilters(scopeMode, targetUserId),
   )
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isCompletedDialogOpen, setIsCompletedDialogOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [exportMode, setExportMode] = useState<'current' | 'all' | null>(null)
   const currentUserId = useSessionStore((state) => state.userId)
@@ -721,19 +582,25 @@ export function TaskPage({
   const handleCreateTaskFromFile = async (file: File) => {
     try {
       const markdown = await file.text()
-      const parsed = buildTaskPayloadFromFile(
+      const validation = validateTaskMarkdown(
+        markdown,
+        file.name,
+        scopeMode === 'my' ? 'PERSONAL' : 'TEAM',
+        currentUserId,
+        scopeMode === 'my',
+      )
+      if (validation.errors.length > 0) {
+        toast.error(validation.errors[0])
+        return
+      }
+
+      const parsed = buildTaskPayloadFromMarkdown(
         file.name,
         markdown,
         scopeMode === 'my' ? 'PERSONAL' : 'TEAM',
         currentUserId,
         scopeMode === 'my',
       )
-
-      if (!parsed.payload.title.trim()) {
-        toast.error('파일에서 업무 제목을 찾을 수 없습니다.')
-        return
-      }
-
       const createdTask = workspaceId
         ? await createWorkspaceTask.mutateAsync(parsed.payload)
         : await createTask.mutateAsync(parsed.payload)
@@ -743,6 +610,33 @@ export function TaskPage({
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '업무 파일 등록에 실패했습니다.')
+    }
+  }
+
+  const handleCreateTaskFromMarkdown = async (markdown: string) => {
+    try {
+      const validation = validateTaskMarkdown(
+        markdown,
+        '붙여넣기 입력.md',
+        scopeMode === 'my' ? 'PERSONAL' : 'TEAM',
+        currentUserId,
+        scopeMode === 'my',
+      )
+      if (validation.errors.length > 0 || !validation.parsed) {
+        toast.error(validation.errors[0] ?? '마크다운 형식을 확인하세요.')
+        return
+      }
+
+      const createdTask = workspaceId
+        ? await createWorkspaceTask.mutateAsync(validation.parsed.payload)
+        : await createTask.mutateAsync(validation.parsed.payload)
+
+      for (const item of validation.parsed.checklistItems) {
+        await taskApi.createChecklist(createdTask.id, item)
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '마크다운 업무 등록에 실패했습니다.')
+      throw error
     }
   }
 
@@ -842,12 +736,13 @@ export function TaskPage({
         isFetching={tasksQuery.isFetching}
         onCreate={() => setIsFormOpen(true)}
         onCreateFromFile={handleCreateTaskFromFile}
+        onCreateFromMarkdown={handleCreateTaskFromMarkdown}
         isCreateFromFilePending={createTask.isPending || createWorkspaceTask.isPending}
         onRefresh={() => tasksQuery.refetch()}
         showAssigneeFilter={scopeMode === 'all'}
       />
 
-      {/* content bar: 상태 필터(좌) + 선택 보관 + 뷰 토글(우) */}
+      {/* content bar: 상태/목록 액션(좌) + 선택 보관 + 뷰 토글(우) */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-4 py-3">
         <div className="flex flex-wrap items-center gap-1.5">
           <button
@@ -913,6 +808,16 @@ export function TaskPage({
           </Button>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-9"
+            onClick={() => setIsCompletedDialogOpen(true)}
+          >
+            <CheckCircle2 className="mr-1.5 size-3.5" />
+            완료 목록 보기
+          </Button>
           <Button
             type="button"
             variant="secondary"
@@ -1064,6 +969,15 @@ export function TaskPage({
         lockAssigneeToCurrentUser={scopeMode === 'my'}
         workspaceId={workspaceId}
         onOpenChange={setIsFormOpen}
+      />
+      <CompletedTasksDialog
+        open={isCompletedDialogOpen}
+        onOpenChange={setIsCompletedDialogOpen}
+        workspaceId={workspaceId}
+        filters={normalizedFilters}
+        defaultScope={scopeMode === 'my' ? 'PERSONAL' : 'TEAM'}
+        currentUserId={currentUserId}
+        onOpenTask={handleOpenTask}
       />
     </section>
   )
