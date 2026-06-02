@@ -24,6 +24,8 @@ import type {
   DevChallengeAssignmentBlock,
   DevChallengeAssignmentDetail,
   DevChallengeChecklistItem,
+  DevChallengeSubmissionStatus,
+  DevChallengeSubmissionWithAuthor,
 } from '../../../entities/dev-challenge/model/types'
 import {
   buildChecklistItems,
@@ -33,6 +35,7 @@ import {
   useDeleteDevChallengeAssignment,
   useDevChallengeAssignment,
   useDevChallengeAssignments,
+  useDevChallengeSubmissions,
   useMyDevChallengeSubmission,
   useReorderDevChallengeAssignments,
   useUpdateDevChallengeAssignment,
@@ -576,6 +579,125 @@ function EditAssignmentDialog({
   )
 }
 
+const SUBMISSION_STATUS_LABEL: Record<DevChallengeSubmissionStatus, string> = {
+  SUBMITTED: '제출됨',
+  NEEDS_CHANGES: '수정 필요',
+  APPROVED: '승인',
+  REJECTED: '반려',
+}
+
+function SubmissionStatusBadge({ status }: { status: DevChallengeSubmissionStatus }) {
+  const isPositive = status === 'APPROVED'
+  const isNegative = status === 'REJECTED' || status === 'NEEDS_CHANGES'
+  const className = isPositive
+    ? 'border-brand-border bg-brand-glass text-brand-primary'
+    : isNegative
+      ? 'border-destructive bg-danger-glass text-destructive'
+      : 'border-surface-border-soft bg-surface-muted ui-text-secondary'
+  return (
+    <span className={`rounded-sm border px-2 py-0.5 text-[10px] font-bold ${className}`}>
+      {SUBMISSION_STATUS_LABEL[status]}
+    </span>
+  )
+}
+
+function formatSubmittedAt(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleString('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function SubmissionCard({ submission }: { submission: DevChallengeSubmissionWithAuthor }) {
+  const initial = submission.authorName.trim().charAt(0) || '?'
+  return (
+    <div className="ui-panel-soft p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          {submission.authorImageUrl ? (
+            <img
+              src={submission.authorImageUrl}
+              alt={submission.authorName}
+              className="size-7 shrink-0 rounded-full border border-surface-border-soft object-cover"
+            />
+          ) : (
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-surface-border-soft bg-surface-muted text-xs font-bold ui-text-secondary">
+              {initial}
+            </span>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold ui-text-primary">{submission.authorName}</p>
+            <p className="text-[11px] ui-text-muted">{formatSubmittedAt(submission.updatedAt)}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <SubmissionStatusBadge status={submission.status} />
+          <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-bold ui-text-secondary">
+            {submission.score}/{submission.maxScore}
+          </span>
+        </div>
+      </div>
+
+      {submission.comment ? (
+        <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed ui-text-secondary">{submission.comment}</p>
+      ) : null}
+
+      {submission.githubUrl ? (
+        <a
+          href={submission.githubUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-flex max-w-full items-center gap-1 truncate text-xs font-bold text-brand-primary hover:underline"
+        >
+          {submission.githubUrl}
+        </a>
+      ) : null}
+
+      {submission.adminFeedback ? (
+        <div className="mt-2 rounded-md border border-surface-border-soft bg-surface-muted px-2.5 py-2">
+          <p className="text-[10px] font-bold ui-text-muted">리뷰 피드백</p>
+          <p className="mt-0.5 whitespace-pre-wrap text-xs ui-text-secondary">{submission.adminFeedback}</p>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function SubmissionsList({ assignmentId }: { assignmentId: string }) {
+  const { data: submissions = [], isLoading } = useDevChallengeSubmissions(assignmentId)
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <p className="text-xs font-black ui-text-primary">제출 현황</p>
+        <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold ui-text-muted">
+          {submissions.length}
+        </span>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="size-4 animate-spin ui-text-secondary" />
+        </div>
+      ) : submissions.length === 0 ? (
+        <p className="rounded-md border border-dashed border-surface-border-soft p-4 text-center text-xs ui-text-muted">
+          아직 제출이 없습니다.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {submissions.map((submission) => (
+            <SubmissionCard key={submission.id} submission={submission} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
   const { data: assignment, isLoading: assignmentLoading } = useDevChallengeAssignment(assignmentId ?? '')
   const { data: submission, isLoading: submissionLoading } = useMyDevChallengeSubmission(assignmentId ?? '')
@@ -734,6 +856,8 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
               : '제출'}
         </button>
       </div>
+
+      <SubmissionsList assignmentId={assignmentId} />
       </div>
       ) : null}
     </div>

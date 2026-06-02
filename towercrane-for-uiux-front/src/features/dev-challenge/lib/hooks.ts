@@ -22,6 +22,7 @@ export const DEV_CHALLENGE_KEYS = {
   assignments: (sectionId: string) => [...DEV_CHALLENGE_KEYS.all, 'assignments', sectionId] as const,
   assignment: (assignmentId: string) => [...DEV_CHALLENGE_KEYS.all, 'assignment', assignmentId] as const,
   mySubmission: (assignmentId: string) => [...DEV_CHALLENGE_KEYS.all, 'my-submission', assignmentId] as const,
+  submissions: (assignmentId: string) => [...DEV_CHALLENGE_KEYS.all, 'submissions', assignmentId] as const,
 }
 
 export function useDevChallengeWorkspaces() {
@@ -374,6 +375,14 @@ export function useMyDevChallengeSubmission(assignmentId: string) {
   })
 }
 
+export function useDevChallengeSubmissions(assignmentId: string) {
+  return useQuery({
+    queryKey: DEV_CHALLENGE_KEYS.submissions(assignmentId),
+    queryFn: () => devChallengeApi.getSubmissionsByAssignment(assignmentId),
+    enabled: !!assignmentId,
+  })
+}
+
 export function useCreateDevChallengeSubmission() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -381,6 +390,7 @@ export function useCreateDevChallengeSubmission() {
     onSuccess: (submission) => {
       queryClient.setQueryData(DEV_CHALLENGE_KEYS.mySubmission(submission.assignmentId), submission)
       queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.mySubmission(submission.assignmentId) })
+      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.submissions(submission.assignmentId) })
     },
   })
 }
@@ -400,6 +410,7 @@ export function useUpdateDevChallengeSubmission() {
     onSuccess: (submission, variables) => {
       queryClient.setQueryData(DEV_CHALLENGE_KEYS.mySubmission(variables.assignmentId), submission)
       queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.mySubmission(variables.assignmentId) })
+      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.submissions(variables.assignmentId) })
     },
   })
 }
