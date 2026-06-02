@@ -229,4 +229,10 @@ export const devChallengeApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+
+  deleteSubmission: (submissionId: string) =>
+    apiRequest<{ success: boolean; id: string; assignmentId: string }>(
+      `/dev-challenge/submissions/${submissionId}`,
+      { method: 'DELETE' },
+    ),
 }

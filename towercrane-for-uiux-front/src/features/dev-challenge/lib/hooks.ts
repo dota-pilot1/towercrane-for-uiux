@@ -414,3 +414,16 @@ export function useUpdateDevChallengeSubmission() {
     },
   })
 }
+
+export function useDeleteDevChallengeSubmission() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: string; assignmentId: string }) =>
+      devChallengeApi.deleteSubmission(id),
+    onSuccess: (_result, variables) => {
+      queryClient.setQueryData(DEV_CHALLENGE_KEYS.mySubmission(variables.assignmentId), null)
+      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.mySubmission(variables.assignmentId) })
+      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.submissions(variables.assignmentId) })
+    },
+  })
+}

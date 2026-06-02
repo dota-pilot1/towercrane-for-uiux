@@ -19,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { BookOpen, Check, CheckSquare, ChevronDown, ClipboardCheck, Copy, GripVertical, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Card } from '../../../shared/ui/card'
 import { Select } from '../../../shared/ui/select'
+import { useSessionStore } from '../../../shared/store/session-store'
 import type {
   DevChallengeAssignment,
   DevChallengeAssignmentBlock,
@@ -33,6 +34,7 @@ import {
   useCreateDevChallengeAssignmentBlock,
   useCreateDevChallengeSubmission,
   useDeleteDevChallengeAssignment,
+  useDeleteDevChallengeSubmission,
   useDevChallengeAssignment,
   useDevChallengeAssignments,
   useDevChallengeSubmissions,
@@ -614,6 +616,16 @@ function formatSubmittedAt(value: string) {
 
 function SubmissionCard({ submission }: { submission: DevChallengeSubmissionWithAuthor }) {
   const initial = submission.authorName.trim().charAt(0) || '?'
+  const userId = useSessionStore((state) => state.userId)
+  const userRole = useSessionStore((state) => state.userRole)
+  const deleteSubmission = useDeleteDevChallengeSubmission()
+  const canDelete = submission.userId === userId || userRole === 'admin'
+
+  const handleDelete = () => {
+    if (!window.confirm('이 제출을 삭제할까요?')) return
+    deleteSubmission.mutate({ id: submission.id, assignmentId: submission.assignmentId })
+  }
+
   return (
     <div className="ui-panel-soft p-3">
       <div className="flex items-start justify-between gap-3">
@@ -639,6 +651,16 @@ function SubmissionCard({ submission }: { submission: DevChallengeSubmissionWith
           <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-bold ui-text-secondary">
             {submission.score}/{submission.maxScore}
           </span>
+          {canDelete ? (
+            <button
+              onClick={handleDelete}
+              disabled={deleteSubmission.isPending}
+              title="제출 삭제"
+              className="ui-icon-button-danger disabled:opacity-50"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -703,6 +725,7 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
   const { data: submission, isLoading: submissionLoading } = useMyDevChallengeSubmission(assignmentId ?? '')
   const createSubmission = useCreateDevChallengeSubmission()
   const updateSubmission = useUpdateDevChallengeSubmission()
+  const deleteSubmission = useDeleteDevChallengeSubmission()
   const [comment, setComment] = useState('')
   const [githubUrl, setGithubUrl] = useState('')
   const [checkedItems, setCheckedItems] = useState<string[]>([])
@@ -755,8 +778,23 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
     }
   }
 
+  const handleDelete = async () => {
+    if (!submission?.id) return
+    if (!window.confirm('내 제출을 삭제할까요?')) return
+    try {
+      setError(null)
+      await deleteSubmission.mutateAsync({ id: submission.id, assignmentId })
+      setComment('')
+      setGithubUrl('')
+      setCheckedItems([])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '삭제에 실패했습니다.')
+    }
+  }
+
   return (
-    <div className="border-t border-surface-border">
+    <div className="px-4 pb-4">
+      <div className="ui-panel-soft overflow-hidden">
       <button
         onClick={() => setOpen((prev) => !prev)}
         className="flex w-full items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-surface-muted"
@@ -782,8 +820,8 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
       </button>
 
       {open ? (
-      <div className="mx-auto w-full max-w-3xl space-y-4 px-4 pb-4">
-      <div className="ui-panel-soft space-y-4 p-4">
+        <div className="space-y-4 border-t border-surface-border-soft p-4">
+          <div className="space-y-4">
         <div>
           <label className="mb-1 block text-xs font-bold ui-text-primary">설명</label>
           <textarea
@@ -844,22 +882,35 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
           </div>
         ) : null}
 
-        <button
-          onClick={handleSubmit}
-          disabled={createSubmission.isPending || updateSubmission.isPending}
-          className="w-full rounded-md bg-brand-primary px-3 py-2 text-sm font-bold text-text-on-brand hover:brightness-110 disabled:opacity-50"
-        >
-          {createSubmission.isPending || updateSubmission.isPending
-            ? '제출 중...'
-            : submission
-              ? '제출 수정'
-              : '제출'}
-        </button>
-      </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleSubmit}
+            disabled={createSubmission.isPending || updateSubmission.isPending}
+            className="flex-1 rounded-md bg-brand-primary px-3 py-2 text-sm font-bold text-text-on-brand hover:brightness-110 disabled:opacity-50"
+          >
+            {createSubmission.isPending || updateSubmission.isPending
+              ? '제출 중...'
+              : submission
+                ? '제출 수정'
+                : '제출'}
+          </button>
+          {submission ? (
+            <button
+              onClick={handleDelete}
+              disabled={deleteSubmission.isPending}
+              className="inline-flex items-center gap-1.5 rounded-md border border-destructive bg-danger-glass px-3 py-2 text-sm font-bold text-destructive hover:brightness-110 disabled:opacity-50"
+            >
+              <Trash2 className="size-4" />
+              {deleteSubmission.isPending ? '삭제 중...' : '삭제'}
+            </button>
+          ) : null}
+        </div>
+          </div>
 
-      <SubmissionsList assignmentId={assignmentId} />
-      </div>
+          <SubmissionsList assignmentId={assignmentId} />
+        </div>
       ) : null}
+      </div>
     </div>
   )
 }

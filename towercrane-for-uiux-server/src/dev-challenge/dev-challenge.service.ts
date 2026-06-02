@@ -704,6 +704,21 @@ export class DevChallengeService {
     return this.getSubmissionById(id);
   }
 
+  deleteSubmission(id: string, user: DevChallengeUser) {
+    const submission = this.getSubmissionById(id);
+    if (!submission) throw new NotFoundException('Submission not found');
+    if (submission.userId !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException('Not authorized');
+    }
+
+    this.db.db
+      .delete(devChallengeSubmissionsTable)
+      .where(eq(devChallengeSubmissionsTable.id, id))
+      .run();
+
+    return { success: true, id, assignmentId: submission.assignmentId };
+  }
+
   reviewSubmission(id: string, input: ReviewSubmissionInput, reviewerId: string) {
     const submission = this.getSubmissionById(id);
     if (!submission) throw new NotFoundException('Submission not found');

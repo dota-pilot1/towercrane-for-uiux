@@ -300,6 +300,11 @@ export class DevChallengeController {
     return this.devChallengeService.updateSubmission(id, input, req.user.id);
   }
 
+  @Delete('submissions/:id')
+  deleteSubmission(@Param('id') id: string, @Req() req: SessionRequest) {
+    return this.devChallengeService.deleteSubmission(id, req.user);
+  }
+
   @Post('submissions/:id/review')
   @UseGuards(AdminGuard)
   reviewSubmission(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
