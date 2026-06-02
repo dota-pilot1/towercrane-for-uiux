@@ -16,10 +16,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { BookOpen, Check, CheckSquare, ClipboardCheck, Copy, GripVertical, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { BookOpen, Check, CheckSquare, ChevronDown, ClipboardCheck, Copy, GripVertical, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Card } from '../../../shared/ui/card'
 import { Select } from '../../../shared/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../shared/ui/tabs'
 import type {
   DevChallengeAssignment,
   DevChallengeAssignmentBlock,
@@ -94,39 +93,6 @@ function AssignmentItem({ assignment, selected, onSelect, onEdit, onDelete }: As
         </button>
       </div>
     </div>
-  )
-}
-
-function SubmissionAssignmentItem({
-  assignment,
-  selected,
-  onSelect,
-}: {
-  assignment: DevChallengeAssignment
-  selected: boolean
-  onSelect: () => void
-}) {
-  return (
-    <button
-      onClick={onSelect}
-      className={`w-full rounded-md border p-3 text-left transition-colors ${
-        selected
-          ? 'border-brand-border bg-brand-glass'
-          : 'border-surface-border-soft bg-surface-raised hover:bg-surface-muted'
-      }`}
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <p className="truncate text-sm font-bold ui-text-primary">{assignment.title}</p>
-        <span className="shrink-0 rounded-sm border border-surface-border-soft bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold ui-text-muted">
-          {assignment.difficulty}
-        </span>
-      </div>
-      {assignment.summary ? (
-        <p className="mt-1 line-clamp-2 text-xs ui-text-secondary">{assignment.summary}</p>
-      ) : (
-        <p className="mt-1 text-xs ui-text-muted">요약 없음</p>
-      )}
-    </button>
   )
 }
 
@@ -619,6 +585,7 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
   const [githubUrl, setGithubUrl] = useState('')
   const [checkedItems, setCheckedItems] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [open, setOpen] = useState(true)
 
   const checklistItems = assignment?.blocks
     .filter((block) => block.blockType === 'CHECKLIST')
@@ -632,16 +599,12 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
   }, [submission?.id, submission?.comment, submission?.githubUrl, submission?.checkedItems])
 
   if (!assignmentId) {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-center">
-        <p className="text-sm ui-text-muted">제출할 출제를 선택하세요</p>
-      </div>
-    )
+    return null
   }
 
   if (assignmentLoading || submissionLoading) {
     return (
-      <div className="flex h-full items-center justify-center p-6">
+      <div className="flex items-center justify-center border-t border-surface-border p-6">
         <Loader2 className="size-5 animate-spin ui-text-secondary" />
       </div>
     )
@@ -671,28 +634,33 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4 p-4">
-      <div className="ui-panel-soft p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-base font-black ui-text-primary">{assignment?.title}</h3>
-            <p className="mt-1 text-xs ui-text-secondary">
-              선택한 챌린지에 대한 댓글, 체크리스트, GitHub 링크를 제출합니다.
-            </p>
-          </div>
+    <div className="border-t border-surface-border">
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-surface-muted"
+        aria-expanded={open}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <CheckSquare className="size-4 shrink-0 text-brand-primary" />
+          <span className="text-sm font-black ui-text-primary">제출</span>
           {submission ? (
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-1 text-[10px] font-bold text-brand-primary">
+            <>
+              <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
                 {submission.status}
               </span>
-              <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-[10px] font-bold ui-text-secondary">
+              <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-bold ui-text-secondary">
                 {submission.score}/{submission.maxScore}
               </span>
-            </div>
-          ) : null}
+            </>
+          ) : (
+            <span className="text-[11px] ui-text-muted">아직 제출하지 않았습니다</span>
+          )}
         </div>
-      </div>
+        <ChevronDown className={`size-4 shrink-0 ui-text-muted transition-transform ${open ? '' : '-rotate-90'}`} />
+      </button>
 
+      {open ? (
+      <div className="mx-auto w-full max-w-3xl space-y-4 px-4 pb-4">
       <div className="ui-panel-soft space-y-4 p-4">
         <div>
           <label className="mb-1 block text-xs font-bold ui-text-primary">설명</label>
@@ -766,6 +734,8 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
               : '제출'}
         </button>
       </div>
+      </div>
+      ) : null}
     </div>
   )
 }
@@ -773,7 +743,6 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
 export function DevChallengeMainPanel({ sectionId, selectedAssignmentId, onSelectAssignment }: DevChallengeMainPanelProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editAssignmentId, setEditAssignmentId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('assignment')
   const { data: editingAssignment } = useDevChallengeAssignment(editAssignmentId ?? '')
   const { data: assignments = [], isLoading } = useDevChallengeAssignments(sectionId ?? '')
   const deleteAssignment = useDeleteDevChallengeAssignment()
@@ -826,106 +795,57 @@ export function DevChallengeMainPanel({ sectionId, selectedAssignmentId, onSelec
         }}
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex items-center justify-between gap-3 border-b border-surface-border px-4 py-3">
-          <TabsList>
-            <TabsTrigger value="assignment">
-              <ClipboardCheck className="size-3.5" />
-              챌린지 출제
-            </TabsTrigger>
-            <TabsTrigger value="submission">
-              <CheckSquare className="size-3.5" />
-              제출
-            </TabsTrigger>
-          </TabsList>
-          <button
-            onClick={() => setDialogOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 py-1.5 text-xs font-bold text-brand-primary hover:bg-surface-muted"
-          >
-            <Plus className="size-3.5" />
-            출제 추가
-          </button>
+      <div className="flex items-center justify-between gap-3 border-b border-surface-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <ClipboardCheck className="size-4 text-brand-primary" />
+          <p className="text-sm font-black ui-text-primary">챌린지 출제 · 제출</p>
         </div>
+        <button
+          onClick={() => setDialogOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-md border border-brand-border bg-brand-glass px-3 py-1.5 text-xs font-bold text-brand-primary hover:bg-surface-muted"
+        >
+          <Plus className="size-3.5" />
+          출제 추가
+        </button>
+      </div>
 
-        <TabsContent value="assignment" className="min-h-0 flex-1">
-          <div className="grid h-full min-h-0 grid-cols-[minmax(260px,340px)_1fr]">
-            <div className="min-h-0 overflow-y-auto border-r border-surface-border p-3">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="size-5 animate-spin ui-text-secondary" />
-                </div>
-              ) : assignments.length === 0 ? (
-                <div className="rounded-md border border-dashed border-surface-border-soft p-8 text-center">
-                  <p className="text-sm ui-text-muted">첫 챌린지를 출제하세요.</p>
-                </div>
-              ) : (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={assignments.map((assignment) => assignment.id)} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-2">
-                      {assignments.map((assignment) => (
-                        <AssignmentItem
-                          key={assignment.id}
-                          assignment={assignment}
-                          selected={selectedAssignmentId === assignment.id}
-                          onSelect={() => onSelectAssignment(assignment.id)}
-                          onEdit={() => setEditAssignmentId(assignment.id)}
-                          onDelete={() => {
-                            deleteAssignment.mutate({ id: assignment.id, sectionId })
-                            if (selectedAssignmentId === assignment.id) onSelectAssignment(null)
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              )}
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(260px,340px)_1fr]">
+        <div className="min-h-0 overflow-y-auto border-r border-surface-border p-3">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="size-5 animate-spin ui-text-secondary" />
             </div>
-            <div className="min-h-0 overflow-y-auto">
-              <AssignmentDetail assignmentId={selectedAssignmentId} />
+          ) : assignments.length === 0 ? (
+            <div className="rounded-md border border-dashed border-surface-border-soft p-8 text-center">
+              <p className="text-sm ui-text-muted">첫 챌린지를 출제하세요.</p>
             </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="submission" className="min-h-0 flex-1">
-          <div className="grid h-full min-h-0 grid-cols-[minmax(260px,340px)_1fr]">
-            <aside className="min-h-0 overflow-y-auto border-r border-surface-border p-3">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs font-black ui-text-primary">제출 대상</p>
-                  <p className="mt-0.5 text-[11px] ui-text-muted">제출할 챌린지를 선택하세요.</p>
-                </div>
-                <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-[10px] font-bold ui-text-muted">
-                  {assignments.length}
-                </span>
-              </div>
-
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="size-5 animate-spin ui-text-secondary" />
-                </div>
-              ) : assignments.length === 0 ? (
-                <div className="rounded-md border border-dashed border-surface-border-soft p-8 text-center">
-                  <p className="text-sm ui-text-muted">제출할 챌린지가 없습니다.</p>
-                </div>
-              ) : (
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={assignments.map((assignment) => assignment.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2">
                   {assignments.map((assignment) => (
-                    <SubmissionAssignmentItem
+                    <AssignmentItem
                       key={assignment.id}
                       assignment={assignment}
                       selected={selectedAssignmentId === assignment.id}
                       onSelect={() => onSelectAssignment(assignment.id)}
+                      onEdit={() => setEditAssignmentId(assignment.id)}
+                      onDelete={() => {
+                        deleteAssignment.mutate({ id: assignment.id, sectionId })
+                        if (selectedAssignmentId === assignment.id) onSelectAssignment(null)
+                      }}
                     />
                   ))}
                 </div>
-              )}
-            </aside>
-            <div className="min-h-0 overflow-y-auto">
-              <SubmissionPanel assignmentId={selectedAssignmentId} />
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
+        <div className="min-h-0 overflow-y-auto">
+          <AssignmentDetail assignmentId={selectedAssignmentId} />
+          <SubmissionPanel assignmentId={selectedAssignmentId} />
+        </div>
+      </div>
     </Card>
   )
 }
