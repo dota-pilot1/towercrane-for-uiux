@@ -122,7 +122,7 @@ function AssignmentBlockViewer({ block }: { block: DevChallengeAssignmentBlock }
   if (block.blockType === 'CHECKLIST') {
     const items = parseChecklist(block.content)
     return (
-      <section className="ui-panel-soft p-4">
+      <section className="p-4">
         <div className="mb-3 flex items-center gap-2">
           <CheckSquare className="size-4 text-brand-primary" />
           <h4 className="text-sm font-bold ui-text-primary">{block.title || '완료 조건'}</h4>
@@ -140,7 +140,7 @@ function AssignmentBlockViewer({ block }: { block: DevChallengeAssignmentBlock }
   }
 
   return (
-    <section className="ui-panel-soft p-4">
+    <section className="p-4">
       <div className="mb-3 flex items-center gap-2">
         <BookOpen className="size-4 text-brand-primary" />
         <h4 className="text-sm font-bold ui-text-primary">{block.title || '챌린지 설명'}</h4>
@@ -197,31 +197,37 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string | null }) {
   }
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="ui-panel-soft p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-lg font-black ui-text-primary">{assignment.title}</h3>
-            {assignment.summary ? (
-              <p className="mt-1 text-sm ui-text-secondary">{assignment.summary}</p>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <CopyAssignmentLinkButton />
-            <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-[10px] font-bold ui-text-secondary">
-              {assignment.difficulty}
-            </span>
+    <div className="p-4">
+      <div className="ui-panel-soft overflow-hidden">
+        <div className="border-b border-surface-border-soft p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-lg font-black ui-text-primary">{assignment.title}</h3>
+              {assignment.summary ? (
+                <p className="mt-1 text-sm ui-text-secondary">{assignment.summary}</p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <CopyAssignmentLinkButton />
+              <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-[10px] font-bold ui-text-secondary">
+                {assignment.difficulty}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {assignment.blocks.length === 0 ? (
-        <div className="rounded-md border border-dashed border-surface-border-soft p-8 text-center">
-          <p className="text-sm ui-text-muted">아직 출제 본문이 없습니다.</p>
-        </div>
-      ) : (
-        assignment.blocks.map((block) => <AssignmentBlockViewer key={block.id} block={block} />)
-      )}
+        {assignment.blocks.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-sm ui-text-muted">아직 출제 본문이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-surface-border-soft">
+            {assignment.blocks.map((block) => (
+              <AssignmentBlockViewer key={block.id} block={block} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
