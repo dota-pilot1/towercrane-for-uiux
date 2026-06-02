@@ -25,6 +25,11 @@ export const DEV_CHALLENGE_KEYS = {
   submissions: (assignmentId: string) => [...DEV_CHALLENGE_KEYS.all, 'submissions', assignmentId] as const,
 }
 
+// 레거시 categories() 키와 워크스페이스별 workspaceCategories() 키를 모두 매칭
+function isCategoryListQuery(query: { queryKey: readonly unknown[] }) {
+  return query.queryKey.includes('categories')
+}
+
 export function useDevChallengeWorkspaces() {
   return useQuery({
     queryKey: DEV_CHALLENGE_KEYS.workspaces(),
@@ -130,7 +135,7 @@ export function useUpdateDevChallengeCategory() {
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       devChallengeApi.updateCategory(id, { name }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.categories() })
+      queryClient.invalidateQueries({ predicate: isCategoryListQuery })
     },
   })
 }
@@ -140,7 +145,7 @@ export function useDeleteDevChallengeCategory() {
   return useMutation({
     mutationFn: devChallengeApi.deleteCategory,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.categories() })
+      queryClient.invalidateQueries({ predicate: isCategoryListQuery })
     },
   })
 }
