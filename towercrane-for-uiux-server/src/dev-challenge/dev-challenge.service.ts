@@ -599,12 +599,26 @@ export class DevChallengeService {
   }
 
   getSubmissionsByAssignment(assignmentId: string) {
-    return this.db.db
-      .select()
+    const rows = this.db.db
+      .select({
+        submission: devChallengeSubmissionsTable,
+        authorName: usersTable.name,
+        authorImageUrl: usersTable.profileImageUrl,
+      })
       .from(devChallengeSubmissionsTable)
+      .leftJoin(
+        usersTable,
+        eq(devChallengeSubmissionsTable.userId, usersTable.id),
+      )
       .where(eq(devChallengeSubmissionsTable.assignmentId, assignmentId))
-      .orderBy(devChallengeSubmissionsTable.updatedAt)
+      .orderBy(desc(devChallengeSubmissionsTable.updatedAt))
       .all();
+
+    return rows.map((row) => ({
+      ...row.submission,
+      authorName: row.authorName ?? '알 수 없음',
+      authorImageUrl: row.authorImageUrl ?? null,
+    }));
   }
 
   getSubmissionById(id: string) {

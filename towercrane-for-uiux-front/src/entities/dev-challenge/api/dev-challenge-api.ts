@@ -8,6 +8,7 @@ import type {
   DevChallengeChecklistItem,
   DevChallengeSection,
   DevChallengeSubmission,
+  DevChallengeSubmissionWithAuthor,
   DevChallengeWorkspace,
   DevChallengeWorkspaceMember,
   DevChallengeWorkspaceRole,
@@ -201,6 +202,9 @@ export const devChallengeApi = {
 
   getMySubmission: (assignmentId: string) =>
     apiRequest<DevChallengeSubmission | null>(`/dev-challenge/assignments/${assignmentId}/submissions/my`),
+
+  getSubmissionsByAssignment: (assignmentId: string) =>
+    apiRequest<DevChallengeSubmissionWithAuthor[]>(`/dev-challenge/assignments/${assignmentId}/submissions`),
 
   createSubmission: (data: {
     assignmentId: string

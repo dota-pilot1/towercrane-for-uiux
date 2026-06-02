@@ -106,3 +106,8 @@ export type DevChallengeSubmission = {
   createdAt: string
   updatedAt: string
 }
+
+export type DevChallengeSubmissionWithAuthor = DevChallengeSubmission & {
+  authorName: string
+  authorImageUrl?: string | null
+}
