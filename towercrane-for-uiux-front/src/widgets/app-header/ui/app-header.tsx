@@ -15,6 +15,7 @@ import type { MenuItem } from '../../../entities/menu/model/types'
 function sectionIdToPath(sectionId: string): string {
   const map: Record<string, string> = {
     prototype: '/prototype',
+    readme: '/readme',
     dev_study: '/dev-challenge',
     challenge: '/study-diary',
     study_diary: '/study-diary',
@@ -83,6 +84,7 @@ function sectionIdToPath(sectionId: string): string {
 
 function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/prototype')) return 'prototype'
+  if (pathname.startsWith('/readme')) return 'readme'
   if (pathname.startsWith('/dev-challenge')) return 'dev_challenge'
   if (pathname.startsWith('/study-diary')) return 'study_diary'
   if (pathname.startsWith('/challenge')) return 'study_diary'
@@ -383,7 +385,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-[100] w-full border-b border-surface-border bg-surface-muted/95 px-2 py-2.5 shadow-sm backdrop-blur-md sm:px-4 sm:py-3">
+    <header className="sticky top-0 z-[100] w-full border-b border-brand-border bg-brand-glass px-2 py-2.5 shadow-sm backdrop-blur-md sm:px-4 sm:py-3">
       <div className="flex items-center justify-between gap-2 sm:gap-4">
         <button
           type="button"

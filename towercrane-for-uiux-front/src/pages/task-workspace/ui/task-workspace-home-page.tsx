@@ -154,11 +154,12 @@ export function TaskWorkspaceHomePage({
   return (
     <div
       style={getTaskAccentStyle()}
-      className="w-full min-w-0 space-y-4 bg-background pb-8"
+      className="w-full min-w-0 space-y-5 bg-background pb-8"
     >
-      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-md border border-surface-border bg-surface-muted px-4 py-3.5 shadow-sm">
+      {/* Header Container with Visual Layering */}
+      <div className="flex min-w-0 flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-surface-border-soft bg-surface-muted/50 px-5 py-4 shadow-sm">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-md border border-brand-border/40 bg-brand-glass text-brand-primary shadow-sm shadow-brand-primary/5">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-brand-border/40 bg-brand-glass text-brand-primary shadow-sm shadow-brand-primary/5">
             <CheckSquare className="size-5" />
           </div>
           <div className="min-w-0">
@@ -198,6 +199,7 @@ export function TaskWorkspaceHomePage({
         ) : null}
       </div>
 
+      {/* Summary Tiles Row */}
       {!workspacesQuery.isLoading && workspaces.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <SummaryTile
@@ -229,14 +231,15 @@ export function TaskWorkspaceHomePage({
         </div>
       ) : null}
 
-      <div className="min-h-[360px] xl:min-h-[calc(100dvh-380px)] ui-panel p-6 shadow-sm">
+      {/* Recessed Main Grid Wrapper */}
+      <div className="min-h-[360px] xl:min-h-[calc(100dvh-380px)] rounded-2xl border border-surface-border-soft bg-surface-muted/40 p-6 shadow-xs">
         {workspacesQuery.isLoading ? (
           <div className="flex min-h-[320px] items-center justify-center text-sm ui-text-muted">
             <LoaderCircle className="mr-2 size-4 animate-spin" />
             워크스페이스 불러오는 중...
           </div>
         ) : workspaces.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {workspaces.map((workspace) => (
               <TaskWorkspaceCard
                 key={workspace.id}
@@ -254,7 +257,7 @@ export function TaskWorkspaceHomePage({
             ))}
           </div>
         ) : (
-          <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-md border border-dashed border-surface-border bg-surface-muted text-sm ui-text-muted">
+          <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-surface-border bg-surface-muted text-sm ui-text-muted">
             <p>생성된 워크스페이스가 없습니다.</p>
             {isAuthenticated && !isMyMode ? <CreateWorkspaceDialog /> : null}
           </div>
@@ -275,18 +278,19 @@ function SummaryTile({ icon, label, value, trailing }: SummaryTileProps) {
   return (
     <div
       style={getTaskAccentStyle()}
-      className="group relative overflow-hidden rounded-md border border-surface-border bg-surface-raised px-4 py-3.5 shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-border hover:bg-surface-muted/30 hover:shadow-xs"
+      className="group relative overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised px-4 py-4 pt-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:shadow-md"
     >
+      <span className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-[var(--task-accent)] to-[var(--task-accent-border)] opacity-70 group-hover:opacity-100 transition-opacity" />
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 text-xs font-black uppercase tracking-[0.1em] text-text-muted">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-[var(--task-accent-muted)] text-[var(--task-accent)] [border-color:var(--task-accent-border-subtle)]">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-[var(--task-accent-muted)] text-[var(--task-accent)] [border-color:var(--task-accent-border-subtle)]">
             {icon}
           </span>
           {label}
         </div>
         {trailing}
       </div>
-      <div className="mt-2 text-3xl font-black tracking-tight text-text-primary">
+      <div className="mt-2.5 text-3xl font-black tracking-tight text-text-primary">
         {value}
       </div>
     </div>
@@ -314,12 +318,12 @@ function TaskWorkspaceCard({
       type="button"
       onClick={onOpen}
       style={getTaskAccentStyle()}
-      className="group relative flex min-h-[228px] flex-col overflow-hidden rounded-md border border-surface-border bg-surface-raised p-5 text-left shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-border hover:bg-surface-muted/30 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+      className="group relative flex min-h-[228px] flex-col overflow-hidden rounded-xl border border-surface-border-soft bg-surface-raised p-5 text-left shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-brand-border hover:bg-surface-raised hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
     >
       <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,var(--task-accent-wash)_0%,transparent_34%)]" />
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="relative flex size-11 shrink-0 items-center justify-center rounded-md border bg-[var(--task-accent-muted)] text-[var(--task-accent)] transition-all duration-300 [border-color:var(--task-accent-border-subtle)] group-hover:scale-105 group-hover:bg-[var(--task-accent)] group-hover:text-primary-foreground group-hover:shadow-[0_10px_24px_var(--task-accent-shadow)]">
+          <div className="relative flex size-11 shrink-0 items-center justify-center rounded-xl border bg-[var(--task-accent-muted)] text-[var(--task-accent)] transition-all duration-300 [border-color:var(--task-accent-border-subtle)] group-hover:scale-105 group-hover:bg-[var(--task-accent)] group-hover:text-primary-foreground group-hover:shadow-[0_10px_24px_var(--task-accent-shadow)]">
             <CheckSquare className="size-5" />
           </div>
           <div className="min-w-0">
@@ -336,7 +340,7 @@ function TaskWorkspaceCard({
         </div>
       </div>
 
-      <div className="relative mt-5 grid grid-cols-2 overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised/70">
+      <div className="relative mt-5 grid grid-cols-2 overflow-hidden rounded-lg border border-surface-border-soft bg-surface-muted/60">
         <div className="min-w-0 px-3 py-3">
           <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.1em] text-text-muted">
             <ClipboardList className="size-3" />
@@ -362,12 +366,12 @@ function TaskWorkspaceCard({
         </div>
       </div>
 
-      <div className="relative mt-5 rounded-md border border-surface-border-soft bg-brand-glass px-3.5 py-3">
+      <div className="relative mt-5 rounded-lg border border-surface-border-soft bg-brand-glass px-3.5 py-3">
         <div className="flex items-center justify-between gap-3 text-xs font-black">
           <span className="text-text-secondary">완료율</span>
           <span className="text-[var(--task-accent)]">{Math.round(progressPct)}%</span>
         </div>
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-raised/90">
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
           <div
             className="h-full rounded-full bg-[var(--task-accent)] transition-all duration-500 ease-out"
             style={{ width: `${progressPct}%` }}

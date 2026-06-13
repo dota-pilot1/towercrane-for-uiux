@@ -1626,7 +1626,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'AI Native',
           sectionId: 'ai_native_group',
           icon: 'Bot',
-          displayOrder: 0,
+          displayOrder: 1,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -1650,7 +1650,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: '회의실',
           sectionId: 'meeting',
           icon: 'MessagesSquare',
-          displayOrder: 1,
+          displayOrder: 2,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -1662,7 +1662,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: 'Prototype',
           sectionId: 'prototype',
           icon: 'GitBranch',
-          displayOrder: 2,
+          displayOrder: 0,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -2149,7 +2149,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           name: '개발 도구',
           sectionId: 'dev_management',
           icon: 'Wrench',
-          displayOrder: 1,
+          displayOrder: 2,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -2178,7 +2178,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       sectionId: 'task_group',
       name: '업무 관리',
       icon: 'CheckSquare',
-      displayOrder: 0,
+      displayOrder: 1,
       parentId: null,
       requiredRole: null,
       now,
@@ -2232,8 +2232,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       sectionId: 'prototype',
       name: 'Prototype',
       icon: 'GitBranch',
-      displayOrder: 5,
-      parentId: existingDevManagement.id,
+      displayOrder: 0,
+      parentId: null,
       requiredRole: null,
       now,
     });
@@ -2257,22 +2257,23 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       sectionId: string | string[];
       displayOrder: number;
     }> = [
-      { sectionId: ['task_group', 'task'], displayOrder: 0 },
-      { sectionId: 'dev_management', displayOrder: 1 },
-      { sectionId: 'meeting', displayOrder: 2 },
-      { sectionId: 'boards', displayOrder: 3 },
-      { sectionId: 'dev_study', displayOrder: 4 },
-      { sectionId: 'knowledge_channel', displayOrder: 5 },
-      { sectionId: 'chatbot_pilot', displayOrder: 6 },
-      { sectionId: 'ai_service_group', displayOrder: 7 },
-      { sectionId: 'admin_dropdown', displayOrder: 8 },
+      { sectionId: 'prototype', displayOrder: 0 },
+      { sectionId: ['task_group', 'task'], displayOrder: 1 },
+      { sectionId: 'dev_management', displayOrder: 2 },
+      { sectionId: 'meeting', displayOrder: 3 },
+      { sectionId: 'boards', displayOrder: 4 },
+      { sectionId: 'dev_study', displayOrder: 5 },
+      { sectionId: 'knowledge_channel', displayOrder: 6 },
+      { sectionId: 'chatbot_pilot', displayOrder: 7 },
+      { sectionId: 'ai_service_group', displayOrder: 8 },
+      { sectionId: 'admin_dropdown', displayOrder: 9 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
       for (const id of ids) {
         this.sqlite
           .prepare(
-            `UPDATE menus SET display_order = ?, updated_at = ? WHERE section_id = ? AND parent_id IS NULL`,
+            `UPDATE menus SET display_order = ?, parent_id = NULL, updated_at = ? WHERE section_id = ?`,
           )
           .run(displayOrder, now, id);
       }

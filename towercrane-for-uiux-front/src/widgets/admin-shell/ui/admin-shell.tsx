@@ -86,7 +86,7 @@ export function AdminShell({ workspaceId, categoryId, prototypeId }: AdminShellP
           </div>
         </div>
       </div>
-      <div className="grid h-[calc(100dvh-160px)] min-w-0 gap-3 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="grid h-[calc(100dvh-220px)] min-w-0 gap-3 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)]">
         <AdminShellSidebar
           activeCategoryId={activeCategoryId}
           categories={categories}

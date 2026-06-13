@@ -36,6 +36,7 @@ import { ChatbotToolsGuidePage } from '../pages/chatbot/ui/chatbot-tools-guide-p
 import { ChatbotRealtimePage } from '../pages/chatbot/ui/chatbot-realtime-page'
 import { ChatbotRealtimeGuidePage } from '../pages/chatbot/ui/chatbot-realtime-guide-page'
 import { DocuPage } from '../pages/docu/ui/docu-page'
+import { ReadmePage } from '../pages/readme/ui/readme-page'
 import { MeetingPage } from '../pages/meeting/ui/meeting-page'
 import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-workspace-home-page'
 import { DevManagementPage } from '../pages/dev-management/ui/dev-management-page'
@@ -581,6 +582,14 @@ export const docuRoute = createRoute({
   component: DocuPage,
 })
 
+// ─── /readme ──────────────────────────────────────────────────────────────────
+
+const readmeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/readme',
+  component: ReadmePage,
+})
+
 // ─── /ai-methodology ─────────────────────────────────────────────────────────
 
 const aiServiceRequestRoute = createRoute({
@@ -1015,6 +1024,7 @@ export const router = createRouter({
       featurePlansRoute,
       featurePlanDetailRoute,
       docuRoute,
+      readmeRoute,
       aiServiceRequestRoute,
       aiServiceMyRoute,
       aiServiceAdminRoute,
