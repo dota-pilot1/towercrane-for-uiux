@@ -4,6 +4,7 @@ import type {
   CreateCompletedTasksResponse,
   CreateCodexCommitTasksRequest,
   CreateCodexCommitTasksResponse,
+  CreateTaskReferenceRequest,
   CreateTaskRequest,
   CreateTaskWorkspaceRequest,
   Task,
@@ -14,8 +15,10 @@ import type {
   TaskComment,
   TaskFilters,
   TaskListResponse,
+  TaskReference,
   TaskWorkspace,
   UpdateTaskRequest,
+  UpdateTaskReferenceRequest,
   UpdateTaskWorkspaceRequest,
 } from '../model/types'
 
@@ -174,6 +177,31 @@ export const taskApi = {
   deleteAttachment: (taskId: string, attachmentId: string) =>
     apiRequest<{ success: boolean }>(
       `/tasks/${taskId}/attachments/${attachmentId}`,
+      { method: 'DELETE' },
+    ),
+
+  listReferences: (taskId: string) =>
+    apiRequest<TaskReference[]>(`/tasks/${taskId}/references`),
+
+  createReference: (taskId: string, body: CreateTaskReferenceRequest) =>
+    apiRequest<TaskReference>(`/tasks/${taskId}/references`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  updateReference: (
+    taskId: string,
+    referenceId: string,
+    body: UpdateTaskReferenceRequest,
+  ) =>
+    apiRequest<TaskReference>(`/tasks/${taskId}/references/${referenceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  deleteReference: (taskId: string, referenceId: string) =>
+    apiRequest<{ success: boolean }>(
+      `/tasks/${taskId}/references/${referenceId}`,
       { method: 'DELETE' },
     ),
 

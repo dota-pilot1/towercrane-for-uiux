@@ -292,4 +292,40 @@ export class TasksController {
   ) {
     return this.tasksService.deleteAttachment(user, taskId, attachmentId);
   }
+
+  @Get(':taskId/references')
+  listReferences(
+    @CurrentUser() user: TaskUser,
+    @Param('taskId') taskId: string,
+  ) {
+    return this.tasksService.listReferences(user, taskId);
+  }
+
+  @Post(':taskId/references')
+  createReference(
+    @CurrentUser() user: TaskUser,
+    @Param('taskId') taskId: string,
+    @Body() body: unknown,
+  ) {
+    return this.tasksService.createReference(user, taskId, body);
+  }
+
+  @Patch(':taskId/references/:referenceId')
+  updateReference(
+    @CurrentUser() user: TaskUser,
+    @Param('taskId') taskId: string,
+    @Param('referenceId') referenceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.tasksService.updateReference(user, taskId, referenceId, body);
+  }
+
+  @Delete(':taskId/references/:referenceId')
+  deleteReference(
+    @CurrentUser() user: TaskUser,
+    @Param('taskId') taskId: string,
+    @Param('referenceId') referenceId: string,
+  ) {
+    return this.tasksService.deleteReference(user, taskId, referenceId);
+  }
 }

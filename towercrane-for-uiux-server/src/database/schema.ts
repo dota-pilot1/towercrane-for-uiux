@@ -391,6 +391,7 @@ export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'HOLD';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export type TaskScope = 'TEAM' | 'PERSONAL';
 export type TaskVisibility = 'TEAM' | 'PRIVATE';
+export type TaskReferenceType = 'FIGMA' | 'DOC' | 'GITHUB' | 'URL';
 export type TaskActivityType =
   | 'CREATED'
   | 'STATUS'
@@ -496,6 +497,25 @@ export const taskAttachmentsTable = sqliteTable('task_attachments', {
   contentType: text('content_type').notNull(),
   fileSize: integer('file_size').notNull().default(0),
   createdAt: text('created_at').notNull(),
+});
+
+export const taskReferencesTable = sqliteTable('task_references', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => tasksTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  referenceType: text('reference_type')
+    .$type<TaskReferenceType>()
+    .notNull()
+    .default('URL'),
+  title: text('title').notNull(),
+  url: text('url').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
 });
 
 export const taskActivityLogsTable = sqliteTable('task_activity_logs', {
@@ -1855,6 +1875,7 @@ export const schema = {
   taskChecklistsTable,
   taskCommentsTable,
   taskAttachmentsTable,
+  taskReferencesTable,
   taskActivityLogsTable,
   taskAiReviewsTable,
   projectIssueCategoriesTable,
@@ -1983,6 +2004,8 @@ export type TaskCommentRow = typeof taskCommentsTable.$inferSelect;
 export type TaskCommentInsert = typeof taskCommentsTable.$inferInsert;
 export type TaskAttachmentRow = typeof taskAttachmentsTable.$inferSelect;
 export type TaskAttachmentInsert = typeof taskAttachmentsTable.$inferInsert;
+export type TaskReferenceRow = typeof taskReferencesTable.$inferSelect;
+export type TaskReferenceInsert = typeof taskReferencesTable.$inferInsert;
 export type TaskActivityLogRow = typeof taskActivityLogsTable.$inferSelect;
 export type TaskActivityLogInsert = typeof taskActivityLogsTable.$inferInsert;
 export type TaskAiReviewRow = typeof taskAiReviewsTable.$inferSelect;

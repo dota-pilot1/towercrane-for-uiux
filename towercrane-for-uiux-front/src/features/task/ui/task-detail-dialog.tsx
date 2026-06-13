@@ -33,6 +33,7 @@ import { TaskCommentsPanel } from './task-comments-panel'
 import { TaskActivityPanel } from './task-activity-panel'
 import { TaskPriorityBadge, TaskStatusBadge, TaskTypeBadge } from './task-badges'
 import { TaskAttachmentsPanel } from './task-attachments-panel'
+import { TaskReferencesPanel } from './task-references-panel'
 
 type FormState = {
   title: string
@@ -208,6 +209,7 @@ export function TaskDetailDialog({
                 {[
                   ['overview', '개요'],
                   ['checklist', '체크리스트'],
+                  ['references', '참고'],
                   ['attachments', '첨부'],
                   ['comments', '댓글'],
                   ['activity', '활동'],
@@ -331,6 +333,9 @@ export function TaskDetailDialog({
 
                 <Tabs.Content value="checklist">
                   <TaskChecklistPanel taskId={task.id} />
+                </Tabs.Content>
+                <Tabs.Content value="references">
+                  <TaskReferencesPanel taskId={task.id} />
                 </Tabs.Content>
                 <Tabs.Content value="attachments">
                   <TaskAttachmentsPanel task={task} />

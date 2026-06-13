@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { taskApi } from '../../../entities/task/api/task-api'
 import type {
   CreateCompletedTasksRequest,
+  CreateTaskReferenceRequest,
   CreateTaskRequest,
   CreateTaskWorkspaceRequest,
   Task,
@@ -10,6 +11,7 @@ import type {
   TaskChecklist,
   TaskFilters,
   UpdateTaskRequest,
+  UpdateTaskReferenceRequest,
   UpdateTaskWorkspaceRequest,
 } from '../../../entities/task/model/types'
 
@@ -25,6 +27,8 @@ export const taskQueryKeys = {
     ['tasks', 'ai-reviews', taskId] as const,
   attachments: (taskId: string | null) =>
     ['tasks', 'attachments', taskId] as const,
+  references: (taskId: string | null) =>
+    ['tasks', 'references', taskId] as const,
   workspaces: (filters?: Pick<TaskFilters, 'scope' | 'userId' | 'archived'>) =>
     ['tasks', 'workspaces', filters ?? {}] as const,
   workspaceTasks: (workspaceId: string, filters: TaskFilters) =>
@@ -429,6 +433,74 @@ export function useDeleteTaskAttachment(taskId: string | null) {
     },
     onError: (error) =>
       toast.error(messageFromError(error, '첨부 삭제에 실패했습니다.')),
+  })
+}
+
+export function useTaskReferences(taskId: string | null) {
+  return useQuery({
+    queryKey: taskQueryKeys.references(taskId),
+    queryFn: () => taskApi.listReferences(taskId as string),
+    enabled: Boolean(taskId),
+  })
+}
+
+export function useCreateTaskReference(taskId: string | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateTaskReferenceRequest) => {
+      if (!taskId) throw new Error('taskId required')
+      return taskApi.createReference(taskId, body)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: taskQueryKeys.references(taskId),
+      })
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.activity(taskId) })
+    },
+    onError: (error) =>
+      toast.error(messageFromError(error, '참고 링크 추가에 실패했습니다.')),
+  })
+}
+
+export function useUpdateTaskReference(taskId: string | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      referenceId,
+      body,
+    }: {
+      referenceId: string
+      body: UpdateTaskReferenceRequest
+    }) => {
+      if (!taskId) throw new Error('taskId required')
+      return taskApi.updateReference(taskId, referenceId, body)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: taskQueryKeys.references(taskId),
+      })
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.activity(taskId) })
+    },
+    onError: (error) =>
+      toast.error(messageFromError(error, '참고 링크 수정에 실패했습니다.')),
+  })
+}
+
+export function useDeleteTaskReference(taskId: string | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (referenceId: string) => {
+      if (!taskId) throw new Error('taskId required')
+      return taskApi.deleteReference(taskId, referenceId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: taskQueryKeys.references(taskId),
+      })
+      queryClient.invalidateQueries({ queryKey: taskQueryKeys.activity(taskId) })
+    },
+    onError: (error) =>
+      toast.error(messageFromError(error, '참고 링크 삭제에 실패했습니다.')),
   })
 }
 

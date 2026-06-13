@@ -493,6 +493,23 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_task_attachments_task_created
         ON task_attachments(task_id, created_at);
 
+      CREATE TABLE IF NOT EXISTS task_references (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        reference_type TEXT NOT NULL DEFAULT 'URL',
+        title TEXT NOT NULL,
+        url TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_task_references_task_order
+        ON task_references(task_id, order_idx, created_at);
+
       CREATE TABLE IF NOT EXISTS task_activity_logs (
         id TEXT PRIMARY KEY,
         task_id TEXT NOT NULL,

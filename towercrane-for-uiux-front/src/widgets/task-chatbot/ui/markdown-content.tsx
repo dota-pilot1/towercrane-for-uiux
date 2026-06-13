@@ -34,7 +34,7 @@ export function MarkdownContent({ text }: { text: string }) {
           </a>
         ),
         code: ({ children }) => (
-          <code className="rounded bg-black/10 px-1 py-0.5 text-[11px]">
+          <code className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px] border border-surface-border-soft">
             {children}
           </code>
         ),

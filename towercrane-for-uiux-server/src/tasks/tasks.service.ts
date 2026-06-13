@@ -16,6 +16,7 @@ import {
   taskAttachmentsTable,
   taskChecklistsTable,
   taskCommentsTable,
+  taskReferencesTable,
   taskWorkspaceMembersTable,
   taskWorkspacesTable,
   tasksTable,
@@ -28,6 +29,8 @@ import {
   type TaskCommentInsert,
   type TaskCommentRow,
   type TaskInsert,
+  type TaskReferenceInsert,
+  type TaskReferenceRow,
   type TaskRow,
   type TaskWorkspaceInsert,
   type TaskWorkspaceRow,
@@ -39,6 +42,7 @@ import {
   createCodexCommitTasksSchema,
   createCommentSchema,
   createCompletedTasksRequestSchema,
+  createReferenceSchema,
   createTaskSchema,
   createTaskWorkspaceSchema,
   listTasksQuerySchema,
@@ -47,6 +51,7 @@ import {
   taskIdsSchema,
   updateChecklistSchema,
   updateCommentSchema,
+  updateReferenceSchema,
   updateTaskAssigneeSchema,
   updateTaskPrioritySchema,
   updateTaskSchema,
@@ -679,6 +684,136 @@ export class TasksService {
     return { success: true };
   }
 
+  listReferences(_user: TaskUser, taskId: string) {
+    const task = this.ensureTask(taskId);
+    this.ensureCanReadTask(_user, task);
+    const usersById = this.getUsersById();
+
+    return this.db
+      .select()
+      .from(taskReferencesTable)
+      .where(eq(taskReferencesTable.taskId, taskId))
+      .orderBy(
+        asc(taskReferencesTable.orderIdx),
+        asc(taskReferencesTable.createdAt),
+      )
+      .all()
+      .map((reference) => this.toReferenceDto(reference, usersById));
+  }
+
+  createReference(user: TaskUser, taskId: string, payload: unknown) {
+    const task = this.ensureTask(taskId);
+    this.ensureCanWriteTask(user, task);
+    const input = createReferenceSchema.parse(payload);
+    const now = new Date().toISOString();
+    const maxOrder = this.db
+      .select({ orderIdx: taskReferencesTable.orderIdx })
+      .from(taskReferencesTable)
+      .where(eq(taskReferencesTable.taskId, taskId))
+      .all()
+      .reduce((max, row) => Math.max(max, row.orderIdx), -1);
+
+    const row: TaskReferenceInsert = {
+      id: `task-ref-${randomUUID().slice(0, 12)}`,
+      taskId,
+      userId: user.id,
+      referenceType: input.referenceType,
+      title: input.title,
+      url: input.url,
+      orderIdx: maxOrder + 1,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.db.insert(taskReferencesTable).values(row).run();
+    this.recordActivity({
+      taskId,
+      actorId: user.id,
+      activityType: 'UPDATED',
+      toValue: row.id,
+      message: '참고 링크가 추가되었습니다.',
+    });
+
+    return this.toReferenceDto(
+      this.ensureReference(taskId, row.id),
+      this.getUsersById(),
+    );
+  }
+
+  updateReference(
+    user: TaskUser,
+    taskId: string,
+    referenceId: string,
+    payload: unknown,
+  ) {
+    const task = this.ensureTask(taskId);
+    this.ensureCanWriteTask(user, task);
+    this.ensureReference(taskId, referenceId);
+    const input = updateReferenceSchema.parse(payload);
+
+    this.db
+      .update(taskReferencesTable)
+      .set({
+        ...input,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(
+        and(
+          eq(taskReferencesTable.id, referenceId),
+          eq(taskReferencesTable.taskId, taskId),
+        ),
+      )
+      .run();
+
+    this.recordActivity({
+      taskId,
+      actorId: user.id,
+      activityType: 'UPDATED',
+      toValue: referenceId,
+      message: '참고 링크가 수정되었습니다.',
+    });
+
+    return this.toReferenceDto(
+      this.ensureReference(taskId, referenceId),
+      this.getUsersById(),
+    );
+  }
+
+  deleteReference(user: TaskUser, taskId: string, referenceId: string) {
+    const task = this.ensureTask(taskId);
+    const reference = this.ensureReference(taskId, referenceId);
+
+    if (
+      user.role !== 'admin' &&
+      task.reporterId !== user.id &&
+      task.assigneeId !== user.id &&
+      task.ownerId !== user.id &&
+      reference.userId !== user.id
+    ) {
+      throw new ForbiddenException('You cannot delete this reference');
+    }
+
+    this.db
+      .delete(taskReferencesTable)
+      .where(
+        and(
+          eq(taskReferencesTable.id, referenceId),
+          eq(taskReferencesTable.taskId, taskId),
+        ),
+      )
+      .run();
+
+    this.recordActivity({
+      taskId,
+      actorId: user.id,
+      activityType: 'UPDATED',
+      fromValue: referenceId,
+      message: '참고 링크가 삭제되었습니다.',
+    });
+
+    return { success: true };
+  }
+
   private buildListConditions(
     user: TaskUser,
     query: ReturnType<typeof listTasksQuerySchema.parse>,
@@ -916,6 +1051,25 @@ export class TasksService {
     return row;
   }
 
+  private ensureReference(taskId: string, referenceId: string) {
+    const row = this.db
+      .select()
+      .from(taskReferencesTable)
+      .where(
+        and(
+          eq(taskReferencesTable.id, referenceId),
+          eq(taskReferencesTable.taskId, taskId),
+        ),
+      )
+      .get();
+
+    if (!row) {
+      throw new NotFoundException(`Task reference not found: ${referenceId}`);
+    }
+
+    return row;
+  }
+
   private ensureAssignableUser(userId: string | null) {
     if (!userId) return;
 
@@ -1002,7 +1156,10 @@ export class TasksService {
     };
   }
 
-  private getTaskCompletionMeta(task: TaskRow, usersById: Map<string, UserRow>) {
+  private getTaskCompletionMeta(
+    task: TaskRow,
+    usersById: Map<string, UserRow>,
+  ) {
     if (task.status !== 'DONE') {
       return {
         completedById: null,
@@ -1077,6 +1234,18 @@ export class TasksService {
     const user = usersById.get(attachment.userId);
     return {
       ...attachment,
+      userName: user?.name ?? null,
+      userEmail: user?.email ?? null,
+    };
+  }
+
+  private toReferenceDto(
+    reference: TaskReferenceRow,
+    usersById: Map<string, UserRow>,
+  ) {
+    const user = usersById.get(reference.userId);
+    return {
+      ...reference,
       userName: user?.name ?? null,
       userEmail: user?.email ?? null,
     };
@@ -1340,34 +1509,37 @@ export class TasksService {
     const orderQuery = this.db
       .select({ orderIdx: tasksTable.orderIdx })
       .from(tasksTable);
-    const maxOrder = (workspaceId
-      ? orderQuery.where(eq(tasksTable.workspaceId, workspaceId)).all()
-      : orderQuery.all()
+    const maxOrder = (
+      workspaceId
+        ? orderQuery.where(eq(tasksTable.workspaceId, workspaceId)).all()
+        : orderQuery.all()
     ).reduce((max, row) => Math.max(max, row.orderIdx), -1);
 
-    const rows = input.items.map((item, index): TaskRow => ({
-      id: `task-${randomUUID().slice(0, 12)}`,
-      workspaceId: workspaceId ?? null,
-      title: item.title,
-      content: '',
-      acceptanceCriteria: '',
-      plan: '',
-      folderStructure: '',
-      mmdContent: '',
-      taskType: 'CHORE',
-      status: 'DONE',
-      priority: 'MEDIUM',
-      scope: input.scope,
-      ownerId,
-      visibility,
-      reporterId: user.id,
-      assigneeId,
-      dueDate: null,
-      orderIdx: maxOrder + index + 1,
-      archived: false,
-      createdAt: now,
-      updatedAt: now,
-    }));
+    const rows = input.items.map(
+      (item, index): TaskRow => ({
+        id: `task-${randomUUID().slice(0, 12)}`,
+        workspaceId: workspaceId ?? null,
+        title: item.title,
+        content: '',
+        acceptanceCriteria: '',
+        plan: '',
+        folderStructure: '',
+        mmdContent: '',
+        taskType: 'CHORE',
+        status: 'DONE',
+        priority: 'MEDIUM',
+        scope: input.scope,
+        ownerId,
+        visibility,
+        reporterId: user.id,
+        assigneeId,
+        dueDate: null,
+        orderIdx: maxOrder + index + 1,
+        archived: false,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
 
     if (rows.length > 0) {
       this.db.insert(tasksTable).values(rows).run();

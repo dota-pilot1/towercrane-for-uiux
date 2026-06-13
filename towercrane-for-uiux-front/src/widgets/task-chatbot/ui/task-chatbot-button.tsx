@@ -20,7 +20,7 @@ export function TaskChatbotButton() {
         )}
         {/* 미니 알림 점 (살아있는 느낌) */}
         {!isOpen && (
-          <span className="absolute right-1 top-1 size-2.5 rounded-full bg-emerald-400 ring-2 ring-brand-primary" />
+          <span className="absolute right-1 top-1 size-2.5 rounded-full bg-status-online ring-2 ring-brand-primary" />
         )}
       </button>
       {isOpen && <TaskChatbotPanel onClose={() => setIsOpen(false)} />}

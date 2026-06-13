@@ -46,9 +46,9 @@ export function TaskChatbotPanel({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed bottom-28 right-8 z-50 flex h-[580px] w-[380px] flex-col overflow-hidden rounded-2xl border border-brand-border bg-brand-glass shadow-2xl backdrop-blur-md transition-all duration-300">
+    <div className="fixed bottom-28 right-8 z-50 flex h-[580px] w-[380px] flex-col overflow-hidden rounded-2xl border border-surface-border bg-surface-muted shadow-2xl transition-all duration-300">
       {/* 헤더 */}
-      <div className="flex items-center justify-between border-b border-brand-border/40 bg-brand-glass px-4 py-3 text-text-primary">
+      <div className="flex items-center justify-between border-b border-surface-border-soft bg-surface-raised px-4 py-3 text-text-primary">
         <div className="flex items-center gap-2">
           <div className="flex size-7 items-center justify-center rounded-md bg-brand-primary text-text-on-brand">
             <Bot className="size-4" />
@@ -77,10 +77,10 @@ export function TaskChatbotPanel({ onClose }: { onClose: () => void }) {
             className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed shadow-xs ${
+              className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-xs leading-relaxed shadow-sm ${
                 m.role === 'user'
                   ? 'whitespace-pre-wrap bg-brand-primary text-text-on-brand'
-                  : 'bg-surface-raised text-text-primary'
+                  : 'bg-surface-raised border border-surface-border-soft text-text-primary'
               }`}
             >
               {(() => {
@@ -96,7 +96,7 @@ export function TaskChatbotPanel({ onClose }: { onClose: () => void }) {
         ))}
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
           <div className="flex justify-start">
-            <div className="flex items-center gap-2 rounded-xl bg-surface-raised/50 px-3.5 py-2.5 text-xs text-text-muted">
+            <div className="flex items-center gap-2 rounded-xl bg-surface-raised border border-surface-border-soft px-3.5 py-2.5 text-xs text-text-muted shadow-sm">
               <Loader2 className="size-3 animate-spin text-brand-primary" />
               답변을 생각하는 중...
             </div>
@@ -108,17 +108,17 @@ export function TaskChatbotPanel({ onClose }: { onClose: () => void }) {
       {/* 입력 영역 */}
       <form
         onSubmit={handleSubmit}
-        className="border-t border-brand-border/40 bg-surface-raised/40 p-3"
+        className="border-t border-surface-border-soft bg-surface-raised p-3"
       >
-        <div className="flex items-center gap-1.5 rounded-lg border border-brand-border bg-background px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-brand-primary/20">
+        <div className="flex items-center gap-1.5 rounded-lg border border-surface-border bg-surface-muted px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-brand-primary/20">
           {isSupported && (
             <button
               type="button"
               onClick={isListening ? stopListening : startListening}
               className={`flex size-7 items-center justify-center rounded-md transition-colors ${
                 isListening
-                  ? 'animate-bounce bg-red-500/10 text-red-500'
-                  : 'text-text-muted hover:bg-brand-glass hover:text-brand-primary'
+                  ? 'animate-bounce bg-danger-glass text-destructive'
+                  : 'text-text-muted hover:bg-surface-raised hover:text-brand-primary'
               }`}
               aria-label={isListening ? '음성 인식 중지' : '음성 인식 시작'}
             >

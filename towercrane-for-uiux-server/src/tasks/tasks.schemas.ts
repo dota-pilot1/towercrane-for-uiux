@@ -21,6 +21,12 @@ export const taskStatusSchema = z.enum([
 export const taskPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
 export const taskScopeSchema = z.enum(['TEAM', 'PERSONAL']);
 export const taskVisibilitySchema = z.enum(['TEAM', 'PRIVATE']);
+export const taskReferenceTypeSchema = z.enum([
+  'FIGMA',
+  'DOC',
+  'GITHUB',
+  'URL',
+]);
 
 function linesFromText(value: unknown) {
   if (typeof value !== 'string') return [];
@@ -165,10 +171,7 @@ export const createCodexCommitTasksSchema = z.preprocess(
     commitHash: z.string().trim().max(80).optional(),
     commitMessage: z.string().trim().max(300).optional(),
     source: z.string().trim().max(80).optional().default('codex'),
-    tasks: z
-      .array(codexCommitTaskSchema)
-      .min(1)
-      .max(50),
+    tasks: z.array(codexCommitTaskSchema).min(1).max(50),
   }),
 );
 
@@ -232,6 +235,18 @@ export const createAttachmentSchema = z.object({
   contentType: z.string().trim().min(1).max(128),
   fileSize: z.number().int().min(0).default(0),
 });
+
+export const createReferenceSchema = z.object({
+  referenceType: taskReferenceTypeSchema.default('URL'),
+  title: z.string().trim().min(1).max(120),
+  url: z.string().trim().url().max(2048),
+});
+
+export const updateReferenceSchema = createReferenceSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field is required',
+  });
 
 export const createTaskWorkspaceSchema = z.object({
   name: z.string().trim().min(1).max(80),

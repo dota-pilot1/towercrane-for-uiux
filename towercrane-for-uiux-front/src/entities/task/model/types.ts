@@ -37,6 +37,7 @@ export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'HOLD'
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
 export type TaskScope = 'TEAM' | 'PERSONAL'
 export type TaskVisibility = 'TEAM' | 'PRIVATE'
+export type TaskReferenceType = 'FIGMA' | 'DOC' | 'GITHUB' | 'URL'
 
 export type Task = {
   id: string
@@ -225,3 +226,25 @@ export type TaskAttachment = {
   fileSize: number
   createdAt: string
 }
+
+export type TaskReference = {
+  id: string
+  taskId: string
+  userId: string
+  userName?: string | null
+  userEmail?: string | null
+  referenceType: TaskReferenceType
+  title: string
+  url: string
+  orderIdx: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type CreateTaskReferenceRequest = {
+  referenceType: TaskReferenceType
+  title: string
+  url: string
+}
+
+export type UpdateTaskReferenceRequest = Partial<CreateTaskReferenceRequest>

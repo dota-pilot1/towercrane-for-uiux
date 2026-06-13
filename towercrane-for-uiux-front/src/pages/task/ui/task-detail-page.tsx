@@ -70,6 +70,7 @@ import {
   TaskAttachmentsPanel,
   TaskMmdPanel,
 } from '../../../features/task/ui/task-attachments-panel'
+import { TaskReferencesPanel } from '../../../features/task/ui/task-references-panel'
 import {
   TaskPriorityBadge,
   TaskStatusBadge,
@@ -1536,6 +1537,14 @@ export function TaskDetailPage() {
             </main>
 
             <aside className="space-y-4">
+              <SectionCard
+                title="참고 링크"
+                description="Figma, 문서, GitHub 링크를 업무에 연결합니다."
+                icon={Link2}
+              >
+                <TaskReferencesPanel taskId={task.id} />
+              </SectionCard>
+
               <SectionCard
                 title="첨부"
                 description="이미지와 문서를 업무에 연결합니다."
