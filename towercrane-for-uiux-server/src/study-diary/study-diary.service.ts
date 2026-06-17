@@ -2,10 +2,14 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
+import OpenAI from 'openai';
 import { DatabaseService } from '../database/database.service';
 import {
   challengeCategoriesTable,
@@ -23,6 +27,7 @@ import type {
   CreateStudyDiaryCategoryInput,
   CreateStudyDiaryNoteInput,
   CreateStudyDiarySectionInput,
+  OrganizeStudyDiaryNoteInput,
   UpdateStudyDiaryCategoryInput,
   UpdateStudyDiaryInput,
   UpdateStudyDiaryNoteInput,
@@ -31,7 +36,15 @@ import type {
 
 @Injectable()
 export class StudyDiaryService {
-  constructor(private readonly db: DatabaseService) {}
+  private readonly openai: OpenAI | null;
+
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly configService: ConfigService,
+  ) {
+    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    this.openai = apiKey ? new OpenAI({ apiKey }) : null;
+  }
 
   listWorkspaces(userId: string) {
     this.getOrCreateMyDiary(userId);
@@ -448,6 +461,16 @@ export class StudyDiaryService {
       .run();
   }
 
+  async organizeNote(userId: string, input: OrganizeStudyDiaryNoteInput) {
+    this.getUser(userId);
+    const prompt = this.buildStudyDiaryOrganizePrompt(input);
+    const content = await this.callOpenAIForStudyDiary(prompt);
+
+    return {
+      content: this.stripMarkdownFence(content),
+    };
+  }
+
   getPublicDiary(targetUserId: string) {
     const diary = this.getDiaryByUserId(targetUserId);
     if (diary.visibility === 'private') {
@@ -609,6 +632,70 @@ export class StudyDiaryService {
       throw new NotFoundException('Study diary not found');
     }
     return diary;
+  }
+
+  private buildStudyDiaryOrganizePrompt(input: OrganizeStudyDiaryNoteInput) {
+    const modeGuide =
+      input.mode === 'summary'
+        ? '핵심 내용을 짧고 밀도 있게 요약하세요.'
+        : input.mode === 'interview'
+          ? '면접에서 바로 답변할 수 있는 형태로 개념, 비교, 예시를 정리하세요.'
+          : '러프한 학습 메모를 읽기 좋은 스터디 노트로 재구성하세요.';
+
+    return `다음 학습 노트를 정리해주세요.
+
+[요청]
+- ${modeGuide}
+- 한국어로 작성하세요.
+- 의미를 바꾸거나 모르는 내용을 지어내지 마세요.
+- 원문에 없는 내용은 "추가로 확인할 것" 섹션에 질문 형태로만 적으세요.
+- Markdown만 반환하세요. 코드블록으로 감싸지 마세요.
+- 추천 구조:
+  # ${input.title?.trim() || '학습 노트 정리'}
+  ## 한 줄 요약
+  ## 핵심 개념
+  ## 비교 / 흐름
+  ## 면접 답변용 정리
+  ## 추가로 확인할 것
+
+[원문]
+${input.content}`;
+  }
+
+  private async callOpenAIForStudyDiary(content: string) {
+    if (!this.openai) {
+      throw new ServiceUnavailableException(
+        'OpenAI API key is not configured.',
+      );
+    }
+
+    const model =
+      this.configService.get<string>('OPENAI_DEFAULT_MODEL') ?? 'gpt-4o-mini';
+    const response = await this.openai.chat.completions.create({
+      model,
+      temperature: 0.2,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You organize rough study notes into clear Korean Markdown. Preserve meaning and avoid hallucination.',
+        },
+        { role: 'user', content },
+      ],
+    });
+
+    const text = response.choices[0]?.message.content?.trim();
+    if (!text) {
+      throw new InternalServerErrorException('OpenAI returned empty content.');
+    }
+    return text;
+  }
+
+  private stripMarkdownFence(value: string) {
+    return value
+      .replace(/^```(?:markdown|md)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
   }
 
   private assertWorkspaceOwner(

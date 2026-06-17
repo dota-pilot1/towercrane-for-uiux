@@ -53,6 +53,7 @@ function sectionIdToPath(sectionId: string): string {
     task_group: '/task',
     task_all: '/task',
     task_my: '/task/my',
+    task_favorites: '/task/favorites',
     task_issues: '/issues',
     project_issues: '/project-issues',
     profile: '/profile',
@@ -110,6 +111,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/boards/qna')) return 'board_qna'
   if (pathname.startsWith('/boards/free')) return 'board_free'
   if (pathname.startsWith('/boards')) return 'boards'
+  if (pathname.startsWith('/task/favorites')) return 'task_favorites'
   if (pathname.startsWith('/task/my')) return 'task_my'
   if (pathname.startsWith('/task/users')) return 'task_all'
   if (pathname.startsWith('/project-issues')) return 'project_issues'

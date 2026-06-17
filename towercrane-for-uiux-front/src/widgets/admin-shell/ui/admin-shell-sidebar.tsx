@@ -225,17 +225,17 @@ export function AdminShellSidebar({
                           key={category.id}
                           type="button"
                           onClick={() => onSelectCategory(category.id)}
-                          className={`group relative flex h-11 w-full items-center gap-2.5 overflow-hidden rounded-md border px-3 transition-all duration-200 ${
+                          className={`group relative flex h-[42px] w-full items-center gap-3 overflow-hidden rounded-md border px-3 transition-all duration-200 ${
                             activeCategoryId === category.id
-                              ? 'border-brand-border bg-brand-glass text-text-primary shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_10%,transparent)] before:absolute before:left-0 before:top-2 before:h-7 before:w-1 before:rounded-r-sm before:bg-brand-primary'
-                              : 'border-transparent text-text-muted hover:border-surface-border-soft hover:bg-surface-muted/60 hover:text-text-primary'
+                              ? 'border-brand-border bg-brand-glass text-text-primary shadow-[0_4px_12px_color-mix(in_srgb,var(--primary)_8%,transparent)] before:absolute before:left-0 before:top-2 before:h-[26px] before:w-[3px] before:rounded-r-[2px] before:bg-brand-primary'
+                              : 'border-transparent text-text-muted hover:bg-surface-muted/50 hover:text-text-primary'
                           }`}
                         >
                           <div className="shrink-0">
                             <Icon className="size-4" />
                           </div>
                           <div className="min-w-0 flex-1 truncate text-left">
-                            <div className="truncate text-sm font-bold">{category.title}</div>
+                            <div className="truncate text-sm font-bold tracking-tight">{category.title}</div>
                             <div className="truncate text-[10px] ui-text-muted opacity-70">
                               {category.summary}
                             </div>
@@ -273,7 +273,6 @@ function SortableCategoryItem({
   isActive,
   onSelect,
 }: SortableCategoryItemProps) {
-  const Icon = iconMap[item.iconKey] ?? Package
   const [actionsOpen, setActionsOpen] = useState(false)
   const actionsRef = useRef<HTMLDivElement | null>(null)
   const {
@@ -308,66 +307,55 @@ function SortableCategoryItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative flex h-11 w-full items-center gap-1.5 rounded-md border transition-all duration-200 ${
+      className={`group relative flex h-[42px] w-full items-center gap-2 rounded-md border transition-all duration-200 ${
         isActive
-          ? 'border-brand-border bg-brand-glass text-text-primary shadow-[0_8px_18px_color-mix(in_srgb,var(--primary)_10%,transparent)] before:absolute before:left-0 before:top-2 before:h-7 before:w-1 before:rounded-r-sm before:bg-brand-primary'
-          : 'border-transparent text-text-muted hover:border-surface-border-soft hover:bg-surface-muted/60 hover:text-text-primary'
+          ? 'border-brand-border bg-brand-glass text-text-primary shadow-[0_4px_12px_color-mix(in_srgb,var(--primary)_8%,transparent)] before:absolute before:left-0 before:top-2 before:h-[26px] before:w-[3px] before:rounded-r-[2px] before:bg-brand-primary'
+          : 'border-transparent text-text-muted hover:bg-surface-muted/50 hover:text-text-primary'
       }`}
     >
-      <div className="flex items-center gap-1 pl-2.5">
+      <div className="flex items-center gap-1 pl-1">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className={`flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded-sm transition-colors active:cursor-grabbing ${
+          className={`flex h-7 w-5 shrink-0 cursor-grab items-center justify-center transition-colors active:cursor-grabbing ${
             isActive ? 'text-text-primary' : 'text-text-muted hover:text-text-primary'
           }`}
         >
-          <GripVertical className="size-3.5" />
+          <GripVertical className="size-3" />
         </button>
       </div>
 
       <button
         type="button"
         onClick={onSelect}
-        className="flex h-full min-w-0 flex-1 items-center gap-2 py-1.5 text-left"
+        className="flex h-full min-w-0 flex-1 flex-col justify-center py-1 text-left"
       >
-        <div className={`flex size-7 shrink-0 items-center justify-center rounded-md border transition-all ${
-          isActive
-            ? 'border-brand-border bg-surface-raised text-brand-primary'
-            : 'border-surface-border-soft bg-surface-muted text-text-muted group-hover:text-text-primary'
-        }`}>
-          <Icon className="size-3.5" />
+        <div
+          className={`truncate text-sm transition-all ${
+            isActive ? 'font-black tracking-tight text-text-primary' : 'font-medium'
+          }`}
+        >
+          {item.title}
         </div>
-        <div className="min-w-0 flex-1">
-          <div
-            className={`truncate text-[13px] leading-tight transition-all ${
-              isActive ? 'font-black text-text-primary' : 'font-semibold'
-            }`}
-          >
-            {item.title}
-          </div>
-          <div className="mt-0.5 truncate text-[10px] font-medium leading-tight text-text-muted">
-            {item.summary}
-          </div>
-        </div>
+        <div className="truncate text-[10px] opacity-60 font-medium">{item.summary}</div>
       </button>
 
       <div
         ref={actionsRef}
-        className="relative shrink-0 pr-2"
+        className="relative shrink-0 pr-1.5"
         onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
-          className={`flex size-7 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised text-text-secondary shadow-sm transition-all hover:border-surface-border hover:bg-surface-muted hover:text-text-primary ${
+          className={`flex size-6 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised ui-text-secondary shadow-sm transition-all hover:border-surface-border hover:bg-surface-muted hover:ui-text-primary ${
             actionsOpen || isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}
           aria-label={`${item.title} 카테고리 작업`}
           aria-expanded={actionsOpen}
           onClick={() => setActionsOpen((open) => !open)}
         >
-          <MoreVertical className="size-3.5" />
+          <MoreVertical className="size-3" />
         </button>
 
         {actionsOpen ? (

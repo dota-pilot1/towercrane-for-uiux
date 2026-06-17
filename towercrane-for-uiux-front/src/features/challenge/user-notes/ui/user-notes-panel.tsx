@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, Copy, Plus } from 'lucide-react'
 import { NoteCard } from './note-card'
 import { NoteFormDialog } from './note-form-dialog'
+import type { StudyDiaryOrganizeMode } from '../../../../entities/study-diary/model/types'
 
 interface Note {
   id: string
@@ -21,6 +22,11 @@ interface UserNotesPanelProps {
   onCreateNote: (data: { title?: string; content: string; visibility: string; pinned: boolean }) => Promise<void>
   onUpdateNote: (id: string, data: Partial<Note>) => Promise<void>
   onDeleteNote: (id: string) => void
+  onOrganizeNote?: (data: {
+    title?: string
+    content: string
+    mode?: StudyDiaryOrganizeMode
+  }) => Promise<{ content: string }>
   isDeletingNoteId?: string | null
   deleteNoteError?: string | null
   loading?: boolean
@@ -33,6 +39,7 @@ export function UserNotesPanel({
   onCreateNote,
   onUpdateNote,
   onDeleteNote,
+  onOrganizeNote,
   isDeletingNoteId,
   deleteNoteError,
   loading = false,
@@ -92,6 +99,7 @@ export function UserNotesPanel({
               isMine={true}
               onUpdate={(updates) => onUpdateNote(note.id, updates)}
               onDelete={() => onDeleteNote(note.id)}
+              onOrganize={onOrganizeNote}
               isDeleting={isDeletingNoteId === note.id}
               deleteError={isDeletingNoteId === note.id ? deleteNoteError : null}
             />

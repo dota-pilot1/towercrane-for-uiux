@@ -16,6 +16,7 @@ import {
   createStudyDiaryCategorySchema,
   createStudyDiaryNoteSchema,
   createStudyDiarySectionSchema,
+  organizeStudyDiaryNoteSchema,
   updateStudyDiaryCategorySchema,
   updateStudyDiaryNoteSchema,
   updateStudyDiarySchema,
@@ -225,6 +226,12 @@ export class StudyDiaryController {
     @Param('sectionId') sectionId: string,
   ) {
     return this.studyDiaryService.getMyNotes(req.user.id, sectionId);
+  }
+
+  @Post('notes/organize')
+  organizeNote(@Req() req: SessionRequest, @Body() body: unknown) {
+    const input = organizeStudyDiaryNoteSchema.parse(body);
+    return this.studyDiaryService.organizeNote(req.user.id, input);
   }
 
   @Post('notes')

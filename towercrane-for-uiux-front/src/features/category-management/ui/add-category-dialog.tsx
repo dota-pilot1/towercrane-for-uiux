@@ -68,8 +68,8 @@ export function AddCategoryDialog({ children, workspaceId }: AddCategoryDialogPr
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {children ?? (
-          <Button variant="secondary" className="w-full border-2 border-dashed border-surface-border bg-surface-muted/20 text-text-muted transition-all duration-300 hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary hover:scale-[1.01] active:scale-[0.99] shadow-none">
-            <Plus className="mr-2 size-4" />
+          <Button variant="secondary" className="w-full h-9 border border-dashed border-surface-border bg-surface-muted/10 text-text-muted transition-all duration-200 hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary active:scale-[0.98] shadow-none text-xs">
+            <Plus className="mr-1.5 size-3.5" />
             카테고리 추가
           </Button>
         )}

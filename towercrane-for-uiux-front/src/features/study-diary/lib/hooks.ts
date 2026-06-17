@@ -3,6 +3,7 @@ import { studyDiaryApi } from '../../../entities/study-diary/api/study-diary-api
 import type {
   StudyDiaryCategory,
   StudyDiaryNote,
+  StudyDiaryOrganizeMode,
   StudyDiarySection,
   StudyDiaryVisibility,
 } from '../../../entities/study-diary/model/types'
@@ -414,6 +415,13 @@ export function useUpdateStudyDiaryNote() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: STUDY_DIARY_KEYS.all(userId) })
     },
+  })
+}
+
+export function useOrganizeStudyDiaryNote() {
+  return useMutation({
+    mutationFn: (data: { title?: string; content: string; mode?: StudyDiaryOrganizeMode }) =>
+      studyDiaryApi.organizeNote(data),
   })
 }
 

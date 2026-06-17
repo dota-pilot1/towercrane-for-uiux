@@ -4664,16 +4664,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         displayOrder: 1,
       },
       {
+        name: '즐찾 관리',
+        sectionId: 'task_favorites',
+        icon: 'Star',
+        displayOrder: 2,
+      },
+      {
         name: '프로젝트 이슈',
         sectionId: 'project_issues',
         icon: 'ShieldAlert',
-        displayOrder: 2,
+        displayOrder: 3,
       },
       {
         name: '학습 일지',
         sectionId: 'study_diary',
         icon: 'BookOpen',
-        displayOrder: 3,
+        displayOrder: 4,
       },
     ];
 

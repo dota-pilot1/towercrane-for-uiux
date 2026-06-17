@@ -1,23 +1,38 @@
 // build-fix: 2024-04-20
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import {
   ArrowLeft,
   Check,
-  CheckCircle2,
-  Clock,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   ExternalLink,
   GitBranch,
-  Globe,
+  GripVertical,
   Image as ImageIcon,
   Info,
-  Loader2,
-  Lock,
+  ListChecks,
   MessageSquareText,
   Pencil,
   Plus,
   ShieldAlert,
-  Star,
   Tag,
   X,
 } from 'lucide-react'
@@ -25,14 +40,13 @@ import { toast } from 'sonner'
 import {
   useUpdatePrototype,
   type PrototypeListItem,
+  type UpdatePrototypePayload,
 } from '../../../shared/api/catalog'
 import { DeletePrototypeButton } from '../../prototype-management/ui/delete-prototype-button'
 import { EditPrototypeDialog } from '../../prototype-management/ui/edit-prototype-dialog'
 import { useNavigate, useParams, Link } from '@tanstack/react-router'
 import { useSessionStore } from '../../../shared/store/session-store'
 import { ActionIconButton } from '../../../shared/ui/action-icon-button'
-import { Button } from '../../../shared/ui/button'
-import { Input } from '../../../shared/ui/input'
 import { ReviewForm } from './review-form'
 import { ReviewList } from './review-list'
 import { useCategory } from '../../../shared/api/catalog'
@@ -83,18 +97,57 @@ export function PrototypeDetailPage({
   const [copyState, setCopyState] = useState('idle')
   const [checklistDraft, setChecklistDraft] = useState('')
   const [tagDraft, setTagDraft] = useState('')
-  const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null)
+  const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editingDraft, setEditingDraft] = useState('')
 
   const checklist = prototype.checklist ?? []
   const tags = prototype.tags ?? []
+  const images = prototype.images ?? []
+  const activeImageUrl = activeImageIndex === null ? null : images[activeImageIndex]
+  const hasMultipleImages = images.length > 1
+  const checklistItemIds = checklist.map((item, index) => getChecklistItemId(item, index))
+  const checklistSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
 
   useEffect(() => {
     if (copyState === 'idle') return
     const timer = window.setTimeout(() => setCopyState('idle'), 1800)
     return () => window.clearTimeout(timer)
   }, [copyState])
+
+  useEffect(() => {
+    if (activeImageIndex === null) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActiveImageIndex(null)
+        return
+      }
+      if (!hasMultipleImages) return
+      if (event.key === 'ArrowLeft') {
+        setActiveImageIndex((current) =>
+          current === null ? current : (current - 1 + images.length) % images.length,
+        )
+      }
+      if (event.key === 'ArrowRight') {
+        setActiveImageIndex((current) =>
+          current === null ? current : (current + 1) % images.length,
+        )
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeImageIndex, hasMultipleImages, images.length])
 
   const handleCopyLink = async () => {
     try {
@@ -111,7 +164,7 @@ export function PrototypeDetailPage({
     const nextItem = checklistDraft.trim()
     if (!nextItem || updatePrototype.isPending) return
     try {
-      await updatePrototype.mutateAsync({ checklist: [...checklist, nextItem] } as any)
+      await updatePrototype.mutateAsync(preserveImages({ checklist: [...checklist, nextItem] }, images))
       setChecklistDraft('')
     } catch (error) {
       console.error(error)
@@ -126,12 +179,32 @@ export function PrototypeDetailPage({
     } else {
       nextChecklist[index] = '[x] ' + item
     }
-    await updatePrototype.mutateAsync({ checklist: nextChecklist } as any)
+    await updatePrototype.mutateAsync(preserveImages({ checklist: nextChecklist }, images))
   }
 
   const removeChecklistItem = async (index: number) => {
     const nextChecklist = checklist.filter((_, i) => i !== index)
-    await updatePrototype.mutateAsync({ checklist: nextChecklist } as any)
+    await updatePrototype.mutateAsync(preserveImages({ checklist: nextChecklist }, images))
+  }
+
+  const reorderChecklistItems = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (!over || active.id === over.id || updatePrototype.isPending) return
+
+    const oldIndex = checklistItemIds.findIndex((id) => id === active.id)
+    const newIndex = checklistItemIds.findIndex((id) => id === over.id)
+
+    if (oldIndex < 0 || newIndex < 0) return
+
+    try {
+      await updatePrototype.mutateAsync(
+        preserveImages({ checklist: arrayMove(checklist, oldIndex, newIndex) }, images),
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error('체크리스트 순서 변경에 실패했습니다.')
+    }
   }
 
   const startEditingItem = (index: number, item: string) => {
@@ -148,7 +221,7 @@ export function PrototypeDetailPage({
       const prefix = item.startsWith('[x] ') ? '[x] ' : ''
       const nextChecklist = [...checklist]
       nextChecklist[editingIndex] = prefix + newText
-      await updatePrototype.mutateAsync({ checklist: nextChecklist } as any)
+      await updatePrototype.mutateAsync(preserveImages({ checklist: nextChecklist }, images))
     }
     setEditingIndex(null)
     setEditingDraft('')
@@ -163,7 +236,7 @@ export function PrototypeDetailPage({
     const nextTag = tagDraft.trim()
     if (!nextTag || tags.includes(nextTag) || updatePrototype.isPending) return
     try {
-      await updatePrototype.mutateAsync({ tags: [...tags, nextTag] } as any)
+      await updatePrototype.mutateAsync(preserveImages({ tags: [...tags, nextTag] }, images))
       setTagDraft('')
     } catch (error) {
       console.error(error)
@@ -172,7 +245,21 @@ export function PrototypeDetailPage({
 
   const removeTag = async (tagToRemove: string) => {
     const nextTags = tags.filter((t) => t !== tagToRemove)
-    await updatePrototype.mutateAsync({ tags: nextTags } as any)
+    await updatePrototype.mutateAsync(preserveImages({ tags: nextTags }, images))
+  }
+
+  const showPreviousImage = () => {
+    if (!hasMultipleImages) return
+    setActiveImageIndex((current) =>
+      current === null ? current : (current - 1 + images.length) % images.length,
+    )
+  }
+
+  const showNextImage = () => {
+    if (!hasMultipleImages) return
+    setActiveImageIndex((current) =>
+      current === null ? current : (current + 1) % images.length,
+    )
   }
 
   let copyButtonText = 'Copy Link'
@@ -183,48 +270,116 @@ export function PrototypeDetailPage({
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto pr-2 pb-8">
       {/* Expanded Image Modal */}
-      {expandedImageUrl && (
+      {activeImageUrl && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-10 animate-in fade-in duration-200"
-          onClick={() => setExpandedImageUrl(null)}
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[rgba(0,0,0,0.72)] p-4 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setActiveImageIndex(null)}
         >
           <button
-            className="absolute right-6 top-6 text-text-on-brand opacity-70 transition-opacity hover:opacity-100"
-            onClick={() => setExpandedImageUrl(null)}
+            className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised text-text-primary shadow-lg transition-colors hover:bg-surface-muted"
+            onClick={() => setActiveImageIndex(null)}
+            aria-label="이미지 닫기"
           >
-            <X className="size-8" />
+            <X className="size-5" />
           </button>
-          <img 
-            src={expandedImageUrl} 
-            alt="Expanded visual" 
-            className="max-h-full max-w-full rounded-sm object-contain shadow-2xl animate-in zoom-in-95 duration-300" 
-          />
+          <div
+            className="relative flex h-[min(76vh,820px)] w-full max-w-6xl items-center justify-center"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {hasMultipleImages && (
+              <button
+                type="button"
+                className="absolute left-0 z-10 flex size-10 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised text-text-primary shadow-lg transition-colors hover:bg-surface-muted md:-left-14"
+                onClick={showPreviousImage}
+                aria-label="이전 이미지"
+              >
+                <ChevronLeft className="size-5" />
+              </button>
+            )}
+            <div className="h-full w-full overflow-hidden">
+              <div
+                className="flex h-full transition-transform duration-500 ease-out"
+                style={{ transform: `translateX(-${activeImageIndex * 100}%)` }}
+              >
+                {images.map((url, i) => (
+                  <div
+                    key={`${url}-${i}`}
+                    className="flex h-full w-full shrink-0 items-center justify-center px-1"
+                  >
+                    <img
+                      src={url}
+                      alt={`프로젝트 이미지 ${i + 1}`}
+                      className="max-h-full max-w-full rounded-sm object-contain shadow-2xl"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            {hasMultipleImages && (
+              <button
+                type="button"
+                className="absolute right-0 z-10 flex size-10 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised text-text-primary shadow-lg transition-colors hover:bg-surface-muted md:-right-14"
+                onClick={showNextImage}
+                aria-label="다음 이미지"
+              >
+                <ChevronRight className="size-5" />
+              </button>
+            )}
+          </div>
+          {hasMultipleImages && (
+            <div
+              className="mt-4 flex max-w-full items-center gap-2 overflow-x-auto rounded-sm border border-surface-border-soft bg-surface-raised/95 p-2 shadow-lg"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {images.map((url, i) => (
+                <button
+                  key={`${url}-${i}`}
+                  type="button"
+                  className={`h-14 w-24 shrink-0 overflow-hidden rounded-sm border transition-all ${
+                    i === activeImageIndex
+                      ? 'border-brand-border ring-2 ring-brand-border'
+                      : 'border-surface-border-soft opacity-70 hover:opacity-100'
+	                  }`}
+	                  onClick={() => setActiveImageIndex(i)}
+	                  aria-label={`${i + 1}번째 이미지 보기`}
+	                >
+                  <img src={url} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="mt-3 text-xs font-bold text-text-on-brand">
+            {activeImageIndex + 1} / {images.length}
+          </div>
         </div>
       )}
 
       {/* Main Info Section */}
-      <div className="ui-panel p-6 flex flex-col gap-5 relative overflow-hidden group">
-        <div className="flex items-start justify-between relative z-10">
-          <div className="min-w-0 flex-1 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-primary">
+      <div className="ui-panel relative flex flex-col gap-4 overflow-visible px-6 py-5">
+        <div className="relative z-10 flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1 space-y-2 lg:pr-4">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-brand-primary">
               <Tag className="size-3.5" />
               {category?.title ?? 'Category'}
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-foreground leading-tight">
+            <h1 className="text-2xl font-black leading-snug tracking-tight text-text-primary">
               {prototype.title}
             </h1>
-            <p className="text-base text-muted-foreground leading-relaxed max-w-4xl">
-              {prototype.summary}
-            </p>
+            {prototype.summary.trim() ? (
+              <p className="max-w-4xl text-sm leading-relaxed text-text-secondary">
+                {prototype.summary}
+              </p>
+            ) : null}
 
             {/* Tags area */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
+            {(tags.length > 0 || canManagePrototype) && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
               {tags.length > 0 ? (
                 tags.map(tag => (
-                  <div key={tag} className="flex items-center gap-1 rounded-sm bg-muted border border-border/50 px-2 py-1 text-xs font-bold text-muted-foreground">
+                  <div key={tag} className="flex items-center gap-1 rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-1 text-xs font-bold text-text-secondary">
                     #{tag}
                     {canManagePrototype && (
-                      <button onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-destructive transition-colors ml-0.5">
+                      <button onClick={() => removeTag(tag)} className="ml-0.5 text-text-muted transition-colors hover:text-danger-500">
                         <X className="size-3" />
                       </button>
                     )}
@@ -237,15 +392,16 @@ export function PrototypeDetailPage({
                     value={tagDraft} 
                     onChange={e => setTagDraft(e.target.value)} 
                     placeholder="+ Tag..." 
-                    className="h-8 w-24 rounded-sm border border-dashed border-border bg-transparent px-3 text-xs font-medium transition-all focus:w-32 focus:border-primary focus:border-solid outline-none"
+                    className="h-8 w-24 rounded-sm border border-dashed border-surface-border bg-transparent px-3 text-xs font-medium outline-none transition-all focus:w-32 focus:border-brand-border focus:border-solid"
                     onKeyDown={e => e.key === 'Enter' && addTag()} 
                   />
                 </div>
               )}
-            </div>
+              </div>
+            )}
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          <div className="flex shrink-0 flex-wrap items-center justify-start gap-1.5 lg:max-w-[620px] lg:justify-end">
             <Link
               to="/issues"
               search={{ prototypeId: prototype.id }}
@@ -255,6 +411,31 @@ export function PrototypeDetailPage({
               <ShieldAlert className="size-4" />
               이슈 관리
             </Link>
+            {demoUrl ? (
+              <a
+                href={demoUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`${prototype.title} 운영 데모 새 창으로 열기`}
+                className="flex h-9 items-center gap-2 rounded-sm border border-brand-border bg-brand-glass px-3.5 text-sm font-bold text-brand-primary shadow-sm transition-all hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+                onClick={() => toast.info('운영 데모로 이동합니다.')}
+              >
+                <ExternalLink className="size-4 text-brand-primary" aria-hidden />
+                운영 데모
+              </a>
+            ) : null}
+            {prototype.repoUrl ? (
+              <a
+                href={prototype.repoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex h-9 items-center gap-2 rounded-sm border border-surface-border bg-surface-raised px-3.5 text-sm font-bold text-text-primary shadow-sm transition-all hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
+                onClick={() => toast.info('소스 코드 저장소로 이동합니다.')}
+              >
+                <GitBranch className="size-4 text-text-secondary" aria-hidden />
+                Source Code
+              </a>
+            ) : null}
             <ActionIconButton
               icon={Copy}
               onClick={handleCopyLink}
@@ -268,14 +449,14 @@ export function PrototypeDetailPage({
                   prototype={prototype}
                   asIcon
                   size="icon"
-                  className="rounded-sm border-border!"
+                  className="rounded-sm border-surface-border!"
                 />
                 <DeletePrototypeButton
                   categoryId={prototype.categoryId}
                   prototypeId={prototype.id}
                   asIcon
                   size="icon"
-                  className="rounded-sm border-border!"
+                  className="rounded-sm border-surface-border!"
                 />
               </>
             )}
@@ -286,59 +467,6 @@ export function PrototypeDetailPage({
               title="목록으로 돌아가기"
               aria-label="목록으로 돌아가기"
             />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/50">
-          <div className="flex items-center gap-2">
-             <div className="flex items-center gap-1.5 rounded-sm bg-primary px-3 py-1 text-xs font-black uppercase text-primary-foreground">
-                <span className="size-1 rounded-full bg-primary-foreground animate-pulse" />
-                {prototype.status}
-              </div>
-              <div className="flex items-center gap-1.5 rounded-sm border border-border bg-background px-3 py-1 text-xs font-bold text-muted-foreground">
-                {prototype.visibility === 'public' ? <Globe className="size-3.5" /> : <Lock className="size-3.5" />}
-                {prototype.visibility}
-              </div>
-              {prototype.reviewCount > 0 && (
-                <div className="flex items-center gap-1 rounded-sm bg-primary/5 border border-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                  <Star className="size-3.5 fill-primary" />
-                  {prototype.avgRating.toFixed(1)}
-                  <span className="text-primary/50 font-medium font-mono ml-1">({prototype.reviewCount})</span>
-                </div>
-              )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {demoUrl ? (
-              <a
-                href={demoUrl}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`${prototype.title} 운영 데모 새 창으로 열기`}
-                className="flex items-center gap-2 rounded-sm border border-brand-border bg-brand-glass px-3 py-1.5 text-xs font-bold text-brand-primary shadow-sm transition-all hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-border"
-                onClick={() => toast.info('운영 데모로 이동합니다.')}
-              >
-                <ExternalLink className="size-3.5 text-brand-primary" aria-hidden />
-                운영 데모
-              </a>
-            ) : (
-              <span className="flex items-center gap-2 rounded-sm border border-surface-border-soft bg-surface-muted px-3 py-1.5 text-xs font-bold text-text-muted">
-                <ExternalLink className="size-3.5" aria-hidden />
-                데모 URL 없음
-              </span>
-            )}
-
-            {prototype.repoUrl && (
-              <a 
-                href={prototype.repoUrl} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="flex items-center gap-2 rounded-sm border border-border bg-background px-3 py-1.5 text-xs font-bold text-foreground transition-all hover:bg-muted shadow-sm"
-                onClick={() => toast.info('소스 코드 저장소로 이동합니다.')}
-              >
-                <GitBranch className="size-3.5 text-muted-foreground" /> Source Code
-              </a>
-            )}
           </div>
         </div>
       </div>
@@ -355,24 +483,26 @@ export function PrototypeDetailPage({
               <div className="text-xs font-black underline decoration-primary underline-offset-4 text-primary">PROJECT VISUALS</div>
             </div>
           </div>
-          {prototype.images && prototype.images.length > 0 && (
+          {images.length > 0 && (
             <div className="text-xs font-bold text-muted-foreground bg-muted px-3 py-1 rounded-full">
-              {prototype.images.length} Imagery Assets
+              {images.length} Imagery Assets
             </div>
           )}
         </div>
         
-        {prototype.images && prototype.images.length > 0 ? (
+        {images.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {prototype.images.map((url, i) => (
-              <div 
-                key={i} 
+            {images.map((url, i) => (
+              <button
+                type="button"
+                key={`${url}-${i}`}
                 className="group relative aspect-video cursor-zoom-in overflow-hidden rounded-sm border border-border bg-muted shadow-sm transition-all hover:scale-[1.02] hover:shadow-md active:scale-[0.99]"
-                onClick={() => setExpandedImageUrl(url)}
+                onClick={() => setActiveImageIndex(i)}
+                aria-label={`${i + 1}번째 이미지 크게 보기`}
               >
                 <img src={url} alt="" className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-primary/0 transition-colors group-hover:bg-primary/5" />
-              </div>
+              </button>
             ))}
           </div>
         ) : (
@@ -384,56 +514,62 @@ export function PrototypeDetailPage({
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <section className="ui-panel p-6 bg-muted/10 border-none">
-           <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
-              <div className="flex size-8 items-center justify-center rounded-sm bg-background border border-border text-primary shadow-sm">
-                <CheckCircle2 className="size-4" />
+        <section className="ui-panel p-5 bg-muted/10 border-none">
+           <div className="mb-3 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+              <div className="flex size-7 items-center justify-center rounded-sm bg-background border border-border text-primary shadow-sm">
+                <ListChecks className="size-3.5" />
               </div>
-              Project Roadmap
+              작업 체크리스트
             </h3>
           </div>
-          <div className="space-y-3">
-            {checklist.map((item, i) => {
-              const checked = item.startsWith('[x] ')
-              const isEditing = editingIndex === i
-              return (
-                <div key={i} className="group flex items-center gap-3 rounded-sm bg-background p-3 border border-border/40 transition-all hover:shadow-sm hover:border-primary/20">
-                  <button onClick={() => toggleChecklistItem(i)} className={`flex size-5 shrink-0 items-center justify-center rounded-[2px] border-2 transition-all ${checked ? 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/25' : 'border-border bg-muted/30 hover:border-primary/40'}`}>
-                    <Check className={`size-3 ${checked ? 'opacity-100' : 'opacity-0'}`} />
-                  </button>
-                  {isEditing ? (
-                    <input
-                      autoFocus
-                      value={editingDraft}
-                      onChange={e => setEditingDraft(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') commitEditingItem()
-                        if (e.key === 'Escape') cancelEditingItem()
-                      }}
-                      onBlur={commitEditingItem}
-                      className="flex-1 bg-transparent text-sm font-medium text-foreground outline-none border-b border-primary focus:border-primary"
+          <div className="space-y-2.5">
+            {canManagePrototype && checklist.length > 1 ? (
+              <DndContext
+                sensors={checklistSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={reorderChecklistItems}
+              >
+                <SortableContext
+                  items={checklistItemIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {checklist.map((item, i) => (
+                    <SortableChecklistItem
+                      key={checklistItemIds[i]}
+                      id={checklistItemIds[i]}
+                      index={i}
+                      item={item}
+                      isEditing={editingIndex === i}
+                      editingDraft={editingDraft}
+                      canManagePrototype={canManagePrototype}
+                      onToggle={() => toggleChecklistItem(i)}
+                      onStartEdit={() => startEditingItem(i, item)}
+                      onRemove={() => removeChecklistItem(i)}
+                      onEditingDraftChange={setEditingDraft}
+                      onCommitEdit={commitEditingItem}
+                      onCancelEdit={cancelEditingItem}
                     />
-                  ) : (
-                    <span className={`text-sm font-medium flex-1 ${checked ? 'text-muted-foreground line-through opacity-50' : 'text-foreground'}`}>
-                      {checked ? item.slice(4) : item}
-                    </span>
-                  )}
-                  {canManagePrototype && !isEditing && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                      {!checked && (
-                        <button onClick={() => startEditingItem(i, item)} className="text-muted-foreground hover:text-primary transition-colors">
-                          <Pencil className="size-3.5" />
-                        </button>
-                      )}
-                      <button onClick={() => removeChecklistItem(i)} className="text-muted-foreground hover:text-destructive transition-colors">
-                        <X className="size-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+                  ))}
+                </SortableContext>
+              </DndContext>
+            ) : (
+              checklist.map((item, i) => (
+                <ChecklistItem
+                  key={checklistItemIds[i]}
+                  item={item}
+                  isEditing={editingIndex === i}
+                  editingDraft={editingDraft}
+                  canManagePrototype={canManagePrototype}
+                  onToggle={() => toggleChecklistItem(i)}
+                  onStartEdit={() => startEditingItem(i, item)}
+                  onRemove={() => removeChecklistItem(i)}
+                  onEditingDraftChange={setEditingDraft}
+                  onCommitEdit={commitEditingItem}
+                  onCancelEdit={cancelEditingItem}
+                />
+              ))
+            )}
             {canManagePrototype && (
               <div className="relative mt-4">
                 <input 
@@ -477,6 +613,198 @@ export function PrototypeDetailPage({
           </div>
         </section>
       </div>
+    </div>
+  )
+}
+
+function getChecklistItemId(item: string, index: number) {
+  return `checklist-${index}-${item}`
+}
+
+function preserveImages(
+  payload: UpdatePrototypePayload,
+  images: string[],
+): UpdatePrototypePayload {
+  return { ...payload, images }
+}
+
+type ChecklistItemProps = {
+  canManagePrototype: boolean
+  editingDraft: string
+  isEditing: boolean
+  item: string
+  onCancelEdit: () => void
+  onCommitEdit: () => void
+  onEditingDraftChange: (value: string) => void
+  onRemove: () => void
+  onStartEdit: () => void
+  onToggle: () => void
+}
+
+function ChecklistItem({
+  canManagePrototype,
+  editingDraft,
+  isEditing,
+  item,
+  onCancelEdit,
+  onCommitEdit,
+  onEditingDraftChange,
+  onRemove,
+  onStartEdit,
+  onToggle,
+}: ChecklistItemProps) {
+  const checked = item.startsWith('[x] ')
+
+  return (
+    <div className="group flex items-center gap-3 rounded-sm border border-border/40 bg-background p-3 transition-all hover:border-primary/20 hover:shadow-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`flex size-5 shrink-0 items-center justify-center rounded-[2px] border-2 transition-all ${
+          checked
+            ? 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/25'
+            : 'border-border bg-muted/30 hover:border-primary/40'
+        }`}
+        aria-label={checked ? '체크리스트 완료 해제' : '체크리스트 완료'}
+      >
+        <Check className={`size-3 ${checked ? 'opacity-100' : 'opacity-0'}`} />
+      </button>
+      {isEditing ? (
+        <input
+          autoFocus
+          value={editingDraft}
+          onChange={(event) => onEditingDraftChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') onCommitEdit()
+            if (event.key === 'Escape') onCancelEdit()
+          }}
+          onBlur={onCommitEdit}
+          className="flex-1 border-b border-primary bg-transparent text-sm font-medium text-foreground outline-none focus:border-primary"
+        />
+      ) : (
+        <span className={`flex-1 text-sm font-medium ${checked ? 'text-muted-foreground line-through opacity-50' : 'text-foreground'}`}>
+          {checked ? item.slice(4) : item}
+        </span>
+      )}
+      {canManagePrototype && !isEditing && (
+        <div className="flex items-center gap-1 opacity-0 transition-all group-hover:opacity-100">
+          {!checked && (
+            <button
+              type="button"
+              onClick={onStartEdit}
+              className="text-muted-foreground transition-colors hover:text-primary"
+              aria-label="체크리스트 수정"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-muted-foreground transition-colors hover:text-destructive"
+            aria-label="체크리스트 삭제"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+type SortableChecklistItemProps = ChecklistItemProps & {
+  id: string
+  index: number
+}
+
+function SortableChecklistItem({
+  id,
+  index,
+  ...props
+}: SortableChecklistItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const checked = props.item.startsWith('[x] ')
+  const style = {
+    opacity: isDragging ? 0.55 : undefined,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group flex items-center gap-2 rounded-sm border border-border/40 bg-background p-3 transition-all hover:border-primary/20 hover:shadow-sm"
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="flex size-5 shrink-0 cursor-grab items-center justify-center text-text-muted transition-colors hover:text-text-primary active:cursor-grabbing"
+        aria-label={`${index + 1}번째 체크리스트 순서 변경`}
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={props.onToggle}
+        className={`flex size-5 shrink-0 items-center justify-center rounded-[2px] border-2 transition-all ${
+          checked
+            ? 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/25'
+            : 'border-border bg-muted/30 hover:border-primary/40'
+        }`}
+        aria-label={checked ? '체크리스트 완료 해제' : '체크리스트 완료'}
+      >
+        <Check className={`size-3 ${checked ? 'opacity-100' : 'opacity-0'}`} />
+      </button>
+      {props.isEditing ? (
+        <input
+          autoFocus
+          value={props.editingDraft}
+          onChange={(event) => props.onEditingDraftChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') props.onCommitEdit()
+            if (event.key === 'Escape') props.onCancelEdit()
+          }}
+          onBlur={props.onCommitEdit}
+          className="flex-1 border-b border-primary bg-transparent text-sm font-medium text-foreground outline-none focus:border-primary"
+        />
+      ) : (
+        <span className={`flex-1 text-sm font-medium ${checked ? 'text-muted-foreground line-through opacity-50' : 'text-foreground'}`}>
+          {checked ? props.item.slice(4) : props.item}
+        </span>
+      )}
+      {props.canManagePrototype && !props.isEditing && (
+        <div className="flex items-center gap-1 opacity-0 transition-all group-hover:opacity-100">
+          {!checked && (
+            <button
+              type="button"
+              onClick={props.onStartEdit}
+              className="text-muted-foreground transition-colors hover:text-primary"
+              aria-label="체크리스트 수정"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={props.onRemove}
+            className="text-muted-foreground transition-colors hover:text-destructive"
+            aria-label="체크리스트 삭제"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

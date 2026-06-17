@@ -7,6 +7,7 @@ import { UserNotesPanel } from '../../../features/challenge/user-notes/ui/user-n
 import {
   useCreateStudyDiaryNote,
   useDeleteStudyDiaryNote,
+  useOrganizeStudyDiaryNote,
   useStudyDiaryWorkspace,
   useStudyDiaryMyNotes,
   useUpdateStudyDiaryWorkspace,
@@ -92,6 +93,7 @@ export function StudyDiaryPage() {
   const createNote = useCreateStudyDiaryNote()
   const updateNote = useUpdateStudyDiaryNote()
   const deleteNote = useDeleteStudyDiaryNote()
+  const organizeNote = useOrganizeStudyDiaryNote()
 
   const handleSelectCategory = (categoryId: string | null) => {
     setSelectedCategory(categoryId)
@@ -167,6 +169,7 @@ export function StudyDiaryPage() {
                     onSettled: () => setDeletingNoteId(null),
                   })
                 }}
+                onOrganizeNote={(data) => organizeNote.mutateAsync(data)}
                 isDeletingNoteId={deletingNoteId}
                 deleteNoteError={deleteNote.isError ? (deleteNote.error as Error)?.message ?? '삭제 실패' : null}
                 loading={createNote.isPending || updateNote.isPending || deleteNote.isPending}

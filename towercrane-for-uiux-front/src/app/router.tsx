@@ -54,6 +54,7 @@ import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
 import { TaskPage } from '../pages/task/ui/task-page'
 import { TaskDetailPage } from '../pages/task/ui/task-detail-page'
 import { TaskWorkspaceHomePage } from '../pages/task-workspace/ui/task-workspace-home-page'
+import { TaskFavoritesPage } from '../pages/task-favorites/ui/task-favorites-page'
 import { PrototypeIssuesPage } from '../pages/prototype-issues/ui/prototype-issues-page'
 import { ProjectIssuesPage } from '../pages/project-issues/ui/project-issues-page'
 import { ProfilePage } from '../pages/profile/ui/profile-page'
@@ -256,7 +257,7 @@ const prototypeWorkspaceRoute = createRoute({
 })
 
 const prototypeWorkspaceCategoryRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
+  getParentRoute: () => semiPublicLayoutRoute,
   path: '/prototype/workspaces/$workspaceId/categories/$categoryId',
   validateSearch: (search: Record<string, unknown>) => ({
     prototypeId:
@@ -268,7 +269,7 @@ const prototypeWorkspaceCategoryRoute = createRoute({
 // ─── /prototype/$categoryId ──────────────────────────────────────────────────
 
 export const prototypeCategoryRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
+  getParentRoute: () => semiPublicLayoutRoute,
   path: '/prototype/$categoryId',
   validateSearch: (search: Record<string, unknown>) => ({
     prototypeId:
@@ -752,6 +753,12 @@ const myTaskWorkspaceRoute = createRoute({
   component: MyTaskWorkspaceRoute,
 })
 
+const taskFavoritesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/task/favorites',
+  component: TaskFavoritesPage,
+})
+
 const taskDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/task/$taskId',
@@ -980,6 +987,8 @@ export const router = createRouter({
     publicSqlNoteRoute,
     publicSqlPersonalPracticeRoute,
     semiPublicLayoutRoute.addChildren([
+      prototypeWorkspaceCategoryRoute,
+      prototypeCategoryRoute,
       sqlNoteDetailRoute,
       studyDiaryPublicWorkspaceRoute,
       studyDiaryPublicRoute,
@@ -988,8 +997,6 @@ export const router = createRouter({
       indexRoute,
       prototypeIndexRoute,
       prototypeWorkspaceRoute,
-      prototypeWorkspaceCategoryRoute,
-      prototypeCategoryRoute,
       studyDiaryRoute,
       studyDiaryWorkspaceRoute,
       devChallengeRoute,
@@ -1046,6 +1053,7 @@ export const router = createRouter({
       taskWorkspaceRoute,
       myTaskRoute,
       myTaskWorkspaceRoute,
+      taskFavoritesRoute,
       taskDetailRoute,
       userTaskRoute,
       prototypeIssuesRoute,

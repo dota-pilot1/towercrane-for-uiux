@@ -1,4 +1,5 @@
 export type StudyDiaryVisibility = 'private' | 'shared' | 'public'
+export type StudyDiaryOrganizeMode = 'organize' | 'summary' | 'interview'
 
 export type StudyDiary = {
   id: string

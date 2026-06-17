@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { LexicalEditor } from '../../../../shared/ui/lexical/lexical-editor'
 import { Mermaid } from '../../../../shared/ui/mermaid'
@@ -17,34 +17,46 @@ interface BlockEditorProps {
   data: string
   onBlockTypeChange: (type: BlockType) => void
   onDataChange: (data: string) => void
+  editorResetKey?: number
+  actions?: ReactNode
 }
 
 const BLOCK_TYPES: BlockType[] = ['NOTE', 'MMD', 'FIGMA', 'GITHUB', 'CHECKLIST']
 
-export function BlockEditor({ blockType, data, onBlockTypeChange, onDataChange }: BlockEditorProps) {
+export function BlockEditor({
+  blockType,
+  data,
+  onBlockTypeChange,
+  onDataChange,
+  editorResetKey = 0,
+  actions,
+}: BlockEditorProps) {
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="flex shrink-0 flex-wrap gap-2">
-        {BLOCK_TYPES.map((type) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => onBlockTypeChange(type)}
-            className={`flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-bold transition-colors ${
-              blockType === type
-                ? 'border-brand-border bg-brand-glass text-brand-primary'
-                : 'border-surface-border bg-surface-raised text-text-secondary hover:bg-surface-muted'
-            }`}
-          >
-            <span>{BLOCK_META[type].icon}</span>
-            <span>{BLOCK_META[type].label}</span>
-          </button>
-        ))}
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          {BLOCK_TYPES.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => onBlockTypeChange(type)}
+              className={`flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-bold transition-colors ${
+                blockType === type
+                  ? 'border-brand-border bg-brand-glass text-brand-primary'
+                  : 'border-surface-border bg-surface-raised text-text-secondary hover:bg-surface-muted'
+              }`}
+            >
+              <span>{BLOCK_META[type].icon}</span>
+              <span>{BLOCK_META[type].label}</span>
+            </button>
+          ))}
+        </div>
+        {actions ? <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div> : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {blockType === 'NOTE' && (
-          <NoteInput data={data} onChange={onDataChange} key="note" />
+          <NoteInput data={data} onChange={onDataChange} resetKey={editorResetKey} />
         )}
         {blockType === 'MMD' && (
           <MmdInput data={data} onChange={onDataChange} />
@@ -65,10 +77,19 @@ export function BlockEditor({ blockType, data, onBlockTypeChange, onDataChange }
 
 // ─── NOTE ───────────────────────────────────────────────────────────────────
 
-function NoteInput({ data, onChange }: { data: string; onChange: (v: string) => void }) {
+function NoteInput({
+  data,
+  onChange,
+  resetKey,
+}: {
+  data: string
+  onChange: (v: string) => void
+  resetKey: number
+}) {
   return (
     <div className="h-full min-h-[200px] overflow-auto rounded-md border border-surface-border bg-surface-raised shadow-sm">
       <LexicalEditor
+        key={resetKey}
         initialState={data || undefined}
         onChange={onChange}
         placeholder="내용을 입력하세요..."

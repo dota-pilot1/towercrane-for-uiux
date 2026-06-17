@@ -203,7 +203,7 @@ export function StudyDiarySectionList({ workspaceId, categoryId, selectedSection
           <div className="flex items-center justify-center py-4">
             <Loader2 className="size-4 animate-spin ui-text-secondary" />
           </div>
-        ) : sections.length === 0 ? (
+        ) : sections.length === 0 && !isAdding ? (
           <div className="py-8 text-center">
             <p className="text-xs ui-text-muted">주제가 없습니다</p>
           </div>

@@ -3,6 +3,7 @@ import type {
   StudyDiary,
   StudyDiaryCategory,
   StudyDiaryNote,
+  StudyDiaryOrganizeMode,
   StudyDiarySection,
   StudyDiaryVisibility,
 } from '../model/types'
@@ -120,6 +121,12 @@ export const studyDiaryApi = {
   updateNote: (id: string, data: Partial<StudyDiaryNote>) =>
     apiRequest<StudyDiaryNote>(`/study-diary/notes/${id}`, {
       method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  organizeNote: (data: { title?: string; content: string; mode?: StudyDiaryOrganizeMode }) =>
+    apiRequest<{ content: string }>('/study-diary/notes/organize', {
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 

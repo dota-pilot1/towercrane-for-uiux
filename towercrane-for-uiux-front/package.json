@@ -35,6 +35,8 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.23",
     "@xyflow/react": "^12.10.2",
+    "ag-grid-community": "^35.3.1",
+    "ag-grid-react": "^35.3.1",
     "ai": "^6.0.193",
     "clsx": "^2.1.1",
     "lexical": "^0.43.0",

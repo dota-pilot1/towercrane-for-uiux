@@ -54,6 +54,12 @@ export const updateStudyDiaryNoteSchema = z
     message: 'Must update at least one field',
   });
 
+export const organizeStudyDiaryNoteSchema = z.object({
+  title: z.string().max(255).optional(),
+  content: z.string().trim().min(1).max(30000),
+  mode: z.enum(['organize', 'summary', 'interview']).default('organize'),
+});
+
 export type UpdateStudyDiaryInput = z.infer<typeof updateStudyDiarySchema>;
 export type CreateStudyDiaryCategoryInput = z.infer<
   typeof createStudyDiaryCategorySchema
@@ -72,4 +78,7 @@ export type CreateStudyDiaryNoteInput = z.infer<
 >;
 export type UpdateStudyDiaryNoteInput = z.infer<
   typeof updateStudyDiaryNoteSchema
+>;
+export type OrganizeStudyDiaryNoteInput = z.infer<
+  typeof organizeStudyDiaryNoteSchema
 >;
