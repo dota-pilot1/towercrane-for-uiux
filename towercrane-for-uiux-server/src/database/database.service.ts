@@ -107,8 +107,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user
-        ON study_diaries(user_id);
+      CREATE INDEX IF NOT EXISTS idx_study_diaries_user
+        ON study_diaries(user_id, created_at);
 
       CREATE TABLE IF NOT EXISTS prototype_workspaces (
         id TEXT PRIMARY KEY,
@@ -2882,8 +2882,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'ALTER TABLE code_reviews ADD COLUMN task_id TEXT',
     );
     this.sqlite.exec(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_study_diaries_user
-        ON study_diaries(user_id);
+      DROP INDEX IF EXISTS idx_study_diaries_user;
+
+      CREATE INDEX IF NOT EXISTS idx_study_diaries_user
+        ON study_diaries(user_id, created_at);
 
       CREATE UNIQUE INDEX IF NOT EXISTS idx_prototype_workspace_members_unique
         ON prototype_workspace_members(workspace_id, user_id);

@@ -615,6 +615,7 @@ export class StudyDiaryService {
       .select()
       .from(studyDiariesTable)
       .where(eq(studyDiariesTable.userId, userId))
+      .orderBy(studyDiariesTable.createdAt)
       .get();
     if (!diary) {
       throw new NotFoundException('Study diary not found');
@@ -725,6 +726,7 @@ ${input.content}`;
       .select()
       .from(studyDiariesTable)
       .where(eq(studyDiariesTable.userId, userId))
+      .orderBy(studyDiariesTable.createdAt)
       .get();
 
     if (existing) {
