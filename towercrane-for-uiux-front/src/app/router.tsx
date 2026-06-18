@@ -15,6 +15,7 @@ import { AppHeader } from '../widgets/app-header/ui/app-header'
 import { TaskChatbotButton } from '../widgets/task-chatbot/ui/task-chatbot-button'
 import { LoginPage } from '../pages/auth/ui/login-page'
 import { WorkbenchPage } from '../pages/workbench/ui/workbench-page'
+import { PrototypeEditPage } from '../pages/prototype-edit/ui/prototype-edit-page'
 import { PrototypeWorkspaceHomePage } from '../pages/prototype-workspace/ui/prototype-workspace-home-page'
 import { ChatbotBasicPage } from '../pages/chatbot/ui/chatbot-basic-page'
 import { ChatbotStreamingPage } from '../pages/chatbot/ui/chatbot-streaming-page'
@@ -266,6 +267,12 @@ const prototypeWorkspaceCategoryRoute = createRoute({
   component: WorkbenchPage,
 })
 
+const prototypeWorkspaceEditRoute = createRoute({
+  getParentRoute: () => semiPublicLayoutRoute,
+  path: '/prototype/workspaces/$workspaceId/categories/$categoryId/prototypes/$prototypeId/edit',
+  component: PrototypeEditPage,
+})
+
 // ─── /prototype/$categoryId ──────────────────────────────────────────────────
 
 export const prototypeCategoryRoute = createRoute({
@@ -276,6 +283,12 @@ export const prototypeCategoryRoute = createRoute({
       typeof search.prototypeId === 'string' ? search.prototypeId : undefined,
   }),
   component: WorkbenchPage,
+})
+
+const prototypeEditRoute = createRoute({
+  getParentRoute: () => semiPublicLayoutRoute,
+  path: '/prototype/$categoryId/prototypes/$prototypeId/edit',
+  component: PrototypeEditPage,
 })
 
 // ─── /study-diary ────────────────────────────────────────────────────────────
@@ -987,7 +1000,9 @@ export const router = createRouter({
     publicSqlNoteRoute,
     publicSqlPersonalPracticeRoute,
     semiPublicLayoutRoute.addChildren([
+      prototypeWorkspaceEditRoute,
       prototypeWorkspaceCategoryRoute,
+      prototypeEditRoute,
       prototypeCategoryRoute,
       sqlNoteDetailRoute,
       studyDiaryPublicWorkspaceRoute,

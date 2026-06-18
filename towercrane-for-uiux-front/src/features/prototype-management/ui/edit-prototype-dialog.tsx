@@ -1,32 +1,9 @@
-import * as Dialog from '@radix-ui/react-dialog'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { ExternalLink, GitBranch, Pencil } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useForm, Controller, type SubmitHandler } from 'react-hook-form'
-import { z } from 'zod'
-import { useUpdatePrototype } from '../../../shared/api/catalog'
+import { useNavigate, useParams } from '@tanstack/react-router'
+import { Pencil } from 'lucide-react'
+
 import type { PrototypeItem } from '../../../shared/config/catalog'
 import { ActionIconButton } from '../../../shared/ui/action-icon-button'
 import { Button } from '../../../shared/ui/button'
-import { Input } from '../../../shared/ui/input'
-import { Switch } from '../../../shared/ui/switch'
-import { ToggleGroup } from '../../../shared/ui/toggle-group'
-import { ImagePlus, X, Image as ImageIcon, Loader2, Plus } from 'lucide-react'
-import { uploadFile } from '../../../shared/api/upload'
-
-const schema = z.object({
-  title: z.string().min(2).max(50),
-  repoUrl: z.string().max(2048).optional().or(z.literal('')),
-  demoUrl: z.string().max(2048).optional().or(z.literal('')),
-  figmaUrl: z.string().max(2048).optional().or(z.literal('')),
-  summary: z.string().min(2).max(160),
-  status: z.enum(['draft', 'building', 'ready']),
-  visibility: z.enum(['public', 'private']),
-  images: z.array(z.string()).default([]),
-  checklist: z.array(z.string()).default([]),
-})
-
-type FormValues = z.infer<typeof schema>
 
 type EditPrototypeDialogProps = {
   categoryId: string
@@ -43,346 +20,50 @@ export function EditPrototypeDialog({
   size = 'icon',
   className,
 }: EditPrototypeDialogProps) {
-  const [open, setOpen] = useState(false)
-  const updatePrototype = useUpdatePrototype(categoryId, prototype.id)
+  const navigate = useNavigate()
+  const params = useParams({ strict: false }) as { workspaceId?: string }
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      ...prototype,
-      repoUrl: prototype.repoUrl ?? '',
-      demoUrl: prototype.demoUrl ?? prototype.figmaUrl ?? '',
-      figmaUrl: '',
-      images: prototype.images ?? [],
-      checklist: prototype.checklist ?? [],
-    },
-  })
-
-  const [isUploading, setIsUploading] = useState(false)
-  const currentImages = watch('images') || []
-  const currentChecklist = watch('checklist') || []
-  const [newCheckItem, setNewCheckItem] = useState('')
-
-  useEffect(() => {
-    reset({
-      ...prototype,
-      repoUrl: prototype.repoUrl ?? '',
-      demoUrl: prototype.demoUrl ?? prototype.figmaUrl ?? '',
-      figmaUrl: '',
-      images: prototype.images ?? [],
-      checklist: prototype.checklist ?? [],
-    })
-  }, [prototype, reset])
-
-  const onSubmit: SubmitHandler<FormValues> = async (values) => {
-    try {
-      await updatePrototype.mutateAsync({
-        ...values,
-        figmaUrl: '',
+  const openEditPage = () => {
+    if (params.workspaceId) {
+      navigate({
+        to: '/prototype/workspaces/$workspaceId/categories/$categoryId/prototypes/$prototypeId/edit',
+        params: {
+          workspaceId: params.workspaceId,
+          categoryId,
+          prototypeId: prototype.id,
+        },
       })
-      setOpen(false)
-    } catch (e) {
-      console.error('Submit error:', e)
-      alert('저장 중 오류가 발생했습니다.')
+      return
     }
+
+    navigate({
+      to: '/prototype/$categoryId/prototypes/$prototypeId/edit',
+      params: { categoryId, prototypeId: prototype.id },
+    })
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-
-    setIsUploading(true)
-    try {
-      const uploadPromises = Array.from(files).map((file) => uploadFile(file))
-      const urls = await Promise.all(uploadPromises)
-      setValue('images', [...currentImages, ...urls])
-    } catch (error) {
-      console.error('Upload failed:', error)
-      alert('이미지 업로드에 실패했습니다.')
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  const removeImage = (index: number) => {
-    setValue(
-      'images',
-      currentImages.filter((_, i) => i !== index),
-    )
-  }
-
-  const addChecklistItem = () => {
-    if (!newCheckItem.trim()) return
-    setValue('checklist', [...currentChecklist, newCheckItem.trim()])
-    setNewCheckItem('')
-  }
-
-  const removeChecklistItem = (index: number) => {
-    setValue(
-      'checklist',
-      currentChecklist.filter((_, i) => i !== index),
+  if (asIcon) {
+    return (
+      <ActionIconButton
+        icon={Pencil}
+        title="수정"
+        aria-label="프로토타입 수정"
+        size={size}
+        className={className}
+        onClick={openEditPage}
+      />
     )
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>
-        {asIcon ? (
-          <ActionIconButton icon={Pencil} title="수정" size={size} className={className} />
-        ) : (
-          <Button variant="ghost" size="sm" className={className}>
-            <Pencil className="size-4" />
-          </Button>
-        )}
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 ui-overlay" />
-        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[95vw] max-w-[1280px] max-h-[85vh] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-0 flex flex-col overflow-hidden shadow-2xl z-50 border border-surface-border-soft">
-          {/* Header */}
-          <div className="flex shrink-0 items-center justify-between px-8 py-4 border-b border-surface-border-soft bg-surface-muted/30">
-            <div>
-              <Dialog.Title className="text-xl font-bold text-text-primary">
-                프로토타입 수정
-              </Dialog.Title>
-              <p className="text-sm text-text-secondary mt-1">{prototype.title}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="text-text-secondary hover:text-text-primary">
-                취소 (ESC)
-              </Button>
-              <Button 
-                onClick={handleSubmit(onSubmit)} 
-                disabled={updatePrototype.isPending} 
-                className="min-w-[120px] shadow-sm"
-              >
-                {updatePrototype.isPending ? '저장 중...' : '저장하기'}
-              </Button>
-            </div>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto bg-surface-muted/10 custom-scrollbar">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start max-w-[1240px] mx-auto px-8 py-6 pb-24">
-              {/* Column 1: Core Specifications */}
-              <div className="space-y-8">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-7 items-center justify-center rounded-full border-2 border-brand-primary text-[11px] font-black text-brand-primary">01</div>
-                  <h4 className="text-xs font-black uppercase tracking-widest text-text-primary">기본 정보</h4>
-                </div>
-
-                <div className="ui-panel p-6 space-y-6">
-                  <div className="space-y-1.5">
-                    <span className="text-[13px] font-medium text-text-secondary ml-1">이름</span>
-                    <Input {...register('title')} placeholder="기능 명칭을 입력하세요" className="h-11" />
-                    {errors.title ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.title.message}</p> : null}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="text-[13px] font-medium text-text-secondary ml-1">GitHub 링크 (선택)</span>
-                    <div className="relative">
-                      <GitBranch className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
-                      <Input
-                        {...register('repoUrl')}
-                        className="h-11"
-                        placeholder="https://github.com/..."
-                        style={{ paddingLeft: '2.75rem' }}
-                      />
-                    </div>
-                    {errors.repoUrl ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.repoUrl.message}</p> : null}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="text-[13px] font-medium text-text-secondary ml-1">운영 URL (선택)</span>
-                    <div className="relative">
-                      <ExternalLink className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
-                      <Input
-                        {...register('demoUrl')}
-                        placeholder="https://service.example.com"
-                        className="h-11"
-                        style={{ paddingLeft: '2.75rem' }}
-                      />
-                    </div>
-                    {errors.demoUrl ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.demoUrl.message}</p> : null}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="text-[13px] font-medium text-text-secondary ml-1">설명</span>
-                    <Input {...register('summary')} placeholder="핵심 기능을 한 줄로 설명해주세요" className="h-11" />
-                    {errors.summary ? (
-                      <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.summary.message}</p>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="ui-panel p-6 space-y-6">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-[13px] font-bold ui-text-primary">작업 상태</span>
-                      <span className="text-[10px] uppercase font-black ui-text-muted tracking-tighter">Current Phase</span>
-                    </div>
-                    <Controller
-                      name="status"
-                      control={control}
-                      render={({ field }) => (
-                        <ToggleGroup
-                          value={field.value}
-                          onChange={field.onChange}
-                          className="flex-wrap w-full"
-                          options={[
-                            { value: 'draft', label: 'Draft' },
-                            { value: 'building', label: 'Building' },
-                            { value: 'ready', label: 'Ready' },
-                          ]}
-                        />
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-[13px] font-bold ui-text-primary">공개 범위</span>
-                      <span className="text-[10px] uppercase font-black ui-text-muted tracking-tighter">Visibility</span>
-                    </div>
-                    <div className="flex h-12 flex-1 items-center px-4 rounded-xl border border-surface-border bg-background shadow-sm">
-                      <Controller
-                        name="visibility"
-                        control={control}
-                        render={({ field }) => (
-                          <Switch
-                            checked={field.value === 'public'}
-                            onCheckedChange={(checked) => field.onChange(checked ? 'public' : 'private')}
-                            label={field.value === 'public' ? 'Public (외부 공개)' : 'Private (내부 전용)'}
-                          />
-                        )}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Column 2: Visual Documentation */}
-              <div className="space-y-8 h-full flex flex-col">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-7 items-center justify-center rounded-full border-2 border-brand-primary text-[11px] font-black text-brand-primary">02</div>
-                  <h4 className="text-xs font-black uppercase tracking-widest text-text-primary">상세 이미지</h4>
-                </div>
-                
-                <div className="flex-1 flex flex-col gap-4">
-                  <div className="flex-1 ui-panel min-h-[400px] p-6 flex flex-col">
-                    <div className="flex-1 overflow-y-auto pr-2 pb-6">
-                      {currentImages.length === 0 ? (
-                        <div className="h-full min-h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-surface-border-soft rounded-2xl gap-3 text-text-muted">
-                          <ImageIcon className="size-10 opacity-30" />
-                          <p className="text-xs font-medium text-center">이미지를 추가해주세요<br/><span className="text-[10px] font-normal tracking-wide opacity-70">(멀티 선택 가능)</span></p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-3">
-                          {currentImages.map((url, index) => (
-                            <div key={url + index} className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-surface-strong border border-surface-border-soft">
-                              <img src={url} alt={`Preview ${index}`} className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                              <button
-                                type="button"
-                                onClick={() => removeImage(index)}
-                                className="absolute top-2 right-2 size-7 flex items-center justify-center rounded-full bg-black/60 text-text-on-brand opacity-0 group-hover:opacity-100 transition-all hover:bg-danger-500 hover:scale-110 shadow-lg"
-                              >
-                                <X className="size-3.5" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <label className="relative shrink-0 flex items-center justify-center h-12 w-full rounded-xl bg-surface-strong border border-surface-border-soft text-text-primary font-medium text-sm cursor-pointer hover:border-brand-primary/50 transition-colors disabled:opacity-50 shadow-sm mt-auto">
-                      {isUploading ? (
-                        <Loader2 className="size-4 animate-spin mr-2" />
-                      ) : (
-                        <ImagePlus className="size-4 mr-2" />
-                      )}
-                      {isUploading ? '업로드 중...' : '이미지 파일 선택'}
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        disabled={isUploading}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Column 3: Implementation Checklist */}
-              <div className="space-y-8 h-full flex flex-col">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-7 items-center justify-center rounded-full bg-brand-primary text-[10px] font-black text-primary-foreground shadow-lg shadow-brand-primary/20">03</div>
-                  <h4 className="text-xs font-black uppercase tracking-widest text-text-primary">구현 체크리스트</h4>
-                </div>
-                
-                <div className="flex-1 flex flex-col gap-4">
-                  <div className="flex-1 ui-panel min-h-[400px] p-6 flex flex-col">
-                    <div className="flex-1 overflow-y-auto pr-2 space-y-2.5 pb-6">
-                      {currentChecklist.length === 0 ? (
-                        <div className="h-full min-h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-surface-border-soft rounded-2xl gap-3 text-text-muted">
-                          <div className="size-10 rounded-full bg-surface-muted flex items-center justify-center">
-                            <X className="size-5 opacity-30" />
-                          </div>
-                          <p className="text-xs font-medium">체크리스트가 비어있습니다</p>
-                        </div>
-                      ) : (
-                        currentChecklist.map((item, index) => (
-                          <div key={index} className="group flex items-start gap-3 bg-surface-strong p-3 rounded-xl border border-surface-border-soft hover:border-brand-glass transition-colors">
-                            <div className="mt-1 size-1.5 shrink-0 rounded-full bg-brand-primary/60" />
-                            <span className="flex-1 text-sm text-text-primary leading-tight">{item}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeChecklistItem(index)}
-                              className="size-6 shrink-0 flex items-center justify-center rounded-md text-text-muted hover:text-danger-500 hover:bg-danger-glass opacity-0 group-hover:opacity-100 transition-all"
-                            >
-                              <X className="size-3.5" />
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    <div className="relative shrink-0 mt-auto">
-                      <Input
-                        value={newCheckItem}
-                        onChange={(e) => setNewCheckItem(e.target.value)}
-                        placeholder="체크리스트 추가..."
-                        className="h-11 text-sm bg-surface-strong border-surface-border-soft focus:border-brand-primary/50 pr-12"
-                        onKeyDown={(e) => {
-                          if (e.nativeEvent.isComposing) return
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            addChecklistItem()
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={addChecklistItem}
-                        className="absolute right-1.5 top-1.5 bottom-1.5 aspect-square flex items-center justify-center rounded-lg bg-surface-muted text-text-secondary hover:text-text-primary hover:bg-surface-border-soft transition-colors"
-                      >
-                        <Plus className="size-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={className}
+      onClick={openEditPage}
+    >
+      <Pencil className="size-4" />
+    </Button>
   )
 }
