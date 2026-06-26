@@ -51,6 +51,8 @@ import { AiServiceAdminPage } from '../pages/ai-service-admin/ui/ai-service-admi
 import { AiMonitoringPage } from '../pages/ai-monitoring/ui/ai-monitoring-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
+import { UsageStatsPage } from '../pages/usage-stats/ui/usage-stats-page'
+import { AiUsageStatsPage } from '../pages/usage-stats/ui/ai-usage-stats-page'
 import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
 import { TaskPage } from '../pages/task/ui/task-page'
 import { TaskDetailPage } from '../pages/task/ui/task-detail-page'
@@ -644,6 +646,20 @@ const aiEvaluationRoute = createRoute({
   component: AiEvaluationPage,
 })
 
+// ─── /usage-stats (이용 통계) ──────────────────────────────────────────────────
+
+const usageStatsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/usage-stats',
+  component: UsageStatsPage,
+})
+
+const aiUsageStatsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/usage-stats/ai',
+  component: AiUsageStatsPage,
+})
+
 // ─── /api-doc ────────────────────────────────────────────────────────────────
 
 const apiDocRoute = createRoute({
@@ -1053,6 +1069,8 @@ export const router = createRouter({
       aiMonitoringRoute,
       aiMethodologyRoute,
       aiEvaluationRoute,
+      usageStatsRoute,
+      aiUsageStatsRoute,
       apiDocRoute,
       sqlPracticeRoute,
       sqlUserPracticeRoute,

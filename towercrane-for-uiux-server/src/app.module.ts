@@ -10,6 +10,7 @@ import { ReviewModule } from './review/review.module';
 import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
 import { MenusModule } from './menus/menus.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ProjectIssuesModule } from './project-issues/project-issues.module';
@@ -44,6 +45,7 @@ import { TaskChatModule } from './task-chat/task-chat.module';
     UploadModule,
     UsersModule,
     MenusModule,
+    AnalyticsModule,
     MeetingModule,
     TasksModule,
     ProjectIssuesModule,

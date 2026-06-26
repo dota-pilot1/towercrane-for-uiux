@@ -2269,3 +2269,17 @@ export const aiServiceRequestsTable = sqliteTable('ai_service_requests', {
 
 export type AiServiceRequestRow = typeof aiServiceRequestsTable.$inferSelect;
 export type AiServiceRequestInsert = typeof aiServiceRequestsTable.$inferInsert;
+
+// ── 방문자 이용 통계 (page_view 단일 이벤트) ──────────────────────────────────
+export const pageViewsTable = sqliteTable('page_views', {
+  id: text('id').primaryKey(),
+  userId: text('user_id'),
+  visitorId: text('visitor_id').notNull(),
+  sessionId: text('session_id').notNull(),
+  path: text('path').notNull(),
+  referrer: text('referrer'),
+  createdAt: text('created_at').notNull(),
+});
+
+export type PageViewRow = typeof pageViewsTable.$inferSelect;
+export type PageViewInsert = typeof pageViewsTable.$inferInsert;

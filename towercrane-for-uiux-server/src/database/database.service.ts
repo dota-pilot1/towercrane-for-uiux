@@ -238,6 +238,23 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         FOREIGN KEY(parent_id) REFERENCES menus(id) ON DELETE CASCADE
       );
 
+      CREATE TABLE IF NOT EXISTS page_views (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        visitor_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        path TEXT NOT NULL,
+        referrer TEXT,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_page_views_created_at
+        ON page_views(created_at);
+      CREATE INDEX IF NOT EXISTS idx_page_views_path
+        ON page_views(path);
+      CREATE INDEX IF NOT EXISTS idx_page_views_visitor
+        ON page_views(visitor_id);
+
       CREATE TABLE IF NOT EXISTS board_configs (
         id TEXT PRIMARY KEY,
         code TEXT NOT NULL UNIQUE,
@@ -1848,6 +1865,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.reconcileBoardMenus(now);
     this.reconcileSqlPracticeMenus(now);
     this.reconcileDevStudyMenu(now);
+    this.reconcileUsageStatsMenu(now);
 
     const existingTaskMenu = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'task' LIMIT 1")
@@ -2266,7 +2284,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { sectionId: 'knowledge_channel', displayOrder: 6 },
       { sectionId: 'chatbot_pilot', displayOrder: 7 },
       { sectionId: 'ai_service_group', displayOrder: 8 },
-      { sectionId: 'admin_dropdown', displayOrder: 9 },
+      { sectionId: 'usage_stats_group', displayOrder: 9 },
+      { sectionId: 'admin_dropdown', displayOrder: 10 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
@@ -4234,6 +4253,62 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `UPDATE menus SET is_visible=0, parent_id=NULL, updated_at=? WHERE section_id='sql_group'`,
       )
       .run(now);
+  }
+
+  private reconcileUsageStatsMenu(now: string) {
+    // ── 이용 통계 루트 그룹 보장 ────────────────────────────────────────
+    let usageStats = this.sqlite
+      .prepare(
+        `SELECT id FROM menus WHERE section_id = 'usage_stats_group' LIMIT 1`,
+      )
+      .get() as { id: string } | undefined;
+
+    if (!usageStats) {
+      const id = randomUUID();
+      this.db
+        .insert(menusTable)
+        .values({
+          id,
+          name: '이용 통계',
+          sectionId: 'usage_stats_group',
+          icon: 'BarChart3',
+          displayOrder: 9,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      usageStats = { id };
+    } else {
+      this.sqlite
+        .prepare(
+          `UPDATE menus SET name='이용 통계', icon='BarChart3', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
+        )
+        .run(now, usageStats.id);
+    }
+
+    // ── 하위: 이용 통계(사용자), AI 통계 ───────────────────────────────
+    this.upsertMenuBySectionId({
+      sectionId: 'usage_stats',
+      name: '이용 통계',
+      icon: 'Users',
+      displayOrder: 0,
+      parentId: usageStats.id,
+      requiredRole: null,
+      now,
+    });
+
+    this.upsertMenuBySectionId({
+      sectionId: 'ai_usage_stats',
+      name: 'AI 통계',
+      icon: 'Bot',
+      displayOrder: 1,
+      parentId: usageStats.id,
+      requiredRole: null,
+      now,
+    });
   }
 
   private seedBoardConfigs(now: string) {

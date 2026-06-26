@@ -11,6 +11,7 @@ import { AppHeaderMobileNav } from './app-header-mobile-nav'
 import { useMenus } from '../../../entities/menu/api/menu-api'
 import { buildTree } from '../../../entities/menu/lib/build-tree'
 import type { MenuItem } from '../../../entities/menu/model/types'
+import { usePageViewTracker } from '../../../features/analytics/use-page-view-tracker'
 
 function sectionIdToPath(sectionId: string): string {
   const map: Record<string, string> = {
@@ -38,6 +39,9 @@ function sectionIdToPath(sectionId: string): string {
     ai_service_admin: '/admin/ai-service-requests',
     ai_service_monitor: '/admin/ai-monitoring',
     ai_evaluation: '/ai-evaluation',
+    usage_stats_group: '/usage-stats',
+    usage_stats: '/usage-stats',
+    ai_usage_stats: '/usage-stats/ai',
     api_doc: '/api-doc',
     sql: '/sql',
     sql_user: '/sql/team',
@@ -100,6 +104,8 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/admin/ai-service-requests')) return 'ai_service_admin'
   if (pathname.startsWith('/admin/ai-monitoring')) return 'ai_service_monitor'
   if (pathname.startsWith('/ai-evaluation')) return 'ai_evaluation'
+  if (pathname.startsWith('/usage-stats/ai')) return 'ai_usage_stats'
+  if (pathname.startsWith('/usage-stats')) return 'usage_stats'
   if (pathname.startsWith('/api-doc')) return 'api_doc'
   if (pathname.startsWith('/sql/examples')) return 'sql_examples'
   if (pathname.startsWith('/sql/team')) return 'sql_team'
@@ -354,6 +360,9 @@ export function AppHeader() {
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const activeSection = getSectionIdFromPath(pathname)
+
+  // 라우트 변경 시 방문 통계 기록
+  usePageViewTracker()
 
   const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
   const userEmail = useSessionStore((state) => state.userEmail)
