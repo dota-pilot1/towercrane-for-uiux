@@ -3578,12 +3578,23 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       )
       .run(now);
 
-    // ── 지식채널 루트 메뉴 보장 ───────────────────────────────────────────
-    let knowledgeGroup = this.sqlite
+    // ── 지식 채널: 중복 정리 후 단일 보장 (parent_id는 챗봇 블록에서 설정) ──
+    // parent_id 조건 없이 전부 조회 — 챗봇 하위로 옮겨진 경우에도 중복 재생성 방지
+    const knowledgeRows = this.sqlite
       .prepare(
-        `SELECT id FROM menus WHERE section_id = 'knowledge_channel' AND parent_id IS NULL LIMIT 1`,
+        `SELECT id FROM menus WHERE section_id = 'knowledge_channel' ORDER BY created_at`,
       )
-      .get() as { id: string } | undefined;
+      .all() as Array<{ id: string }>;
+
+    let knowledgeGroup: { id: string } | undefined = knowledgeRows[0];
+
+    // 과거 버그로 누적된 중복 제거 — 자식은 남길 1개로 재연결 후 삭제
+    for (const dup of knowledgeRows.slice(1)) {
+      this.sqlite
+        .prepare(`UPDATE menus SET parent_id = ? WHERE parent_id = ?`)
+        .run(knowledgeGroup!.id, dup.id);
+      this.sqlite.prepare(`DELETE FROM menus WHERE id = ?`).run(dup.id);
+    }
 
     if (!knowledgeGroup) {
       const id = randomUUID();
@@ -3591,10 +3602,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .insert(menusTable)
         .values({
           id,
-          name: '지식채널',
+          name: '지식 채널',
           sectionId: 'knowledge_channel',
           icon: 'BookOpen',
-          displayOrder: 4,
+          displayOrder: 7,
           isVisible: true,
           requiredRole: null,
           parentId: null,
@@ -3606,7 +3617,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     } else {
       this.sqlite
         .prepare(
-          `UPDATE menus SET name = '지식채널', icon = 'BookOpen', is_visible = 1, updated_at = ? WHERE id = ?`,
+          `UPDATE menus SET name = '지식 채널', icon = 'BookOpen', is_visible = 1, updated_at = ? WHERE id = ?`,
         )
         .run(now, knowledgeGroup.id);
     }
@@ -4377,6 +4388,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const children = [
       { sectionId: 'analysis_tech_debt', name: '기술 부채 분석', icon: 'AlertTriangle' },
       { sectionId: 'analysis_trends', name: '최신 트렌드 분석', icon: 'TrendingUp' },
+      { sectionId: 'analysis_hiring', name: '채용 트렌드 분석', icon: 'Briefcase' },
       { sectionId: 'analysis_domain', name: '전문 도메인 분석', icon: 'Target' },
       { sectionId: 'analysis_concepts', name: '개발 개념 분석', icon: 'Lightbulb' },
     ];

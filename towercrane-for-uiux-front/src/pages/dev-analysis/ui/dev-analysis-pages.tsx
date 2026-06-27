@@ -1,4 +1,4 @@
-import { AlertTriangle, Lightbulb, LineChart, Target, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Briefcase, Lightbulb, LineChart, Target, TrendingUp } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 // 개발 분석 — 분석 코너 (준비 중 stub)
@@ -52,6 +52,16 @@ export function AnalysisTrendsPage() {
       icon={TrendingUp}
       title="최신 트렌드 분석"
       description="최신 기술 트렌드를 정리·분석합니다."
+    />
+  )
+}
+
+export function AnalysisHiringPage() {
+  return (
+    <AnalysisPlaceholder
+      icon={Briefcase}
+      title="채용 트렌드 분석"
+      description="개발자 채용 시장과 요구 역량을 분석합니다."
     />
   )
 }

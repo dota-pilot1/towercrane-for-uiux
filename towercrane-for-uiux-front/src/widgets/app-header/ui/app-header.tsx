@@ -41,6 +41,7 @@ function sectionIdToPath(sectionId: string): string {
     dev_analysis_group: '/dev-analysis/tech-debt',
     analysis_tech_debt: '/dev-analysis/tech-debt',
     analysis_trends: '/dev-analysis/trends',
+    analysis_hiring: '/dev-analysis/hiring',
     analysis_domain: '/dev-analysis/domain',
     analysis_concepts: '/dev-analysis/concepts',
     ai_evaluation: '/ai-evaluation',
@@ -116,6 +117,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/dev-market/prototypes')) return 'market_prototypes'
   if (pathname.startsWith('/dev-analysis/tech-debt')) return 'analysis_tech_debt'
   if (pathname.startsWith('/dev-analysis/trends')) return 'analysis_trends'
+  if (pathname.startsWith('/dev-analysis/hiring')) return 'analysis_hiring'
   if (pathname.startsWith('/dev-analysis/domain')) return 'analysis_domain'
   if (pathname.startsWith('/dev-analysis/concepts')) return 'analysis_concepts'
   if (pathname.startsWith('/ai-evaluation')) return 'ai_evaluation'

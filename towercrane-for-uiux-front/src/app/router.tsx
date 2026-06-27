@@ -56,6 +56,7 @@ import {
 import {
   AnalysisConceptsPage,
   AnalysisDomainPage,
+  AnalysisHiringPage,
   AnalysisTechDebtPage,
   AnalysisTrendsPage,
 } from '../pages/dev-analysis/ui/dev-analysis-pages'
@@ -689,6 +690,12 @@ const analysisTrendsRoute = createRoute({
   component: AnalysisTrendsPage,
 })
 
+const analysisHiringRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-analysis/hiring',
+  component: AnalysisHiringPage,
+})
+
 const analysisDomainRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/dev-analysis/domain',
@@ -1144,6 +1151,7 @@ export const router = createRouter({
       marketPrototypesRoute,
       analysisTechDebtRoute,
       analysisTrendsRoute,
+      analysisHiringRoute,
       analysisDomainRoute,
       analysisConceptsRoute,
       englishChatRoute,
