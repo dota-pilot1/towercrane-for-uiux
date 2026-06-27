@@ -15,17 +15,19 @@ import {
   Sparkles,
   Trash2,
   UserRound,
+  Wallet,
 } from 'lucide-react'
 import { useUpdateProfileImage, type SessionUser } from '../../../shared/api/auth'
 import { uploadFile } from '../../../shared/api/upload'
 import { ChangePasswordForm } from '../../../features/auth/ui/change-password-form'
+import { PointsWallet } from '../../../features/points/ui/points-wallet'
 import { Card } from '../../../shared/ui/card'
 
 type ProfilePageProps = {
   user: SessionUser | undefined
 }
 
-type ProfileTabId = 'overview' | 'activity' | 'security' | 'workspace'
+type ProfileTabId = 'overview' | 'points' | 'activity' | 'security' | 'workspace'
 
 const tabs: Array<{
   id: ProfileTabId
@@ -33,6 +35,7 @@ const tabs: Array<{
   icon: typeof UserRound
 }> = [
   { id: 'overview', label: '기본 정보', icon: UserRound },
+  { id: 'points', label: '포인트', icon: Wallet },
   { id: 'activity', label: '활동 메타', icon: Activity },
   { id: 'security', label: '보안/권한', icon: ShieldCheck },
   { id: 'workspace', label: '워크스페이스', icon: FileText },
@@ -91,6 +94,7 @@ export function ProfilePage({ user }: ProfilePageProps) {
       { label: '사용자 ID', value: user?.id || '-', icon: Fingerprint },
       { label: '프로필 갱신', value: updatedAt, icon: Clock3 },
     ],
+    points: [],
     activity: [
       { label: '최근 작업 영역', value: 'Prototype Registry', icon: Sparkles },
       { label: '문서 참여', value: 'README / Docu Workspace', icon: FileText },
@@ -152,20 +156,24 @@ export function ProfilePage({ user }: ProfilePageProps) {
           </nav>
 
           <div className="min-w-0 space-y-3">
-            <section className="grid min-w-0 gap-3 md:grid-cols-2">
-              {tabPanels[activeTab].map((item) => {
-                const Icon = item.icon
-                return (
-                  <div key={item.label} className="ui-panel-soft min-h-[112px] p-4">
-                    <div className="mb-4 flex size-9 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
-                      <Icon className="size-4" />
+            {activeTab === 'points' ? (
+              <PointsWallet />
+            ) : (
+              <section className="grid min-w-0 gap-3 md:grid-cols-2">
+                {tabPanels[activeTab].map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <div key={item.label} className="ui-panel-soft min-h-[112px] p-4">
+                      <div className="mb-4 flex size-9 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
+                        <Icon className="size-4" />
+                      </div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-text-muted">{item.label}</p>
+                      <p className="mt-1 break-words text-sm font-bold leading-6 text-text-primary">{item.value}</p>
                     </div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-text-muted">{item.label}</p>
-                    <p className="mt-1 break-words text-sm font-bold leading-6 text-text-primary">{item.value}</p>
-                  </div>
-                )
-              })}
-            </section>
+                  )
+                })}
+              </section>
+            )}
 
             {activeTab === 'security' ? <ChangePasswordForm /> : null}
           </div>

@@ -1607,6 +1607,42 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_ai_service_requests_status
         ON ai_service_requests(status, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS point_accounts (
+        user_id TEXT PRIMARY KEY REFERENCES users(id),
+        balance INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS point_transactions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        type TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        balance_after INTEGER NOT NULL,
+        ref_type TEXT,
+        ref_id TEXT,
+        memo TEXT,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_point_transactions_user
+        ON point_transactions(user_id, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS point_topups (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        amount_krw INTEGER NOT NULL,
+        points INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'paid',
+        provider TEXT NOT NULL DEFAULT 'mock',
+        provider_tx_id TEXT,
+        created_at TEXT NOT NULL,
+        paid_at TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_point_topups_user
+        ON point_topups(user_id, created_at DESC);
     `);
 
     this.migrateLegacySchema();
@@ -1867,6 +1903,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.reconcileDevStudyMenu(now);
     this.reconcileUsageStatsMenu(now);
     this.reconcileEnglishMenu(now);
+    this.reconcileDevMarketMenus(now);
+    this.reconcileDevAnalysisMenus(now);
 
     const existingTaskMenu = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'task' LIMIT 1")
@@ -2153,6 +2191,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       16,
     );
 
+    // 지식 채널을 챗봇 드롭다운의 2차 메뉴로 이동 (하위 4개는 3차 플라이아웃)
+    if (parentId) {
+      this.sqlite
+        .prepare(
+          `UPDATE menus SET name='지식 채널', icon='BookOpen', parent_id=?, display_order=7, is_visible=1, updated_at=? WHERE section_id='knowledge_channel'`,
+        )
+        .run(parentId, now);
+    }
+
     let existingDevManagement = this.sqlite
       .prepare(
         "SELECT id FROM menus WHERE section_id = 'dev_management' AND parent_id IS NULL LIMIT 1",
@@ -2282,11 +2329,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { sectionId: 'meeting', displayOrder: 3 },
       { sectionId: 'boards', displayOrder: 4 },
       { sectionId: 'dev_study', displayOrder: 5 },
-      { sectionId: 'knowledge_channel', displayOrder: 6 },
-      { sectionId: 'chatbot_pilot', displayOrder: 7 },
-      { sectionId: 'english_group', displayOrder: 8 },
-      { sectionId: 'usage_stats_group', displayOrder: 9 },
-      { sectionId: 'admin_dropdown', displayOrder: 10 },
+      { sectionId: 'dev_market_group', displayOrder: 6 },
+      { sectionId: 'dev_analysis_group', displayOrder: 7 },
+      { sectionId: 'chatbot_pilot', displayOrder: 8 },
+      { sectionId: 'english_group', displayOrder: 9 },
+      { sectionId: 'usage_stats_group', displayOrder: 10 },
+      { sectionId: 'admin_dropdown', displayOrder: 11 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
@@ -4235,6 +4283,110 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         icon: child.icon,
         displayOrder: index,
         parentId: english!.id,
+        requiredRole: null,
+        now,
+      });
+    });
+  }
+
+  private reconcileDevMarketMenus(now: string) {
+    // ── 개발 마켓 루트 그룹 보장 ────────────────────────────────────────
+    let market = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'dev_market_group' LIMIT 1`)
+      .get() as { id: string } | undefined;
+
+    if (!market) {
+      const id = randomUUID();
+      this.db
+        .insert(menusTable)
+        .values({
+          id,
+          name: '개발 마켓',
+          sectionId: 'dev_market_group',
+          icon: 'Store',
+          displayOrder: 7,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      market = { id };
+    } else {
+      this.sqlite
+        .prepare(
+          `UPDATE menus SET name='개발 마켓', icon='Store', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
+        )
+        .run(now, market.id);
+    }
+
+    // ── 하위 3개: 유료 콘텐츠 ───────────────────────────────────────────
+    const children = [
+      { sectionId: 'market_lectures', name: '유료 강의', icon: 'GraduationCap' },
+      { sectionId: 'market_recommend', name: '강의 추천', icon: 'Star' },
+      { sectionId: 'market_notes', name: '유료 노트', icon: 'NotebookPen' },
+      { sectionId: 'market_prototypes', name: '유료 프로토타입', icon: 'LayoutTemplate' },
+    ];
+    children.forEach((child, index) => {
+      this.upsertMenuBySectionId({
+        sectionId: child.sectionId,
+        name: child.name,
+        icon: child.icon,
+        displayOrder: index,
+        parentId: market!.id,
+        requiredRole: null,
+        now,
+      });
+    });
+  }
+
+  private reconcileDevAnalysisMenus(now: string) {
+    // ── 개발 분석 루트 그룹 보장 ────────────────────────────────────────
+    let analysis = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'dev_analysis_group' LIMIT 1`)
+      .get() as { id: string } | undefined;
+
+    if (!analysis) {
+      const id = randomUUID();
+      this.db
+        .insert(menusTable)
+        .values({
+          id,
+          name: '개발 분석',
+          sectionId: 'dev_analysis_group',
+          icon: 'LineChart',
+          displayOrder: 7,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      analysis = { id };
+    } else {
+      this.sqlite
+        .prepare(
+          `UPDATE menus SET name='개발 분석', icon='LineChart', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
+        )
+        .run(now, analysis.id);
+    }
+
+    // ── 하위 4개: 분석 코너 ─────────────────────────────────────────────
+    const children = [
+      { sectionId: 'analysis_tech_debt', name: '기술 부채 분석', icon: 'AlertTriangle' },
+      { sectionId: 'analysis_trends', name: '최신 트렌드 분석', icon: 'TrendingUp' },
+      { sectionId: 'analysis_domain', name: '전문 도메인 분석', icon: 'Target' },
+      { sectionId: 'analysis_concepts', name: '개발 개념 분석', icon: 'Lightbulb' },
+    ];
+    children.forEach((child, index) => {
+      this.upsertMenuBySectionId({
+        sectionId: child.sectionId,
+        name: child.name,
+        icon: child.icon,
+        displayOrder: index,
+        parentId: analysis!.id,
         requiredRole: null,
         now,
       });

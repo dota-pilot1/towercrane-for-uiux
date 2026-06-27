@@ -2283,3 +2283,44 @@ export const pageViewsTable = sqliteTable('page_views', {
 
 export type PageViewRow = typeof pageViewsTable.$inferSelect;
 export type PageViewInsert = typeof pageViewsTable.$inferInsert;
+
+// ── 포인트 지갑 (현금 충전 → 내부 포인트) ──────────────────────────────────
+export const pointAccountsTable = sqliteTable('point_accounts', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => usersTable.id),
+  balance: integer('balance').notNull().default(0),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const pointTransactionsTable = sqliteTable('point_transactions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id),
+  type: text('type').notNull(), // topup | spend | refund | adjust
+  amount: integer('amount').notNull(), // 부호 있는 변화량 (+충전 / -차감)
+  balanceAfter: integer('balance_after').notNull(),
+  refType: text('ref_type'), // topup | market_item | ...
+  refId: text('ref_id'),
+  memo: text('memo'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const pointTopupsTable = sqliteTable('point_topups', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id),
+  amountKrw: integer('amount_krw').notNull(),
+  points: integer('points').notNull(),
+  status: text('status').notNull().default('paid'), // pending | paid | failed
+  provider: text('provider').notNull().default('mock'),
+  providerTxId: text('provider_tx_id'),
+  createdAt: text('created_at').notNull(),
+  paidAt: text('paid_at'),
+});
+
+export type PointAccountRow = typeof pointAccountsTable.$inferSelect;
+export type PointTransactionRow = typeof pointTransactionsTable.$inferSelect;
+export type PointTopupRow = typeof pointTopupsTable.$inferSelect;

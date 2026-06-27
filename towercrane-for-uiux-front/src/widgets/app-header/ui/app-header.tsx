@@ -33,6 +33,16 @@ function sectionIdToPath(sectionId: string): string {
     knowledge_faq: '/chatbot/knowledge/faq',
     knowledge_ai: '/chatbot/knowledge/ai',
     knowledge_dev: '/chatbot/knowledge/dev',
+    dev_market_group: '/dev-market/lectures',
+    market_lectures: '/dev-market/lectures',
+    market_recommend: '/dev-market/recommend',
+    market_notes: '/dev-market/notes',
+    market_prototypes: '/dev-market/prototypes',
+    dev_analysis_group: '/dev-analysis/tech-debt',
+    analysis_tech_debt: '/dev-analysis/tech-debt',
+    analysis_trends: '/dev-analysis/trends',
+    analysis_domain: '/dev-analysis/domain',
+    analysis_concepts: '/dev-analysis/concepts',
     ai_evaluation: '/ai-evaluation',
     english_group: '/english/chat',
     english_chat: '/english/chat',
@@ -100,6 +110,14 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/feature-plans')) return 'feature_plans'
   if (pathname.startsWith('/dev-management')) return 'dev_management_chat'
   if (pathname.startsWith('/docu')) return 'docu'
+  if (pathname.startsWith('/dev-market/lectures')) return 'market_lectures'
+  if (pathname.startsWith('/dev-market/recommend')) return 'market_recommend'
+  if (pathname.startsWith('/dev-market/notes')) return 'market_notes'
+  if (pathname.startsWith('/dev-market/prototypes')) return 'market_prototypes'
+  if (pathname.startsWith('/dev-analysis/tech-debt')) return 'analysis_tech_debt'
+  if (pathname.startsWith('/dev-analysis/trends')) return 'analysis_trends'
+  if (pathname.startsWith('/dev-analysis/domain')) return 'analysis_domain'
+  if (pathname.startsWith('/dev-analysis/concepts')) return 'analysis_concepts'
   if (pathname.startsWith('/ai-evaluation')) return 'ai_evaluation'
   if (pathname.startsWith('/english/chat')) return 'english_chat'
   if (pathname.startsWith('/english/diary')) return 'english_diary'
@@ -220,6 +238,86 @@ function HeaderNavLink({
   )
 }
 
+// 드롭다운 내 단일 메뉴 버튼 (2차/3차 공용)
+function MenuLeafButton({
+  child,
+  activeSection,
+  onNavigate,
+}: {
+  child: MenuItem
+  activeSection: string
+  onNavigate: (id: string) => void
+}) {
+  const ChildIcon = getIcon(child.icon)
+  const isChildActive = hasActiveSection(child, activeSection)
+  return (
+    <button
+      onClick={() => { if (child.sectionId) onNavigate(child.sectionId) }}
+      style={!isChildActive ? { color: 'var(--foreground)' } : undefined}
+      onMouseEnter={(e) => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--foreground) 7%, transparent)' } }}
+      onMouseLeave={(e) => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = '' } }}
+      className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
+        isChildActive ? 'bg-brand-glass text-brand-primary' : ''
+      }`}
+    >
+      <ChildIcon className={`size-3.5 shrink-0 ${isChildActive ? 'text-brand-primary' : ''}`} />
+      <span className="truncate">{child.name}</span>
+      {isChildActive && <span className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-primary" />}
+    </button>
+  )
+}
+
+// 자식을 또 가진 항목 → 우측 플라이아웃(3차 메뉴)
+function NestedMenuItem({
+  group,
+  activeSection,
+  onNavigate,
+}: {
+  group: MenuItem
+  activeSection: string
+  onNavigate: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const Icon = getIcon(group.icon)
+  const isActive = hasActiveSection(group, activeSection)
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => { if (timer.current) clearTimeout(timer.current); setOpen(true) }}
+      onMouseLeave={() => { timer.current = setTimeout(() => setOpen(false), 120) }}
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={!isActive ? { color: 'var(--foreground)' } : undefined}
+        onMouseEnter={(e) => { if (!isActive) { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--foreground) 7%, transparent)' } }}
+        onMouseLeave={(e) => { if (!isActive) { (e.currentTarget as HTMLButtonElement).style.background = '' } }}
+        className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
+          isActive ? 'bg-brand-glass text-brand-primary' : ''
+        }`}
+      >
+        <Icon className={`size-3.5 shrink-0 ${isActive ? 'text-brand-primary' : ''}`} />
+        <span className="truncate">{group.name}</span>
+        <LucideIcons.ChevronRight
+          className={`ml-auto size-3.5 shrink-0 transition-colors ${open ? 'text-brand-primary' : 'opacity-50'}`}
+        />
+      </button>
+      {open && (
+        <div className="absolute left-full top-0 z-50 ml-1 flex min-w-[180px] flex-col gap-0.5 rounded-md border border-surface-border bg-surface-raised p-2 shadow-2xl">
+          {group.children.map((leaf) => (
+            <MenuLeafButton
+              key={leaf.id}
+              child={leaf}
+              activeSection={activeSection}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MegaNavDropdown({
   item,
   activeSection,
@@ -271,33 +369,30 @@ function MegaNavDropdown({
           {/* 투명 브릿지 */}
           <div className="absolute left-0 top-full z-50 h-2 w-full" />
           <div
-            className="absolute left-0 top-full z-50 mt-2 origin-top-left animate-in zoom-in-95 rounded-md border border-surface-border bg-surface-raised shadow-2xl duration-150 fade-in overflow-hidden"
+            className="absolute left-0 top-full z-50 mt-2 origin-top-left animate-in zoom-in-95 rounded-md border border-surface-border bg-surface-raised shadow-2xl duration-150 fade-in"
           >
             {isPaired ? (
               /* 좌우 페어링 레이아웃 (챗봇) */
               <div className="grid p-2" style={{ gridTemplateColumns: '1fr 1px 1fr', minWidth: 360 }}>
                 {/* 왼쪽: 메인 채팅 메뉴 */}
                 <div className="flex flex-col gap-0.5 pr-2">
-                  {mainItems.map((child) => {
-                    const ChildIcon = getIcon(child.icon)
-                    const isChildActive = hasActiveSection(child, activeSection)
-                    return (
-                      <button
+                  {mainItems.map((child) =>
+                    child.children.length > 0 ? (
+                      <NestedMenuItem
                         key={child.id}
-                        onClick={() => { if (child.sectionId) handleNavigation(child.sectionId); setIsOpen(false) }}
-                        style={!isChildActive ? { color: 'var(--foreground)' } : undefined}
-                        onMouseEnter={e => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--foreground) 7%, transparent)' } }}
-                        onMouseLeave={e => { if (!isChildActive) { (e.currentTarget as HTMLButtonElement).style.background = '' } }}
-                        className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-[13px] font-medium transition-colors ${
-                          isChildActive ? 'bg-brand-glass text-brand-primary' : ''
-                        }`}
-                      >
-                        <ChildIcon className={`size-3.5 shrink-0 ${isChildActive ? 'text-brand-primary' : ''}`} />
-                        <span className="truncate">{child.name}</span>
-                        {isChildActive && <span className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-primary" />}
-                      </button>
-                    )
-                  })}
+                        group={child}
+                        activeSection={activeSection}
+                        onNavigate={(id) => { handleNavigation(id); setIsOpen(false) }}
+                      />
+                    ) : (
+                      <MenuLeafButton
+                        key={child.id}
+                        child={child}
+                        activeSection={activeSection}
+                        onNavigate={(id) => { handleNavigation(id); setIsOpen(false) }}
+                      />
+                    ),
+                  )}
                 </div>
 
                 {/* 구분선 */}

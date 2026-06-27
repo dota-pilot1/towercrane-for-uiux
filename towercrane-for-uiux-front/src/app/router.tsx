@@ -47,6 +47,18 @@ import { FeaturePlansPage } from '../pages/feature-plans/ui/feature-plans-page'
 import { HomePage } from '../pages/home/ui/home-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
+import {
+  MarketLecturesPage,
+  MarketNotesPage,
+  MarketPrototypesPage,
+  MarketRecommendPage,
+} from '../pages/dev-market/ui/dev-market-pages'
+import {
+  AnalysisConceptsPage,
+  AnalysisDomainPage,
+  AnalysisTechDebtPage,
+  AnalysisTrendsPage,
+} from '../pages/dev-analysis/ui/dev-analysis-pages'
 import { UsageStatsPage } from '../pages/usage-stats/ui/usage-stats-page'
 import { AiUsageStatsPage } from '../pages/usage-stats/ui/ai-usage-stats-page'
 import {
@@ -641,6 +653,54 @@ const aiUsageStatsRoute = createRoute({
 
 // ─── /english (영어 학습 코너) ─────────────────────────────────────────────────
 
+const marketLecturesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-market/lectures',
+  component: MarketLecturesPage,
+})
+
+const marketRecommendRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-market/recommend',
+  component: MarketRecommendPage,
+})
+
+const marketNotesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-market/notes',
+  component: MarketNotesPage,
+})
+
+const marketPrototypesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-market/prototypes',
+  component: MarketPrototypesPage,
+})
+
+const analysisTechDebtRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-analysis/tech-debt',
+  component: AnalysisTechDebtPage,
+})
+
+const analysisTrendsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-analysis/trends',
+  component: AnalysisTrendsPage,
+})
+
+const analysisDomainRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-analysis/domain',
+  component: AnalysisDomainPage,
+})
+
+const analysisConceptsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-analysis/concepts',
+  component: AnalysisConceptsPage,
+})
+
 const englishChatRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/english/chat',
@@ -1078,6 +1138,14 @@ export const router = createRouter({
       aiEvaluationRoute,
       usageStatsRoute,
       aiUsageStatsRoute,
+      marketLecturesRoute,
+      marketRecommendRoute,
+      marketNotesRoute,
+      marketPrototypesRoute,
+      analysisTechDebtRoute,
+      analysisTrendsRoute,
+      analysisDomainRoute,
+      analysisConceptsRoute,
       englishChatRoute,
       englishDiaryRoute,
       englishNewsRoute,
