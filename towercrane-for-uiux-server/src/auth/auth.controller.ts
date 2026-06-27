@@ -54,6 +54,12 @@ export class AuthController {
     await this.authService.resetPasswordWithCode(body);
   }
 
+  @Post('verify-password')
+  @UseGuards(AuthGuard)
+  verifyPassword(@CurrentUser() user: { id: string }, @Body() body: unknown) {
+    return this.authService.verifyCurrentPassword(user.id, body);
+  }
+
   @Post('change-password')
   @HttpCode(204)
   @UseGuards(AuthGuard)

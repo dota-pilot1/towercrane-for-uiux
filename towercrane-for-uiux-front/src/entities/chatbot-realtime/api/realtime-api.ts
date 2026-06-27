@@ -24,9 +24,7 @@ export type RealtimeSessionResponse = {
 
 export type RealtimeToolName =
   | 'get_my_tasks'
-  | 'check_ai_service_request'
   | 'search_knowledge'
-  | 'open_ai_service_form'
 
 export type RealtimeToolExecuteRequest = {
   callId?: string

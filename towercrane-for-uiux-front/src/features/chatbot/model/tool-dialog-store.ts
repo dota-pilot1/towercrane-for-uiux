@@ -20,16 +20,6 @@ export type TaskItem = {
   dueDate: string | null
 }
 
-export type AiRequestItem = {
-  id: string
-  serviceType: string
-  purpose: string
-  status: string
-  rejectReason: string | null
-  createdAt: string
-  updatedAt: string
-}
-
 type ToolDialogState = {
   introOpen: boolean
   introProfile: GptProfile | null
@@ -40,11 +30,6 @@ type ToolDialogState = {
   tasks: TaskItem[]
   setTasksDialog: (tasks: TaskItem[]) => void
   closeTasksDialog: () => void
-
-  aiRequestOpen: boolean
-  aiRequests: AiRequestItem[]
-  setAiRequestDialog: (requests: AiRequestItem[]) => void
-  closeAiRequestDialog: () => void
 }
 
 export const useToolDialogStore = create<ToolDialogState>((set) => ({
@@ -57,9 +42,4 @@ export const useToolDialogStore = create<ToolDialogState>((set) => ({
   tasks: [],
   setTasksDialog: (tasks) => set({ tasksOpen: true, tasks }),
   closeTasksDialog: () => set({ tasksOpen: false, tasks: [] }),
-
-  aiRequestOpen: false,
-  aiRequests: [],
-  setAiRequestDialog: (requests) => set({ aiRequestOpen: true, aiRequests: requests }),
-  closeAiRequestDialog: () => set({ aiRequestOpen: false, aiRequests: [] }),
 }))

@@ -26,8 +26,6 @@ import { AiEvaluationModule } from './ai-evaluation/ai-evaluation.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { ChatbotMonitoringModule } from './chatbot-monitoring/chatbot-monitoring.module';
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
-import { AiMonitoringModule } from './ai-monitoring/ai-monitoring.module';
-import { AiServiceRequestModule } from './ai-service-request/ai-service-request.module';
 import { DevManagementModule } from './dev-management/dev-management.module';
 import { DevMeetingMinutesModule } from './dev-meeting-minutes/dev-meeting-minutes.module';
 import { CodeReviewsModule } from './code-reviews/code-reviews.module';
@@ -62,8 +60,6 @@ import { TaskChatModule } from './task-chat/task-chat.module';
     ChatbotModule,
     ChatbotMonitoringModule,
     KnowledgeBaseModule,
-    AiMonitoringModule,
-    AiServiceRequestModule,
     DevManagementModule,
     DevMeetingMinutesModule,
     CodeReviewsModule,

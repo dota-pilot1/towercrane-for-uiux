@@ -2,27 +2,22 @@ import { useState } from 'react'
 import {
   AudioLines,
   Bot,
-  FileText,
   Mic2,
   PlugZap,
   Radio,
   Send,
   Settings2,
-  ShieldOff,
   Square,
   Trash2,
   X,
 } from 'lucide-react'
-import { useNavigate } from '@tanstack/react-router'
 import { useRefreshSession } from '../../../shared/model/use-refresh-session'
-import { useSessionStore } from '../../../shared/store/session-store'
 import {
   useRealtimeChat,
   type RealtimeChatOptions,
 } from '../../../features/chatbot/model/use-realtime-chat'
 import { Select } from '../../../shared/ui/select'
 import { ActionIconButton } from '../../../shared/ui/action-icon-button'
-import { AiServiceFormForToolCall } from './ai-service-form-for-tool-call'
 
 const modelOptions = ['gpt-realtime-2', 'gpt-realtime-1.5', 'gpt-realtime', 'gpt-realtime-mini']
 const voiceOptions = ['marin', 'cedar', 'alloy', 'verse', 'shimmer', 'sage']
@@ -57,39 +52,10 @@ function StatusPill({ label, active }: { label: string; active?: boolean }) {
 
 export function ChatbotRealtimePage() {
   useRefreshSession()
-  const aiAccess = useSessionStore((s) => s.aiAccess)
-  const userRole = useSessionStore((s) => s.userRole)
-  const navigate = useNavigate()
   const realtime = useRealtimeChat()
   const [input, setInput] = useState('')
   const [isComposing, setIsComposing] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
-
-  if (!aiAccess && userRole !== 'admin') {
-    return (
-      <div className="flex h-[calc(100vh-120px)] items-center justify-center">
-        <div className="ui-panel flex max-w-md flex-col items-center gap-4 rounded-lg p-10 text-center">
-          <div className="flex size-14 items-center justify-center rounded-lg border border-surface-border bg-surface-muted">
-            <ShieldOff className="size-7 ui-text-muted" />
-          </div>
-          <div>
-            <p className="text-base font-bold ui-text-primary">AI 서비스 접근 권한이 없습니다</p>
-            <p className="mt-1.5 text-sm leading-relaxed ui-text-muted">
-              Realtime 챗봇 사용을 위해 AI 서비스 신청 후 승인을 받아야 합니다.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate({ to: '/ai-service-request' })}
-            className="inline-flex items-center gap-2 rounded-md border border-brand-border bg-brand-glass px-4 py-2 text-sm font-bold text-brand-primary"
-          >
-            <FileText className="size-4" />
-            서비스 신청
-          </button>
-        </div>
-      </div>
-    )
-  }
 
   const updateOption = <K extends keyof RealtimeChatOptions>(
     key: K,
@@ -132,7 +98,7 @@ export function ChatbotRealtimePage() {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-2">
+      <div className="grid min-h-0 flex-1 gap-4">
         <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-raised">
           <div className="flex items-center justify-between gap-3 border-b border-surface-border bg-surface-strong px-4 py-3">
             <div>
@@ -263,13 +229,6 @@ export function ChatbotRealtimePage() {
             </div>
           </div>
         </section>
-
-        <AiServiceFormForToolCall
-          activePanelTool={realtime.activePanelTool}
-          panelData={realtime.panelData}
-          onClose={realtime.closePanel}
-          onOpen={realtime.openPanel}
-        />
       </div>
 
       {optionsOpen && (

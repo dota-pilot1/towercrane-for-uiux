@@ -16,7 +16,6 @@ import {
   chatSessionsTable,
   usageLogsTable,
   tasksTable,
-  aiServiceRequestsTable,
   type KnowledgeChannel,
 } from '../database/schema';
 import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service';
@@ -109,16 +108,6 @@ function executeSelfIntroduce() {
   };
 }
 
-// check_ai_service_request 툴 스키마 — 내 AI 서비스 신청 현황 조회
-const CHECK_AI_SERVICE_REQUEST_TOOL: OpenAI.ChatCompletionTool = {
-  type: 'function',
-  function: {
-    name: 'check_ai_service_request',
-    description: '현재 로그인한 사용자의 AI 서비스 신청 현황을 조회할 때 사용한다. "AI 서비스 신청 상태", "내 신청 현황", "챗봇 신청 됐어?", "AI 사용 신청 확인" 같은 요청에 발동한다.',
-    parameters: { type: 'object', properties: {}, required: [] },
-  },
-};
-
 // get_my_tasks 툴 스키마 — 담당자 기준 업무 목록 조회
 const GET_MY_TASKS_TOOL: OpenAI.ChatCompletionTool = {
   type: 'function',
@@ -174,17 +163,6 @@ const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
   },
   {
     type: 'function',
-    name: 'check_ai_service_request',
-    description:
-      '현재 로그인한 사용자의 AI 서비스 신청 현황을 조회한다. 신청 상태, 승인 여부, 반려 사유 확인 요청에 사용한다.',
-    parameters: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-  },
-  {
-    type: 'function',
     name: 'search_knowledge',
     description:
       '사내 지식 문서에서 사용자의 질문과 관련된 문서를 검색한다. 정책, FAQ, 공지, 개발 지식 확인 요청에 사용한다.',
@@ -197,17 +175,6 @@ const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
         },
       },
       required: ['query'],
-    },
-  },
-  {
-    type: 'function',
-    name: 'open_ai_service_form',
-    description:
-      'AI 서비스 신청 폼을 화면에 표시한다. 사용자가 "AI 서비스 신청하고 싶어", "API 키 발급해줘", "챗봇 사용 신청할게", "아이디 발급 부탁해" 처럼 명시적으로 신청 의사를 밝힐 때만 사용한다. 일반 대화, 인사, 질문에는 절대 사용하지 않는다.',
-    parameters: {
-      type: 'object',
-      properties: {},
-      required: [],
     },
   },
 ];
@@ -473,8 +440,7 @@ export class ChatbotService {
     return [
       '당신은 Towercrane Prototype Console의 실시간 음성 업무 도우미입니다.',
       '한국어로 짧고 명확하게 답하세요.',
-      '업무 데이터, 신청 상태, 담당 업무처럼 현재 시스템 정보가 필요한 경우 등록된 도구를 호출하세요.',
-      '사용자가 "신청하고 싶어", "발급해줘", "신청할게" 처럼 명시적으로 AI 서비스 신청 의사를 밝히면 open_ai_service_form 도구를 호출하세요. 단순 질문이나 일반 대화에는 호출하지 마세요.',
+      '업무 데이터, 담당 업무처럼 현재 시스템 정보가 필요한 경우 등록된 도구를 호출하세요.',
       '도구 호출 결과에 근거해 답하고, 확인되지 않은 내용은 추측하지 마세요.',
       '민감한 정보는 사용자가 권한을 가진 범위에서만 답하세요.',
       extra?.trim() ? `추가 지시: ${extra.trim()}` : '',
@@ -634,32 +600,6 @@ export class ChatbotService {
       };
     }
 
-    if (name === 'check_ai_service_request') {
-      const requests = this.db
-        .select({
-          id: aiServiceRequestsTable.id,
-          serviceType: aiServiceRequestsTable.serviceType,
-          purpose: aiServiceRequestsTable.purpose,
-          status: aiServiceRequestsTable.status,
-          rejectReason: aiServiceRequestsTable.rejectReason,
-          createdAt: aiServiceRequestsTable.createdAt,
-          updatedAt: aiServiceRequestsTable.updatedAt,
-        })
-        .from(aiServiceRequestsTable)
-        .where(eq(aiServiceRequestsTable.userId, user.id))
-        .all();
-
-      return {
-        callId,
-        name,
-        result: {
-          count: requests.length,
-          items: requests.slice(0, 10),
-        },
-        summary: `AI 서비스 신청 ${requests.length}건을 조회했습니다.`,
-      };
-    }
-
     if (name === 'search_knowledge') {
       const query = typeof args.query === 'string' ? args.query.trim() : '';
       if (!query) {
@@ -762,7 +702,7 @@ export class ChatbotService {
         model,
         stream: false,
         messages,
-        tools: [SELF_INTRODUCE_TOOL, GET_MY_TASKS_TOOL, CHECK_AI_SERVICE_REQUEST_TOOL],
+        tools: [SELF_INTRODUCE_TOOL, GET_MY_TASKS_TOOL],
         tool_choice: 'auto', // AI가 툴 쓸지 말지 스스로 판단
       });
 
@@ -790,21 +730,6 @@ export class ChatbotService {
             .where(eq(tasksTable.assigneeId, user.id))
             .all();
           toolResult = { tasks };
-        } else if (toolName === 'check_ai_service_request') {
-          const requests = this.db
-            .select({
-              id: aiServiceRequestsTable.id,
-              serviceType: aiServiceRequestsTable.serviceType,
-              purpose: aiServiceRequestsTable.purpose,
-              status: aiServiceRequestsTable.status,
-              rejectReason: aiServiceRequestsTable.rejectReason,
-              createdAt: aiServiceRequestsTable.createdAt,
-              updatedAt: aiServiceRequestsTable.updatedAt,
-            })
-            .from(aiServiceRequestsTable)
-            .where(eq(aiServiceRequestsTable.userId, user.id))
-            .all();
-          toolResult = { requests };
         } else {
           toolResult = executeSelfIntroduce();
         }

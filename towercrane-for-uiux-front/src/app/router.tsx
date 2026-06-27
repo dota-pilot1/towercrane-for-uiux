@@ -45,10 +45,6 @@ import { DevMeetingMinutesPage } from '../pages/dev-meeting-minutes/ui/dev-meeti
 import { CodeReviewsPage } from '../pages/code-reviews/ui/code-reviews-page'
 import { FeaturePlansPage } from '../pages/feature-plans/ui/feature-plans-page'
 import { HomePage } from '../pages/home/ui/home-page'
-import { AiServiceRequestPage } from '../pages/ai-service-request/ui/ai-service-request-page'
-import { AiServiceMyPage } from '../pages/ai-service-my/ui/ai-service-my-page'
-import { AiServiceAdminPage } from '../pages/ai-service-admin/ui/ai-service-admin-page'
-import { AiMonitoringPage } from '../pages/ai-monitoring/ui/ai-monitoring-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
 import { UsageStatsPage } from '../pages/usage-stats/ui/usage-stats-page'
@@ -615,30 +611,6 @@ const readmeRoute = createRoute({
 
 // ─── /ai-methodology ─────────────────────────────────────────────────────────
 
-const aiServiceRequestRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/ai-service-request',
-  component: AiServiceRequestPage,
-})
-
-const aiServiceMyRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/ai-service-request/my',
-  component: AiServiceMyPage,
-})
-
-const aiServiceAdminRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/admin/ai-service-requests',
-  component: AiServiceAdminPage,
-})
-
-const aiMonitoringRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/admin/ai-monitoring',
-  component: AiMonitoringPage,
-})
-
 const aiMethodologyRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/ai-methodology',
@@ -1102,10 +1074,6 @@ export const router = createRouter({
       featurePlanDetailRoute,
       docuRoute,
       readmeRoute,
-      aiServiceRequestRoute,
-      aiServiceMyRoute,
-      aiServiceAdminRoute,
-      aiMonitoringRoute,
       aiMethodologyRoute,
       aiEvaluationRoute,
       usageStatsRoute,

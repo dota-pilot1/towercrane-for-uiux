@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -67,10 +66,6 @@ export class ChatbotController {
     },
     @Res() res: Response,
   ) {
-    if (!user.aiAccess && user.role !== 'admin') {
-      throw new ForbiddenException('AI 서비스 사용 권한이 없습니다. 서비스 신청 후 승인을 받아주세요.');
-    }
-
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -96,10 +91,6 @@ export class ChatbotController {
       enabledTools?: string[];
     },
   ) {
-    if (!user.aiAccess && user.role !== 'admin') {
-      throw new ForbiddenException('AI 서비스 사용 권한이 없습니다. 서비스 신청 후 승인을 받아주세요.');
-    }
-
     return this.chatbotService.createRealtimeClientSecret(user, body ?? {});
   }
 
@@ -114,10 +105,6 @@ export class ChatbotController {
       arguments?: Record<string, unknown>;
     },
   ) {
-    if (!user.aiAccess && user.role !== 'admin') {
-      throw new ForbiddenException('AI 서비스 사용 권한이 없습니다. 서비스 신청 후 승인을 받아주세요.');
-    }
-
     return this.chatbotService.executeRealtimeTool(user, body);
   }
 }

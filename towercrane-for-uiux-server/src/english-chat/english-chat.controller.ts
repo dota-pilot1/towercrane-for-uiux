@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  ForbiddenException,
-  Post,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -26,12 +19,6 @@ export class EnglishChatController {
     @Body() body: { messages: ChatMessage[] },
     @Res() res: Response,
   ) {
-    if (!user.aiAccess && user.role !== 'admin') {
-      throw new ForbiddenException(
-        'AI 서비스 사용 권한이 없습니다. 서비스 신청 후 승인을 받아주세요.',
-      );
-    }
-
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');

@@ -2284,10 +2284,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { sectionId: 'dev_study', displayOrder: 5 },
       { sectionId: 'knowledge_channel', displayOrder: 6 },
       { sectionId: 'chatbot_pilot', displayOrder: 7 },
-      { sectionId: 'ai_service_group', displayOrder: 8 },
+      { sectionId: 'english_group', displayOrder: 8 },
       { sectionId: 'usage_stats_group', displayOrder: 9 },
-      { sectionId: 'english_group', displayOrder: 10 },
-      { sectionId: 'admin_dropdown', displayOrder: 11 },
+      { sectionId: 'admin_dropdown', displayOrder: 10 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
@@ -3527,7 +3526,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     // ── AI Native 그룹 + 구 하위 항목 숨김 (ai_service_request는 별도 루트 메뉴로 관리)
     this.sqlite
       .prepare(
-        `UPDATE menus SET is_visible = 0, updated_at = ? WHERE section_id IN ('ai_native_group','ai_methodology','ai_evaluation')`,
+        `UPDATE menus SET is_visible = 0, updated_at = ? WHERE section_id IN ('ai_native_group','ai_methodology','ai_evaluation','ai_service_group','ai_service_request','ai_service_my','ai_service_admin','ai_service_monitor')`,
       )
       .run(now);
 
@@ -3603,130 +3602,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     ensureChild('FAQ', 'knowledge_faq', 'HelpCircle', 1);
     ensureChild('개발 자료', 'knowledge_dev', 'Code2', 2);
     ensureChild('AI 자료', 'knowledge_ai', 'Sparkles', 3);
-
-    // ── AI 서비스 신청 그룹 → 루트 드롭다운 ────────────────────────────
-    let aiServiceGroupId: string;
-    const existingAiServiceGroup = this.sqlite
-      .prepare(
-        `SELECT id FROM menus WHERE section_id = 'ai_service_group' LIMIT 1`,
-      )
-      .get() as { id: string } | undefined;
-    if (!existingAiServiceGroup) {
-      aiServiceGroupId = randomUUID();
-      this.db
-        .insert(menusTable)
-        .values({
-          id: aiServiceGroupId,
-          name: 'AI 서비스 신청',
-          sectionId: 'ai_service_group',
-          icon: 'ClipboardList',
-          displayOrder: 7,
-          isVisible: true,
-          requiredRole: null,
-          parentId: null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-    } else {
-      aiServiceGroupId = existingAiServiceGroup.id;
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET name='AI 서비스 신청', icon='ClipboardList', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
-        )
-        .run(now, aiServiceGroupId);
-    }
-
-    // 기존 ai_service_request 루트 메뉴 → 그룹 하위로 이동
-    const existingAiServiceRequest = this.sqlite
-      .prepare(
-        `SELECT id FROM menus WHERE section_id = 'ai_service_request' LIMIT 1`,
-      )
-      .get() as { id: string } | undefined;
-    if (existingAiServiceRequest) {
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET name='서비스 신청', icon='ClipboardList', parent_id=?, display_order=0, is_visible=1, updated_at=? WHERE id=?`,
-        )
-        .run(aiServiceGroupId, now, existingAiServiceRequest.id);
-    } else {
-      this.db
-        .insert(menusTable)
-        .values({
-          id: randomUUID(),
-          name: '서비스 신청',
-          sectionId: 'ai_service_request',
-          icon: 'ClipboardList',
-          displayOrder: 0,
-          isVisible: true,
-          requiredRole: null,
-          parentId: aiServiceGroupId,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-    }
-
-    // AI 서비스 신청 하위 메뉴들
-    const aiServiceChildren = [
-      {
-        name: '내 신청 현황',
-        sectionId: 'ai_service_my',
-        icon: 'FileSearch',
-        displayOrder: 1,
-        requiredRole: null,
-      },
-      {
-        name: '신청 관리',
-        sectionId: 'ai_service_admin',
-        icon: 'ShieldCheck',
-        displayOrder: 2,
-        requiredRole: 'admin',
-      },
-      {
-        name: '사용량 모니터링',
-        sectionId: 'ai_service_monitor',
-        icon: 'BarChart3',
-        displayOrder: 3,
-        requiredRole: 'admin',
-      },
-    ];
-    for (const child of aiServiceChildren) {
-      const existing = this.sqlite
-        .prepare(`SELECT id FROM menus WHERE section_id = ? LIMIT 1`)
-        .get(child.sectionId) as { id: string } | undefined;
-      if (existing) {
-        this.sqlite
-          .prepare(
-            `UPDATE menus SET name=?, icon=?, parent_id=?, display_order=?, required_role=?, is_visible=1, updated_at=? WHERE id=?`,
-          )
-          .run(
-            child.name,
-            child.icon,
-            aiServiceGroupId,
-            child.displayOrder,
-            child.requiredRole,
-            now,
-            existing.id,
-          );
-      } else {
-        this.db
-          .insert(menusTable)
-          .values({
-            id: randomUUID(),
-            name: child.name,
-            sectionId: child.sectionId,
-            icon: child.icon,
-            displayOrder: child.displayOrder,
-            isVisible: true,
-            requiredRole: child.requiredRole,
-            parentId: aiServiceGroupId,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .run();
-      }
-    }
 
     // ── AI 활용 능력 평가 → 업무 관리 하위 ──────────────────────────────
     const taskParent = this.sqlite

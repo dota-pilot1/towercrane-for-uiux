@@ -190,9 +190,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
               } else if (parsed.name === 'get_my_tasks') {
                 const { tasks } = parsed.result as { tasks: import('./tool-dialog-store').TaskItem[] }
                 useToolDialogStore.getState().setTasksDialog(tasks)
-              } else if (parsed.name === 'check_ai_service_request') {
-                const { requests } = parsed.result as { requests: import('./tool-dialog-store').AiRequestItem[] }
-                useToolDialogStore.getState().setAiRequestDialog(requests)
               }
             } else if ('type' in parsed && parsed.type === 'meta') {
               replaceLocalMessage(currentActiveId, tempUserId, {

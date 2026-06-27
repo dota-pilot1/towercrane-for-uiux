@@ -1,7 +1,5 @@
 import { useState } from 'react'
-import { Bot, Menu, ShieldOff, Wrench, Hammer, X, Cpu, Building2, CalendarDays, BookOpen, Languages, CheckCircle2, ListChecks, Zap, ClipboardList, AlertCircle, Clock, FileCheck } from 'lucide-react'
-import { useNavigate } from '@tanstack/react-router'
-import { useSessionStore } from '../../../shared/store/session-store'
+import { Bot, Menu, Wrench, Hammer, X, Cpu, Building2, CalendarDays, BookOpen, Languages, CheckCircle2, ListChecks, Zap, ClipboardList, AlertCircle, Clock } from 'lucide-react'
 import { useRefreshSession } from '../../../shared/model/use-refresh-session'
 import { ChatSessionSidebar } from '../../../features/chatbot/ui/chat-session-sidebar'
 import { ChatMessage } from '../../../features/chatbot/ui/chat-message'
@@ -36,15 +34,11 @@ function ToolCallCard({ call }: { call: ToolCallLog }) {
 
 export function ChatbotToolsPage() {
   useRefreshSession()
-  const aiAccess = useSessionStore((s) => s.aiAccess)
-  const userRole = useSessionStore((s) => s.userRole)
-  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [rightTab, setRightTab] = useState<'tools' | 'logs'>('tools')
   const {
     introOpen, introProfile, closeIntroDialog,
     tasksOpen, tasks, closeTasksDialog,
-    aiRequestOpen, aiRequests, closeAiRequestDialog,
   } = useToolDialogStore()
 
   // STEP 7: mode: 'tools' 로 훅 호출 — 백엔드 tools 분기 실행됨
@@ -69,93 +63,8 @@ export function ChatbotToolsPage() {
     handleKeyDown,
   } = useFilesChat({ mode: 'tools', onToolCall: () => setRightTab('logs') })
 
-  if (!aiAccess && userRole !== 'admin') {
-    return (
-      <div className="flex h-[calc(100vh-120px)] items-center justify-center">
-        <div className="ui-panel rounded-2xl p-10 flex flex-col items-center gap-4 text-center max-w-md">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-surface-muted border border-surface-border">
-            <ShieldOff className="size-7 ui-text-muted" />
-          </div>
-          <div>
-            <p className="text-base font-bold ui-text-primary">AI 서비스 접근 권한이 없습니다</p>
-            <p className="mt-1.5 text-sm ui-text-muted leading-relaxed">
-              챗봇 사용을 위해 AI 서비스 신청 후 승인을 받아야 합니다.
-            </p>
-          </div>
-          <button
-            onClick={() => navigate({ to: '/ai-service-request' })}
-            className="mt-2 inline-flex items-center gap-2 rounded-lg border border-brand-border bg-brand-glass px-4 py-2 text-sm font-bold text-brand-primary hover:bg-brand-glass/80 transition-colors"
-          >
-            서비스 신청하기
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex h-[calc(100vh-120px)] gap-4 relative overflow-hidden">
-
-      {/* check_ai_service_request 툴 호출 결과 — AI 서비스 신청 현황 다이얼로그 */}
-      {aiRequestOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
-          <div className="ui-panel rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="bg-brand-glass border-b border-brand-border px-6 py-4 flex items-center gap-3 shrink-0">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-brand-glass border border-brand-border shrink-0">
-                <FileCheck className="size-5 text-brand-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold text-brand-primary">AI 서비스 신청 현황</p>
-                <p className="text-xs ui-text-muted">{aiRequests.length}건 신청</p>
-              </div>
-              <button onClick={closeAiRequestDialog} className="ui-icon-button p-1.5 rounded-lg">
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-4 flex flex-col gap-3">
-              {aiRequests.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-                  <FileCheck className="size-8 ui-text-muted" />
-                  <p className="text-sm font-semibold ui-text-secondary">신청 내역이 없습니다.</p>
-                </div>
-              ) : (
-                aiRequests.map((req) => {
-                  const statusMap: Record<string, { label: string; cls: string }> = {
-                    pending:             { label: '검토 대기', cls: 'bg-surface-muted border-surface-border ui-text-muted' },
-                    manager_approved:    { label: '팀장 승인', cls: 'bg-blue-500/10 border-blue-500/30 text-blue-400' },
-                    admin_approved:      { label: '관리자 승인', cls: 'bg-brand-glass border-brand-border text-brand-primary' },
-                    active:              { label: '사용 중', cls: 'bg-brand-glass border-brand-border text-brand-primary' },
-                    rejected:            { label: '반려', cls: 'bg-red-500/10 border-red-500/30 text-red-400' },
-                    revision_requested:  { label: '보완 요청', cls: 'bg-amber-500/10 border-amber-500/30 text-amber-400' },
-                  }
-                  const s = statusMap[req.status] ?? { label: req.status, cls: 'bg-surface-muted border-surface-border ui-text-muted' }
-                  return (
-                    <div key={req.id} className="ui-panel-soft rounded-xl p-4 flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold ui-text-primary flex-1">{req.serviceType}</p>
-                        <span className={`text-[10px] font-bold rounded-full border px-2.5 py-0.5 ${s.cls}`}>{s.label}</span>
-                      </div>
-                      <p className="text-xs ui-text-secondary leading-relaxed">{req.purpose}</p>
-                      {req.rejectReason && (
-                        <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">사유: {req.rejectReason}</p>
-                      )}
-                      <div className="flex gap-3 text-[10px] ui-text-muted pt-1 border-t border-surface-border-soft">
-                        <span>신청일: {new Date(req.createdAt).toLocaleDateString('ko-KR')}</span>
-                        <span>최종 업데이트: {new Date(req.updatedAt).toLocaleDateString('ko-KR')}</span>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-            <div className="shrink-0 border-t border-surface-border px-6 py-3">
-              <button onClick={closeAiRequestDialog} className="w-full rounded-lg border border-brand-border bg-brand-glass py-2 text-sm font-bold text-brand-primary hover:bg-brand-glass/80 transition-colors">
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* get_my_tasks 툴 호출 결과 — 담당 업무 테이블 다이얼로그 */}
       {tasksOpen && (
@@ -479,33 +388,6 @@ export function ChatbotToolsPage() {
               </div>
             </div>
 
-            {/* check_ai_service_request 툴 카드 */}
-            <div className="rounded-lg border border-surface-border bg-surface-muted p-3 flex flex-col gap-2.5">
-              <div className="flex items-center gap-2">
-                <div className="flex size-7 items-center justify-center rounded-md bg-brand-glass border border-brand-border shrink-0">
-                  <FileCheck className="size-3.5 text-brand-primary" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold ui-text-primary">check_ai_service_request</p>
-                  <p className="text-[10px] ui-text-muted">AI 서비스 신청 현황 조회 툴</p>
-                </div>
-                <span className="ml-auto text-[10px] rounded-full bg-brand-glass border border-brand-border text-brand-primary px-2 py-0.5">active</span>
-              </div>
-              <p className="text-[11px] ui-text-secondary leading-relaxed">
-                현재 로그인한 사용자의 AI 서비스 신청 내역과 승인 상태를 조회합니다. 신청 유형·목적·상태·반려 사유를 카드로 표시합니다.
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {['AI 신청 상태 알려줘', '내 신청 현황', '챗봇 신청 됐어?', 'AI 사용 신청 확인'].map((ex) => (
-                  <span key={ex} className="text-[10px] rounded bg-surface-raised border border-surface-border-soft ui-text-muted px-1.5 py-0.5">
-                    {ex}
-                  </span>
-                ))}
-              </div>
-              <div className="flex items-center gap-1.5 pt-1 border-t border-surface-border-soft">
-                <Zap className="size-3 text-brand-primary" />
-                <span className="text-[10px] ui-text-muted">파라미터 없음 · DB 조회 · 카드 다이얼로그</span>
-              </div>
-            </div>
           </div>
         )}
 

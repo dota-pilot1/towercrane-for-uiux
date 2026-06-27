@@ -142,6 +142,16 @@ export function useResetPasswordWithCode() {
   })
 }
 
+export function useVerifyPassword() {
+  return useMutation({
+    mutationFn: (currentPassword: string) =>
+      apiRequest<{ valid: boolean }>('/auth/verify-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword }),
+      }),
+  })
+}
+
 export function useChangePassword() {
   return useMutation({
     mutationFn: (payload: ChangePasswordPayload) =>

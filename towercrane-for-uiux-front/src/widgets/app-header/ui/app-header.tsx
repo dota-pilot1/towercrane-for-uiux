@@ -33,11 +33,6 @@ function sectionIdToPath(sectionId: string): string {
     knowledge_faq: '/chatbot/knowledge/faq',
     knowledge_ai: '/chatbot/knowledge/ai',
     knowledge_dev: '/chatbot/knowledge/dev',
-    ai_service_group: '/ai-service-request',
-    ai_service_request: '/ai-service-request',
-    ai_service_my: '/ai-service-request/my',
-    ai_service_admin: '/admin/ai-service-requests',
-    ai_service_monitor: '/admin/ai-monitoring',
     ai_evaluation: '/ai-evaluation',
     english_group: '/english/chat',
     english_chat: '/english/chat',
@@ -105,10 +100,6 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/feature-plans')) return 'feature_plans'
   if (pathname.startsWith('/dev-management')) return 'dev_management_chat'
   if (pathname.startsWith('/docu')) return 'docu'
-  if (pathname.startsWith('/ai-service-request/my')) return 'ai_service_my'
-  if (pathname.startsWith('/ai-service-request')) return 'ai_service_request'
-  if (pathname.startsWith('/admin/ai-service-requests')) return 'ai_service_admin'
-  if (pathname.startsWith('/admin/ai-monitoring')) return 'ai_service_monitor'
   if (pathname.startsWith('/ai-evaluation')) return 'ai_evaluation'
   if (pathname.startsWith('/english/chat')) return 'english_chat'
   if (pathname.startsWith('/english/diary')) return 'english_diary'

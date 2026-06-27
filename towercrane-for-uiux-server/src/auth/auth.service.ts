@@ -22,6 +22,7 @@ import {
   resetPasswordWithCodeSchema,
   signupSchema,
   verifyEmailCodeSchema,
+  verifyPasswordSchema,
 } from './auth.schemas';
 import { EmailVerificationService } from './email-verification.service';
 import { MailService } from '../mail/mail.service';
@@ -167,6 +168,25 @@ export class AuthService {
 
     await this.mailService.sendPasswordChanged(user.email, user.name);
     return { success: true };
+  }
+
+  // 현재 비밀번호가 맞는지만 확인 (변경하지 않음). 입력 중 인라인 검증용.
+  verifyCurrentPassword(userId: string, payload: unknown): { valid: boolean } {
+    const input = verifyPasswordSchema.parse(payload);
+
+    const user = this.databaseService.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .get();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      valid: this.verifyPassword(input.currentPassword, user.passwordHash),
+    };
   }
 
   async changePassword(userId: string, currentToken: string, payload: unknown) {
