@@ -1,10 +1,12 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
+  Logger,
   UnauthorizedException,
   NotFoundException,
 } from '@nestjs/common';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import {
   randomBytes,
   randomUUID,
@@ -14,6 +16,7 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { sessionsTable, usersTable, type UserRow } from '../database/schema';
 import {
+  changePasswordSchema,
   emailSchema,
   loginSchema,
   resetPasswordWithCodeSchema,
@@ -27,6 +30,8 @@ const SESSION_TTL_DAYS = 30;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly emailVerificationService: EmailVerificationService,
@@ -161,6 +166,59 @@ export class AuthService {
       .run();
 
     await this.mailService.sendPasswordChanged(user.email, user.name);
+    return { success: true };
+  }
+
+  async changePassword(userId: string, currentToken: string, payload: unknown) {
+    const input = changePasswordSchema.parse(payload);
+
+    const user = this.databaseService.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .get();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!this.verifyPassword(input.currentPassword, user.passwordHash)) {
+      // 401이 아닌 403 — 잘못된 현재 비번 입력으로 세션이 끊기지 않도록
+      throw new ForbiddenException('Current password is incorrect');
+    }
+
+    const updatedAt = new Date().toISOString();
+    this.databaseService.db
+      .update(usersTable)
+      .set({
+        passwordHash: this.hashPassword(input.newPassword),
+        updatedAt,
+      })
+      .where(eq(usersTable.id, user.id))
+      .run();
+
+    // 현재 세션은 유지하고 그 외 세션만 모두 무효화 (탈취 대비)
+    this.databaseService.db
+      .delete(sessionsTable)
+      .where(
+        and(
+          eq(sessionsTable.userId, user.id),
+          ne(sessionsTable.token, currentToken),
+        ),
+      )
+      .run();
+
+    // 알림 메일은 부가 기능 — 발송 실패가 비밀번호 변경 자체를 되돌리지 않도록 best-effort 처리
+    try {
+      await this.mailService.sendPasswordChanged(user.email, user.name);
+    } catch (error) {
+      this.logger.warn(
+        `Password changed but notification email failed for ${user.email}: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+      );
+    }
+
     return { success: true };
   }
 

@@ -54,6 +54,17 @@ export class AuthController {
     await this.authService.resetPasswordWithCode(body);
   }
 
+  @Post('change-password')
+  @HttpCode(204)
+  @UseGuards(AuthGuard)
+  async changePassword(
+    @CurrentUser() user: { id: string },
+    @SessionToken() token: string,
+    @Body() body: unknown,
+  ) {
+    await this.authService.changePassword(user.id, token, body);
+  }
+
   @Post('login')
   login(@Body() body: unknown) {
     return this.authService.login(body);

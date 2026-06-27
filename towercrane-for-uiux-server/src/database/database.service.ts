@@ -1866,6 +1866,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.reconcileSqlPracticeMenus(now);
     this.reconcileDevStudyMenu(now);
     this.reconcileUsageStatsMenu(now);
+    this.reconcileEnglishMenu(now);
 
     const existingTaskMenu = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'task' LIMIT 1")
@@ -2285,7 +2286,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { sectionId: 'chatbot_pilot', displayOrder: 7 },
       { sectionId: 'ai_service_group', displayOrder: 8 },
       { sectionId: 'usage_stats_group', displayOrder: 9 },
-      { sectionId: 'admin_dropdown', displayOrder: 10 },
+      { sectionId: 'english_group', displayOrder: 10 },
+      { sectionId: 'admin_dropdown', displayOrder: 11 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
@@ -4308,6 +4310,59 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       parentId: usageStats.id,
       requiredRole: null,
       now,
+    });
+  }
+
+  private reconcileEnglishMenu(now: string) {
+    // ── English 루트 그룹 보장 ──────────────────────────────────────────
+    let english = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'english_group' LIMIT 1`)
+      .get() as { id: string } | undefined;
+
+    if (!english) {
+      const id = randomUUID();
+      this.db
+        .insert(menusTable)
+        .values({
+          id,
+          name: 'English',
+          sectionId: 'english_group',
+          icon: 'Languages',
+          displayOrder: 10,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      english = { id };
+    } else {
+      this.sqlite
+        .prepare(
+          `UPDATE menus SET name='English', icon='Languages', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
+        )
+        .run(now, english.id);
+    }
+
+    // ── 하위 5개: 영어 학습 코너 ────────────────────────────────────────
+    const children = [
+      { sectionId: 'english_chat', name: '영어 챗봇 대화', icon: 'MessagesSquare' },
+      { sectionId: 'english_diary', name: '영어 개발 일기', icon: 'BookOpen' },
+      { sectionId: 'english_news', name: '영어 뉴스 보기', icon: 'Newspaper' },
+      { sectionId: 'english_listening', name: '영어 듣기 연습', icon: 'Headphones' },
+      { sectionId: 'english_character', name: '영어 챗봇 캐릭터 회화', icon: 'Smile' },
+    ];
+    children.forEach((child, index) => {
+      this.upsertMenuBySectionId({
+        sectionId: child.sectionId,
+        name: child.name,
+        icon: child.icon,
+        displayOrder: index,
+        parentId: english!.id,
+        requiredRole: null,
+        now,
+      });
     });
   }
 

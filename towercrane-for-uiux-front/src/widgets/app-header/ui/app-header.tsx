@@ -39,6 +39,12 @@ function sectionIdToPath(sectionId: string): string {
     ai_service_admin: '/admin/ai-service-requests',
     ai_service_monitor: '/admin/ai-monitoring',
     ai_evaluation: '/ai-evaluation',
+    english_group: '/english/chat',
+    english_chat: '/english/chat',
+    english_diary: '/english/diary',
+    english_news: '/english/news',
+    english_listening: '/english/listening',
+    english_character: '/english/character',
     usage_stats_group: '/usage-stats',
     usage_stats: '/usage-stats',
     ai_usage_stats: '/usage-stats/ai',
@@ -104,6 +110,12 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/admin/ai-service-requests')) return 'ai_service_admin'
   if (pathname.startsWith('/admin/ai-monitoring')) return 'ai_service_monitor'
   if (pathname.startsWith('/ai-evaluation')) return 'ai_evaluation'
+  if (pathname.startsWith('/english/chat')) return 'english_chat'
+  if (pathname.startsWith('/english/diary')) return 'english_diary'
+  if (pathname.startsWith('/english/news')) return 'english_news'
+  if (pathname.startsWith('/english/listening')) return 'english_listening'
+  if (pathname.startsWith('/english/character')) return 'english_character'
+  if (pathname.startsWith('/english')) return 'english_chat'
   if (pathname.startsWith('/usage-stats/ai')) return 'ai_usage_stats'
   if (pathname.startsWith('/usage-stats')) return 'usage_stats'
   if (pathname.startsWith('/api-doc')) return 'api_doc'

@@ -25,7 +25,17 @@ export const resetPasswordWithCodeSchema = z.object({
   email: z.email(),
   verifiedToken: z.string().min(16),
   newPassword: z.string().min(8).max(72),
-});
+})
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(8).max(72),
+    newPassword: z.string().min(8).max(72),
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: 'New password must be different from the current password',
+    path: ['newPassword'],
+  });
 
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -33,4 +43,5 @@ export type EmailInput = z.infer<typeof emailSchema>;
 export type VerifyEmailCodeInput = z.infer<typeof verifyEmailCodeSchema>;
 export type ResetPasswordWithCodeInput = z.infer<
   typeof resetPasswordWithCodeSchema
->;
+>
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

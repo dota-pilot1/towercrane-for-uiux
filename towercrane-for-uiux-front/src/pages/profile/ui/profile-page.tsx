@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useUpdateProfileImage, type SessionUser } from '../../../shared/api/auth'
 import { uploadFile } from '../../../shared/api/upload'
+import { ChangePasswordForm } from '../../../features/auth/ui/change-password-form'
 import { Card } from '../../../shared/ui/card'
 
 type ProfilePageProps = {
@@ -150,20 +151,24 @@ export function ProfilePage({ user }: ProfilePageProps) {
             })}
           </nav>
 
-          <section className="grid min-w-0 gap-3 md:grid-cols-2">
-            {tabPanels[activeTab].map((item) => {
-              const Icon = item.icon
-              return (
-                <div key={item.label} className="ui-panel-soft min-h-[112px] p-4">
-                  <div className="mb-4 flex size-9 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
-                    <Icon className="size-4" />
+          <div className="min-w-0 space-y-3">
+            <section className="grid min-w-0 gap-3 md:grid-cols-2">
+              {tabPanels[activeTab].map((item) => {
+                const Icon = item.icon
+                return (
+                  <div key={item.label} className="ui-panel-soft min-h-[112px] p-4">
+                    <div className="mb-4 flex size-9 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
+                      <Icon className="size-4" />
+                    </div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-text-muted">{item.label}</p>
+                    <p className="mt-1 break-words text-sm font-bold leading-6 text-text-primary">{item.value}</p>
                   </div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-text-muted">{item.label}</p>
-                  <p className="mt-1 break-words text-sm font-bold leading-6 text-text-primary">{item.value}</p>
-                </div>
-              )
-            })}
-          </section>
+                )
+              })}
+            </section>
+
+            {activeTab === 'security' ? <ChangePasswordForm /> : null}
+          </div>
         </div>
       </Card>
 

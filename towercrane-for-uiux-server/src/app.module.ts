@@ -11,6 +11,7 @@ import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
 import { MenusModule } from './menus/menus.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { EnglishChatModule } from './english-chat/english-chat.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ProjectIssuesModule } from './project-issues/project-issues.module';
@@ -46,6 +47,7 @@ import { TaskChatModule } from './task-chat/task-chat.module';
     UsersModule,
     MenusModule,
     AnalyticsModule,
+    EnglishChatModule,
     MeetingModule,
     TasksModule,
     ProjectIssuesModule,

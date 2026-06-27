@@ -38,6 +38,11 @@ export type ResetPasswordWithCodePayload = {
   newPassword: string
 }
 
+export type ChangePasswordPayload = {
+  currentPassword: string
+  newPassword: string
+}
+
 export function useLogin() {
   const queryClient = useQueryClient()
 
@@ -133,6 +138,16 @@ export function useResetPasswordWithCode() {
         method: 'POST',
         body: JSON.stringify(payload),
         skipAuth: true,
+      }),
+  })
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (payload: ChangePasswordPayload) =>
+      apiRequest<void>('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify(payload),
       }),
   })
 }

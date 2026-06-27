@@ -53,6 +53,13 @@ import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-pag
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
 import { UsageStatsPage } from '../pages/usage-stats/ui/usage-stats-page'
 import { AiUsageStatsPage } from '../pages/usage-stats/ui/ai-usage-stats-page'
+import {
+  EnglishDiaryPage,
+  EnglishNewsPage,
+  EnglishListeningPage,
+  EnglishCharacterPage,
+} from '../pages/english/ui/english-pages'
+import { EnglishChatPage } from '../pages/english/ui/english-chat-page'
 import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
 import { TaskPage } from '../pages/task/ui/task-page'
 import { TaskDetailPage } from '../pages/task/ui/task-detail-page'
@@ -660,6 +667,38 @@ const aiUsageStatsRoute = createRoute({
   component: AiUsageStatsPage,
 })
 
+// ─── /english (영어 학습 코너) ─────────────────────────────────────────────────
+
+const englishChatRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/english/chat',
+  component: EnglishChatPage,
+})
+
+const englishDiaryRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/english/diary',
+  component: EnglishDiaryPage,
+})
+
+const englishNewsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/english/news',
+  component: EnglishNewsPage,
+})
+
+const englishListeningRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/english/listening',
+  component: EnglishListeningPage,
+})
+
+const englishCharacterRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/english/character',
+  component: EnglishCharacterPage,
+})
+
 // ─── /api-doc ────────────────────────────────────────────────────────────────
 
 const apiDocRoute = createRoute({
@@ -1071,6 +1110,11 @@ export const router = createRouter({
       aiEvaluationRoute,
       usageStatsRoute,
       aiUsageStatsRoute,
+      englishChatRoute,
+      englishDiaryRoute,
+      englishNewsRoute,
+      englishListeningRoute,
+      englishCharacterRoute,
       apiDocRoute,
       sqlPracticeRoute,
       sqlUserPracticeRoute,

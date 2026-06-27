@@ -45,8 +45,8 @@ export function UsageStatsPage() {
       {/* KPI 카드 */}
       <div className="mt-6 grid grid-cols-3 gap-3">
         <StatCard label={`페이지뷰 (${DAYS}일)`} value={summary.data?.pv} />
-        <StatCard label="순방문자" value={summary.data?.uv} />
         <StatCard label="인당 평균 조회수" value={avgPerVisitor} />
+        <StatCard label="순방문자" value={summary.data?.uv} />
       </div>
 
       <div className="ui-panel mt-4 rounded-xl p-6">
