@@ -38,7 +38,7 @@ function App() {
     return <Login onSuccess={setUser} />;
   }
 
-  return <AppShell user={user} onLogout={handleLogout} />;
+  return <AppShell user={user} onUserUpdate={setUser} onLogout={handleLogout} />;
 }
 
 export default App;

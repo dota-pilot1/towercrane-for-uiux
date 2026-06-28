@@ -2,16 +2,18 @@ import { useState } from "react";
 import type { User } from "../../features/auth/api";
 import Messenger from "../messenger/Messenger";
 import HomePage from "../home/HomePage";
+import ProfilePage from "../profile/ProfilePage";
 import PageHeader from "../../shared/ui/PageHeader";
 import WindowControls from "./WindowControls";
 
 type Props = {
   user: User;
+  onUserUpdate: (user: User) => void;
   onLogout: () => void;
 };
 
 type ModuleId = "messenger" | "todo" | "issue" | "docs";
-type ViewId = "home" | ModuleId;
+type ViewId = "home" | "profile" | ModuleId;
 
 type ModuleDef = {
   id: ModuleId;
@@ -27,14 +29,14 @@ const MODULES: ModuleDef[] = [
   { id: "docs", label: "문서", icon: "📄", ready: false },
 ];
 
-function AppShell({ user, onLogout }: Props) {
+function AppShell({ user, onUserUpdate, onLogout }: Props) {
   const [active, setActive] = useState<ViewId>("home");
   const activeModule = MODULES.find((m) => m.id === active);
 
   return (
     <div className="h-screen flex overflow-hidden relative">
       {/* 앱 레벨 아이콘 레일 (전체 높이) */}
-      <nav className="w-[60px] shrink-0 flex flex-col items-center bg-gradient-to-b from-slate-900 to-slate-800 text-white">
+      <nav className="w-[60px] shrink-0 flex flex-col items-center bg-slate-800 text-white">
         {/* 로고 — 레일 최상단, 클릭 시 홈 */}
         <div className="w-full h-12 shrink-0 flex items-center justify-center border-b border-white/10">
           <button
@@ -79,18 +81,32 @@ function AppShell({ user, onLogout }: Props) {
 
         {/* 사용자 / 로그아웃 */}
         <div className="w-full flex flex-col items-center gap-1.5 py-2.5 border-t border-white/10">
-          <span
-            title={`${user.name} · ${user.email}`}
-            className="w-[34px] h-[34px] flex items-center justify-center text-[15px] font-bold uppercase text-white bg-emerald-500 rounded-full"
+          <button
+            onClick={() => setActive("profile")}
+            title={`${user.name} · 프로필 수정`}
+            className={
+              "w-[34px] h-[34px] flex items-center justify-center text-[15px] font-bold uppercase rounded-full overflow-hidden transition-colors " +
+              (active === "profile"
+                ? "text-white bg-emerald-500 ring-2 ring-emerald-400/50"
+                : "text-slate-100 bg-slate-600 hover:bg-slate-500")
+            }
           >
-            {user.name.charAt(0) || "🙂"}
-          </span>
+            {user.profileImageUrl ? (
+              <img
+                src={user.profileImageUrl}
+                alt={user.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              user.name.charAt(0) || "🙂"
+            )}
+          </button>
           <button
             onClick={onLogout}
             title="로그아웃"
             className="w-[44px] py-1 text-[10px] font-semibold text-slate-400 rounded-lg hover:text-red-300 hover:bg-red-500/10"
           >
-            나가기
+            로그아웃
           </button>
         </div>
       </nav>
@@ -99,6 +115,8 @@ function AppShell({ user, onLogout }: Props) {
       <div className="flex-1 min-w-0 flex">
         {active === "home" ? (
           <HomePage user={user} modules={MODULES} onOpen={(id) => setActive(id as ViewId)} />
+        ) : active === "profile" ? (
+          <ProfilePage user={user} onUserUpdate={onUserUpdate} onLogout={onLogout} />
         ) : activeModule?.id === "messenger" ? (
           <Messenger user={user} />
         ) : (

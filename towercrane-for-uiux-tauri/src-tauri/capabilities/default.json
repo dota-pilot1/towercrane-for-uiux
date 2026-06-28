@@ -14,7 +14,8 @@
       "allow": [
         { "url": "http://localhost:3000/*" },
         { "url": "http://127.0.0.1:3000/*" },
-        { "url": "https://hibot-docu.com/*" }
+        { "url": "https://hibot-docu.com/*" },
+        { "url": "https://hibot-docu.s3.ap-northeast-2.amazonaws.com/*" }
       ]
     }
   ]

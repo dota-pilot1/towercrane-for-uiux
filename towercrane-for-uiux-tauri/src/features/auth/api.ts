@@ -1,3 +1,4 @@
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { ApiError, apiRequest, getToken, setToken } from "../../shared/api/client";
 
 export type User = {
@@ -41,6 +42,56 @@ export async function me(token: string): Promise<User> {
   return apiRequest<User>("/auth/me", {
     token,
     errorMessage: "세션이 만료되었습니다.",
+  });
+}
+
+export async function updateProfileImage(
+  token: string,
+  profileImageUrl: string | null,
+): Promise<User> {
+  return apiRequest<User>("/users/me/profile-image", {
+    method: "PATCH",
+    token,
+    body: { profileImageUrl },
+    errorMessage: "프로필 이미지를 변경하지 못했습니다.",
+  });
+}
+
+type PresignResult = { presignedUrl: string; publicUrl: string; key: string };
+
+// 파일 선택 → presign 발급 → S3 PUT 업로드 → 프로필 이미지 URL 저장
+export async function uploadProfileImage(token: string, file: File): Promise<User> {
+  const contentType = file.type || "application/octet-stream";
+  const presign = await apiRequest<PresignResult>("/upload/presign", {
+    method: "POST",
+    token,
+    body: { filename: file.name, contentType },
+    errorMessage: "이미지 업로드를 준비하지 못했습니다.",
+  });
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const putRes = await tauriFetch(presign.presignedUrl, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: bytes,
+  });
+  if (!putRes.ok) {
+    throw new Error("이미지 업로드에 실패했습니다.");
+  }
+
+  return updateProfileImage(token, presign.publicUrl);
+}
+
+export async function changePassword(
+  token: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  await apiRequest("/auth/change-password", {
+    method: "POST",
+    token,
+    body: { currentPassword, newPassword },
+    errorMessage: "비밀번호를 변경하지 못했습니다.",
   });
 }
 
