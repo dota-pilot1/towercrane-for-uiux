@@ -1,0 +1,140 @@
+import { useEffect, useState } from "react";
+import { getToken, type User } from "../../features/auth/api";
+import { getRooms, startDm, type MeetingRoom } from "../../features/chat/api";
+import RoomList from "../../features/chat/RoomList";
+import ChatView from "../../features/chat/ChatView";
+import { getOrgTree, type OrgMember, type OrgNode } from "../../features/org/api";
+import OrgTree from "../../features/org/OrgTree";
+import PageHeader from "../../shared/ui/PageHeader";
+
+type Props = {
+  user: User;
+};
+
+function Messenger({ user }: Props) {
+  const [tab, setTab] = useState<"chats" | "org">("chats");
+
+  const [rooms, setRooms] = useState<MeetingRoom[]>([]);
+  const [roomsError, setRoomsError] = useState<string | null>(null);
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+
+  const [org, setOrg] = useState<OrgNode[]>([]);
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [orgError, setOrgError] = useState<string | null>(null);
+  const [orgLoaded, setOrgLoaded] = useState(false);
+
+  const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? null;
+
+  // DM 방 목록 로드
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    getRooms(token)
+      .then((all) => setRooms(all.filter((r) => r.roomType === "DM")))
+      .catch((err) =>
+        setRoomsError(err instanceof Error ? err.message : "대화 목록을 불러오지 못했습니다."),
+      );
+  }, []);
+
+  // 조직도 최초 진입 시 로드
+  useEffect(() => {
+    if (tab !== "org" || orgLoaded) return;
+    const token = getToken();
+    if (!token) return;
+    setOrgLoading(true);
+    setOrgError(null);
+    getOrgTree(token)
+      .then((tree) => {
+        setOrg(tree);
+        setOrgLoaded(true);
+      })
+      .catch((err) =>
+        setOrgError(err instanceof Error ? err.message : "조직도를 불러오지 못했습니다."),
+      )
+      .finally(() => setOrgLoading(false));
+  }, [tab, orgLoaded]);
+
+  async function handleSelectMember(member: OrgMember) {
+    if (member.id === user.id) return;
+    const token = getToken();
+    if (!token) return;
+    try {
+      const room = await startDm(token, member.id);
+      setRooms((prev) => (prev.some((r) => r.id === room.id) ? prev : [room, ...prev]));
+      setActiveRoomId(room.id);
+      setTab("chats");
+    } catch (err) {
+      setRoomsError(err instanceof Error ? err.message : "대화를 시작하지 못했습니다.");
+    }
+  }
+
+  return (
+    <div className="flex-1 flex overflow-hidden min-w-0">
+      {/* Sidebar */}
+      <aside className="w-[270px] shrink-0 flex flex-col bg-white border-r border-slate-200">
+        {/* 사이드바 헤더 (천장까지, 드래그 핸들) */}
+        <PageHeader>
+          <span className="text-[14px] font-bold tracking-tight text-slate-900">메신저</span>
+        </PageHeader>
+
+        {/* 탭 */}
+        <div className="flex gap-1 px-3 pt-3">
+          {(
+            [
+              ["chats", "대화"],
+              ["org", "조직도"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={
+                "flex-1 py-1.5 text-[13px] font-semibold rounded-lg " +
+                (tab === key
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "text-slate-500 hover:bg-slate-100")
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "chats" ? (
+          <RoomList
+            rooms={rooms}
+            activeRoomId={activeRoomId}
+            error={roomsError}
+            onSelect={setActiveRoomId}
+          />
+        ) : (
+          <OrgTree
+            nodes={org}
+            loading={orgLoading}
+            error={orgError}
+            onSelectMember={handleSelectMember}
+          />
+        )}
+      </aside>
+
+      {/* Chat */}
+      <main className="flex-1 flex flex-col bg-slate-50">
+        {activeRoom ? (
+          <ChatView room={activeRoom} currentUserId={user.id} />
+        ) : (
+          <>
+            {/* 빈 상태에도 공통 헤더 (창 버튼 영역과 정렬) */}
+            <PageHeader />
+            <div className="flex-1 flex items-center justify-center text-center text-[15px] text-slate-400 leading-relaxed px-6">
+              대화를 선택하거나
+              <br />
+              조직도에서 구성원을 클릭해 메시지를 시작하세요.
+            </div>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+
+export default Messenger;
