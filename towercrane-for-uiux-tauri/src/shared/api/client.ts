@@ -4,7 +4,7 @@ import { fetch } from "@tauri-apps/plugin-http";
 // 개발(npm run tauri dev)은 로컬, 빌드된 앱은 운영을 가리킴
 export const API_BASE = import.meta.env.DEV
   ? "http://localhost:3000/api"
-  : "https://hibot-docu.com/api";
+  : "https://api.hibot-docu.com/api";
 
 const TOKEN_KEY = "towercrane.token";
 
