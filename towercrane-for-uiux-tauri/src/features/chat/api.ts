@@ -46,6 +46,14 @@ export const CHANNEL_ROOM_TYPES = [
 
 export type ChannelRoomType = (typeof CHANNEL_ROOM_TYPES)[number];
 
+export type MeetingMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "user";
+  online: boolean;
+};
+
 export type MeetingMessage = {
   id: string;
   roomId: string;
@@ -55,6 +63,7 @@ export type MeetingMessage = {
   content: string;
   messageType: string;
   payload: unknown;
+  pinned: boolean;
   createdAt: string;
 };
 
@@ -95,6 +104,46 @@ export async function sendMeetingMessage(
     body: { content },
     token,
     errorMessage: "메시지 전송에 실패했습니다.",
+  });
+}
+
+// 방(채널/DM) 멤버 명단 + 온라인 상태
+export async function getRoomMembers(
+  token: string,
+  roomId: string,
+): Promise<MeetingMember[]> {
+  return apiRequest<MeetingMember[]>(`/meeting/rooms/${roomId}/members`, {
+    token,
+    errorMessage: "멤버를 불러오지 못했습니다.",
+  });
+}
+
+// 메시지 고정/해제 (멤버 누구나) → 갱신된 메시지 반환
+export async function setMessagePinned(
+  token: string,
+  roomId: string,
+  messageId: string,
+  pinned: boolean,
+): Promise<MeetingMessage> {
+  return apiRequest<MeetingMessage>(
+    `/meeting/rooms/${roomId}/messages/${messageId}/pin`,
+    {
+      method: "POST",
+      body: { pinned },
+      token,
+      errorMessage: "메시지를 고정하지 못했습니다.",
+    },
+  );
+}
+
+// 채널 고정 메시지 목록
+export async function getPinnedMessages(
+  token: string,
+  roomId: string,
+): Promise<MeetingMessage[]> {
+  return apiRequest<MeetingMessage[]>(`/meeting/rooms/${roomId}/pins`, {
+    token,
+    errorMessage: "고정 메시지를 불러오지 못했습니다.",
   });
 }
 

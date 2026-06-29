@@ -6,13 +6,16 @@ import {
   createChannel,
   createWorkspace,
   getChannels,
+  getRoomMembers,
   getWorkspaces,
   type ChannelRoomType,
+  type MeetingMember,
   type MeetingRoom,
   type MeetingWorkspace,
 } from "../../features/chat/api";
 import ChannelList from "../../features/chat/ChannelList";
 import ChatView from "../../features/chat/ChatView";
+import MemberList from "../../features/chat/MemberList";
 import PageHeader from "../../shared/ui/PageHeader";
 
 type Props = {
@@ -45,6 +48,11 @@ function ChatModule({ user }: Props) {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [creatingWs, setCreatingWs] = useState(false);
+
+  const [members, setMembers] = useState<MeetingMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
+  const [showMembers, setShowMembers] = useState(true);
 
   const activeWs = workspaces.find((w) => w.id === activeWsId) ?? null;
   const activeChannel = channels.find((c) => c.id === activeChannelId) ?? null;
@@ -81,6 +89,25 @@ function ChatModule({ user }: Props) {
         setChannelError(err instanceof Error ? err.message : "채널을 불러오지 못했습니다.");
       });
   }, [activeWsId]);
+
+  // 활성 채널의 멤버 명단 로드 (온라인 상태 포함)
+  useEffect(() => {
+    if (!activeChannelId) {
+      setMembers([]);
+      return;
+    }
+    const token = getToken();
+    if (!token) return;
+    setMembersLoading(true);
+    setMembersError(null);
+    getRoomMembers(token, activeChannelId)
+      .then(setMembers)
+      .catch((err) => {
+        setMembers([]);
+        setMembersError(err instanceof Error ? err.message : "멤버를 불러오지 못했습니다.");
+      })
+      .finally(() => setMembersLoading(false));
+  }, [activeChannelId]);
 
   async function handleCreateWorkspace() {
     const token = getToken();
@@ -206,13 +233,15 @@ function ChatModule({ user }: Props) {
       </aside>
 
       {/* Chat */}
-      <main className="flex-1 flex flex-col bg-slate-50">
+      <main className="flex-1 flex flex-col bg-slate-50 min-w-0">
         {activeChannel ? (
           <ChatView
             room={activeChannel}
             currentUserId={user.id}
             onLeave={() => {}}
             canClear={canCreate}
+            membersShown={showMembers}
+            onToggleMembers={() => setShowMembers((v) => !v)}
           />
         ) : (
           <>
@@ -225,6 +254,17 @@ function ChatModule({ user }: Props) {
           </>
         )}
       </main>
+
+      {/* 오른쪽 멤버 패널 (채널 + 토글 ON) */}
+      {activeChannel && showMembers && (
+        <aside className="w-[240px] shrink-0 flex flex-col bg-white border-l border-slate-200">
+          <PageHeader>
+            <span className="text-[13px] font-bold text-slate-900">멤버</span>
+            <span className="text-[12px] text-slate-400">{members.length}</span>
+          </PageHeader>
+          <MemberList members={members} loading={membersLoading} error={membersError} />
+        </aside>
+      )}
 
       {createOpen && (
         <CreateChannelModal

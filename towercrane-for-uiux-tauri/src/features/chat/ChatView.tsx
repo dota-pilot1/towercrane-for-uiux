@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { getToken } from "../../shared/api/client";
 import {
   clearChannelMessages,
+  getPinnedMessages,
   getRoomMessages,
   sendMeetingMessage,
+  setMessagePinned,
   type MeetingMessage,
   type MeetingRoom,
 } from "./api";
 import { useMeetingSocket } from "./useMeetingSocket";
+import { avatarColor } from "./avatar";
 import PageHeader from "../../shared/ui/PageHeader";
 
 type Props = {
@@ -15,6 +18,8 @@ type Props = {
   currentUserId: string;
   onLeave: () => void;
   canClear?: boolean;
+  membersShown?: boolean;
+  onToggleMembers?: () => void;
 };
 
 function formatTime(iso: string): string {
@@ -34,24 +39,6 @@ function formatTimeShort(iso: string): string {
 
 // 같은 사람의 연속 메시지를 묶는 기준 (5분 이내)
 const GROUP_WINDOW_MS = 5 * 60 * 1000;
-
-// senderId로 아바타 배경색 고정 배정 (디스코드처럼 알록달록)
-const AVATAR_COLORS = [
-  "bg-emerald-500",
-  "bg-sky-500",
-  "bg-violet-500",
-  "bg-amber-500",
-  "bg-rose-500",
-  "bg-teal-500",
-  "bg-indigo-500",
-  "bg-orange-500",
-];
-
-function avatarColor(id: string): string {
-  let h = 0;
-  for (const ch of id) h = (h + ch.charCodeAt(0)) % AVATAR_COLORS.length;
-  return AVATAR_COLORS[h];
-}
 
 function LeaveIcon() {
   return (
@@ -92,10 +79,56 @@ function TrashIcon() {
   );
 }
 
-function ChatView({ room, currentUserId, onLeave, canClear = false }: Props) {
+function PinIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="12" y1="17" x2="12" y2="22" />
+      <path d="M5 17h14l-1.5-2.5V8a2 2 0 0 0-2-2h-1l-.5-2h-3l-.5 2h-1a2 2 0 0 0-2 2v6.5L5 17Z" />
+    </svg>
+  );
+}
+
+function PeopleIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function ChatView({
+  room,
+  currentUserId,
+  onLeave,
+  canClear = false,
+  membersShown = false,
+  onToggleMembers,
+}: Props) {
   const isDm = room.roomType === "DM";
   const subtitle = isDm ? (room.dmCounterpart?.email ?? "1:1 대화") : (room.description ?? "채널");
-  const showToolbar = !isDm && canClear;
+  // 채널이면 항상 툴바 노출(멤버 토글·비우기 자리)
+  const showToolbar = !isDm;
 
   const [messages, setMessages] = useState<MeetingMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -104,12 +137,36 @@ function ChatView({ room, currentUserId, onLeave, canClear = false }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [clearConfirming, setClearConfirming] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
+  const [pinned, setPinned] = useState<MeetingMessage[]>([]);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const appendMessage = (m: MeetingMessage) =>
     setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
 
-  useMeetingSocket(room.id, appendMessage, () => setMessages([]));
+  // pin 상태 변화를 메시지 목록·고정 목록 양쪽에 반영
+  const applyPinned = (m: MeetingMessage) => {
+    setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, pinned: m.pinned } : x)));
+    setPinned((prev) => {
+      const rest = prev.filter((x) => x.id !== m.id);
+      return m.pinned ? [m, ...rest] : rest;
+    });
+  };
+
+  useMeetingSocket(room.id, appendMessage, () => setMessages([]), applyPinned);
+
+  async function handleTogglePin(m: MeetingMessage) {
+    const token = getToken();
+    if (!token) return;
+    // 낙관적 반영
+    applyPinned({ ...m, pinned: !m.pinned });
+    try {
+      const updated = await setMessagePinned(token, room.id, m.id, !m.pinned);
+      applyPinned(updated);
+    } catch {
+      applyPinned(m); // 롤백
+    }
+  }
 
   async function handleClear() {
     const token = getToken();
@@ -126,10 +183,11 @@ function ChatView({ room, currentUserId, onLeave, canClear = false }: Props) {
     }
   }
 
-  // 방 변경 시 메시지 로드
+  // 방 변경 시 메시지 + 고정 메시지 로드
   useEffect(() => {
     setConfirming(false);
     setClearConfirming(false);
+    setPinOpen(false);
     const token = getToken();
     if (!token) return;
     setLoading(true);
@@ -137,7 +195,14 @@ function ChatView({ room, currentUserId, onLeave, canClear = false }: Props) {
       .then(setMessages)
       .catch(() => setMessages([]))
       .finally(() => setLoading(false));
-  }, [room.id]);
+    if (!isDm) {
+      getPinnedMessages(token, room.id)
+        .then(setPinned)
+        .catch(() => setPinned([]));
+    } else {
+      setPinned([]);
+    }
+  }, [room.id, isDm]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -205,39 +270,130 @@ function ChatView({ room, currentUserId, onLeave, canClear = false }: Props) {
         </div>
       </PageHeader>
 
-      {/* 디스코드식 얇은 채널 툴바 — 우측 정렬 액션. 윈도우 버튼과 안 겹치게 별도 줄. */}
+      {/* 디스코드식 얇은 채널 툴바 — [고정][비우기][멤버] 순. 윈도우 버튼과 안 겹치게 별도 줄. */}
       {showToolbar && (
-        <div className="h-9 shrink-0 flex items-center justify-end gap-1.5 px-4 bg-white border-b border-slate-200">
-          {clearConfirming ? (
-            <>
-              <span className="text-[12px] text-slate-500">이 채널 메시지를 모두 비울까요?</span>
+        <div className="relative h-9 shrink-0 flex items-center justify-end gap-1.5 px-4 bg-white border-b border-slate-200">
+          {/* 고정 메시지 (휴지통 왼쪽) */}
+          <button
+            onClick={() => setPinOpen((v) => !v)}
+            title="고정된 메시지"
+            aria-label="고정된 메시지"
+            className={
+              "flex items-center gap-1 px-2 h-6 rounded-md text-[12px] font-medium " +
+              (pinOpen
+                ? "text-emerald-600 bg-emerald-50"
+                : "text-slate-400 hover:text-slate-600 hover:bg-slate-100")
+            }
+          >
+            <PinIcon />
+            {pinned.length > 0 && <span className="font-semibold">{pinned.length}</span>}
+          </button>
+
+          {/* 비우기 (admin) */}
+          {canClear &&
+            (clearConfirming ? (
+              <>
+                <span className="text-[12px] text-slate-500">이 채널 메시지를 모두 비울까요?</span>
+                <button
+                  onClick={() => setClearConfirming(false)}
+                  disabled={clearing}
+                  className="px-2.5 h-6 rounded-md text-[12px] font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleClear}
+                  disabled={clearing}
+                  title="채널의 모든 메시지가 삭제됩니다"
+                  className="flex items-center gap-1 px-2.5 h-6 rounded-md text-[12px] font-semibold text-white bg-red-500 hover:bg-red-600 disabled:bg-slate-300"
+                >
+                  <TrashIcon />
+                  {clearing ? "비우는 중…" : "비우기"}
+                </button>
+              </>
+            ) : (
               <button
-                onClick={() => setClearConfirming(false)}
-                disabled={clearing}
-                className="px-2.5 h-6 rounded-md text-[12px] font-semibold text-slate-600 hover:bg-slate-100"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleClear}
-                disabled={clearing}
-                title="채널의 모든 메시지가 삭제됩니다"
-                className="flex items-center gap-1 px-2.5 h-6 rounded-md text-[12px] font-semibold text-white bg-red-500 hover:bg-red-600 disabled:bg-slate-300"
+                onClick={() => setClearConfirming(true)}
+                title="채널 메시지 비우기 (관리자)"
+                aria-label="채널 메시지 비우기"
+                className="flex items-center gap-1 px-2 h-6 rounded-md text-[12px] font-medium text-slate-400 hover:text-red-600 hover:bg-red-50"
               >
                 <TrashIcon />
-                {clearing ? "비우는 중…" : "비우기"}
+                비우기
               </button>
-            </>
-          ) : (
+            ))}
+
+          {/* 멤버 토글 (휴지통 오른쪽, 맨 끝) */}
+          {onToggleMembers && (
             <button
-              onClick={() => setClearConfirming(true)}
-              title="채널 메시지 비우기 (관리자)"
-              aria-label="채널 메시지 비우기"
-              className="flex items-center gap-1 px-2 h-6 rounded-md text-[12px] font-medium text-slate-400 hover:text-red-600 hover:bg-red-50"
+              onClick={onToggleMembers}
+              title={membersShown ? "멤버 목록 숨기기" : "멤버 목록 보기"}
+              aria-label="멤버 목록 토글"
+              className={
+                "flex items-center justify-center w-7 h-6 rounded-md " +
+                (membersShown
+                  ? "text-emerald-600 bg-emerald-50"
+                  : "text-slate-400 hover:text-slate-600 hover:bg-slate-100")
+              }
             >
-              <TrashIcon />
-              비우기
+              <PeopleIcon />
             </button>
+          )}
+
+          {/* 고정 메시지 팝오버 */}
+          {pinOpen && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setPinOpen(false)} />
+              <div className="absolute right-3 top-9 z-30 w-[320px] max-h-[380px] overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg">
+                <div className="sticky top-0 px-3 py-2 text-[12px] font-bold text-slate-500 bg-white border-b border-slate-100">
+                  고정된 메시지 {pinned.length}
+                </div>
+                {pinned.length === 0 ? (
+                  <div className="px-3 py-5 text-[13px] text-slate-400 text-center">
+                    고정된 메시지가 없습니다.
+                    <br />
+                    메시지에 마우스를 올려 📌 로 고정하세요.
+                  </div>
+                ) : (
+                  pinned.map((p) => (
+                    <div key={p.id} className="flex gap-2 px-3 py-2.5 hover:bg-slate-50 border-b border-slate-50">
+                      <span
+                        className={
+                          "w-7 h-7 shrink-0 flex items-center justify-center text-[12px] font-bold text-white rounded-full " +
+                          avatarColor(p.senderId)
+                        }
+                      >
+                        {p.senderName.charAt(0)}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-[13px] font-semibold text-slate-900 truncate">
+                            {p.senderName}
+                          </span>
+                          <span className="shrink-0 text-[10px] text-slate-400">
+                            {formatTime(p.createdAt)}
+                          </span>
+                        </div>
+                        <div className="text-[13px] text-slate-600 break-words whitespace-pre-wrap">
+                          {p.content}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleTogglePin(p)}
+                        title="고정 해제"
+                        aria-label="고정 해제"
+                        className="shrink-0 w-6 h-6 flex items-center justify-center text-slate-300 rounded hover:text-red-500 hover:bg-red-50"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -298,7 +454,9 @@ function ChatView({ room, currentUserId, onLeave, canClear = false }: Props) {
               <div
                 key={m.id}
                 className={
-                  "group flex gap-3 px-4 hover:bg-slate-50 " + (grouped ? "py-0.5" : "mt-3 py-0.5")
+                  "group relative flex gap-3 px-4 " +
+                  (m.pinned ? "bg-amber-50 hover:bg-amber-100/70 " : "hover:bg-slate-100 ") +
+                  (grouped ? "py-1" : "mt-2 pt-2 pb-1")
                 }
               >
                 <div className="w-9 shrink-0 flex justify-center">
@@ -318,6 +476,12 @@ function ChatView({ room, currentUserId, onLeave, canClear = false }: Props) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
+                  {m.pinned && (
+                    <div className="flex items-center gap-1 mb-0.5 text-[10px] font-semibold text-amber-600">
+                      <PinIcon size={11} />
+                      고정됨
+                    </div>
+                  )}
                   {!grouped && (
                     <div className="flex items-baseline gap-2">
                       <span className="text-sm font-semibold text-slate-900">{m.senderName}</span>
@@ -328,6 +492,21 @@ function ChatView({ room, currentUserId, onLeave, canClear = false }: Props) {
                     {m.content}
                   </div>
                 </div>
+
+                {/* hover 액션 — 고정/해제 (행 오른쪽, 세로 중앙) */}
+                <button
+                  onClick={() => handleTogglePin(m)}
+                  title={m.pinned ? "고정 해제" : "메시지 고정"}
+                  aria-label={m.pinned ? "고정 해제" : "메시지 고정"}
+                  className={
+                    "absolute right-4 top-1.5 w-7 h-7 flex items-center justify-center bg-white border border-slate-200 rounded-md shadow-sm transition-opacity " +
+                    (m.pinned
+                      ? "text-amber-500 opacity-100"
+                      : "text-slate-400 opacity-0 group-hover:opacity-100 hover:text-emerald-600")
+                  }
+                >
+                  <PinIcon size={14} />
+                </button>
               </div>
             );
           })

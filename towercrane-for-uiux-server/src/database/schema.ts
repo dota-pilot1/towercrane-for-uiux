@@ -774,6 +774,7 @@ export const meetingMessagesTable = sqliteTable('meeting_messages', {
     string,
     unknown
   > | null>(),
+  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
 });
 

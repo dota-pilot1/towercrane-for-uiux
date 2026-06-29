@@ -685,6 +685,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         content TEXT NOT NULL,
         message_type TEXT NOT NULL DEFAULT 'TEXT',
         payload TEXT,
+        pinned INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         FOREIGN KEY(room_id) REFERENCES meeting_rooms(id) ON DELETE CASCADE,
         FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
@@ -2948,6 +2949,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'meeting_messages',
       'payload',
       'ALTER TABLE meeting_messages ADD COLUMN payload TEXT',
+    );
+    this.ensureColumn(
+      'meeting_messages',
+      'pinned',
+      'ALTER TABLE meeting_messages ADD COLUMN pinned INTEGER DEFAULT 0 NOT NULL',
     );
     this.ensureColumn(
       'sql_practice_notes',

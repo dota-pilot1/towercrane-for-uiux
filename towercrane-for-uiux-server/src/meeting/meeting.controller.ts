@@ -153,4 +153,27 @@ export class MeetingController {
     this.meetingGateway.broadcastMeetingMessagesCleared(roomId);
     return result;
   }
+
+  // 메시지 고정/해제 — 멤버 누구나. body.pinned 미지정 시 고정(true).
+  @Post('rooms/:roomId/messages/:messageId/pin')
+  setPin(
+    @CurrentUser() user: MeetingUser,
+    @Param('roomId') roomId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: { pinned?: boolean },
+  ) {
+    const pinned = body?.pinned !== false;
+    const updated = this.meetingService.setMessagePinned(user, roomId, messageId, pinned);
+    this.meetingGateway.broadcastMeetingMessagePinned(roomId, updated);
+    return updated;
+  }
+
+  // 채널 고정 메시지 목록
+  @Get('rooms/:roomId/pins')
+  listPins(
+    @CurrentUser() user: MeetingUser,
+    @Param('roomId') roomId: string,
+  ) {
+    return this.meetingService.listPinnedMessages(roomId, user);
+  }
 }

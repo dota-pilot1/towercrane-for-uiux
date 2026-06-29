@@ -465,6 +465,37 @@ export class MeetingService {
     return { success: true, roomId };
   }
 
+  // 메시지 고정/해제 — 방 접근 권한 있는 멤버 누구나(슬랙식). 갱신된 메시지 DTO 반환.
+  setMessagePinned(user: MeetingUser, roomId: string, messageId: string, pinned: boolean) {
+    this.findAccessibleRoom(roomId, user);
+    const message = this.db
+      .select()
+      .from(meetingMessagesTable)
+      .where(and(eq(meetingMessagesTable.id, messageId), eq(meetingMessagesTable.roomId, roomId)))
+      .get();
+    if (!message) {
+      throw new NotFoundException(`Message not found: ${messageId}`);
+    }
+    this.db
+      .update(meetingMessagesTable)
+      .set({ pinned })
+      .where(eq(meetingMessagesTable.id, messageId))
+      .run();
+    return this.toMessageDto({ ...message, pinned });
+  }
+
+  // 채널의 고정 메시지 목록 (최신 고정이 위로)
+  listPinnedMessages(roomId: string, user: MeetingUser) {
+    this.findAccessibleRoom(roomId, user);
+    const rows = this.db
+      .select()
+      .from(meetingMessagesTable)
+      .where(and(eq(meetingMessagesTable.roomId, roomId), eq(meetingMessagesTable.pinned, true)))
+      .orderBy(desc(meetingMessagesTable.createdAt))
+      .all();
+    return rows.map((row) => this.toMessageDto(row));
+  }
+
   private findRoom(roomId: string) {
     const room = this.db
       .select()
@@ -537,6 +568,7 @@ export class MeetingService {
       content: row.content,
       messageType: row.messageType,
       payload: row.payload ?? null,
+      pinned: row.pinned ?? false,
       createdAt: row.createdAt,
     };
   }
