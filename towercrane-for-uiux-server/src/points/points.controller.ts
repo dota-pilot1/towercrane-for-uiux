@@ -17,4 +17,16 @@ export class PointsController {
   topup(@CurrentUser() user: { id: string }, @Body() body: unknown) {
     return this.pointsService.topup(user.id, body);
   }
+
+  // PortOne(카카오페이) 결제 완료 후 서버 검증 + 적립
+  @Post('topup/confirm')
+  confirmTopup(@CurrentUser() user: { id: string }, @Body() body: unknown) {
+    return this.pointsService.confirmTopup(user.id, body);
+  }
+
+  // 충전 취소(전액 환불) — 미사용분만 가능
+  @Post('topup/refund')
+  refundTopup(@CurrentUser() user: { id: string }, @Body() body: unknown) {
+    return this.pointsService.refundTopup(user.id, body);
+  }
 }

@@ -11,11 +11,14 @@ import { meetingSocketUrl, type MeetingMessage } from "./api";
 export function useMeetingSocket(
   activeRoomId: string | null,
   onMessage: (message: MeetingMessage) => void,
+  onCleared?: () => void,
 ) {
   const socketRef = useRef<WebSocket | null>(null);
   const onMessageRef = useRef(onMessage);
+  const onClearedRef = useRef(onCleared);
   const activeRoomRef = useRef<string | null>(activeRoomId);
   onMessageRef.current = onMessage;
+  onClearedRef.current = onCleared;
 
   // 연결 (1회)
   useEffect(() => {
@@ -36,6 +39,11 @@ export function useMeetingSocket(
         const data = msg.data as MeetingMessage;
         if (data.roomId === activeRoomRef.current) {
           onMessageRef.current(data);
+        }
+      } else if (msg.type === "MEETING_MESSAGES_CLEARED") {
+        const data = msg.data as { roomId: string } | undefined;
+        if (data?.roomId === activeRoomRef.current) {
+          onClearedRef.current?.();
         }
       }
     };

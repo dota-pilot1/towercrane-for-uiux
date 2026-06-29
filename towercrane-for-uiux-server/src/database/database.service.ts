@@ -1643,14 +1643,33 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_point_topups_user
         ON point_topups(user_id, created_at DESC);
+
+      -- 멱등 보장: 같은 PG 결제건(provider + provider_tx_id)으로 중복 적립 방지
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_point_topups_provider_tx
+        ON point_topups(provider, provider_tx_id);
+
+      -- 조직도: 부서(본부 > 팀 계층). parent_id 자기참조
+      CREATE TABLE IF NOT EXISTS departments (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        parent_id TEXT REFERENCES departments(id),
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_departments_parent
+        ON departments(parent_id, order_idx);
     `);
 
+    // users 컬럼(department_id/position)을 먼저 추가해야 이후 drizzle select(*)가 깨지지 않음
+    this.migrateOrgSchema();
     this.migrateLegacySchema();
     this.migrateChatSchema();
     this.migrateProjectIssueSchema();
     this.seedDefaults();
     this.seedEvalCategories();
-    this.ensureTestUsers();
+    this.seedOrg();
   }
 
   onModuleDestroy() {
@@ -2347,50 +2366,34 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    // IT 개발사 기본 채널 세트 (미니멀 3개·실무 중심). 기존 id 재사용으로 orphan 최소화.
+    // 잡담/자료 등은 필요해지면 ＋버튼으로 추가.
     const defaultMeetingRooms = [
       {
         id: 'meeting-notice',
         name: '공지',
         roomType: 'ANNOUNCE',
-        description: '프로젝트 공지와 변경사항',
+        description: '프로젝트 공지·배포·일정 안내',
         orderIdx: 0,
       },
       {
         id: 'meeting-internal',
-        name: '프로토타입 공유',
-        roomType: 'PROTOTYPE',
-        description: '새 프로토타입 등록과 공유',
+        name: '개발',
+        roomType: 'INTERNAL',
+        description: '개발 논의와 진행 상황',
         orderIdx: 1,
       },
       {
-        id: 'meeting-free',
-        name: '피드백',
-        roomType: 'FEEDBACK',
-        description: 'UI/UX 리뷰와 의견',
+        id: 'meeting-qna',
+        name: '버그·이슈',
+        roomType: 'ISSUE',
+        description: '버그 리포트와 트러블슈팅',
         orderIdx: 2,
       },
-      {
-        id: 'meeting-qna',
-        name: '버그/이슈',
-        roomType: 'ISSUE',
-        description: '재현 문제와 동작 오류',
-        orderIdx: 3,
-      },
-      {
-        id: 'meeting-decision',
-        name: '결정사항',
-        roomType: 'DECISION',
-        description: '확정된 UX 방향과 스펙',
-        orderIdx: 4,
-      },
-      {
-        id: 'meeting-resource',
-        name: '자료',
-        roomType: 'RESOURCE',
-        description: '레퍼런스, 문서, 링크',
-        orderIdx: 5,
-      },
     ];
+
+    // 기본 세트에서 빠진 과거 시드 채널은 보관 처리(삭제 대신 archived)
+    const retiredMeetingRoomIds = ['meeting-free', 'meeting-resource', 'meeting-decision'];
 
     const upsertMeetingRoom = this.sqlite.prepare(`
       INSERT INTO meeting_rooms (
@@ -2418,6 +2421,78 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         createdBy: demoUser.id,
         createdAt: now,
         updatedAt: now,
+      });
+    }
+
+    // 세트에서 빠진 과거 채널 보관 처리
+    const archiveRetiredRoom = this.sqlite.prepare(
+      `UPDATE meeting_rooms SET archived = 1, updated_at = ? WHERE id = ? AND archived = 0`,
+    );
+    for (const roomId of retiredMeetingRoomIds) {
+      archiveRetiredRoom.run(now, roomId);
+    }
+
+    // 채널 샘플 메시지 시드 — 처음 켰을 때 빈 화면 대신 맥락이 보이게.
+    // id 고정 + ON CONFLICT DO NOTHING 이라 재부팅해도 중복 안 됨. 사용자가 지우면 다시 안 생김.
+    const seedMeetingMessages: Array<{
+      id: string;
+      roomId: string;
+      content: string;
+      offsetMin: number; // now 기준 과거로 얼마나(분)
+    }> = [
+      {
+        id: 'seed-msg-notice-1',
+        roomId: 'meeting-notice',
+        content:
+          'Towercrane 메신저에 오신 걸 환영합니다 🎉 공지 채널에서는 배포·일정·서버 점검 안내를 공유합니다.',
+        offsetMin: 180,
+      },
+      {
+        id: 'seed-msg-notice-2',
+        roomId: 'meeting-notice',
+        content:
+          '이번 주 스프린트 목표: 채팅 기능 1차 마감 + QA. 데일리 스크럼은 매일 오전 10시입니다.',
+        offsetMin: 120,
+      },
+      {
+        id: 'seed-msg-notice-3',
+        roomId: 'meeting-notice',
+        content: '운영 서버 정기 점검은 매주 금요일 자정에 진행됩니다. 배포는 점검 전까지 머지 부탁드려요.',
+        offsetMin: 60,
+      },
+      {
+        id: 'seed-msg-dev-1',
+        roomId: 'meeting-internal',
+        content:
+          'PR 올리면 이 채널에 링크 공유 부탁드려요. 리뷰어 2명 승인 후 머지합니다. 🙌',
+        offsetMin: 90,
+      },
+      {
+        id: 'seed-msg-dev-2',
+        roomId: 'meeting-internal',
+        content:
+          '로컬 개발은 서버 `npm run start:dev` + 앱 `npm run tauri dev` 로 띄우면 됩니다.',
+        offsetMin: 30,
+      },
+    ];
+
+    const insertSeedMessage = this.sqlite.prepare(`
+      INSERT INTO meeting_messages (
+        id, room_id, sender_id, sender_name, sender_role, content, message_type, payload, created_at
+      ) VALUES (
+        @id, @roomId, @senderId, @senderName, @senderRole, @content, 'TEXT', NULL, @createdAt
+      )
+      ON CONFLICT(id) DO NOTHING
+    `);
+    for (const msg of seedMeetingMessages) {
+      insertSeedMessage.run({
+        id: msg.id,
+        roomId: msg.roomId,
+        senderId: demoUser.id,
+        senderName: demoUser.name,
+        senderRole: demoUser.role,
+        content: msg.content,
+        createdAt: new Date(Date.now() - msg.offsetMin * 60 * 1000).toISOString(),
       });
     }
 
@@ -5197,49 +5272,142 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return demoUser;
   }
 
-  private ensureTestUsers() {
+  private migrateOrgSchema() {
+    this.ensureColumn(
+      'users',
+      'department_id',
+      `ALTER TABLE users ADD COLUMN department_id TEXT REFERENCES departments(id)`,
+    );
+    this.ensureColumn(
+      'users',
+      'position',
+      `ALTER TABLE users ADD COLUMN position TEXT`,
+    );
+  }
+
+  /**
+   * 조직도 시드: 부서 계층 + 부서별 데모 구성원.
+   * 로그인 계정(terecal@daum.net)은 유지하고 부서/직급만 보강한다.
+   * 멱등 — 부서는 고정 id로 upsert, 사용자는 email 기준 upsert.
+   */
+  private seedOrg() {
     const now = new Date().toISOString();
-    const testUsers = [
-      { email: 'test01@hibot.dev', name: '김민준' },
-      { email: 'test02@hibot.dev', name: '이서연' },
-      { email: 'test03@hibot.dev', name: '박지호' },
-      { email: 'test04@hibot.dev', name: '최유나' },
-      { email: 'test05@hibot.dev', name: '정현우' },
+
+    // 1) 부서 계층 (id 고정 → 멱등). parentId null = 최상위(본부/팀)
+    const departments: Array<{
+      id: string;
+      name: string;
+      parentId: string | null;
+      orderIdx: number;
+    }> = [
+      { id: 'dept-exec', name: '임원실', parentId: null, orderIdx: 0 },
+      { id: 'dept-mgmt', name: '경영지원본부', parentId: null, orderIdx: 1 },
+      { id: 'dept-hr', name: '인사팀', parentId: 'dept-mgmt', orderIdx: 0 },
+      { id: 'dept-fin', name: '재무팀', parentId: 'dept-mgmt', orderIdx: 1 },
+      { id: 'dept-dev', name: '개발본부', parentId: null, orderIdx: 2 },
+      { id: 'dept-fe', name: '프론트엔드팀', parentId: 'dept-dev', orderIdx: 0 },
+      { id: 'dept-be', name: '백엔드팀', parentId: 'dept-dev', orderIdx: 1 },
+      { id: 'dept-qa', name: 'QA팀', parentId: 'dept-dev', orderIdx: 2 },
+      { id: 'dept-design', name: '디자인팀', parentId: null, orderIdx: 3 },
+      { id: 'dept-plan', name: '기획팀', parentId: null, orderIdx: 4 },
     ];
 
-    // 목록에 없는 test\d+@hibot.dev 계정 삭제
-    const keepEmails = testUsers.map((u) => u.email);
-    const allTestUsers = this.sqlite
-      .prepare(`SELECT id, email FROM users WHERE email LIKE 'test%@hibot.dev'`)
+    const upsertDept = this.sqlite.prepare(
+      `INSERT INTO departments (id, name, parent_id, order_idx, created_at, updated_at)
+       VALUES (@id, @name, @parentId, @orderIdx, @now, @now)
+       ON CONFLICT(id) DO UPDATE SET
+         name = excluded.name,
+         parent_id = excluded.parent_id,
+         order_idx = excluded.order_idx,
+         updated_at = excluded.updated_at`,
+    );
+    for (const d of departments) {
+      upsertDept.run({ ...d, now });
+    }
+
+    // 2) 조직 구성원 (email 고정 → 멱등). terecal은 로그인 계정이라 비번/role 유지
+    const members: Array<{
+      email: string;
+      name: string;
+      departmentId: string;
+      position: string;
+      role: 'admin' | 'user';
+    }> = [
+      { email: 'terecal@daum.net', name: '오현석', departmentId: 'dept-exec', position: '대표이사', role: 'admin' },
+      { email: 'mgmt.head@towercrane.dev', name: '김경영', departmentId: 'dept-mgmt', position: '본부장', role: 'user' },
+      { email: 'hr.lead@towercrane.dev', name: '이인사', departmentId: 'dept-hr', position: '팀장', role: 'user' },
+      { email: 'hr01@towercrane.dev', name: '박채용', departmentId: 'dept-hr', position: '사원', role: 'user' },
+      { email: 'fin.lead@towercrane.dev', name: '최재무', departmentId: 'dept-fin', position: '팀장', role: 'user' },
+      { email: 'dev.head@towercrane.dev', name: '정개발', departmentId: 'dept-dev', position: '본부장', role: 'admin' },
+      { email: 'fe.lead@towercrane.dev', name: '강프론트', departmentId: 'dept-fe', position: '팀장', role: 'user' },
+      { email: 'fe01@towercrane.dev', name: '윤리액트', departmentId: 'dept-fe', position: '시니어', role: 'user' },
+      { email: 'fe02@towercrane.dev', name: '임타입', departmentId: 'dept-fe', position: '주니어', role: 'user' },
+      { email: 'be.lead@towercrane.dev', name: '한백엔드', departmentId: 'dept-be', position: '팀장', role: 'user' },
+      { email: 'be01@towercrane.dev', name: '서네스트', departmentId: 'dept-be', position: '시니어', role: 'user' },
+      { email: 'qa.lead@towercrane.dev', name: '노품질', departmentId: 'dept-qa', position: '팀장', role: 'user' },
+      { email: 'design.lead@towercrane.dev', name: '도디자인', departmentId: 'dept-design', position: '팀장', role: 'user' },
+      { email: 'design01@towercrane.dev', name: '유피그마', departmentId: 'dept-design', position: '주니어', role: 'user' },
+      { email: 'plan.lead@towercrane.dev', name: '백기획', departmentId: 'dept-plan', position: '팀장', role: 'user' },
+    ];
+
+    // 옛 시드(test%@hibot.dev) 및 목록에서 빠진 데모 계정 정리
+    const keepEmails = members.map((m) => m.email);
+    const stale = this.sqlite
+      .prepare(
+        `SELECT id, email FROM users
+         WHERE email LIKE 'test%@hibot.dev' OR email LIKE '%@towercrane.dev'`,
+      )
       .all() as { id: string; email: string }[];
-    for (const u of allTestUsers) {
-      if (!keepEmails.includes(u.email)) {
+    for (const u of stale) {
+      if (keepEmails.includes(u.email)) continue;
+      try {
         this.sqlite.prepare(`DELETE FROM users WHERE id = ?`).run(u.id);
+      } catch {
+        // 다른 데이터(작업/이슈 등)가 참조 중이면 삭제 불가 → 부서만 비워 조직도에서 제외
+        this.sqlite
+          .prepare(
+            `UPDATE users SET department_id = NULL, position = NULL WHERE id = ?`,
+          )
+          .run(u.id);
       }
     }
 
-    for (const u of testUsers) {
+    for (const m of members) {
       const existing = this.db
         .select({ id: usersTable.id })
         .from(usersTable)
-        .where(eq(usersTable.email, u.email))
+        .where(eq(usersTable.email, m.email))
         .get();
 
-      if (!existing) {
+      if (existing) {
+        // 기존 계정: 부서/직급/이름만 보강 (비번·role은 건드리지 않음)
+        this.sqlite
+          .prepare(
+            `UPDATE users SET name = ?, department_id = ?, position = ?, updated_at = ? WHERE id = ?`,
+          )
+          .run(m.name, m.departmentId, m.position, now, existing.id);
+      } else {
         this.db
           .insert(usersTable)
           .values({
             id: randomUUID(),
-            email: u.email,
-            passwordHash: this.hashSeedPassword('test1234'),
-            name: u.name,
-            role: 'user',
+            email: m.email,
+            passwordHash: this.hashSeedPassword('password123'),
+            name: m.name,
+            role: m.role,
+            departmentId: m.departmentId,
+            position: m.position,
             createdAt: now,
             updatedAt: now,
           })
           .run();
       }
     }
+
+    // 데모 환경: 모든 계정 비밀번호를 password123으로 통일 (재시작 시 매번 보정)
+    this.sqlite
+      .prepare(`UPDATE users SET password_hash = ?`)
+      .run(this.hashSeedPassword('password123'));
   }
 
   private hashSeedPassword(password: string) {

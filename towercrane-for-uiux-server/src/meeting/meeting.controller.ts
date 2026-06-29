@@ -124,6 +124,14 @@ export class MeetingController {
     return this.meetingService.startDm(user, body);
   }
 
+  @Post('rooms/:roomId/leave')
+  leaveDm(
+    @CurrentUser() user: MeetingUser,
+    @Param('roomId') roomId: string,
+  ) {
+    return this.meetingService.leaveDm(user, roomId);
+  }
+
   @Post('rooms/:roomId/messages')
   sendMessage(
     @CurrentUser() user: MeetingUser,
@@ -133,5 +141,16 @@ export class MeetingController {
     const saved = this.meetingService.sendMessage(roomId, user, body);
     this.meetingGateway.broadcastMeetingMessage(roomId, saved);
     return saved;
+  }
+
+  // 채널 메시지 전체 비우기 (admin 전용). DM은 불가.
+  @Delete('rooms/:roomId/messages')
+  clearMessages(
+    @CurrentUser() user: MeetingUser,
+    @Param('roomId') roomId: string,
+  ) {
+    const result = this.meetingService.clearRoomMessages(user, roomId);
+    this.meetingGateway.broadcastMeetingMessagesCleared(roomId);
+    return result;
   }
 }

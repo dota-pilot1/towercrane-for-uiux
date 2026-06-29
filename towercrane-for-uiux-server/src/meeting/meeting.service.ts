@@ -340,9 +340,7 @@ export class MeetingService {
 
   startDm(user: MeetingUser, payload: unknown) {
     const input = startMeetingDmSchema.parse(payload);
-    if (input.otherUserId === user.id) {
-      throw new BadRequestException('Cannot open DM with yourself');
-    }
+    // 자기 자신과의 DM("나와의 채팅") 허용 — userAId === userBId === 본인으로 pair 생성됨
 
     const otherUser = this.db
       .select()
@@ -441,6 +439,32 @@ export class MeetingService {
     return { success: true, roomId };
   }
 
+  // DM 나가기: 참여자 누구나 가능. 방을 양쪽 모두에서 완전히 삭제(메시지 포함).
+  // SQLite FK cascade(PRAGMA 의존)에 기대지 않고 메시지 → pair → 방 순서로 명시 삭제.
+  leaveDm(user: MeetingUser, roomId: string) {
+    const { room } = this.findAccessibleRoom(roomId, user);
+    if (room.roomType !== 'DM') {
+      throw new BadRequestException('DM만 나갈 수 있습니다');
+    }
+    this.db.delete(meetingMessagesTable).where(eq(meetingMessagesTable.roomId, roomId)).run();
+    this.db.delete(meetingDmPairsTable).where(eq(meetingDmPairsTable.roomId, roomId)).run();
+    this.db.delete(meetingRoomsTable).where(eq(meetingRoomsTable.id, roomId)).run();
+    return { success: true, roomId };
+  }
+
+  // 채널 메시지 전체 비우기: admin만. DM은 leaveDm으로 처리하므로 여기선 차단.
+  clearRoomMessages(user: MeetingUser, roomId: string) {
+    const room = this.findRoom(roomId);
+    if (room.roomType === 'DM') {
+      throw new BadRequestException('채널만 메시지를 비울 수 있습니다');
+    }
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('관리자만 채널 메시지를 비울 수 있습니다');
+    }
+    this.db.delete(meetingMessagesTable).where(eq(meetingMessagesTable.roomId, roomId)).run();
+    return { success: true, roomId };
+  }
+
   private findRoom(roomId: string) {
     const room = this.db
       .select()
@@ -488,10 +512,11 @@ export class MeetingService {
     const dmCounterpart = room.roomType === 'DM' && user && pair
       ? this.getDmCounterpart(pair, user.id)
       : null;
+    const isSelfDm = room.roomType === 'DM' && !!pair && pair.userAId === pair.userBId;
 
     return {
       id: room.id,
-      name: dmCounterpart?.name ?? room.name,
+      name: isSelfDm ? '나와의 채팅' : (dmCounterpart?.name ?? room.name),
       roomType: room.roomType,
       description: dmCounterpart ? '1:1 DM' : room.description,
       orderIdx: room.orderIdx,

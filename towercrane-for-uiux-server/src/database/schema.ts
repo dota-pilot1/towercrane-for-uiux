@@ -6,6 +6,18 @@ import {
   AnySQLiteColumn,
 } from 'drizzle-orm/sqlite-core';
 
+export const departmentsTable = sqliteTable('departments', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  // 자기참조 → 부서 계층 (본부 > 팀). 최상위는 null
+  parentId: text('parent_id').references((): AnySQLiteColumn => departmentsTable.id, {
+    onDelete: 'set null',
+  }),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const usersTable = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
@@ -14,9 +26,17 @@ export const usersTable = sqliteTable('users', {
   profileImageUrl: text('profile_image_url'),
   role: text('role').$type<'admin' | 'user'>().notNull(),
   aiAccess: integer('ai_access').notNull().default(0),
+  // 조직도: 소속 부서 + 직급
+  departmentId: text('department_id').references(() => departmentsTable.id, {
+    onDelete: 'set null',
+  }),
+  position: text('position'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
+
+export type DepartmentRow = typeof departmentsTable.$inferSelect;
+export type DepartmentInsert = typeof departmentsTable.$inferInsert;
 
 export const sessionsTable = sqliteTable('sessions', {
   id: text('id').primaryKey(),

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { User } from "../../features/auth/api";
 import Messenger from "../messenger/Messenger";
+import ChatModule from "../chat/ChatModule";
 import HomePage from "../home/HomePage";
 import ProfilePage from "../profile/ProfilePage";
 import PageHeader from "../../shared/ui/PageHeader";
@@ -24,7 +25,7 @@ type ModuleDef = {
 
 const MODULES: ModuleDef[] = [
   { id: "messenger", label: "메신저", icon: "💬", ready: true },
-  { id: "chat", label: "채팅", icon: "👥", ready: false },
+  { id: "chat", label: "채팅", icon: "👥", ready: true },
   { id: "todo", label: "할일", icon: "✅", ready: false },
   { id: "issue", label: "이슈", icon: "🐛", ready: false },
   { id: "docs", label: "문서", icon: "📄", ready: false },
@@ -37,17 +38,17 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
   return (
     <div className="h-screen flex overflow-hidden relative">
       {/* 앱 레벨 아이콘 레일 (전체 높이) */}
-      <nav className="w-[60px] shrink-0 flex flex-col items-center bg-gradient-to-b from-sky-400 to-sky-600 text-white">
+      <nav className="w-[72px] shrink-0 flex flex-col items-center bg-gradient-to-b from-sky-400 to-sky-600 text-white">
         {/* 로고 — 레일 최상단, 클릭 시 홈 */}
         <div className="w-full h-12 shrink-0 flex items-center justify-center border-b border-white/10">
           <button
             onClick={() => setActive("home")}
             title="홈"
             className={
-              "w-[34px] h-[34px] flex items-center justify-center text-[15px] rounded-[10px] border transition-colors " +
+              "w-[44px] h-[44px] flex items-center justify-center text-[22px] border transition-all duration-200 " +
               (active === "home"
-                ? "bg-white/25 border-white/50 ring-1 ring-white/50"
-                : "bg-white/15 border-white/25 hover:bg-white/25")
+                ? "bg-white/25 border-white/50 ring-1 ring-white/50 rounded-[14px]"
+                : "bg-white/15 border-white/25 hover:bg-white/25 rounded-[22px] hover:rounded-[14px]")
             }
           >
             🏗️
@@ -55,7 +56,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
         </div>
 
         {/* 모듈 버튼 */}
-        <div className="flex-1 flex flex-col items-center gap-1.5 pt-1.5">
+        <div className="flex-1 flex flex-col items-center gap-2 pt-2">
           {MODULES.map((m) => {
             const isActive = m.id === active;
             return (
@@ -64,17 +65,21 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                 onClick={() => setActive(m.id)}
                 title={m.ready ? m.label : `${m.label} (준비 중)`}
                 className={
-                  "relative w-[44px] h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-[12px] transition-colors " +
+                  "group relative w-[52px] h-[52px] flex flex-col items-center justify-center gap-0.5 transition-all duration-200 " +
                   (isActive
-                    ? "bg-white/25 text-white"
-                    : "text-sky-50/80 hover:bg-white/15 hover:text-white")
+                    ? "bg-white/25 text-white rounded-[16px]"
+                    : "text-sky-50/80 hover:bg-white/15 hover:text-white rounded-[26px] hover:rounded-[16px]")
                 }
               >
-                {isActive && (
-                  <span className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-white" />
-                )}
-                <span className="text-[17px] leading-none">{m.icon}</span>
-                <span className="text-[9px] font-semibold leading-none">{m.label}</span>
+                {/* 왼쪽 인디케이터 — active는 길게, hover는 짧게 (디스코드 방식) */}
+                <span
+                  className={
+                    "absolute left-[-10px] top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-white transition-all duration-200 " +
+                    (isActive ? "h-7" : "h-0 group-hover:h-3")
+                  }
+                />
+                <span className="text-[22px] leading-none">{m.icon}</span>
+                <span className="text-[10px] font-semibold leading-none">{m.label}</span>
               </button>
             );
           })}
@@ -86,10 +91,10 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
             onClick={() => setActive("profile")}
             title={`${user.name} · 프로필 수정`}
             className={
-              "w-[34px] h-[34px] flex items-center justify-center text-[15px] font-bold uppercase rounded-[10px] overflow-hidden transition-colors " +
+              "w-[44px] h-[44px] flex items-center justify-center text-[18px] font-bold uppercase overflow-hidden transition-all duration-200 " +
               (active === "profile"
-                ? "text-sky-600 bg-white ring-2 ring-white/60"
-                : "text-white bg-white/20 hover:bg-white/30")
+                ? "text-sky-600 bg-white ring-2 ring-white/60 rounded-[14px]"
+                : "text-white bg-white/20 hover:bg-white/30 rounded-[22px] hover:rounded-[14px]")
             }
           >
             {user.profileImageUrl ? (
@@ -105,7 +110,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <button
             onClick={onLogout}
             title="로그아웃"
-            className="w-[44px] py-1 text-[10px] font-semibold text-sky-50/80 rounded-lg hover:text-white hover:bg-white/15"
+            className="w-[52px] py-1 text-[10px] font-semibold text-sky-50/80 rounded-lg hover:text-white hover:bg-white/15"
           >
             로그아웃
           </button>
@@ -120,6 +125,8 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <ProfilePage user={user} onUserUpdate={onUserUpdate} onLogout={onLogout} />
         ) : activeModule?.id === "messenger" ? (
           <Messenger user={user} />
+        ) : activeModule?.id === "chat" ? (
+          <ChatModule user={user} />
         ) : (
           <PlaceholderModule
             label={activeModule?.label ?? ""}

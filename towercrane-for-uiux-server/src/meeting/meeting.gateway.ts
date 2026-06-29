@@ -75,6 +75,14 @@ export class MeetingGateway {
     });
   }
 
+  broadcastMeetingMessagesCleared(roomId: string) {
+    this.broadcast(`meeting/${roomId}`, {
+      type: 'MEETING_MESSAGES_CLEARED',
+      topic: `meeting/${roomId}`,
+      data: { roomId },
+    });
+  }
+
   getPresenceMembers() {
     const deduped = new Map<string, PresenceMember>();
 

@@ -17,6 +17,35 @@ export type MeetingRoom = {
   } | null;
 };
 
+export type MeetingWorkspace = {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  orderIdx: number;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  channelCount: number;
+  activeChannelCount: number;
+};
+
+// 채널 생성 시 고를 수 있는 종류 (서버 createMeetingRoomSchema와 동일, DM 제외)
+export const CHANNEL_ROOM_TYPES = [
+  "FREE",
+  "ANNOUNCE",
+  "QNA",
+  "FEEDBACK",
+  "ISSUE",
+  "DECISION",
+  "RESOURCE",
+  "INTERNAL",
+  "PROTOTYPE",
+] as const;
+
+export type ChannelRoomType = (typeof CHANNEL_ROOM_TYPES)[number];
+
 export type MeetingMessage = {
   id: string;
   roomId: string;
@@ -69,12 +98,71 @@ export async function sendMeetingMessage(
   });
 }
 
+// 채널 메시지 전체 비우기 (admin 전용, 서버에서 권한 검증)
+export async function clearChannelMessages(token: string, roomId: string): Promise<void> {
+  await apiRequest(`/meeting/rooms/${roomId}/messages`, {
+    method: "DELETE",
+    token,
+    errorMessage: "메시지를 비우지 못했습니다.",
+  });
+}
+
 // DM 나가기: 방을 양쪽 모두에서 삭제(메시지 포함)
 export async function leaveRoom(token: string, roomId: string): Promise<void> {
   await apiRequest(`/meeting/rooms/${roomId}/leave`, {
     method: "POST",
     token,
     errorMessage: "대화방을 나가지 못했습니다.",
+  });
+}
+
+// --- 워크스페이스 / 채널 (그룹 채팅) ---
+
+export async function getWorkspaces(token: string): Promise<MeetingWorkspace[]> {
+  return apiRequest<MeetingWorkspace[]>("/meeting/workspaces", {
+    token,
+    errorMessage: "워크스페이스를 불러오지 못했습니다.",
+  });
+}
+
+export async function createWorkspace(
+  token: string,
+  input: { name: string; description?: string | null },
+): Promise<MeetingWorkspace> {
+  return apiRequest<MeetingWorkspace>("/meeting/workspaces", {
+    method: "POST",
+    body: { name: input.name, description: input.description ?? null },
+    token,
+    errorMessage: "워크스페이스를 만들지 못했습니다.",
+  });
+}
+
+// 워크스페이스의 채널 목록. 서버는 DM도 함께 내려주므로 그룹 채널만 남긴다.
+export async function getChannels(
+  token: string,
+  workspaceId: string,
+): Promise<MeetingRoom[]> {
+  const rooms = await apiRequest<MeetingRoom[]>(
+    `/meeting/workspaces/${workspaceId}/rooms`,
+    { token, errorMessage: "채널을 불러오지 못했습니다." },
+  );
+  return rooms.filter((r) => r.roomType !== "DM");
+}
+
+export async function createChannel(
+  token: string,
+  workspaceId: string,
+  input: { name: string; description?: string | null; roomType?: ChannelRoomType },
+): Promise<MeetingRoom> {
+  return apiRequest<MeetingRoom>(`/meeting/workspaces/${workspaceId}/rooms`, {
+    method: "POST",
+    body: {
+      name: input.name,
+      description: input.description ?? null,
+      roomType: input.roomType ?? "FREE",
+    },
+    token,
+    errorMessage: "채널을 만들지 못했습니다.",
   });
 }
 

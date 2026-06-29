@@ -9,6 +9,7 @@ import { DocuModule } from './docu/docu.module';
 import { ReviewModule } from './review/review.module';
 import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
+import { OrgModule } from './org/org.module';
 import { MenusModule } from './menus/menus.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { EnglishChatModule } from './english-chat/english-chat.module';
@@ -44,6 +45,7 @@ import { PointsModule } from './points/points.module';
     ReviewModule,
     UploadModule,
     UsersModule,
+    OrgModule,
     MenusModule,
     AnalyticsModule,
     EnglishChatModule,

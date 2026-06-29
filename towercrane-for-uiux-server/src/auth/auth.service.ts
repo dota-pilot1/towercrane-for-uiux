@@ -72,6 +72,8 @@ export class AuthService {
       profileImageUrl: null,
       role: (userCount === 0 ? 'admin' : 'user') as 'admin' | 'user',
       aiAccess: 0,
+      departmentId: null,
+      position: null,
       createdAt: now,
       updatedAt: now,
     };
