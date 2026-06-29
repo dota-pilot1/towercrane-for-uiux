@@ -12,7 +12,7 @@ type Props = {
   onLogout: () => void;
 };
 
-type ModuleId = "messenger" | "todo" | "issue" | "docs";
+type ModuleId = "messenger" | "chat" | "todo" | "issue" | "docs";
 type ViewId = "home" | "profile" | ModuleId;
 
 type ModuleDef = {
@@ -24,6 +24,7 @@ type ModuleDef = {
 
 const MODULES: ModuleDef[] = [
   { id: "messenger", label: "메신저", icon: "💬", ready: true },
+  { id: "chat", label: "채팅", icon: "👥", ready: false },
   { id: "todo", label: "할일", icon: "✅", ready: false },
   { id: "issue", label: "이슈", icon: "🐛", ready: false },
   { id: "docs", label: "문서", icon: "📄", ready: false },
