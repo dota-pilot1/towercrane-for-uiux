@@ -50,6 +50,9 @@ importers:
       '@lexical/utils':
         specifier: ^0.43.0
         version: 0.43.0
+      '@portone/browser-sdk':
+        specifier: ^0.1.9
+        version: 0.1.9
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -539,6 +542,9 @@ packages:
 
   '@oxc-project/types@0.124.0':
     resolution: {integrity: sha512-VBFWMTBvHxS11Z5Lvlr3IWgrwhMTXV+Md+EQF0Xf60+wAdsGFTBx7X7K/hP4pi8N7dcm1RvcHwDxZ16Qx8keUg==}
+
+  '@portone/browser-sdk@0.1.9':
+    resolution: {integrity: sha512-GiLziqmKKSrorjWDvWjPhtD1nBd4zlY1crIPX5Kisx797MQYveqhtSMYwuyjRgwgInfEWonXjXWkHd5bTFUiWQ==}
 
   '@preact/signals-core@1.14.1':
     resolution: {integrity: sha512-vxPpfXqrwUe9lpjqfYNjAF/0RF/eFGeLgdJzdmIIZjpOnTmGmAB4BjWone562mJGMRP4frU6iZ6ei3PDsu52Ng==}
@@ -3449,6 +3455,8 @@ snapshots:
   '@opentelemetry/api@1.9.1': {}
 
   '@oxc-project/types@0.124.0': {}
+
+  '@portone/browser-sdk@0.1.9': {}
 
   '@preact/signals-core@1.14.1': {}
 
