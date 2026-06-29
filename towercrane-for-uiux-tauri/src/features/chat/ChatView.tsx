@@ -31,15 +31,6 @@ function formatTime(iso: string): string {
   return `${ampm} ${h}:${m}`;
 }
 
-// 디스코드식 그룹 메시지의 거터에 표시할 짧은 시간 (예: 9:18)
-function formatTimeShort(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getHours()}:${d.getMinutes().toString().padStart(2, "0")}`;
-}
-
-// 같은 사람의 연속 메시지를 묶는 기준 (5분 이내)
-const GROUP_WINDOW_MS = 5 * 60 * 1000;
-
 function LeaveIcon() {
   return (
     <svg
@@ -442,38 +433,25 @@ function ChatView({
             );
           })
         ) : (
-          // 채널: 디스코드식 평평한 왼쪽 정렬 + 연속 그룹핑
-          messages.map((m, i) => {
-            const prev = i > 0 ? messages[i - 1] : null;
-            const grouped =
-              !!prev &&
-              prev.senderId === m.senderId &&
-              new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime() <
-                GROUP_WINDOW_MS;
+          // 채널: 왼쪽 정렬, 메시지마다 아바타+이름+시간 (그룹핑 없음)
+          messages.map((m) => {
             return (
               <div
                 key={m.id}
                 className={
-                  "group relative flex gap-3 px-4 " +
-                  (m.pinned ? "bg-amber-50 hover:bg-amber-100/70 " : "hover:bg-slate-100 ") +
-                  (grouped ? "py-1" : "mt-2 pt-2 pb-1")
+                  "group relative flex gap-3 px-4 mt-2 pt-2 pb-1 " +
+                  (m.pinned ? "bg-amber-50 hover:bg-amber-100/70" : "hover:bg-slate-100")
                 }
               >
                 <div className="w-9 shrink-0 flex justify-center">
-                  {grouped ? (
-                    <span className="pt-0.5 text-[10px] leading-none text-slate-400 opacity-0 group-hover:opacity-100">
-                      {formatTimeShort(m.createdAt)}
-                    </span>
-                  ) : (
-                    <span
-                      className={
-                        "w-9 h-9 flex items-center justify-center text-[14px] font-bold text-white rounded-full " +
-                        avatarColor(m.senderId)
-                      }
-                    >
-                      {m.senderName.charAt(0)}
-                    </span>
-                  )}
+                  <span
+                    className={
+                      "w-9 h-9 flex items-center justify-center text-[14px] font-bold text-white rounded-full " +
+                      avatarColor(m.senderId)
+                    }
+                  >
+                    {m.senderName.charAt(0)}
+                  </span>
                 </div>
                 <div className="flex-1 min-w-0">
                   {m.pinned && (
@@ -482,12 +460,10 @@ function ChatView({
                       고정됨
                     </div>
                   )}
-                  {!grouped && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-semibold text-slate-900">{m.senderName}</span>
-                      <span className="text-[11px] text-slate-400">{formatTime(m.createdAt)}</span>
-                    </div>
-                  )}
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-semibold text-slate-900">{m.senderName}</span>
+                    <span className="text-[11px] text-slate-400">{formatTime(m.createdAt)}</span>
+                  </div>
                   <div className="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap break-words">
                     {m.content}
                   </div>

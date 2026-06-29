@@ -11,7 +11,6 @@ import {
   Hash,
   ListChecks,
   Lock,
-  MapPin,
   MessageSquare,
   MessagesSquare,
   Paperclip,
@@ -77,19 +76,6 @@ function RoomIcon({ type, className }: { type: MeetingRoomType; className?: stri
   return <Hash className={className} />
 }
 
-function roomTypeLabel(type: MeetingRoomType) {
-  if (type === 'ANNOUNCE') return '공지'
-  if (type === 'PROTOTYPE') return '프로토타입'
-  if (type === 'FEEDBACK') return '피드백'
-  if (type === 'ISSUE') return '이슈'
-  if (type === 'DECISION') return '결정사항'
-  if (type === 'RESOURCE') return '자료'
-  if (type === 'INTERNAL') return '프로토타입'
-  if (type === 'FREE') return '피드백'
-  if (type === 'QNA') return '이슈'
-  return 'DM'
-}
-
 function initials(name: string) {
   return name.slice(0, 1).toUpperCase()
 }
@@ -125,16 +111,16 @@ function ChannelSidebar({
 
   return (
     <aside className="ui-panel flex min-h-0 w-full flex-col overflow-hidden bg-surface-raised lg:w-72">
-      <div className="border-b border-surface-border-soft bg-surface-muted px-5 py-2.5">
-        <p className="text-[11px] font-black uppercase tracking-[0.22em] ui-text-muted">Meetingroom</p>
-        <div className="mt-0.5 flex items-center justify-between">
-          <h2 className="text-lg font-black ui-text-primary">회의실</h2>
-          <div className="flex items-center gap-2">
-            <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
-              LIVE
-            </span>
-            {isAdmin ? <CreateChannelDialog workspaceId={workspaceId} /> : null}
-          </div>
+      <div className="flex items-center justify-between gap-2 border-b border-surface-border-soft bg-surface-muted px-5 py-2.5">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <h2 className="text-base font-black ui-text-primary">회의실</h2>
+          <span className="truncate text-[10px] font-black uppercase tracking-[0.18em] ui-text-muted">Meetingroom</span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
+            LIVE
+          </span>
+          {isAdmin ? <CreateChannelDialog workspaceId={workspaceId} /> : null}
         </div>
       </div>
 
@@ -521,14 +507,15 @@ function MessageArea({
     <section className="ui-panel flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-raised">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-surface-border-soft bg-surface-raised px-5 py-2.5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <RoomIcon type={room.roomType} className="size-4 text-brand-primary" />
-            <h2 className="truncate text-base font-black ui-text-primary">{room.name}</h2>
-            <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-bold ui-text-muted">
+          <div className="flex min-w-0 items-center gap-2">
+            <RoomIcon type={room.roomType} className="size-4 shrink-0 text-brand-primary" />
+            <h2 className="shrink-0 text-base font-black ui-text-primary">{room.name}</h2>
+            <span className="shrink-0 rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-bold ui-text-muted">
               {room.roomType}
             </span>
+            <span className="shrink-0 ui-text-muted">·</span>
+            <p className="truncate text-xs ui-text-secondary">{room.description ?? '회의 로그를 남기는 채널입니다.'}</p>
           </div>
-          <p className="mt-0.5 truncate text-xs ui-text-secondary">{room.description ?? '회의 로그를 남기는 채널입니다.'}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isChannel && canClear ? (
@@ -605,43 +592,37 @@ function MessageArea({
 }
 
 function MemberPanel({
-  rooms,
-  selectedRoom,
   members,
   currentUserId,
   onOpenDm,
 }: {
-  rooms: MeetingRoom[]
-  selectedRoom: MeetingRoom | null
   members: MeetingMember[]
   currentUserId: string
   onOpenDm: (member: MeetingMember) => void
 }) {
-  const roomById = useMemo(() => new Map(rooms.map((room) => [room.id, room])), [rooms])
-  const onlineMembers = useMemo(
+  const sortedMembers = useMemo(
     () =>
-      members
-        .filter((member) => member.online)
-        .sort((a, b) => a.name.localeCompare(b.name, 'ko')),
+      [...members].sort((a, b) => {
+        if (a.online !== b.online) return a.online ? -1 : 1
+        return a.name.localeCompare(b.name, 'ko')
+      }),
     [members],
   )
+  const onlineCount = members.filter((member) => member.online).length
 
   return (
     <aside className="ui-panel hidden min-h-0 w-64 flex-col overflow-hidden bg-surface-raised xl:flex">
-      <div className="space-y-3 border-b border-surface-border-soft bg-surface-muted px-5 py-2.5">
-        <CurrentRoomCard room={selectedRoom} />
-        <div className="flex items-center justify-between border-t border-surface-border-soft pt-3">
-          <h2 className="text-sm font-black ui-text-primary">멤버</h2>
-          <span className="text-xs ui-text-muted">{onlineMembers.length}</span>
-        </div>
+      <div className="flex items-center justify-between border-b border-surface-border-soft bg-surface-muted px-5 py-2.5">
+        <h2 className="text-sm font-black ui-text-primary">멤버</h2>
+        <span className="text-xs ui-text-muted">
+          <span className="font-bold text-status-online">{onlineCount}</span> / {members.length}
+        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
         <MemberList
-          members={onlineMembers}
+          members={sortedMembers}
           currentUserId={currentUserId}
-          selectedRoom={selectedRoom}
-          roomById={roomById}
           onOpenDm={onOpenDm}
         />
       </div>
@@ -649,41 +630,13 @@ function MemberPanel({
   )
 }
 
-function CurrentRoomCard({ room }: { room: MeetingRoom | null }) {
-  return (
-    <section className="rounded-md border border-surface-border-soft bg-surface-raised px-3 py-3">
-      <div className="mb-2 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] ui-text-muted">
-        <MapPin className="size-3.5" />
-        현재 채널
-      </div>
-      {room ? (
-        <div className="flex items-start gap-2">
-          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
-            <RoomIcon type={room.roomType} className="size-4" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-black ui-text-primary">{room.name}</span>
-            <span className="mt-0.5 block truncate text-xs ui-text-secondary">{roomTypeLabel(room.roomType)}</span>
-          </span>
-        </div>
-      ) : (
-        <p className="text-xs ui-text-muted">입장한 채널이 없습니다.</p>
-      )}
-    </section>
-  )
-}
-
 function MemberList({
   members,
   currentUserId,
-  selectedRoom,
-  roomById,
   onOpenDm,
 }: {
   members: MeetingMember[]
   currentUserId: string
-  selectedRoom: MeetingRoom | null
-  roomById: Map<string, MeetingRoom>
   onOpenDm: (member: MeetingMember) => void
 }) {
   const [menu, setMenu] = useState<{
@@ -703,55 +656,69 @@ function MemberList({
     }
   }, [menu])
 
+  const renderMember = (member: MeetingMember) => {
+    const isCurrentUser = member.id === currentUserId
+    return (
+      <div
+        key={member.id}
+        className={`flex items-center gap-2 rounded-md border px-2 py-1.5 ${
+          isCurrentUser
+            ? 'border-brand-border bg-surface-strong'
+            : 'border-transparent hover:bg-surface-muted'
+        } ${member.online ? '' : 'opacity-60'}`}
+        onContextMenu={(event) => {
+          if (isCurrentUser) return
+          event.preventDefault()
+          setMenu({ member, x: event.clientX, y: event.clientY })
+        }}
+      >
+        <span className="relative flex size-8 shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-xs font-bold ui-text-primary">
+          {initials(member.name)}
+          <span
+            className={`absolute -right-0.5 -top-0.5 size-2.5 rounded-full border border-surface-raised shadow-sm ${
+              member.online ? 'bg-status-online' : 'bg-text-muted'
+            }`}
+          />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-semibold ui-text-primary">{member.name}</span>
+            {isCurrentUser ? (
+              <span className="shrink-0 rounded-sm border border-brand-border bg-brand-glass px-1.5 py-0.5 text-[10px] font-bold text-brand-primary">
+                나
+              </span>
+            ) : null}
+          </span>
+          <span className="block truncate text-xs ui-text-muted">{member.role}</span>
+        </span>
+      </div>
+    )
+  }
+
+  const online = members.filter((member) => member.online)
+  const offline = members.filter((member) => !member.online)
+
   return (
     <div>
-      <div className="space-y-1">
-        {members.length === 0 ? (
-          <p className="rounded-md px-2 py-2 text-xs ui-text-muted">접속 중인 멤버가 없습니다.</p>
-        ) : null}
-        {members.map((member) => {
-          const isCurrentUser = member.id === currentUserId
-          const currentRoom = member.currentRoomId ? roomById.get(member.currentRoomId) : null
-          const displayRoom = currentRoom ?? (isCurrentUser ? selectedRoom : null)
-          return (
-            <div
-              key={member.id}
-              className={`flex items-center gap-2 rounded-md border px-2 py-2 ${
-                isCurrentUser
-                  ? 'border-brand-border bg-surface-strong'
-                  : 'border-transparent hover:bg-surface-muted'
-              }`}
-              onContextMenu={(event) => {
-                if (isCurrentUser) return
-                event.preventDefault()
-                setMenu({ member, x: event.clientX, y: event.clientY })
-              }}
-            >
-              <span className="relative flex size-8 shrink-0 items-center justify-center rounded-md border border-surface-border-soft bg-surface-muted text-xs font-bold ui-text-primary">
-                {initials(member.name)}
-                <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border border-surface-raised bg-status-online shadow-sm" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate text-sm font-semibold ui-text-primary">{member.name}</span>
-                  {isCurrentUser ? (
-                    <span className="shrink-0 rounded-sm border border-brand-border bg-brand-glass px-1.5 py-0.5 text-[10px] font-bold text-brand-primary">
-                      나
-                    </span>
-                  ) : null}
-                </span>
-                <span className="block truncate text-xs ui-text-muted">{member.role}</span>
-              </span>
-              <span
-                title={displayRoom ? `현재 위치: ${displayRoom.name}` : '현재 위치: 대기 중'}
-                className="ml-auto max-w-24 shrink-0 truncate rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-right text-[11px] font-bold ui-text-secondary"
-              >
-                {displayRoom ? displayRoom.name : '대기 중'}
-              </span>
-            </div>
-          )
-        })}
-      </div>
+      {members.length === 0 ? (
+        <p className="rounded-md px-2 py-2 text-xs ui-text-muted">멤버가 없습니다.</p>
+      ) : null}
+      {online.length > 0 ? (
+        <div className="mb-3">
+          <p className="mb-1 px-2 text-[11px] font-black uppercase tracking-[0.14em] ui-text-muted">
+            온라인 — {online.length}
+          </p>
+          <div className="space-y-0.5">{online.map(renderMember)}</div>
+        </div>
+      ) : null}
+      {offline.length > 0 ? (
+        <div>
+          <p className="mb-1 px-2 text-[11px] font-black uppercase tracking-[0.14em] ui-text-muted">
+            오프라인 — {offline.length}
+          </p>
+          <div className="space-y-0.5">{offline.map(renderMember)}</div>
+        </div>
+      ) : null}
       {menu ? (
         <div
           className="fixed z-[200] w-36 rounded-md border border-surface-border bg-surface-raised p-1 shadow-2xl"
@@ -910,8 +877,6 @@ export function MeetingPage({ workspaceId }: { workspaceId?: string }) {
           </section>
         )}
         <MemberPanel
-          rooms={rooms}
-          selectedRoom={selectedRoom}
           members={members}
           currentUserId={currentUserId}
           onOpenDm={handleOpenDm}
