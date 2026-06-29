@@ -12,6 +12,7 @@ import PageHeader from "../../shared/ui/PageHeader";
 type Props = {
   room: MeetingRoom;
   currentUserId: string;
+  onLeave: () => void;
 };
 
 function formatTime(iso: string): string {
@@ -23,11 +24,31 @@ function formatTime(iso: string): string {
   return `${ampm} ${h}:${m}`;
 }
 
-function ChatView({ room, currentUserId }: Props) {
+function LeaveIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
+function ChatView({ room, currentUserId, onLeave }: Props) {
   const [messages, setMessages] = useState<MeetingMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const appendMessage = (m: MeetingMessage) =>
@@ -37,6 +58,7 @@ function ChatView({ room, currentUserId }: Props) {
 
   // 방 변경 시 메시지 로드
   useEffect(() => {
+    setConfirming(false);
     const token = getToken();
     if (!token) return;
     setLoading(true);
@@ -71,7 +93,7 @@ function ChatView({ room, currentUserId }: Props) {
   return (
     <>
       <PageHeader>
-        <span className="w-[30px] h-[30px] flex items-center justify-center text-[14px] font-bold text-white bg-emerald-500 rounded-full">
+        <span className="w-[30px] h-[30px] flex items-center justify-center text-[14px] font-bold text-white bg-emerald-500 rounded-[9px]">
           {room.name.charAt(0)}
         </span>
         <div className="flex flex-col leading-tight">
@@ -79,6 +101,38 @@ function ChatView({ room, currentUserId }: Props) {
           <span className="text-[11px] text-slate-400">
             {room.dmCounterpart?.email ?? "1:1 대화"}
           </span>
+        </div>
+
+        {/* 대화방 나가기 — 이름 오른쪽. 1차 클릭 → 취소/나가기 확인 */}
+        <div data-actions className="ml-3 flex items-center gap-1.5">
+          {confirming ? (
+            <>
+              <span className="text-[12px] text-slate-500">나가시겠어요?</span>
+              <button
+                onClick={() => setConfirming(false)}
+                className="px-2.5 h-7 rounded-md text-[12px] font-semibold text-slate-600 hover:bg-slate-200"
+              >
+                취소
+              </button>
+              <button
+                onClick={onLeave}
+                title="양쪽 모두에서 대화가 삭제됩니다"
+                className="flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[12px] font-semibold text-white bg-red-500 hover:bg-red-600"
+              >
+                <LeaveIcon />
+                나가기
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              title="대화방 나가기 (양쪽 모두 삭제)"
+              className="flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[12px] font-semibold text-slate-500 hover:text-red-600 hover:bg-red-50"
+            >
+              <LeaveIcon />
+              나가기
+            </button>
+          )}
         </div>
       </PageHeader>
 

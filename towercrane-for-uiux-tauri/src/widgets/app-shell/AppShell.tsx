@@ -36,7 +36,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
   return (
     <div className="h-screen flex overflow-hidden relative">
       {/* 앱 레벨 아이콘 레일 (전체 높이) */}
-      <nav className="w-[60px] shrink-0 flex flex-col items-center bg-slate-800 text-white">
+      <nav className="w-[60px] shrink-0 flex flex-col items-center bg-gradient-to-b from-sky-400 to-sky-600 text-white">
         {/* 로고 — 레일 최상단, 클릭 시 홈 */}
         <div className="w-full h-12 shrink-0 flex items-center justify-center border-b border-white/10">
           <button
@@ -45,8 +45,8 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
             className={
               "w-[34px] h-[34px] flex items-center justify-center text-[15px] rounded-[10px] border transition-colors " +
               (active === "home"
-                ? "bg-emerald-500/20 border-emerald-400/40 ring-1 ring-emerald-400/40"
-                : "bg-white/10 border-white/20 hover:bg-white/15")
+                ? "bg-white/25 border-white/50 ring-1 ring-white/50"
+                : "bg-white/15 border-white/25 hover:bg-white/25")
             }
           >
             🏗️
@@ -65,12 +65,12 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                 className={
                   "relative w-[44px] h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-[12px] transition-colors " +
                   (isActive
-                    ? "bg-emerald-500/20 text-emerald-300"
-                    : "text-slate-400 hover:bg-white/5 hover:text-white")
+                    ? "bg-white/25 text-white"
+                    : "text-sky-50/80 hover:bg-white/15 hover:text-white")
                 }
               >
                 {isActive && (
-                  <span className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-emerald-400" />
+                  <span className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-white" />
                 )}
                 <span className="text-[17px] leading-none">{m.icon}</span>
                 <span className="text-[9px] font-semibold leading-none">{m.label}</span>
@@ -85,10 +85,10 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
             onClick={() => setActive("profile")}
             title={`${user.name} · 프로필 수정`}
             className={
-              "w-[34px] h-[34px] flex items-center justify-center text-[15px] font-bold uppercase rounded-full overflow-hidden transition-colors " +
+              "w-[34px] h-[34px] flex items-center justify-center text-[15px] font-bold uppercase rounded-[10px] overflow-hidden transition-colors " +
               (active === "profile"
-                ? "text-white bg-emerald-500 ring-2 ring-emerald-400/50"
-                : "text-slate-100 bg-slate-600 hover:bg-slate-500")
+                ? "text-sky-600 bg-white ring-2 ring-white/60"
+                : "text-white bg-white/20 hover:bg-white/30")
             }
           >
             {user.profileImageUrl ? (
@@ -104,7 +104,7 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <button
             onClick={onLogout}
             title="로그아웃"
-            className="w-[44px] py-1 text-[10px] font-semibold text-slate-400 rounded-lg hover:text-red-300 hover:bg-red-500/10"
+            className="w-[44px] py-1 text-[10px] font-semibold text-sky-50/80 rounded-lg hover:text-white hover:bg-white/15"
           >
             로그아웃
           </button>

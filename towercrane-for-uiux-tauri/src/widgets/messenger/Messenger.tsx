@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getToken, type User } from "../../features/auth/api";
-import { getRooms, startDm, type MeetingRoom } from "../../features/chat/api";
+import { getRooms, leaveRoom, startDm, type MeetingRoom } from "../../features/chat/api";
 import RoomList from "../../features/chat/RoomList";
 import ChatView from "../../features/chat/ChatView";
 import { getOrgTree, type OrgMember, type OrgNode } from "../../features/org/api";
@@ -55,7 +55,7 @@ function Messenger({ user }: Props) {
   }, [tab, orgLoaded]);
 
   async function handleSelectMember(member: OrgMember) {
-    if (member.id === user.id) return;
+    // 본인 더블클릭 → "나와의 채팅"(메모) 허용
     const token = getToken();
     if (!token) return;
     try {
@@ -68,6 +68,18 @@ function Messenger({ user }: Props) {
     }
   }
 
+  async function handleLeaveRoom(roomId: string) {
+    const token = getToken();
+    if (!token) return;
+    try {
+      await leaveRoom(token, roomId);
+      setRooms((prev) => prev.filter((r) => r.id !== roomId));
+      setActiveRoomId((prev) => (prev === roomId ? null : prev));
+    } catch (err) {
+      setRoomsError(err instanceof Error ? err.message : "대화방을 나가지 못했습니다.");
+    }
+  }
+
   return (
     <div className="flex-1 flex overflow-hidden min-w-0">
       {/* Sidebar */}
@@ -77,8 +89,8 @@ function Messenger({ user }: Props) {
           <span className="text-[14px] font-bold tracking-tight text-slate-900">메신저</span>
         </PageHeader>
 
-        {/* 탭 */}
-        <div className="flex gap-1 px-3 pt-3">
+        {/* 탭 — underline 방식 */}
+        <div className="flex px-3 border-b border-slate-200">
           {(
             [
               ["chats", "대화"],
@@ -89,10 +101,10 @@ function Messenger({ user }: Props) {
               key={key}
               onClick={() => setTab(key)}
               className={
-                "flex-1 py-1.5 text-[13px] font-semibold rounded-lg " +
+                "flex-1 py-2.5 -mb-px text-[13px] font-semibold border-b-2 transition-colors " +
                 (tab === key
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "text-slate-500 hover:bg-slate-100")
+                  ? "border-emerald-500 text-emerald-600"
+                  : "border-transparent text-slate-400 hover:text-slate-600")
               }
             >
               {label}
@@ -120,7 +132,11 @@ function Messenger({ user }: Props) {
       {/* Chat */}
       <main className="flex-1 flex flex-col bg-slate-50">
         {activeRoom ? (
-          <ChatView room={activeRoom} currentUserId={user.id} />
+          <ChatView
+            room={activeRoom}
+            currentUserId={user.id}
+            onLeave={() => handleLeaveRoom(activeRoom.id)}
+          />
         ) : (
           <>
             {/* 빈 상태에도 공통 헤더 (창 버튼 영역과 정렬) */}

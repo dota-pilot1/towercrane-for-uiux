@@ -6,7 +6,7 @@ function PageHeader({ children }: { children?: ReactNode }) {
   return (
     <header
       data-tauri-drag-region
-      className="flex items-center gap-2.5 px-4 h-12 shrink-0 bg-slate-100 border-b border-slate-200 select-none [&>*]:pointer-events-none"
+      className="flex items-center gap-2.5 px-4 h-12 shrink-0 bg-slate-100 border-b border-slate-200 select-none [&>*:not(button):not([data-actions])]:pointer-events-none"
     >
       {children}
     </header>

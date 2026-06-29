@@ -29,7 +29,7 @@ function RoomList({ rooms, activeRoomId, error, onSelect }: Props) {
             (r.id === activeRoomId ? "bg-emerald-50" : "hover:bg-slate-100")
           }
         >
-          <span className="w-[38px] h-[38px] shrink-0 flex items-center justify-center text-[15px] font-bold text-white bg-emerald-500 rounded-full">
+          <span className="w-[38px] h-[38px] shrink-0 flex items-center justify-center text-[15px] font-bold text-white bg-emerald-500 rounded-[11px]">
             {r.name.charAt(0)}
           </span>
           <span className="flex-1 min-w-0 flex flex-col gap-0.5">

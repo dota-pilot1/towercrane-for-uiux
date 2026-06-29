@@ -69,6 +69,15 @@ export async function sendMeetingMessage(
   });
 }
 
+// DM 나가기: 방을 양쪽 모두에서 삭제(메시지 포함)
+export async function leaveRoom(token: string, roomId: string): Promise<void> {
+  await apiRequest(`/meeting/rooms/${roomId}/leave`, {
+    method: "POST",
+    token,
+    errorMessage: "대화방을 나가지 못했습니다.",
+  });
+}
+
 // WebSocket(실시간 수신)용 URL. http(s)://host/api → ws(s)://host/ws/meeting
 export function meetingSocketUrl(token: string): string {
   const wsBase = API_BASE.replace(/^http/, "ws").replace(/\/api$/, "");
