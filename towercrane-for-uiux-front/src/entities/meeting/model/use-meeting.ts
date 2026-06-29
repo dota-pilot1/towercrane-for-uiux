@@ -135,6 +135,20 @@ export function useDeleteMeetingRoom() {
   })
 }
 
+export function useClearMeetingMessages(roomId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => meetingApi.clearMessages(roomId as string),
+    onSuccess: () => {
+      if (roomId) {
+        queryClient.setQueryData<MeetingMessage[]>(meetingKeys.messages(roomId), [])
+        queryClient.invalidateQueries({ queryKey: meetingKeys.messages(roomId) })
+      }
+    },
+  })
+}
+
 export function useStartMeetingDm() {
   const queryClient = useQueryClient()
 
@@ -210,6 +224,13 @@ export function useMeetingWebSocket(roomId: string | null) {
           },
         )
         queryClient.invalidateQueries({ queryKey: meetingKeys.rooms() })
+      }
+
+      if (envelope.type === 'MEETING_MESSAGES_CLEARED') {
+        const payload = envelope.data as { roomId?: string } | undefined
+        if (payload?.roomId === roomId) {
+          queryClient.setQueryData<MeetingMessage[]>(meetingKeys.messages(roomId), [])
+        }
       }
 
       if (envelope.type === 'MEETING_PRESENCE' && envelope.data) {

@@ -47,6 +47,12 @@ export const meetingApi = {
   listMembers: (roomId: string) =>
     apiRequest<MeetingMember[]>(`/meeting/rooms/${roomId}/members`),
 
+  // 채널 메시지 전체 비우기 (admin 전용, 서버 권한 검증)
+  clearMessages: (roomId: string) =>
+    apiRequest<{ success: boolean; roomId: string }>(`/meeting/rooms/${roomId}/messages`, {
+      method: 'DELETE',
+    }),
+
   sendMessage: (
     roomId: string,
     input: {

@@ -2,11 +2,27 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   Loader2,
+  RotateCcw,
   Wallet as WalletIcon,
 } from 'lucide-react'
-import { useMyPoints, useTopupPoints, type PointTransaction } from '../../../shared/api/points'
+import {
+  useMyPoints,
+  usePortonePayTopup,
+  useRefundTopup,
+  type PointTopup,
+  type PointTransaction,
+} from '../../../shared/api/points'
 
-const PRESET_AMOUNTS = [5000, 10000, 30000, 50000, 100000]
+const TOPUP_STATUS_LABELS: Record<PointTopup['status'], string> = {
+  pending: '대기',
+  paid: '충전 완료',
+  cancelling: '취소 처리 중',
+  cancelled: '취소됨',
+  failed: '실패',
+}
+
+// 지인 소액 테스트 단계 — 1,000원 이내로만 충전 허용
+const PRESET_AMOUNTS = [100, 500, 1000]
 
 function formatPoint(n: number) {
   return n.toLocaleString('ko-KR')
@@ -30,10 +46,27 @@ const TYPE_LABELS: Record<PointTransaction['type'], string> = {
 
 export function PointsWallet() {
   const { data, isLoading } = useMyPoints()
-  const topup = useTopupPoints()
+  const topup = usePortonePayTopup()
+  const refund = useRefundTopup()
 
   const balance = data?.balance ?? 0
   const transactions = data?.transactions ?? []
+  const topups = data?.topups ?? []
+
+  const handleRefund = (item: PointTopup) => {
+    if (balance < item.points) {
+      alert('이미 사용한 포인트가 있어 전액 환불할 수 없습니다.')
+      return
+    }
+    if (
+      !window.confirm(
+        `${formatPoint(item.points)}P 충전을 취소하시겠어요?\n결제하신 ${formatPoint(item.amountKrw)}원이 카카오페이로 환불됩니다.`,
+      )
+    ) {
+      return
+    }
+    refund.mutate(item.id)
+  }
 
   return (
     <div className="space-y-4">
@@ -53,14 +86,14 @@ export function PointsWallet() {
             </p>
           </div>
         </div>
-        <p className="text-xs text-text-muted">1P = 1원 · 모의 결제</p>
+        <p className="text-xs text-text-muted">1P = 1원 · 카카오페이</p>
       </div>
 
       {/* 충전 */}
       <div className="ui-panel-soft p-5">
         <p className="text-sm font-black text-text-primary">포인트 충전</p>
         <p className="mt-0.5 text-xs text-text-secondary">
-          금액을 선택하면 즉시 충전됩니다. (현재는 모의 결제)
+          금액을 선택하면 카카오페이 결제창이 열립니다. (테스트 단계 · 1,000원 이내)
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {PRESET_AMOUNTS.map((amount) => (
@@ -78,10 +111,84 @@ export function PointsWallet() {
         </div>
         {topup.isError ? (
           <p className="mt-2 text-xs font-semibold text-destructive">
-            충전에 실패했습니다. 다시 시도해주세요.
+            {topup.error?.message ?? '충전에 실패했습니다. 다시 시도해주세요.'}
+          </p>
+        ) : null}
+        {topup.isSuccess ? (
+          <p className="mt-2 text-xs font-semibold text-brand-primary">
+            충전이 완료되었습니다.
           </p>
         ) : null}
       </div>
+
+      {/* 충전 내역 (취소/환불) */}
+      {topups.length > 0 ? (
+        <div className="ui-panel-soft p-5">
+          <p className="mb-1 text-sm font-black text-text-primary">충전 내역</p>
+          <p className="mb-3 text-xs text-text-secondary">
+            충전한 포인트를 아직 쓰지 않았다면 전액 취소(환불)할 수 있습니다.
+          </p>
+          {refund.isError ? (
+            <p className="mb-2 text-xs font-semibold text-destructive">
+              {refund.error?.message ?? '취소에 실패했습니다.'}
+            </p>
+          ) : null}
+          <ul className="divide-y divide-surface-border-soft">
+            {topups.map((item) => {
+              const isPaid = item.status === 'paid'
+              const isPortone = item.provider === 'portone'
+              const canRefund = isPaid && isPortone && balance >= item.points
+              const isRefunding = refund.isPending && refund.variables === item.id
+              return (
+                <li key={item.id} className="flex items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-text-primary">
+                      {formatPoint(item.points)}P 충전
+                      <span className="ml-1.5 text-xs font-semibold text-text-muted">
+                        ({formatPoint(item.amountKrw)}원)
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-text-muted">
+                      {formatDateTime(item.createdAt)} ·{' '}
+                      <span
+                        className={
+                          item.status === 'cancelled'
+                            ? 'text-text-secondary'
+                            : isPaid
+                              ? 'text-brand-primary'
+                              : 'text-text-muted'
+                        }
+                      >
+                        {TOPUP_STATUS_LABELS[item.status]}
+                      </span>
+                      {isPortone ? '' : ' · 모의'}
+                    </p>
+                  </div>
+                  {canRefund ? (
+                    <button
+                      type="button"
+                      disabled={refund.isPending}
+                      onClick={() => handleRefund(item)}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-surface-border bg-surface-raised px-3 py-1.5 text-xs font-bold text-text-secondary transition-colors hover:border-destructive hover:text-destructive disabled:opacity-50"
+                    >
+                      {isRefunding ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <RotateCcw className="size-3.5" />
+                      )}
+                      취소
+                    </button>
+                  ) : isPaid && isPortone ? (
+                    <span className="shrink-0 text-[11px] text-text-muted">
+                      포인트 사용됨
+                    </span>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : null}
 
       {/* 거래 내역 */}
       <div className="ui-panel-soft p-5">

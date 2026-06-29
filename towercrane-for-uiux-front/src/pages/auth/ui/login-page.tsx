@@ -60,11 +60,30 @@ const signupSchema = z
 type LoginFormValues = z.infer<typeof loginSchema>
 type SignupFormValues = z.infer<typeof signupSchema>
 
+const REMEMBER_KEY = 'towercrane.rememberedCredentials'
+
+function loadRememberedCredentials(): { email: string; password: string } | null {
+  try {
+    const raw = localStorage.getItem(REMEMBER_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { email?: unknown; password?: unknown }
+    if (typeof parsed.email === 'string' && typeof parsed.password === 'string') {
+      return { email: parsed.email, password: parsed.password }
+    }
+  } catch {
+    // 손상된 값 무시
+  }
+  return null
+}
+
 export function LoginPage() {
   const authMode = useSessionStore((state) => state.authMode)
   const setAuthMode = useSessionStore((state) => state.setAuthMode)
   const [isSignup, setIsSignup] = useState(() => getInitialAuthMode() === 'signup')
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberCredentials, setRememberCredentials] = useState(
+    () => loadRememberedCredentials() !== null,
+  )
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
   const [loginWarning, setLoginWarning] = useState<string | null>(null)
   const [emailVerified, setEmailVerified] = useState(false)
@@ -101,7 +120,10 @@ export function LoginPage() {
     formState: { errors: loginErrors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: (() => {
+      const remembered = loadRememberedCredentials()
+      return { email: remembered?.email ?? '', password: remembered?.password ?? '' }
+    })(),
   })
 
   const {
@@ -195,6 +217,14 @@ export function LoginPage() {
   const onLogin = async (values: LoginFormValues) => {
     try {
       const response = await loginMutation.mutateAsync(values)
+      if (rememberCredentials) {
+        localStorage.setItem(
+          REMEMBER_KEY,
+          JSON.stringify({ email: values.email, password: values.password }),
+        )
+      } else {
+        localStorage.removeItem(REMEMBER_KEY)
+      }
       setSession(response)
       navigate({ to: '/prototype' })
     } catch (error) {
@@ -337,13 +367,24 @@ export function LoginPage() {
               onToggle={() => setShowPassword((value) => !value)}
             />
 
-            <button
-              type="button"
-              className="text-sm font-semibold text-brand-primary underline"
-              onClick={() => setForgotPasswordOpen(true)}
-            >
-              비밀번호 찾기
-            </button>
+            <div className="flex items-center justify-between">
+              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-text-secondary">
+                <input
+                  type="checkbox"
+                  checked={rememberCredentials}
+                  onChange={(event) => setRememberCredentials(event.target.checked)}
+                  className="size-4 cursor-pointer accent-brand-primary"
+                />
+                아이디·비밀번호 기억하기
+              </label>
+              <button
+                type="button"
+                className="text-sm font-semibold text-brand-primary underline"
+                onClick={() => setForgotPasswordOpen(true)}
+              >
+                비밀번호 찾기
+              </button>
+            </div>
 
             <AuthButton type="submit" className="w-full gap-2" disabled={loginMutation.isPending}>
               <ArrowRight className="size-4" />

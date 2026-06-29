@@ -26,6 +26,7 @@ import { useNavigate } from '@tanstack/react-router'
 import {
   useCreateMeetingRoom,
   useCreateMeetingWorkspaceRoom,
+  useClearMeetingMessages,
   useDeleteMeetingRoom,
   useMeetingMembers,
   useMeetingMessages,
@@ -124,9 +125,9 @@ function ChannelSidebar({
 
   return (
     <aside className="ui-panel flex min-h-0 w-full flex-col overflow-hidden bg-surface-raised lg:w-72">
-      <div className="border-b border-surface-border-soft bg-surface-muted px-5 py-4">
+      <div className="border-b border-surface-border-soft bg-surface-muted px-5 py-2.5">
         <p className="text-[11px] font-black uppercase tracking-[0.22em] ui-text-muted">Meetingroom</p>
-        <div className="mt-1 flex items-center justify-between">
+        <div className="mt-0.5 flex items-center justify-between">
           <h2 className="text-lg font-black ui-text-primary">회의실</h2>
           <div className="flex items-center gap-2">
             <span className="rounded-sm border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary">
@@ -493,6 +494,9 @@ function MessageArea({
   onlineCount,
   isSending,
   isLoading,
+  canClear,
+  isClearing,
+  onClearMessages,
   onSend,
 }: {
   room: MeetingRoom
@@ -501,24 +505,74 @@ function MessageArea({
   onlineCount: number
   isSending?: boolean
   isLoading?: boolean
+  canClear?: boolean
+  isClearing?: boolean
+  onClearMessages?: () => void
   onSend: (content: string) => void
 }) {
+  const [clearConfirm, setClearConfirm] = useState(false)
+  const isChannel = room.roomType !== 'DM'
+
+  useEffect(() => {
+    setClearConfirm(false)
+  }, [room.id])
+
   return (
     <section className="ui-panel flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-raised">
-      <div className="flex shrink-0 items-center justify-between border-b border-surface-border-soft bg-surface-raised px-5 py-4">
-        <div>
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-surface-border-soft bg-surface-raised px-5 py-2.5">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <RoomIcon type={room.roomType} className="size-4 text-brand-primary" />
-            <h2 className="text-lg font-black ui-text-primary">{room.name}</h2>
+            <h2 className="truncate text-base font-black ui-text-primary">{room.name}</h2>
             <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[10px] font-bold ui-text-muted">
               {room.roomType}
             </span>
           </div>
-          <p className="mt-1 text-sm ui-text-secondary">{room.description ?? '회의 로그를 남기는 채널입니다.'}</p>
+          <p className="mt-0.5 truncate text-xs ui-text-secondary">{room.description ?? '회의 로그를 남기는 채널입니다.'}</p>
         </div>
-        <div className="hidden items-center gap-2 text-xs ui-text-muted sm:flex">
-          <Users className="size-4" />
-          {onlineCount} online
+        <div className="flex shrink-0 items-center gap-2">
+          {isChannel && canClear ? (
+            clearConfirm ? (
+              <div className="flex items-center gap-1.5">
+                <span className="hidden text-xs ui-text-muted sm:inline">메시지를 모두 비울까요?</span>
+                <button
+                  type="button"
+                  onClick={() => setClearConfirm(false)}
+                  disabled={isClearing}
+                  className="rounded-md px-2 py-1 text-xs font-bold ui-text-secondary hover:bg-surface-muted"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClearMessages?.()
+                    setClearConfirm(false)
+                  }}
+                  disabled={isClearing}
+                  className="flex items-center gap-1 rounded-md bg-destructive px-2.5 py-1 text-xs font-bold text-destructive-foreground hover:brightness-110 disabled:opacity-50"
+                >
+                  <Trash2 className="size-3.5" />
+                  {isClearing ? '비우는 중…' : '비우기'}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setClearConfirm(true)}
+                title="채널 메시지 비우기 (관리자)"
+                aria-label="채널 메시지 비우기"
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold ui-text-muted transition-colors hover:bg-surface-muted hover:text-destructive"
+              >
+                <Trash2 className="size-3.5" />
+                비우기
+              </button>
+            )
+          ) : null}
+          <div className="hidden items-center gap-1.5 text-xs ui-text-muted sm:flex">
+            <Users className="size-4" />
+            {onlineCount} online
+          </div>
         </div>
       </div>
 
@@ -574,7 +628,7 @@ function MemberPanel({
 
   return (
     <aside className="ui-panel hidden min-h-0 w-64 flex-col overflow-hidden bg-surface-raised xl:flex">
-      <div className="space-y-3 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
+      <div className="space-y-3 border-b border-surface-border-soft bg-surface-muted px-5 py-2.5">
         <CurrentRoomCard room={selectedRoom} />
         <div className="flex items-center justify-between border-t border-surface-border-soft pt-3">
           <h2 className="text-sm font-black ui-text-primary">멤버</h2>
@@ -748,6 +802,7 @@ export function MeetingPage({ workspaceId }: { workspaceId?: string }) {
   const sendMutation = useSendMeetingMessage(roomId)
   const startDmMutation = useStartMeetingDm()
   const deleteRoomMutation = useDeleteMeetingRoom()
+  const clearMessagesMutation = useClearMeetingMessages(roomId)
   useMeetingWebSocket(roomId)
 
   const members = membersQuery.data ?? []
@@ -838,6 +893,9 @@ export function MeetingPage({ workspaceId }: { workspaceId?: string }) {
             onlineCount={onlineCount}
             isSending={sendMutation.isPending}
             isLoading={messagesQuery.isLoading}
+            canClear={isAdmin}
+            isClearing={clearMessagesMutation.isPending}
+            onClearMessages={() => clearMessagesMutation.mutate()}
             onSend={handleSend}
           />
         ) : (

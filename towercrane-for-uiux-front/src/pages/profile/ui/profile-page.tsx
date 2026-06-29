@@ -1,18 +1,13 @@
 import { useMemo, useState } from 'react'
 import {
-  Activity,
   BadgeCheck,
-  CalendarDays,
   Clock3,
-  FileText,
   Fingerprint,
   ImagePlus,
   KeyRound,
   Loader2,
   Mail,
-  MessageSquareText,
   ShieldCheck,
-  Sparkles,
   Trash2,
   UserRound,
   Wallet,
@@ -27,7 +22,7 @@ type ProfilePageProps = {
   user: SessionUser | undefined
 }
 
-type ProfileTabId = 'overview' | 'points' | 'activity' | 'security' | 'workspace'
+type ProfileTabId = 'overview' | 'points' | 'security'
 
 const tabs: Array<{
   id: ProfileTabId
@@ -36,9 +31,7 @@ const tabs: Array<{
 }> = [
   { id: 'overview', label: '기본 정보', icon: UserRound },
   { id: 'points', label: '포인트', icon: Wallet },
-  { id: 'activity', label: '활동 메타', icon: Activity },
   { id: 'security', label: '보안/권한', icon: ShieldCheck },
-  { id: 'workspace', label: '워크스페이스', icon: FileText },
 ]
 
 function formatDate(value: string | undefined) {
@@ -95,23 +88,11 @@ export function ProfilePage({ user }: ProfilePageProps) {
       { label: '프로필 갱신', value: updatedAt, icon: Clock3 },
     ],
     points: [],
-    activity: [
-      { label: '최근 작업 영역', value: 'Prototype Registry', icon: Sparkles },
-      { label: '문서 참여', value: 'README / Docu Workspace', icon: FileText },
-      { label: '회의실 상태', value: '프로젝트 채널 참여 가능', icon: MessageSquareText },
-      { label: '계정 생성일', value: joinedAt, icon: CalendarDays },
-    ],
     security: [
       { label: '역할', value: user?.role === 'admin' ? '관리자' : '일반 사용자', icon: ShieldCheck },
       { label: '세션 상태', value: user ? '활성 세션' : '확인 필요', icon: BadgeCheck },
       { label: '인증 방식', value: '이메일 로그인', icon: KeyRound },
       { label: '권한 스코프', value: user?.role === 'admin' ? '전체 콘솔 관리' : '개인 작업 공간', icon: Fingerprint },
-    ],
-    workspace: [
-      { label: '기본 진입 메뉴', value: 'Prototype', icon: Sparkles },
-      { label: '문서 보기', value: 'Docu / README', icon: FileText },
-      { label: '커뮤니케이션', value: 'Meetingroom', icon: MessageSquareText },
-      { label: '테마 동기화', value: '로컬 설정 유지', icon: BadgeCheck },
     ],
   }
 
