@@ -9,7 +9,6 @@ import {
 } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
-  Activity,
   AlertTriangle,
   Archive,
   ArchiveRestore,
@@ -47,7 +46,6 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { toast } from 'sonner'
 import {
-  PROJECT_ISSUE_ACTIVITY_LABELS,
   PROJECT_ISSUE_PRIORITY_BADGE_CLASS,
   PROJECT_ISSUE_PRIORITY_LABELS,
   PROJECT_ISSUE_PRIORITY_ORDER,
@@ -89,7 +87,6 @@ import {
   useDeleteProjectIssueAttachment,
   useDeleteProjectIssueChecklist,
   useDeleteProjectIssueComment,
-  useProjectIssueActivity,
   useProjectIssueAttachments,
   useProjectIssueChecklists,
   useProjectIssueComments,
@@ -1341,52 +1338,6 @@ function AttachmentsPanel({ issueId }: { issueId: string | null }) {
   )
 }
 
-function ActivityPanel({ issueId }: { issueId: string | null }) {
-  const activityQuery = useProjectIssueActivity(issueId)
-  const activities = activityQuery.data ?? []
-  return (
-    <div className="space-y-3">
-      {activities.length === 0 ? (
-        <div className="rounded-md border border-dashed border-surface-border-soft px-3 py-8 text-center text-sm text-text-muted">
-          활동 로그가 없습니다.
-        </div>
-      ) : (
-        activities.map((activity) => (
-          <div
-            key={activity.id}
-            className="flex gap-3 rounded-md border border-surface-border-soft bg-surface-raised p-3"
-          >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
-              <Activity className="size-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-sm border border-surface-border-soft bg-surface-muted px-2 py-0.5 text-[11px] font-bold text-text-secondary">
-                  {PROJECT_ISSUE_ACTIVITY_LABELS[activity.activityType]}
-                </span>
-                <span className="text-xs text-text-muted">
-                  {formatDateTime(activity.createdAt)}
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-text-primary">
-                {activity.message ?? '프로젝트 이슈 이력이 기록되었습니다.'}
-              </p>
-              {activity.fromValue || activity.toValue ? (
-                <p className="mt-1 text-xs text-text-secondary">
-                  {activity.fromValue ?? '-'} → {activity.toValue ?? '-'}
-                </p>
-              ) : null}
-              <p className="mt-1 text-xs text-text-muted">
-                {activity.actorName ?? '시스템'}
-              </p>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  )
-}
-
 function DetailDialog({
   issueId,
   open,
@@ -1556,7 +1507,6 @@ function DetailDialog({
                   ['checklist', '체크리스트'],
                   ['attachments', '첨부'],
                   ['comments', '댓글'],
-                  ['activity', '활동'],
                 ].map(([value, label]) => (
                   <Tabs.Trigger
                     key={value}
@@ -1676,9 +1626,6 @@ function DetailDialog({
                 </Tabs.Content>
                 <Tabs.Content value="comments">
                   <CommentsPanel issueId={issue.id} />
-                </Tabs.Content>
-                <Tabs.Content value="activity">
-                  <ActivityPanel issueId={issue.id} />
                 </Tabs.Content>
               </div>
             </Tabs.Root>

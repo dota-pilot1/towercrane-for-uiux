@@ -76,6 +76,7 @@ import { TaskWorkspaceHomePage } from '../pages/task-workspace/ui/task-workspace
 import { TaskFavoritesPage } from '../pages/task-favorites/ui/task-favorites-page'
 import { PrototypeIssuesPage } from '../pages/prototype-issues/ui/prototype-issues-page'
 import { ProjectIssuesPage } from '../pages/project-issues/ui/project-issues-page'
+import { TeamDocsPage } from '../pages/team-docs/ui/team-docs-page'
 import { ProfilePage } from '../pages/profile/ui/profile-page'
 import { MenuAdminPage } from '../pages/menu-admin/ui/menu-admin-page'
 import { StudyDiaryPage } from '../pages/study-diary/ui/study-diary-page'
@@ -914,6 +915,12 @@ const projectIssuesRoute = createRoute({
   component: ProjectIssuesPage,
 })
 
+const teamDocsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/team-docs',
+  component: TeamDocsPage,
+})
+
 // ─── /profile ────────────────────────────────────────────────────────────────
 
 const profileRoute = createRoute({
@@ -1179,6 +1186,7 @@ export const router = createRouter({
       userTaskRoute,
       prototypeIssuesRoute,
       projectIssuesRoute,
+      teamDocsRoute,
       profileRoute,
       adminUsersRoute,
       adminMenuRoute,
