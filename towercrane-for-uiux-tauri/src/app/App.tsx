@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Login from "../features/auth/Login";
 import { getToken, logout as apiLogout, me, setToken, type User } from "../features/auth/api";
 import AppShell from "../widgets/app-shell/AppShell";
+import { ToastViewport } from "../shared/ui/Toast";
 import { checkForUpdates } from "../shared/update/checkForUpdates";
 
 function App() {
@@ -44,7 +45,12 @@ function App() {
     return <Login onSuccess={setUser} />;
   }
 
-  return <AppShell user={user} onUserUpdate={setUser} onLogout={handleLogout} />;
+  return (
+    <>
+      <AppShell user={user} onUserUpdate={setUser} onLogout={handleLogout} />
+      <ToastViewport />
+    </>
+  );
 }
 
 export default App;
