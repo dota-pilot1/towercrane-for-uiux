@@ -16,6 +16,7 @@ import { EnglishChatModule } from './english-chat/english-chat.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ProjectIssuesModule } from './project-issues/project-issues.module';
+import { TeamDocsModule } from './team-docs/team-docs.module';
 import { ApiDocModule } from './api-doc/api-doc.module';
 import { IssuesModule } from './issues/issues.module';
 import { ChallengeModule } from './challenge/challenge.module';
@@ -52,6 +53,7 @@ import { PointsModule } from './points/points.module';
     MeetingModule,
     TasksModule,
     ProjectIssuesModule,
+    TeamDocsModule,
     ApiDocModule,
     IssuesModule,
     ChallengeModule,

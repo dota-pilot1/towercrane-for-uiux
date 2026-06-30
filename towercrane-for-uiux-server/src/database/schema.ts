@@ -683,6 +683,36 @@ export const projectIssueActivityLogsTable = sqliteTable(
   },
 );
 
+// 팀 문서 — 폴더/문서/파일을 하나의 트리 노드로 통합 (parentId 자기참조)
+export type TeamDocNodeType = 'FOLDER' | 'DOC' | 'FILE';
+
+export const teamDocNodesTable = sqliteTable('team_doc_nodes', {
+  id: text('id').primaryKey(),
+  parentId: text('parent_id').references(
+    (): AnySQLiteColumn => teamDocNodesTable.id,
+    { onDelete: 'cascade' },
+  ),
+  type: text('type').$type<TeamDocNodeType>().notNull(),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  content: text('content'),
+  fileUrl: text('file_url'),
+  fileName: text('file_name'),
+  contentType: text('content_type'),
+  fileSize: integer('file_size'),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  updatedBy: text('updated_by').references(() => usersTable.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type TeamDocNodeRow = typeof teamDocNodesTable.$inferSelect;
+export type TeamDocNodeInsert = typeof teamDocNodesTable.$inferInsert;
+
 export type MeetingWorkspaceRole = 'owner' | 'editor' | 'member' | 'viewer';
 
 export const meetingWorkspacesTable = sqliteTable('meeting_workspaces', {
@@ -1905,6 +1935,7 @@ export const schema = {
   projectIssueCommentsTable,
   projectIssueAttachmentsTable,
   projectIssueActivityLogsTable,
+  teamDocNodesTable,
   meetingWorkspacesTable,
   meetingWorkspaceMembersTable,
   meetingRoomsTable,

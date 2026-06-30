@@ -663,6 +663,29 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_project_issue_activity_logs_issue_created
         ON project_issue_activity_logs(project_issue_id, created_at);
 
+      CREATE TABLE IF NOT EXISTS team_doc_nodes (
+        id TEXT PRIMARY KEY,
+        parent_id TEXT,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        content TEXT,
+        file_url TEXT,
+        file_name TEXT,
+        content_type TEXT,
+        file_size INTEGER,
+        created_by TEXT,
+        updated_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(parent_id) REFERENCES team_doc_nodes(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_team_doc_nodes_parent_order
+        ON team_doc_nodes(parent_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS meeting_rooms (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -2270,46 +2293,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       now,
     });
     this.upsertMenuBySectionId({
-      sectionId: 'dev_management_chat',
-      name: '개발 채팅',
-      icon: 'MessageSquareText',
-      displayOrder: 0,
-      parentId: existingDevManagement.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
-      sectionId: 'dev_meeting_minutes',
-      name: '회의록 게시판',
-      icon: 'ClipboardList',
-      displayOrder: 1,
-      parentId: existingDevManagement.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
       sectionId: 'api_doc',
       name: 'Postman',
       icon: 'Send',
       displayOrder: 4,
-      parentId: existingDevManagement.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
-      sectionId: 'code_reviews',
-      name: '코드 리뷰',
-      icon: 'Code2',
-      displayOrder: 2,
-      parentId: existingDevManagement.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
-      sectionId: 'feature_plans',
-      name: '기능 개발 계획',
-      icon: 'ListChecks',
-      displayOrder: 3,
       parentId: existingDevManagement.id,
       requiredRole: null,
       now,
@@ -2331,6 +2318,25 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
               parent_id = NULL,
               updated_at = ?
           WHERE section_id = 'task'
+        `,
+      )
+      .run(now);
+
+    // 개발 도구에는 Postman(api_doc)만 남기고 나머지는 헤더에서 숨김
+    // (라우트·데이터는 그대로, is_visible=0 으로 네비에서만 제외)
+    this.sqlite
+      .prepare(
+        `
+          UPDATE menus
+          SET is_visible = 0,
+              parent_id = NULL,
+              updated_at = ?
+          WHERE section_id IN (
+            'dev_management_chat',
+            'dev_meeting_minutes',
+            'code_reviews',
+            'feature_plans'
+          )
         `,
       )
       .run(now);
