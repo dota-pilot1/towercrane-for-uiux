@@ -22,6 +22,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
+  ChevronRight,
   FileText,
   Folder,
   FolderOpen,
@@ -99,6 +100,7 @@ export function TeamDocsPage() {
   } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadParentRef = useRef<string | null>(null)
+  const didInitExpand = useRef(false)
 
   const createFolder = useCreateTeamDocFolder()
   const createDocument = useCreateTeamDocDocument()
@@ -138,6 +140,17 @@ export function TeamDocsPage() {
       )
     }
   }, [creating, targetParentId])
+
+  // 최초 로드 시 최상위(1차) 폴더는 펼쳐둔다
+  useEffect(() => {
+    if (didInitExpand.current || nodes.length === 0) return
+    didInitExpand.current = true
+    setExpanded(
+      new Set(
+        nodes.filter((n) => n.parentId === null && n.type === 'FOLDER').map((n) => n.id),
+      ),
+    )
+  }, [nodes])
 
   useEffect(() => {
     if (detail) {
@@ -444,6 +457,7 @@ export function TeamDocsPage() {
           open={isOpen}
           selected={selectedId === node.id}
           hint={dropHint?.id === node.id ? dropHint.kind : null}
+          count={node.type === 'FOLDER' ? (childrenOf.get(node.id)?.length ?? 0) : 0}
           onClick={() => onRowClick(node)}
           onContextMenu={(e) => {
             e.preventDefault()
@@ -826,11 +840,13 @@ function SortableRow({
   open: boolean
   selected: boolean
   hint: 'into' | 'before' | 'after' | null
+  count: number
   onClick: () => void
   onContextMenu: (e: ReactMouseEvent<HTMLButtonElement>) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: node.id })
+  const isFolder = node.type === 'FOLDER'
   return (
     <div
       ref={setNodeRef}
@@ -850,9 +866,9 @@ function SortableRow({
         {...listeners}
         onClick={onClick}
         onContextMenu={onContextMenu}
-        style={{ paddingLeft: depth * 14 + 10 }}
+        style={{ paddingLeft: depth * 14 + 8 }}
         className={
-          'flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left text-sm transition-colors ' +
+          'flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm transition-colors ' +
           (hint === 'into'
             ? 'bg-brand-glass text-brand-primary ring-2 ring-inset ring-brand-border'
             : selected
@@ -860,8 +876,21 @@ function SortableRow({
               : 'text-text-secondary hover:bg-surface-muted')
         }
       >
+        {isFolder ? (
+          <ChevronRight
+            className={
+              'size-3.5 shrink-0 text-text-muted transition-transform ' +
+              (open ? 'rotate-90' : '')
+            }
+          />
+        ) : (
+          <span className="w-3.5 shrink-0" />
+        )}
         <NodeIcon node={node} open={open} />
-        <span className="truncate">{node.title}</span>
+        <span className="min-w-0 flex-1 truncate">{node.title}</span>
+        {isFolder && count > 0 ? (
+          <span className="shrink-0 text-xs text-text-muted">{count}</span>
+        ) : null}
       </button>
       {hint === 'after' ? (
         <div className="pointer-events-none absolute inset-x-1 -bottom-px z-10 h-0.5 rounded-full bg-brand-primary" />
