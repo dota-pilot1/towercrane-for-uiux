@@ -225,24 +225,20 @@ function DocsModule() {
     return ids;
   }, [childrenOf, expanded]);
 
-  // 대상 행에서의 동작 판정: 폴더 가운데(35~65%)=안으로, 위 절반=before, 아래 절반=after
+  // 동작 판정: 오른쪽으로 끌어 들여쓰기(>24px)하고 대상이 폴더면 '안으로',
+  // 그 외엔 현재 위치 기준 위/아래로 순서변경(인덱스 기반이라 안정적)
   function kindFor(
     event: DragOverEvent | DragEndEvent,
     activeId: string,
     overNode: TeamDocNode,
   ): "into" | "before" | "after" {
-    const a = event.active.rect.current.translated;
-    const o = event.over?.rect;
-    const ratio = a && o ? (a.top + a.height / 2 - o.top) / o.height : 0.5;
-    if (
-      overNode.type === "FOLDER" &&
-      overNode.id !== activeId &&
-      ratio > 0.35 &&
-      ratio < 0.65
-    ) {
+    const indent = event.delta?.x ?? 0;
+    if (overNode.type === "FOLDER" && overNode.id !== activeId && indent > 24) {
       return "into";
     }
-    return ratio < 0.5 ? "before" : "after";
+    const ai = visibleIds.indexOf(activeId);
+    const oi = visibleIds.indexOf(overNode.id);
+    return ai >= 0 && oi >= 0 && ai < oi ? "after" : "before";
   }
 
   async function moveInto(node: TeamDocNode, newParentId: string | null) {
