@@ -227,9 +227,8 @@ function DocsModule() {
 
   // 동작 판정.
   // - 폴더: 같은 레벨 순서변경만 (포함관계 변경 불가 → 다른 레벨 대상엔 null)
-  // - 파일/문서: 오른쪽 들여쓰기(>24px)+폴더 위면 '안으로', 그 외엔 위/아래 순서변경
+  // - 파일/문서: 폴더 위면 '안으로', 파일/문서 위면 위/아래 순서변경
   function kindFor(
-    event: DragOverEvent | DragEndEvent,
     activeNode: TeamDocNode,
     overNode: TeamDocNode,
   ): "into" | "before" | "after" | null {
@@ -239,10 +238,7 @@ function DocsModule() {
     if (activeNode.type === "FOLDER") {
       return overNode.parentId === activeNode.parentId ? beside : null;
     }
-    const indent = event.delta?.x ?? 0;
-    if (overNode.type === "FOLDER" && overNode.id !== activeNode.id && indent > 24) {
-      return "into";
-    }
+    if (overNode.type === "FOLDER") return "into";
     return beside;
   }
 
@@ -304,7 +300,7 @@ function DocsModule() {
       setDropHint(null);
       return;
     }
-    const kind = kindFor(event, activeNode, overNode);
+    const kind = kindFor(activeNode, overNode);
     setDropHint(kind ? { id: overNode.id, kind } : null);
   }
 
@@ -317,9 +313,7 @@ function DocsModule() {
     const overNode = nodeById.get(String(over.id));
     if (!activeNode || !overNode) return;
     const kind =
-      hint && hint.id === overNode.id
-        ? hint.kind
-        : kindFor(event, activeNode, overNode);
+      hint && hint.id === overNode.id ? hint.kind : kindFor(activeNode, overNode);
     if (!kind) return;
     if (kind === "into") {
       void moveInto(activeNode, overNode.id);
