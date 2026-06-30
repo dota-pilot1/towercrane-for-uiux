@@ -2293,6 +2293,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       now,
     });
     this.upsertMenuBySectionId({
+      sectionId: 'team_docs',
+      name: '문서',
+      icon: 'FileText',
+      displayOrder: 2,
+      parentId: null,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
       sectionId: 'api_doc',
       name: 'Postman',
       icon: 'Send',
@@ -2351,16 +2360,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }> = [
       { sectionId: 'prototype', displayOrder: 0 },
       { sectionId: ['task_group', 'task'], displayOrder: 1 },
-      { sectionId: 'dev_management', displayOrder: 2 },
-      { sectionId: 'meeting', displayOrder: 3 },
-      { sectionId: 'boards', displayOrder: 4 },
-      { sectionId: 'dev_study', displayOrder: 5 },
-      { sectionId: 'dev_market_group', displayOrder: 6 },
-      { sectionId: 'dev_analysis_group', displayOrder: 7 },
-      { sectionId: 'chatbot_pilot', displayOrder: 8 },
-      { sectionId: 'english_group', displayOrder: 9 },
-      { sectionId: 'usage_stats_group', displayOrder: 10 },
-      { sectionId: 'admin_dropdown', displayOrder: 11 },
+      { sectionId: 'team_docs', displayOrder: 2 },
+      { sectionId: 'dev_management', displayOrder: 3 },
+      { sectionId: 'meeting', displayOrder: 4 },
+      { sectionId: 'boards', displayOrder: 5 },
+      { sectionId: 'dev_study', displayOrder: 6 },
+      { sectionId: 'dev_market_group', displayOrder: 7 },
+      { sectionId: 'dev_analysis_group', displayOrder: 8 },
+      { sectionId: 'chatbot_pilot', displayOrder: 9 },
+      { sectionId: 'english_group', displayOrder: 10 },
+      { sectionId: 'usage_stats_group', displayOrder: 11 },
+      { sectionId: 'admin_dropdown', displayOrder: 12 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
