@@ -85,6 +85,19 @@ export function deleteDocNode(
   });
 }
 
+export function reorderDocNodes(
+  token: string,
+  parentId: string | null,
+  items: { id: string; orderIdx: number }[],
+): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>("/team-docs/reorder", {
+    method: "PATCH",
+    body: { parentId, items },
+    token,
+    errorMessage: "순서를 바꾸지 못했습니다.",
+  });
+}
+
 // presign 발급 → S3 직접 PUT → 파일 노드 등록 (이슈 첨부와 동일 흐름)
 export async function uploadDocFile(
   token: string,
