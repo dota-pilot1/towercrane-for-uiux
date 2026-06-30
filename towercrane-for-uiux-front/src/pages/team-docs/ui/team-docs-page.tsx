@@ -1,4 +1,26 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from 'react'
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import {
   FileText,
   Folder,
@@ -21,6 +43,7 @@ import {
   useCreateTeamDocFile,
   useCreateTeamDocFolder,
   useDeleteTeamDocNode,
+  useReorderTeamDocNodes,
   useTeamDocNode,
   useTeamDocTree,
   useUpdateTeamDocNode,
@@ -77,6 +100,11 @@ export function TeamDocsPage() {
   const createFile = useCreateTeamDocFile()
   const updateNode = useUpdateTeamDocNode()
   const deleteNode = useDeleteTeamDocNode()
+  const reorder = useReorderTeamDocNodes()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
 
   const selected = useMemo(
     () => nodes.find((n) => n.id === selectedId) ?? null,
@@ -175,6 +203,65 @@ export function TeamDocsPage() {
         <span className="font-bold text-text-secondary">{node.title}</span>
       </div>
     )
+  }
+
+  const visibleIds = useMemo(() => {
+    const ids: string[] = []
+    const walk = (parentId: string | null) => {
+      for (const child of childrenOf.get(parentId) ?? []) {
+        ids.push(child.id)
+        if (child.type === 'FOLDER' && expanded.has(child.id)) walk(child.id)
+      }
+    }
+    walk(null)
+    return ids
+  }, [childrenOf, expanded])
+
+  async function moveInto(node: TeamDocNode, newParentId: string | null) {
+    if (newParentId === node.parentId || newParentId === node.id) return
+    try {
+      await updateNode.mutateAsync({ id: node.id, body: { parentId: newParentId } })
+      if (newParentId) setExpanded((prev) => new Set(prev).add(newParentId))
+      toast.success('이동했습니다.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '이동하지 못했습니다.')
+    }
+  }
+
+  async function reorderSiblings(active: TeamDocNode, over: TeamDocNode) {
+    const siblings = childrenOf.get(active.parentId) ?? []
+    const oldIndex = siblings.findIndex((n) => n.id === active.id)
+    const newIndex = siblings.findIndex((n) => n.id === over.id)
+    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return
+    const items = arrayMove(siblings, oldIndex, newIndex).map((n, i) => ({
+      id: n.id,
+      orderIdx: i,
+    }))
+    try {
+      await reorder.mutateAsync({ parentId: active.parentId, items })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '순서를 바꾸지 못했습니다.')
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const activeNode = nodeById.get(String(active.id))
+    const overNode = nodeById.get(String(over.id))
+    if (!activeNode || !overNode) return
+    // 폴더 위에 드롭 → 그 폴더 안으로 이동
+    if (overNode.type === 'FOLDER' && overNode.id !== activeNode.id) {
+      void moveInto(activeNode, overNode.id)
+      return
+    }
+    // 같은 폴더 안 → 순서 변경
+    if (overNode.parentId === activeNode.parentId) {
+      void reorderSiblings(activeNode, overNode)
+      return
+    }
+    // 다른 폴더의 항목 위 → 그 폴더로 이동
+    void moveInto(activeNode, overNode.parentId)
   }
 
   function onRowClick(node: TeamDocNode) {
@@ -306,25 +393,18 @@ export function TeamDocsPage() {
     for (const node of children) {
       const isOpen = expanded.has(node.id)
       rows.push(
-        <button
+        <SortableRow
           key={node.id}
-          type="button"
+          node={node}
+          depth={depth}
+          open={isOpen}
+          selected={selectedId === node.id}
           onClick={() => onRowClick(node)}
           onContextMenu={(e) => {
             e.preventDefault()
             setMenu({ x: e.clientX, y: e.clientY, node })
           }}
-          style={{ paddingLeft: depth * 14 + 10 }}
-          className={
-            'flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left text-sm transition-colors ' +
-            (selectedId === node.id
-              ? 'bg-brand-glass font-bold text-brand-primary'
-              : 'text-text-secondary hover:bg-surface-muted')
-          }
-        >
-          <NodeIcon node={node} open={isOpen} />
-          <span className="truncate">{node.title}</span>
-        </button>,
+        />,
       )
       if (node.type === 'FOLDER' && isOpen) {
         rows.push(...renderTree(node.id, depth + 1))
@@ -421,7 +501,18 @@ export function TeamDocsPage() {
               아직 문서가 없습니다. 폴더나 문서를 만들어보세요.
             </p>
           ) : (
-            renderTree(null, 0)
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={visibleIds}
+                strategy={verticalListSortingStrategy}
+              >
+                {renderTree(null, 0)}
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </aside>
@@ -671,6 +762,50 @@ export function TeamDocsPage() {
         </>
       ) : null}
     </div>
+  )
+}
+
+function SortableRow({
+  node,
+  depth,
+  open,
+  selected,
+  onClick,
+  onContextMenu,
+}: {
+  node: TeamDocNode
+  depth: number
+  open: boolean
+  selected: boolean
+  onClick: () => void
+  onContextMenu: (e: ReactMouseEvent<HTMLButtonElement>) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: node.id })
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+      style={{
+        paddingLeft: depth * 14 + 10,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : undefined,
+      }}
+      className={
+        'flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left text-sm transition-colors ' +
+        (selected
+          ? 'bg-brand-glass font-bold text-brand-primary'
+          : 'text-text-secondary hover:bg-surface-muted')
+      }
+    >
+      <NodeIcon node={node} open={open} />
+      <span className="truncate">{node.title}</span>
+    </button>
   )
 }
 

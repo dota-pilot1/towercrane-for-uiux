@@ -38,4 +38,10 @@ export const teamDocsApi = {
     apiRequest<{ success: boolean }>(`/team-docs/${id}`, {
       method: 'DELETE',
     }),
+
+  reorder: (parentId: string | null, items: { id: string; orderIdx: number }[]) =>
+    apiRequest<{ success: boolean }>('/team-docs/reorder', {
+      method: 'PATCH',
+      body: JSON.stringify({ parentId, items }),
+    }),
 }

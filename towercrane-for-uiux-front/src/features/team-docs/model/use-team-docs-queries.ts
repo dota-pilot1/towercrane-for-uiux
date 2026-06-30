@@ -75,3 +75,18 @@ export function useDeleteTeamDocNode() {
       queryClient.invalidateQueries({ queryKey: teamDocsKeys.tree }),
   })
 }
+
+export function useReorderTeamDocNodes() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      parentId,
+      items,
+    }: {
+      parentId: string | null
+      items: { id: string; orderIdx: number }[]
+    }) => teamDocsApi.reorder(parentId, items),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: teamDocsKeys.tree }),
+  })
+}
