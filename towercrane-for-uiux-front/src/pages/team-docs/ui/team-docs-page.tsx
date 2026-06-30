@@ -61,7 +61,16 @@ export function TeamDocsPage() {
   const [draftContent, setDraftContent] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [previewMode, setPreviewMode] = useState<'fit' | 'full'>('fit')
+  const [dragOver, setDragOver] = useState(false)
+  const [menu, setMenu] = useState<{
+    x: number
+    y: number
+    node: TeamDocNode
+    confirmDelete?: boolean
+  } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadParentRef = useRef<string | null>(null)
 
   const createFolder = useCreateTeamDocFolder()
   const createDocument = useCreateTeamDocDocument()
@@ -112,6 +121,54 @@ export function TeamDocsPage() {
     return map
   }, [nodes])
 
+  const nodeById = useMemo(() => {
+    const map = new Map<string, TeamDocNode>()
+    for (const node of nodes) map.set(node.id, node)
+    return map
+  }, [nodes])
+
+  function ancestorsOf(node: TeamDocNode): TeamDocNode[] {
+    const chain: TeamDocNode[] = []
+    const guard = new Set<string>()
+    let pid = node.parentId
+    while (pid && !guard.has(pid)) {
+      guard.add(pid)
+      const parent = nodeById.get(pid)
+      if (!parent) break
+      chain.unshift(parent)
+      pid = parent.parentId
+    }
+    return chain
+  }
+
+  function Breadcrumb({ node }: { node: TeamDocNode }) {
+    return (
+      <div className="mb-2 flex flex-wrap items-center gap-1 text-xs text-text-muted">
+        <button
+          type="button"
+          onClick={() => setSelectedId(null)}
+          className="hover:text-text-secondary"
+        >
+          최상위
+        </button>
+        {ancestorsOf(node).map((a) => (
+          <span key={a.id} className="flex items-center gap-1">
+            <span>/</span>
+            <button
+              type="button"
+              onClick={() => setSelectedId(a.id)}
+              className="hover:text-brand-primary"
+            >
+              {a.title}
+            </button>
+          </span>
+        ))}
+        <span>/</span>
+        <span className="font-bold text-text-secondary">{node.title}</span>
+      </div>
+    )
+  }
+
   function onRowClick(node: TeamDocNode) {
     setSelectedId(node.id)
     if (node.type === 'FOLDER') {
@@ -145,13 +202,15 @@ export function TeamDocsPage() {
 
   async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0 || uploading) return
+    const parentId = uploadParentRef.current ?? targetParentId
+    uploadParentRef.current = null
     setUploading(true)
     try {
       let lastId: string | null = null
       for (const file of Array.from(files)) {
         const fileUrl = await uploadFile(file)
         const created = await createFile.mutateAsync({
-          parentId: targetParentId,
+          parentId,
           fileName: file.name,
           fileUrl,
           contentType: file.type || 'application/octet-stream',
@@ -159,7 +218,7 @@ export function TeamDocsPage() {
         })
         lastId = created.id
       }
-      if (targetParentId) setExpanded((prev) => new Set(prev).add(targetParentId))
+      if (parentId) setExpanded((prev) => new Set(prev).add(parentId))
       if (lastId) setSelectedId(lastId)
       toast.success('파일을 업로드했습니다.')
     } catch (error) {
@@ -206,6 +265,10 @@ export function TeamDocsPage() {
           key={node.id}
           type="button"
           onClick={() => onRowClick(node)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            setMenu({ x: e.clientX, y: e.clientY, node })
+          }}
           style={{ paddingLeft: depth * 14 + 10 }}
           className={
             'flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left text-sm transition-colors ' +
@@ -232,7 +295,31 @@ export function TeamDocsPage() {
     : '최상위에'
 
   return (
-    <div className="flex h-[calc(100dvh-7rem)] gap-4">
+    <div
+      className="relative flex h-[calc(100dvh-7rem)] gap-4"
+      onDragOver={(e) => {
+        e.preventDefault()
+        if (!dragOver) setDragOver(true)
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setDragOver(false)
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragOver(false)
+        handleUpload(e.dataTransfer.files)
+      }}
+    >
+      {dragOver ? (
+        <div className="pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-brand-border bg-brand-glass/80">
+          <Upload className="size-8 text-brand-primary" />
+          <span className="text-sm font-bold text-brand-primary">
+            여기에 놓으면 {targetLabel} 업로드
+          </span>
+        </div>
+      ) : null}
       {/* 왼쪽: 트리 */}
       <aside className="flex w-72 shrink-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-raised">
         <div className="flex items-center gap-1.5 border-b border-surface-border-soft px-3 py-2.5">
@@ -323,6 +410,7 @@ export function TeamDocsPage() {
           </div>
         ) : selected.type === 'DOC' ? (
           <div className="mx-auto w-full max-w-3xl p-6">
+            <Breadcrumb node={selected} />
             <div className="mb-3 flex items-center justify-between gap-3">
               <Input
                 value={draftTitle}
@@ -367,30 +455,59 @@ export function TeamDocsPage() {
           </div>
         ) : selected.type === 'FILE' ? (
           <div className="mx-auto w-full max-w-3xl p-6">
+            <Breadcrumb node={selected} />
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="truncate text-lg font-black text-text-primary">
+              <h2 className="min-w-0 flex-1 truncate text-lg font-black text-text-primary">
                 {selected.title}
               </h2>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                tone="danger"
-                onClick={() => {
-                  if (confirmDelete) handleDelete(selected)
-                  else setConfirmDelete(true)
-                }}
-              >
-                <Trash2 className="mr-1.5 size-4" />
-                {confirmDelete ? '정말 삭제?' : '삭제'}
-              </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                {selected.contentType?.startsWith('image/') ? (
+                  <div className="flex overflow-hidden rounded-md border border-surface-border">
+                    {(['fit', 'full'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setPreviewMode(mode)}
+                        className={
+                          'px-2.5 py-1 text-xs font-bold ' +
+                          (previewMode === mode
+                            ? 'bg-brand-glass text-brand-primary'
+                            : 'text-text-muted hover:bg-surface-muted')
+                        }
+                      >
+                        {mode === 'fit' ? '축소' : '원본'}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  tone="danger"
+                  onClick={() => {
+                    if (confirmDelete) handleDelete(selected)
+                    else setConfirmDelete(true)
+                  }}
+                >
+                  <Trash2 className="mr-1.5 size-4" />
+                  {confirmDelete ? '정말 삭제?' : '삭제'}
+                </Button>
+              </div>
             </div>
             {selected.contentType?.startsWith('image/') ? (
-              <img
-                src={selected.fileUrl ?? ''}
-                alt={selected.title}
-                className="max-h-[60vh] w-full rounded-md border border-surface-border-soft bg-surface-muted object-contain"
-              />
+              <div className="flex justify-center rounded-md border border-surface-border-soft bg-surface-muted p-3">
+                <img
+                  src={selected.fileUrl ?? ''}
+                  alt={selected.title}
+                  className={
+                    'rounded object-contain ' +
+                    (previewMode === 'fit'
+                      ? 'max-h-[42vh] max-w-md'
+                      : 'max-h-[78vh] w-full')
+                  }
+                />
+              </div>
             ) : (
               <a
                 href={selected.fileUrl ?? '#'}
@@ -408,7 +525,8 @@ export function TeamDocsPage() {
           </div>
         ) : (
           <div className="mx-auto w-full max-w-3xl p-6">
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <Breadcrumb node={selected} />
+            <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="flex items-center gap-2 truncate text-lg font-black text-text-primary">
                 <FolderOpen className="size-5 text-brand-primary" />
                 {selected.title}
@@ -427,12 +545,19 @@ export function TeamDocsPage() {
                 {confirmDelete ? '정말 삭제?' : '폴더 삭제'}
               </Button>
             </div>
+            <p className="mb-3 text-xs text-text-muted">
+              폴더를 우클릭하면 하위 폴더·문서·파일을 추가할 수 있어요.
+            </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {(childrenOf.get(selected.id) ?? []).map((child) => (
                 <button
                   key={child.id}
                   type="button"
                   onClick={() => onRowClick(child)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setMenu({ x: e.clientX, y: e.clientY, node: child })
+                  }}
                   className="flex items-center gap-2 rounded-md border border-surface-border bg-surface-muted px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass"
                 >
                   <NodeIcon node={child} />
@@ -441,13 +566,108 @@ export function TeamDocsPage() {
               ))}
               {(childrenOf.get(selected.id) ?? []).length === 0 ? (
                 <p className="col-span-full py-8 text-center text-sm text-text-muted">
-                  빈 폴더입니다. 위의 폴더 / 문서 / 업로드로 채워보세요.
+                  빈 폴더입니다. 트리에서 이 폴더를 우클릭해 추가하세요.
                 </p>
               ) : null}
             </div>
           </div>
         )}
       </section>
+
+      {menu ? (
+        <>
+          <div
+            className="fixed inset-0 z-[60]"
+            onClick={() => setMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              setMenu(null)
+            }}
+          />
+          <div
+            className="fixed z-[61] min-w-[184px] overflow-hidden rounded-lg border border-surface-border bg-surface-raised py-1 shadow-2xl"
+            style={{ left: menu.x, top: menu.y }}
+          >
+            {menu.node.type === 'FOLDER' ? (
+              <>
+                <ContextItem
+                  onClick={() => {
+                    setSelectedId(menu.node.id)
+                    setCreating('FOLDER')
+                    setNewName('')
+                    setMenu(null)
+                  }}
+                >
+                  <FolderPlus className="size-4" />
+                  하위 폴더 추가
+                </ContextItem>
+                <ContextItem
+                  onClick={() => {
+                    setSelectedId(menu.node.id)
+                    setCreating('DOC')
+                    setNewName('')
+                    setMenu(null)
+                  }}
+                >
+                  <FilePlus className="size-4" />
+                  문서 추가
+                </ContextItem>
+                <ContextItem
+                  onClick={() => {
+                    uploadParentRef.current = menu.node.id
+                    setMenu(null)
+                    fileInputRef.current?.click()
+                  }}
+                >
+                  <Upload className="size-4" />
+                  파일 업로드
+                </ContextItem>
+                <div className="my-1 h-px bg-surface-border-soft" />
+              </>
+            ) : null}
+            <ContextItem
+              danger
+              onClick={() => {
+                if (menu.confirmDelete) {
+                  const target = menu.node
+                  setMenu(null)
+                  handleDelete(target)
+                } else {
+                  setMenu({ ...menu, confirmDelete: true })
+                }
+              }}
+            >
+              <Trash2 className="size-4" />
+              {menu.confirmDelete ? '정말 삭제할까요?' : '삭제'}
+            </ContextItem>
+          </div>
+        </>
+      ) : null}
     </div>
+  )
+}
+
+function ContextItem({
+  danger,
+  onClick,
+  children,
+}: {
+  danger?: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        'flex w-full items-center gap-2 px-3.5 py-2 text-left text-sm font-medium ' +
+        (danger
+          ? 'text-destructive hover:bg-danger-glass'
+          : 'text-text-secondary hover:bg-surface-muted')
+      }
+    >
+      {children}
+    </button>
   )
 }
