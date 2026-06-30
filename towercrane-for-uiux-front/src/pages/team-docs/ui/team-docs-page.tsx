@@ -13,10 +13,10 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext,
-  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
@@ -91,6 +91,10 @@ export function TeamDocsPage() {
     y: number
     node: TeamDocNode
     confirmDelete?: boolean
+  } | null>(null)
+  const [dropHint, setDropHint] = useState<{
+    id: string
+    mode: 'into' | 'before' | 'after'
   } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadParentRef = useRef<string | null>(null)
@@ -217,6 +221,18 @@ export function TeamDocsPage() {
     return ids
   }, [childrenOf, expanded])
 
+  // 드래그 중인 항목 중심이 대상 행의 어느 구역에 있는지로 동작 결정
+  function modeFor(
+    event: DragOverEvent | DragEndEvent,
+    overNode: TeamDocNode,
+  ): 'into' | 'before' | 'after' {
+    const a = event.active.rect.current.translated
+    const o = event.over?.rect
+    const ratio = a && o ? (a.top + a.height / 2 - o.top) / o.height : 0.5
+    if (overNode.type === 'FOLDER' && ratio > 0.25 && ratio < 0.75) return 'into'
+    return ratio < 0.5 ? 'before' : 'after'
+  }
+
   async function moveInto(node: TeamDocNode, newParentId: string | null) {
     if (newParentId === node.parentId || newParentId === node.id) return
     try {
@@ -228,40 +244,68 @@ export function TeamDocsPage() {
     }
   }
 
-  async function reorderSiblings(active: TeamDocNode, over: TeamDocNode) {
-    const siblings = childrenOf.get(active.parentId) ?? []
-    const oldIndex = siblings.findIndex((n) => n.id === active.id)
-    const newIndex = siblings.findIndex((n) => n.id === over.id)
-    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return
-    const items = arrayMove(siblings, oldIndex, newIndex).map((n, i) => ({
-      id: n.id,
-      orderIdx: i,
-    }))
+  // over 행의 위/아래에 active 를 배치 (같은 레벨이면 순서변경, 다른 레벨이면 이동+순서)
+  async function placeBeside(
+    active: TeamDocNode,
+    over: TeamDocNode,
+    before: boolean,
+  ) {
+    const parentId = over.parentId
     try {
-      await reorder.mutateAsync({ parentId: active.parentId, items })
+      if (active.parentId !== parentId) {
+        // 부모 변경은 순환 검증이 있는 updateNode 로 먼저 처리
+        await updateNode.mutateAsync({ id: active.id, body: { parentId } })
+      }
+      const siblings = (childrenOf.get(parentId) ?? []).filter(
+        (n) => n.id !== active.id,
+      )
+      const overIndex = siblings.findIndex((n) => n.id === over.id)
+      if (overIndex < 0) return
+      const insertAt = before ? overIndex : overIndex + 1
+      const ordered = [
+        ...siblings.slice(0, insertAt),
+        active,
+        ...siblings.slice(insertAt),
+      ]
+      await reorder.mutateAsync({
+        parentId,
+        items: ordered.map((n, i) => ({ id: n.id, orderIdx: i })),
+      })
+      if (parentId) setExpanded((prev) => new Set(prev).add(parentId))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '순서를 바꾸지 못했습니다.')
+      toast.error(error instanceof Error ? error.message : '이동하지 못했습니다.')
     }
   }
 
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) {
+      setDropHint(null)
+      return
+    }
+    const overNode = nodeById.get(String(over.id))
+    if (!overNode) {
+      setDropHint(null)
+      return
+    }
+    setDropHint({ id: overNode.id, mode: modeFor(event, overNode) })
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    const hint = dropHint
+    setDropHint(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
     const activeNode = nodeById.get(String(active.id))
     const overNode = nodeById.get(String(over.id))
     if (!activeNode || !overNode) return
-    // 폴더 위에 드롭 → 그 폴더 안으로 이동
-    if (overNode.type === 'FOLDER' && overNode.id !== activeNode.id) {
+    const mode =
+      hint && hint.id === overNode.id ? hint.mode : modeFor(event, overNode)
+    if (mode === 'into') {
       void moveInto(activeNode, overNode.id)
       return
     }
-    // 같은 폴더 안 → 순서 변경
-    if (overNode.parentId === activeNode.parentId) {
-      void reorderSiblings(activeNode, overNode)
-      return
-    }
-    // 다른 폴더의 항목 위 → 그 폴더로 이동
-    void moveInto(activeNode, overNode.parentId)
+    void placeBeside(activeNode, overNode, mode === 'before')
   }
 
   function onRowClick(node: TeamDocNode) {
@@ -399,6 +443,7 @@ export function TeamDocsPage() {
           depth={depth}
           open={isOpen}
           selected={selectedId === node.id}
+          hint={dropHint?.id === node.id ? dropHint.mode : null}
           onClick={() => onRowClick(node)}
           onContextMenu={(e) => {
             e.preventDefault()
@@ -504,7 +549,9 @@ export function TeamDocsPage() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
+              onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
+              onDragCancel={() => setDropHint(null)}
             >
               <SortableContext
                 items={visibleIds}
@@ -770,6 +817,7 @@ function SortableRow({
   depth,
   open,
   selected,
+  hint,
   onClick,
   onContextMenu,
 }: {
@@ -777,35 +825,48 @@ function SortableRow({
   depth: number
   open: boolean
   selected: boolean
+  hint: 'into' | 'before' | 'after' | null
   onClick: () => void
   onContextMenu: (e: ReactMouseEvent<HTMLButtonElement>) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: node.id })
   return (
-    <button
+    <div
       ref={setNodeRef}
-      type="button"
-      {...attributes}
-      {...listeners}
-      onClick={onClick}
-      onContextMenu={onContextMenu}
+      className="relative"
       style={{
-        paddingLeft: depth * 14 + 10,
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : undefined,
       }}
-      className={
-        'flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left text-sm transition-colors ' +
-        (selected
-          ? 'bg-brand-glass font-bold text-brand-primary'
-          : 'text-text-secondary hover:bg-surface-muted')
-      }
     >
-      <NodeIcon node={node} open={open} />
-      <span className="truncate">{node.title}</span>
-    </button>
+      {hint === 'before' ? (
+        <div className="absolute inset-x-2 -top-px h-0.5 rounded-full bg-brand-primary" />
+      ) : null}
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        onClick={onClick}
+        onContextMenu={onContextMenu}
+        style={{ paddingLeft: depth * 14 + 10 }}
+        className={
+          'flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left text-sm transition-colors ' +
+          (hint === 'into'
+            ? 'bg-brand-glass text-brand-primary ring-2 ring-inset ring-brand-border'
+            : selected
+              ? 'bg-brand-glass font-bold text-brand-primary'
+              : 'text-text-secondary hover:bg-surface-muted')
+        }
+      >
+        <NodeIcon node={node} open={open} />
+        <span className="truncate">{node.title}</span>
+      </button>
+      {hint === 'after' ? (
+        <div className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-primary" />
+      ) : null}
+    </div>
   )
 }
 
