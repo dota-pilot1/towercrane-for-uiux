@@ -1,0 +1,60 @@
+name: Tauri Release
+
+# v로 시작하는 태그를 푸시하면 실행됨 (예: git tag v0.1.1 && git push origin v0.1.1)
+on:
+  push:
+    tags:
+      - "v*"
+
+# 릴리스 생성/업로드 권한
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # 인텔 + 애플실리콘 둘 다 지원하는 universal 빌드용
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: towercrane-for-uiux-tauri/src-tauri
+
+      - name: Install frontend deps
+        working-directory: towercrane-for-uiux-tauri
+        run: npm install
+
+      - name: Build & publish (tauri-action)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 업데이터 서명 키 (GitHub Secrets에 등록 필요)
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # ── Apple 공증을 붙이려면 아래 주석 해제 + Secrets 등록 ──
+          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: towercrane-for-uiux-tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: "Towercrane Messenger ${{ github.ref_name }}"
+          releaseBody: "자동 빌드된 릴리스입니다. .dmg를 받아 설치하세요."
+          releaseDraft: false
+          prerelease: false
+          args: --target universal-apple-darwin

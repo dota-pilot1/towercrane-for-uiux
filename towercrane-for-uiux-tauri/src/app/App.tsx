@@ -2,10 +2,16 @@ import { useEffect, useState } from "react";
 import Login from "../features/auth/Login";
 import { getToken, logout as apiLogout, me, setToken, type User } from "../features/auth/api";
 import AppShell from "../widgets/app-shell/AppShell";
+import { checkForUpdates } from "../shared/update/checkForUpdates";
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [booting, setBooting] = useState(true);
+
+  // 앱 시작 시 새 버전 확인 (빌드된 앱에서만 동작, 그 외엔 무시)
+  useEffect(() => {
+    void checkForUpdates();
+  }, []);
 
   // 앱 시작 시 저장된 토큰으로 세션 확인
   useEffect(() => {

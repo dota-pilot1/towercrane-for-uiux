@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { User } from "../../features/auth/api";
 import Messenger from "../messenger/Messenger";
 import ChatModule from "../chat/ChatModule";
+import TodoModule from "../task/TodoModule";
 import HomePage from "../home/HomePage";
 import ProfilePage from "../profile/ProfilePage";
 import PageHeader from "../../shared/ui/PageHeader";
@@ -26,7 +27,7 @@ type ModuleDef = {
 const MODULES: ModuleDef[] = [
   { id: "messenger", label: "메신저", icon: "💬", ready: true },
   { id: "chat", label: "채팅", icon: "👥", ready: true },
-  { id: "todo", label: "할일", icon: "✅", ready: false },
+  { id: "todo", label: "할일", icon: "✅", ready: true },
   { id: "issue", label: "이슈", icon: "🐛", ready: false },
   { id: "docs", label: "문서", icon: "📄", ready: false },
 ];
@@ -127,6 +128,8 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <Messenger user={user} />
         ) : activeModule?.id === "chat" ? (
           <ChatModule user={user} />
+        ) : activeModule?.id === "todo" ? (
+          <TodoModule user={user} />
         ) : (
           <PlaceholderModule
             label={activeModule?.label ?? ""}
