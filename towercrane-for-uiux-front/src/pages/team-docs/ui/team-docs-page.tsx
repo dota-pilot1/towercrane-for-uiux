@@ -17,7 +17,6 @@ import {
 } from '@dnd-kit/core'
 import {
   SortableContext,
-  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
@@ -93,8 +92,11 @@ export function TeamDocsPage() {
     node: TeamDocNode
     confirmDelete?: boolean
   } | null>(null)
-  // '폴더 안으로' 드롭 대상으로 하이라이트할 폴더 id (순서변경 미리보기는 dnd-kit이 처리)
-  const [intoFolderId, setIntoFolderId] = useState<string | null>(null)
+  // 드롭 위치 표시: 대상 행 id + 동작(into=폴더 안 / before·after=그 자리 삽입선)
+  const [dropHint, setDropHint] = useState<{
+    id: string
+    kind: 'into' | 'before' | 'after'
+  } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadParentRef = useRef<string | null>(null)
 
@@ -220,18 +222,24 @@ export function TeamDocsPage() {
     return ids
   }, [childrenOf, expanded])
 
-  // 대상이 폴더이고 드래그 중심이 가운데 좁은 띠(35~65%)에 있으면 '폴더 안으로'
-  function isIntoFolder(
+  // 대상 행에서의 동작 판정: 폴더 가운데(35~65%)=안으로, 위 절반=before, 아래 절반=after
+  function kindFor(
     event: DragOverEvent | DragEndEvent,
     activeId: string,
     overNode: TeamDocNode,
-  ) {
-    if (overNode.type !== 'FOLDER' || overNode.id === activeId) return false
+  ): 'into' | 'before' | 'after' {
     const a = event.active.rect.current.translated
     const o = event.over?.rect
-    if (!a || !o) return false
-    const ratio = (a.top + a.height / 2 - o.top) / o.height
-    return ratio > 0.35 && ratio < 0.65
+    const ratio = a && o ? (a.top + a.height / 2 - o.top) / o.height : 0.5
+    if (
+      overNode.type === 'FOLDER' &&
+      overNode.id !== activeId &&
+      ratio > 0.35 &&
+      ratio < 0.65
+    ) {
+      return 'into'
+    }
+    return ratio < 0.5 ? 'before' : 'after'
   }
 
   async function moveInto(node: TeamDocNode, newParentId: string | null) {
@@ -245,32 +253,18 @@ export function TeamDocsPage() {
     }
   }
 
-  // 같은 폴더 내 순서 변경 (dnd-kit 미리보기와 동일하게 over 위치로 이동)
-  async function reorderSameParent(active: TeamDocNode, over: TeamDocNode) {
-    const siblings = childrenOf.get(active.parentId) ?? []
-    const oldIndex = siblings.findIndex((n) => n.id === active.id)
-    const newIndex = siblings.findIndex((n) => n.id === over.id)
-    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return
-    const ordered = arrayMove(siblings, oldIndex, newIndex)
-    try {
-      await reorder.mutateAsync({
-        parentId: active.parentId,
-        items: ordered.map((n, i) => ({ id: n.id, orderIdx: i })),
-      })
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : '순서를 바꾸지 못했습니다.')
-    }
-  }
-
-  // 다른 폴더의 항목 위치로 이동(부모 변경 + 그 자리 삽입)
-  async function moveBeside(active: TeamDocNode, over: TeamDocNode, before: boolean) {
+  // 표시된 삽입선 자리(over의 위/아래)로 active 를 넣는다. 다른 폴더면 부모 변경까지.
+  async function placeBeside(active: TeamDocNode, over: TeamDocNode, before: boolean) {
     const parentId = over.parentId
     try {
-      await updateNode.mutateAsync({ id: active.id, body: { parentId } })
+      if (active.parentId !== parentId) {
+        await updateNode.mutateAsync({ id: active.id, body: { parentId } })
+      }
       const siblings = (childrenOf.get(parentId) ?? []).filter(
         (n) => n.id !== active.id,
       )
       const overIndex = siblings.findIndex((n) => n.id === over.id)
+      if (overIndex < 0) return
       const insertAt = before ? overIndex : overIndex + 1
       const ordered = [
         ...siblings.slice(0, insertAt),
@@ -290,36 +284,34 @@ export function TeamDocsPage() {
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) {
-      setIntoFolderId(null)
+      setDropHint(null)
       return
     }
     const overNode = nodeById.get(String(over.id))
-    setIntoFolderId(
-      overNode && isIntoFolder(event, String(active.id), overNode)
-        ? overNode.id
-        : null,
-    )
+    if (!overNode) {
+      setDropHint(null)
+      return
+    }
+    setDropHint({ id: overNode.id, kind: kindFor(event, String(active.id), overNode) })
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    setIntoFolderId(null)
+    const hint = dropHint
+    setDropHint(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
     const activeNode = nodeById.get(String(active.id))
     const overNode = nodeById.get(String(over.id))
     if (!activeNode || !overNode) return
-    if (isIntoFolder(event, activeNode.id, overNode)) {
+    const kind =
+      hint && hint.id === overNode.id
+        ? hint.kind
+        : kindFor(event, activeNode.id, overNode)
+    if (kind === 'into') {
       void moveInto(activeNode, overNode.id)
       return
     }
-    if (activeNode.parentId === overNode.parentId) {
-      void reorderSameParent(activeNode, overNode)
-      return
-    }
-    const a = event.active.rect.current.translated
-    const o = event.over?.rect
-    const ratio = a && o ? (a.top + a.height / 2 - o.top) / o.height : 0.5
-    void moveBeside(activeNode, overNode, ratio < 0.5)
+    void placeBeside(activeNode, overNode, kind === 'before')
   }
 
   function onRowClick(node: TeamDocNode) {
@@ -457,7 +449,7 @@ export function TeamDocsPage() {
           depth={depth}
           open={isOpen}
           selected={selectedId === node.id}
-          into={intoFolderId === node.id}
+          hint={dropHint?.id === node.id ? dropHint.kind : null}
           onClick={() => onRowClick(node)}
           onContextMenu={(e) => {
             e.preventDefault()
@@ -565,7 +557,7 @@ export function TeamDocsPage() {
               collisionDetection={closestCenter}
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
-              onDragCancel={() => setIntoFolderId(null)}
+              onDragCancel={() => setDropHint(null)}
             >
               <SortableContext
                 items={visibleIds}
@@ -839,38 +831,48 @@ function SortableRow({
   depth: number
   open: boolean
   selected: boolean
-  into: boolean
+  hint: 'into' | 'before' | 'after' | null
   onClick: () => void
   onContextMenu: (e: ReactMouseEvent<HTMLButtonElement>) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: node.id })
   return (
-    <button
+    <div
       ref={setNodeRef}
-      type="button"
-      {...attributes}
-      {...listeners}
-      onClick={onClick}
-      onContextMenu={onContextMenu}
+      className="relative"
       style={{
-        paddingLeft: depth * 14 + 10,
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : undefined,
       }}
-      className={
-        'flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left text-sm transition-colors ' +
-        (into
-          ? 'bg-brand-glass text-brand-primary ring-2 ring-inset ring-brand-border'
-          : selected
-            ? 'bg-brand-glass font-bold text-brand-primary'
-            : 'text-text-secondary hover:bg-surface-muted')
-      }
     >
-      <NodeIcon node={node} open={open} />
-      <span className="truncate">{node.title}</span>
-    </button>
+      {hint === 'before' ? (
+        <div className="pointer-events-none absolute inset-x-1 -top-px z-10 h-0.5 rounded-full bg-brand-primary" />
+      ) : null}
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        onClick={onClick}
+        onContextMenu={onContextMenu}
+        style={{ paddingLeft: depth * 14 + 10 }}
+        className={
+          'flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left text-sm transition-colors ' +
+          (hint === 'into'
+            ? 'bg-brand-glass text-brand-primary ring-2 ring-inset ring-brand-border'
+            : selected
+              ? 'bg-brand-glass font-bold text-brand-primary'
+              : 'text-text-secondary hover:bg-surface-muted')
+        }
+      >
+        <NodeIcon node={node} open={open} />
+        <span className="truncate">{node.title}</span>
+      </button>
+      {hint === 'after' ? (
+        <div className="pointer-events-none absolute inset-x-1 -bottom-px z-10 h-0.5 rounded-full bg-brand-primary" />
+      ) : null}
+    </div>
   )
 }
 
