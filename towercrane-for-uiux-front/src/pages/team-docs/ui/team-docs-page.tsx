@@ -99,6 +99,14 @@ export function TeamDocsPage() {
   }, [selectedId])
 
   useEffect(() => {
+    if (creating && targetParentId) {
+      setExpanded((prev) =>
+        prev.has(targetParentId) ? prev : new Set(prev).add(targetParentId),
+      )
+    }
+  }, [creating, targetParentId])
+
+  useEffect(() => {
     if (detail) {
       setDraftTitle(detail.title)
       setDraftContent(detail.content ?? '')
@@ -256,11 +264,48 @@ export function TeamDocsPage() {
     !!detail &&
     (draftTitle !== detail.title || draftContent !== (detail.content ?? ''))
 
+  function renderCreateRow(depth: number): ReactNode {
+    return (
+      <div
+        key="__create__"
+        style={{ paddingLeft: depth * 14 + 10 }}
+        className="flex items-center gap-2 py-1 pr-2"
+      >
+        {creating === 'FOLDER' ? (
+          <Folder className="size-4 shrink-0 text-brand-primary" />
+        ) : (
+          <FileText className="size-4 shrink-0 text-text-muted" />
+        )}
+        <input
+          autoFocus
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleCreate()
+            if (e.key === 'Escape') {
+              setCreating(null)
+              setNewName('')
+            }
+          }}
+          onBlur={() => {
+            if (!newName.trim()) {
+              setCreating(null)
+              setNewName('')
+            }
+          }}
+          placeholder={creating === 'FOLDER' ? '새 폴더 이름' : '새 문서 제목'}
+          className="min-w-0 flex-1 rounded-md border border-brand-border bg-background px-2 py-1 text-sm text-text-primary outline-none"
+        />
+      </div>
+    )
+  }
+
   function renderTree(parentId: string | null, depth: number): ReactNode[] {
     const children = childrenOf.get(parentId) ?? []
-    return children.flatMap((node) => {
+    const rows: ReactNode[] = []
+    for (const node of children) {
       const isOpen = expanded.has(node.id)
-      const row = (
+      rows.push(
         <button
           key={node.id}
           type="button"
@@ -279,13 +324,16 @@ export function TeamDocsPage() {
         >
           <NodeIcon node={node} open={isOpen} />
           <span className="truncate">{node.title}</span>
-        </button>
+        </button>,
       )
       if (node.type === 'FOLDER' && isOpen) {
-        return [row, ...renderTree(node.id, depth + 1)]
+        rows.push(...renderTree(node.id, depth + 1))
       }
-      return [row]
-    })
+    }
+    if (creating && targetParentId === parentId) {
+      rows.push(renderCreateRow(depth))
+    }
+    return rows
   }
 
   const targetLabel = selected
@@ -365,31 +413,10 @@ export function TeamDocsPage() {
           />
         </div>
 
-        {creating ? (
-          <div className="border-b border-surface-border-soft px-3 py-2">
-            <p className="mb-1 text-xs text-text-muted">
-              {targetLabel} 새 {creating === 'FOLDER' ? '폴더' : '문서'}
-            </p>
-            <Input
-              autoFocus
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleCreate()
-                if (e.key === 'Escape') {
-                  setCreating(null)
-                  setNewName('')
-                }
-              }}
-              placeholder="이름 입력 후 Enter"
-            />
-          </div>
-        ) : null}
-
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {treeQuery.isLoading ? (
             <p className="px-2 py-4 text-sm text-text-muted">불러오는 중…</p>
-          ) : nodes.length === 0 ? (
+          ) : nodes.length === 0 && !creating ? (
             <p className="px-2 py-4 text-sm text-text-muted">
               아직 문서가 없습니다. 폴더나 문서를 만들어보세요.
             </p>
