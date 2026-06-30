@@ -44,7 +44,16 @@ function DocsModule() {
   const [newName, setNewName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"fit" | "full">("fit");
+  const [dragOver, setDragOver] = useState(false);
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    node: TeamDocNode;
+    confirmDelete?: boolean;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadParentRef = useRef<string | null>(null);
 
   async function loadTree() {
     const token = getToken();
@@ -121,6 +130,49 @@ function DocsModule() {
     return map;
   }, [nodes]);
 
+  const nodeById = useMemo(() => {
+    const map = new Map<string, TeamDocNode>();
+    for (const n of nodes) map.set(n.id, n);
+    return map;
+  }, [nodes]);
+
+  function ancestorsOf(node: TeamDocNode): TeamDocNode[] {
+    const chain: TeamDocNode[] = [];
+    const guard = new Set<string>();
+    let pid = node.parentId;
+    while (pid && !guard.has(pid)) {
+      guard.add(pid);
+      const parent = nodeById.get(pid);
+      if (!parent) break;
+      chain.unshift(parent);
+      pid = parent.parentId;
+    }
+    return chain;
+  }
+
+  function Breadcrumb({ node }: { node: TeamDocNode }) {
+    return (
+      <div className="mb-2 flex flex-wrap items-center gap-1 text-[12px] text-slate-400">
+        <button onClick={() => setSelectedId(null)} className="hover:text-slate-600">
+          최상위
+        </button>
+        {ancestorsOf(node).map((a) => (
+          <span key={a.id} className="flex items-center gap-1">
+            <span>/</span>
+            <button
+              onClick={() => setSelectedId(a.id)}
+              className="hover:text-emerald-600"
+            >
+              {a.title}
+            </button>
+          </span>
+        ))}
+        <span>/</span>
+        <span className="font-bold text-slate-600">{node.title}</span>
+      </div>
+    );
+  }
+
   function onRowClick(node: TeamDocNode) {
     setSelectedId(node.id);
     if (node.type === "FOLDER") {
@@ -159,14 +211,16 @@ function DocsModule() {
   async function handleUpload(files: FileList | null) {
     const token = getToken();
     if (!token || !files || files.length === 0 || uploading) return;
+    const parentId = uploadParentRef.current ?? targetParentId;
+    uploadParentRef.current = null;
     setUploading(true);
     try {
       let last: TeamDocNode | null = null;
       for (const file of Array.from(files)) {
-        last = await uploadDocFile(token, targetParentId, file);
+        last = await uploadDocFile(token, parentId, file);
       }
-      if (targetParentId) {
-        setExpanded((prev) => new Set(prev).add(targetParentId));
+      if (parentId) {
+        setExpanded((prev) => new Set(prev).add(parentId));
       }
       await loadTree();
       if (last) setSelectedId(last.id);
@@ -232,6 +286,10 @@ function DocsModule() {
         <button
           key={node.id}
           onClick={() => onRowClick(node)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setMenu({ x: e.clientX, y: e.clientY, node });
+          }}
           style={{ paddingLeft: depth * 14 + 10 }}
           className={
             "flex w-full items-center gap-2 rounded-lg py-1.5 pr-2 text-left text-[13px] " +
@@ -258,7 +316,31 @@ function DocsModule() {
     : "최상위에";
 
   return (
-    <div className="flex-1 flex flex-col min-w-0">
+    <div
+      className="relative flex min-w-0 flex-1 flex-col"
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!dragOver) setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setDragOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        handleUpload(e.dataTransfer.files);
+      }}
+    >
+      {dragOver ? (
+        <div className="pointer-events-none absolute inset-0 z-50 m-3 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-emerald-400 bg-emerald-50/80">
+          <span className="text-3xl">⬆️</span>
+          <span className="text-[15px] font-bold text-emerald-700">
+            여기에 놓으면 {targetLabel} 업로드
+          </span>
+        </div>
+      ) : null}
       <PageHeader>
         <span className="text-[14px] font-bold tracking-tight text-slate-900">
           문서
@@ -363,6 +445,7 @@ function DocsModule() {
             </div>
           ) : selected.type === "DOC" ? (
             <div className="mx-auto w-full max-w-3xl p-6">
+              <Breadcrumb node={selected} />
               <div className="mb-3 flex items-center justify-between gap-3">
                 <input
                   value={draftTitle}
@@ -400,28 +483,60 @@ function DocsModule() {
             </div>
           ) : selected.type === "FILE" ? (
             <div className="mx-auto w-full max-w-3xl p-6">
+              <Breadcrumb node={selected} />
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="truncate text-[18px] font-black text-slate-900">
+                <h2 className="min-w-0 flex-1 truncate text-[18px] font-black text-slate-900">
                   {selected.title}
                 </h2>
-                <DeleteButton
-                  confirm={confirmDelete}
-                  onClick={() => {
-                    if (confirmDelete) handleDelete(selected);
-                    else setConfirmDelete(true);
-                  }}
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  {selected.contentType?.startsWith("image/") ? (
+                    <div className="flex overflow-hidden rounded-lg border border-slate-200">
+                      {(["fit", "full"] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => setPreviewMode(mode)}
+                          className={
+                            "px-2.5 py-1 text-[12px] font-bold " +
+                            (previewMode === mode
+                              ? "bg-emerald-500 text-white"
+                              : "bg-white text-slate-500 hover:bg-slate-50")
+                          }
+                        >
+                          {mode === "fit" ? "축소" : "원본"}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  <DeleteButton
+                    confirm={confirmDelete}
+                    onClick={() => {
+                      if (confirmDelete) handleDelete(selected);
+                      else setConfirmDelete(true);
+                    }}
+                  />
+                </div>
               </div>
               {selected.contentType?.startsWith("image/") ? (
-                <img
-                  src={selected.fileUrl ?? ""}
-                  alt={selected.title}
-                  className="max-h-[60vh] w-full rounded-xl border border-slate-200 bg-white object-contain"
-                />
+                <div className="flex justify-center rounded-xl border border-slate-200 bg-white p-3">
+                  <img
+                    src={selected.fileUrl ?? ""}
+                    alt={selected.title}
+                    className={
+                      "rounded-lg object-contain " +
+                      (previewMode === "fit"
+                        ? "max-h-[42vh] max-w-md"
+                        : "max-h-[78vh] w-full")
+                    }
+                  />
+                </div>
               ) : (
-                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white py-16 text-slate-400">
-                  <span className="text-4xl">📎</span>
-                  <span className="text-[14px]">{selected.fileName}</span>
+                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4">
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[22px]">
+                    📄
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[14px] font-bold text-slate-700">
+                    {selected.fileName}
+                  </span>
                 </div>
               )}
               <p className="mt-3 text-[12px] text-slate-400">
@@ -431,7 +546,8 @@ function DocsModule() {
           ) : (
             // FOLDER
             <div className="mx-auto w-full max-w-3xl p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
+              <Breadcrumb node={selected} />
+              <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="truncate text-[18px] font-black text-slate-900">
                   📂 {selected.title}
                 </h2>
@@ -444,11 +560,18 @@ function DocsModule() {
                   }}
                 />
               </div>
+              <p className="mb-3 text-[12px] text-slate-400">
+                폴더를 우클릭하면 하위 폴더·문서·파일을 추가할 수 있어요.
+              </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {(childrenOf.get(selected.id) ?? []).map((child) => (
                   <button
                     key={child.id}
                     onClick={() => onRowClick(child)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setMenu({ x: e.clientX, y: e.clientY, node: child });
+                    }}
                     className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left text-[13px] text-slate-700 hover:border-emerald-300 hover:bg-emerald-50"
                   >
                     <span className="shrink-0 text-[16px]">
@@ -459,7 +582,7 @@ function DocsModule() {
                 ))}
                 {(childrenOf.get(selected.id) ?? []).length === 0 ? (
                   <p className="col-span-full py-8 text-center text-[13px] text-slate-400">
-                    빈 폴더입니다. 위의 + 폴더 / + 문서 / 업로드로 채워보세요.
+                    빈 폴더입니다. 트리에서 이 폴더를 우클릭해 추가하세요.
                   </p>
                 ) : null}
               </div>
@@ -467,7 +590,97 @@ function DocsModule() {
           )}
         </section>
       </div>
+
+      {menu ? (
+        <>
+          <div
+            className="fixed inset-0 z-[60]"
+            onClick={() => setMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setMenu(null);
+            }}
+          />
+          <div
+            className="fixed z-[61] min-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl"
+            style={{ left: menu.x, top: menu.y }}
+          >
+            {menu.node.type === "FOLDER" ? (
+              <>
+                <ContextItem
+                  onClick={() => {
+                    setSelectedId(menu.node.id);
+                    setCreating("FOLDER");
+                    setNewName("");
+                    setMenu(null);
+                  }}
+                >
+                  📁 하위 폴더 추가
+                </ContextItem>
+                <ContextItem
+                  onClick={() => {
+                    setSelectedId(menu.node.id);
+                    setCreating("DOC");
+                    setNewName("");
+                    setMenu(null);
+                  }}
+                >
+                  📝 문서 추가
+                </ContextItem>
+                <ContextItem
+                  onClick={() => {
+                    uploadParentRef.current = menu.node.id;
+                    setMenu(null);
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  ⬆️ 파일 업로드
+                </ContextItem>
+                <div className="my-1 h-px bg-slate-100" />
+              </>
+            ) : null}
+            <ContextItem
+              danger
+              onClick={() => {
+                if (menu.confirmDelete) {
+                  const target = menu.node;
+                  setMenu(null);
+                  handleDelete(target);
+                } else {
+                  setMenu({ ...menu, confirmDelete: true });
+                }
+              }}
+            >
+              {menu.confirmDelete ? "정말 삭제할까요?" : "🗑 삭제"}
+            </ContextItem>
+          </div>
+        </>
+      ) : null}
     </div>
+  );
+}
+
+function ContextItem({
+  danger,
+  onClick,
+  children,
+}: {
+  danger?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        "flex w-full items-center px-3.5 py-2 text-left text-[13px] font-medium " +
+        (danger
+          ? "text-red-600 hover:bg-red-50"
+          : "text-slate-700 hover:bg-slate-100")
+      }
+    >
+      {children}
+    </button>
   );
 }
 
