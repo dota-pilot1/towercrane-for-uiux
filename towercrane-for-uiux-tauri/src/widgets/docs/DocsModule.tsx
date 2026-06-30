@@ -93,6 +93,15 @@ function DocsModule() {
     setConfirmDelete(false);
   }, [selectedId]);
 
+  // 생성 시작 시 대상 폴더를 펼쳐 인라인 입력이 보이게
+  useEffect(() => {
+    if (creating && targetParentId) {
+      setExpanded((prev) =>
+        prev.has(targetParentId) ? prev : new Set(prev).add(targetParentId),
+      );
+    }
+  }, [creating, targetParentId]);
+
   // DOC 선택 시 본문 로드
   useEffect(() => {
     const token = getToken();
@@ -278,11 +287,46 @@ function DocsModule() {
     !!detail &&
     (draftTitle !== detail.title || draftContent !== (detail.content ?? ""));
 
+  function renderCreateRow(depth: number): ReactNode {
+    return (
+      <div
+        key="__create__"
+        style={{ paddingLeft: depth * 14 + 10 }}
+        className="flex items-center gap-2 py-1 pr-2"
+      >
+        <span className="shrink-0 text-[14px]">
+          {creating === "FOLDER" ? "📁" : "📝"}
+        </span>
+        <input
+          autoFocus
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleCreate();
+            if (e.key === "Escape") {
+              setCreating(null);
+              setNewName("");
+            }
+          }}
+          onBlur={() => {
+            if (!newName.trim()) {
+              setCreating(null);
+              setNewName("");
+            }
+          }}
+          placeholder={creating === "FOLDER" ? "새 폴더 이름" : "새 문서 제목"}
+          className="min-w-0 flex-1 rounded-md border border-emerald-400 bg-white px-2 py-1 text-[13px] text-slate-800 outline-none"
+        />
+      </div>
+    );
+  }
+
   function renderTree(parentId: string | null, depth: number): ReactNode[] {
     const children = childrenOf.get(parentId) ?? [];
-    return children.flatMap((node) => {
+    const rows: ReactNode[] = [];
+    for (const node of children) {
       const isOpen = expanded.has(node.id);
-      const row = (
+      rows.push(
         <button
           key={node.id}
           onClick={() => onRowClick(node)}
@@ -300,13 +344,16 @@ function DocsModule() {
         >
           <span className="shrink-0 text-[14px]">{nodeIcon(node, isOpen)}</span>
           <span className="truncate">{node.title}</span>
-        </button>
+        </button>,
       );
       if (node.type === "FOLDER" && isOpen) {
-        return [row, ...renderTree(node.id, depth + 1)];
+        rows.push(...renderTree(node.id, depth + 1));
       }
-      return [row];
-    });
+    }
+    if (creating && targetParentId === parentId) {
+      rows.push(renderCreateRow(depth));
+    }
+    return rows;
   }
 
   const targetLabel = selected
@@ -393,32 +440,10 @@ function DocsModule() {
             />
           </div>
 
-          {creating ? (
-            <div className="border-b border-slate-100 px-3 py-2">
-              <p className="mb-1 text-[11px] text-slate-400">
-                {targetLabel} 새 {creating === "FOLDER" ? "폴더" : "문서"}
-              </p>
-              <input
-                autoFocus
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreate();
-                  if (e.key === "Escape") {
-                    setCreating(null);
-                    setNewName("");
-                  }
-                }}
-                placeholder="이름 입력 후 Enter"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[13px] text-slate-800 outline-none focus:border-emerald-500 focus:bg-white"
-              />
-            </div>
-          ) : null}
-
           <div className="min-h-0 flex-1 overflow-y-auto py-2">
             {loading ? (
               <p className="px-3 py-4 text-[13px] text-slate-400">불러오는 중…</p>
-            ) : nodes.length === 0 ? (
+            ) : nodes.length === 0 && !creating ? (
               <p className="px-3 py-4 text-[13px] text-slate-400">
                 아직 문서가 없습니다. 폴더나 문서를 만들어보세요.
               </p>
