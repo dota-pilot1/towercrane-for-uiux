@@ -458,6 +458,7 @@ export function TeamDocsPage() {
           selected={selectedId === node.id}
           hint={dropHint?.id === node.id ? dropHint.kind : null}
           count={node.type === 'FOLDER' ? (childrenOf.get(node.id)?.length ?? 0) : 0}
+          intoActive={dropHint?.kind === 'into'}
           onClick={() => onRowClick(node)}
           onContextMenu={(e) => {
             e.preventDefault()
@@ -841,18 +842,21 @@ function SortableRow({
   selected: boolean
   hint: 'into' | 'before' | 'after' | null
   count: number
+  intoActive: boolean
   onClick: () => void
   onContextMenu: (e: ReactMouseEvent<HTMLButtonElement>) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: node.id })
   const isFolder = node.type === 'FOLDER'
+  // '폴더 안으로' 드래그 중에는 주변 항목의 순서변경 밀림을 끈다(드래그 중 항목만 이동)
+  const suppressShift = intoActive && !isDragging
   return (
     <div
       ref={setNodeRef}
       className="relative"
       style={{
-        transform: CSS.Transform.toString(transform),
+        transform: suppressShift ? undefined : CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : undefined,
       }}
