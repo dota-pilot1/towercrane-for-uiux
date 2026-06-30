@@ -222,20 +222,25 @@ export function TeamDocsPage() {
     return ids
   }, [childrenOf, expanded])
 
-  // 동작 판정: 오른쪽으로 끌어 들여쓰기(>24px)하고 대상이 폴더면 '안으로',
-  // 그 외엔 현재 위치 기준 위/아래로 순서변경(인덱스 기반이라 안정적)
+  // 동작 판정.
+  // - 폴더: 같은 레벨 순서변경만 (포함관계 변경 불가 → 다른 레벨 대상엔 null)
+  // - 파일/문서: 오른쪽 들여쓰기(>24px)+폴더 위면 '안으로', 그 외엔 위/아래 순서변경
   function kindFor(
     event: DragOverEvent | DragEndEvent,
-    activeId: string,
+    activeNode: TeamDocNode,
     overNode: TeamDocNode,
-  ): 'into' | 'before' | 'after' {
+  ): 'into' | 'before' | 'after' | null {
+    const ai = visibleIds.indexOf(activeNode.id)
+    const oi = visibleIds.indexOf(overNode.id)
+    const beside = ai >= 0 && oi >= 0 && ai < oi ? 'after' : 'before'
+    if (activeNode.type === 'FOLDER') {
+      return overNode.parentId === activeNode.parentId ? beside : null
+    }
     const indent = event.delta?.x ?? 0
-    if (overNode.type === 'FOLDER' && overNode.id !== activeId && indent > 24) {
+    if (overNode.type === 'FOLDER' && overNode.id !== activeNode.id && indent > 24) {
       return 'into'
     }
-    const ai = visibleIds.indexOf(activeId)
-    const oi = visibleIds.indexOf(overNode.id)
-    return ai >= 0 && oi >= 0 && ai < oi ? 'after' : 'before'
+    return beside
   }
 
   async function moveInto(node: TeamDocNode, newParentId: string | null) {
@@ -279,16 +284,14 @@ export function TeamDocsPage() {
 
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
-    if (!over || active.id === over.id) {
+    const activeNode = nodeById.get(String(active.id))
+    const overNode = over ? nodeById.get(String(over.id)) : null
+    if (!activeNode || !overNode || active.id === over?.id) {
       setDropHint(null)
       return
     }
-    const overNode = nodeById.get(String(over.id))
-    if (!overNode) {
-      setDropHint(null)
-      return
-    }
-    setDropHint({ id: overNode.id, kind: kindFor(event, String(active.id), overNode) })
+    const kind = kindFor(event, activeNode, overNode)
+    setDropHint(kind ? { id: overNode.id, kind } : null)
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -302,7 +305,8 @@ export function TeamDocsPage() {
     const kind =
       hint && hint.id === overNode.id
         ? hint.kind
-        : kindFor(event, activeNode.id, overNode)
+        : kindFor(event, activeNode, overNode)
+    if (!kind) return
     if (kind === 'into') {
       void moveInto(activeNode, overNode.id)
       return
