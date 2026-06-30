@@ -81,6 +81,7 @@ function DocsModule() {
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadParentRef = useRef<string | null>(null);
+  const didInitExpand = useRef(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -132,6 +133,19 @@ function DocsModule() {
       );
     }
   }, [creating, targetParentId]);
+
+  // 최초 로드 시 최상위(1차) 폴더는 펼쳐둔다
+  useEffect(() => {
+    if (didInitExpand.current || nodes.length === 0) return;
+    didInitExpand.current = true;
+    setExpanded(
+      new Set(
+        nodes
+          .filter((n) => n.parentId === null && n.type === "FOLDER")
+          .map((n) => n.id),
+      ),
+    );
+  }, [nodes]);
 
   // DOC 선택 시 본문 로드
   useEffect(() => {
@@ -474,6 +488,7 @@ function DocsModule() {
           open={isOpen}
           selected={selectedId === node.id}
           hint={dropHint?.id === node.id ? dropHint.kind : null}
+          count={node.type === "FOLDER" ? (childrenOf.get(node.id)?.length ?? 0) : 0}
           onClick={() => onRowClick(node)}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -839,6 +854,7 @@ function SortableRow({
   open,
   selected,
   hint,
+  count,
   onClick,
   onContextMenu,
 }: {
@@ -847,11 +863,13 @@ function SortableRow({
   open: boolean;
   selected: boolean;
   hint: "into" | "before" | "after" | null;
+  count: number;
   onClick: () => void;
   onContextMenu: (e: ReactMouseEvent<HTMLButtonElement>) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: node.id });
+  const isFolder = node.type === "FOLDER";
   return (
     <div
       ref={setNodeRef}
@@ -870,9 +888,9 @@ function SortableRow({
         {...listeners}
         onClick={onClick}
         onContextMenu={onContextMenu}
-        style={{ paddingLeft: depth * 14 + 10 }}
+        style={{ paddingLeft: depth * 14 + 8 }}
         className={
-          "flex w-full items-center gap-2 rounded-lg py-1.5 pr-2 text-left text-[13px] " +
+          "flex w-full items-center gap-1.5 rounded-lg py-1.5 pr-2 text-left text-[13px] " +
           (hint === "into"
             ? "bg-emerald-50 text-emerald-700 ring-2 ring-inset ring-emerald-400"
             : selected
@@ -880,8 +898,23 @@ function SortableRow({
               : "text-slate-700 hover:bg-slate-100")
         }
       >
+        {isFolder ? (
+          <span
+            className={
+              "inline-block w-3 shrink-0 text-[10px] text-slate-400 transition-transform " +
+              (open ? "rotate-90" : "")
+            }
+          >
+            ▶
+          </span>
+        ) : (
+          <span className="w-3 shrink-0" />
+        )}
         <span className="shrink-0 text-[14px]">{nodeIcon(node, open)}</span>
-        <span className="truncate">{node.title}</span>
+        <span className="min-w-0 flex-1 truncate">{node.title}</span>
+        {isFolder && count > 0 ? (
+          <span className="shrink-0 text-[11px] text-slate-400">{count}</span>
+        ) : null}
       </button>
       {hint === "after" ? (
         <div className="pointer-events-none absolute inset-x-1 -bottom-px z-10 h-0.5 rounded-full bg-emerald-500" />
