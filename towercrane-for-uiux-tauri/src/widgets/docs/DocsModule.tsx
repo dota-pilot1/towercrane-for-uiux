@@ -409,6 +409,12 @@ function DocsModule() {
   }
 
   function onRowClick(node: TeamDocNode) {
+    if (
+      docDirty &&
+      node.id !== selectedId &&
+      !window.confirm("저장하지 않은 변경사항이 있습니다. 이동할까요?")
+    )
+      return;
     setSelectedId(node.id);
     if (node.type === "FOLDER") {
       setExpanded((prev) => {
@@ -513,6 +519,20 @@ function DocsModule() {
     !!detail &&
     (draftTitle !== detail.title || draftContent !== (detail.content ?? ""));
 
+  // Cmd+S / Ctrl+S 저장
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        handleSaveRef.current();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   function renderCreateRow(depth: number): ReactNode {
     return (
       <div
@@ -528,6 +548,7 @@ function DocsModule() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) return;
             if (e.key === "Enter") handleCreate();
             if (e.key === "Escape") {
               setCreating(null);
@@ -705,41 +726,53 @@ function DocsModule() {
               </span>
             </div>
           ) : selected.type === "DOC" ? (
-            <div className="mx-auto w-full max-w-3xl px-8 py-7">
-              <Breadcrumb node={selected} />
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <input
-                  value={draftTitle}
-                  onChange={(e) => setDraftTitle(e.target.value)}
-                  className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-1 text-[20px] font-black text-slate-900 outline-none hover:border-slate-200 focus:border-emerald-500 focus:bg-white"
-                />
-                <DeleteButton
-                  confirm={confirmDelete}
-                  onClick={() => {
-                    if (confirmDelete) handleDelete(selected);
-                    else setConfirmDelete(true);
-                  }}
-                />
+            <div className="flex h-full flex-col">
+              {/* 스크롤 영역 */}
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <div className="mx-auto w-full max-w-[1100px] px-8 py-6">
+                  <Breadcrumb node={selected} />
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <input
+                      value={draftTitle}
+                      onChange={(e) => setDraftTitle(e.target.value)}
+                      className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-1 text-[20px] font-black text-slate-900 outline-none hover:border-slate-200 focus:border-emerald-500 focus:bg-white"
+                    />
+                    <DeleteButton
+                      confirm={confirmDelete}
+                      onClick={() => {
+                        if (confirmDelete) handleDelete(selected);
+                        else setConfirmDelete(true);
+                      }}
+                    />
+                  </div>
+                  <textarea
+                    value={draftContent}
+                    onChange={(e) => setDraftContent(e.target.value)}
+                    placeholder="내용을 입력하세요. (마크다운)"
+                    className="w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-[14px] leading-relaxed text-slate-800 outline-none focus:border-emerald-500"
+                    style={{ minHeight: "calc(100dvh - 22rem)" }}
+                  />
+                </div>
               </div>
-              <textarea
-                value={draftContent}
-                onChange={(e) => setDraftContent(e.target.value)}
-                placeholder="내용을 입력하세요. (마크다운)"
-                className="min-h-[420px] w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-[14px] leading-relaxed text-slate-800 outline-none focus:border-emerald-500"
-              />
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-[12px] text-slate-400">
-                  {detail
-                    ? `${detail.updatedByName ?? "-"} · ${formatTime(detail.updatedAt)} 수정`
-                    : "불러오는 중…"}
-                </span>
-                <button
-                  onClick={handleSave}
-                  disabled={!docDirty || saving || !draftTitle.trim()}
-                  className="rounded-lg bg-emerald-500 px-5 py-2 text-[14px] font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  {saving ? "저장 중…" : "저장"}
-                </button>
+              {/* 하단 sticky 푸터 */}
+              <div className="shrink-0 border-t border-slate-200 bg-white px-8 py-3">
+                <div className="mx-auto flex max-w-[1100px] items-center justify-between">
+                  <span className="text-[12px] text-slate-400">
+                    {detail
+                      ? `${detail.updatedByName ?? "-"} · ${formatTime(detail.updatedAt)} 수정`
+                      : "불러오는 중…"}
+                    {docDirty ? (
+                      <span className="ml-2 text-emerald-500">· 미저장</span>
+                    ) : null}
+                  </span>
+                  <button
+                    onClick={handleSave}
+                    disabled={!docDirty || saving || !draftTitle.trim()}
+                    className="rounded-lg bg-emerald-500 px-5 py-2 text-[14px] font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    {saving ? "저장 중…" : "저장"}
+                  </button>
+                </div>
               </div>
             </div>
           ) : selected.type === "FILE" ? (

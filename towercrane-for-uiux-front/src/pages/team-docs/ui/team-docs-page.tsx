@@ -38,7 +38,7 @@ import type { TeamDocNode } from '../../../entities/team-docs/model/types'
 import { uploadFile } from '../../../shared/api/upload'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
-import { Textarea } from '../../../shared/ui/textarea'
+import { LexicalEditor } from '../../../shared/ui/lexical/lexical-editor'
 import {
   useCreateTeamDocDocument,
   useCreateTeamDocFile,
@@ -62,15 +62,33 @@ function formatDateTime(value?: string | null) {
   }).format(date)
 }
 
-function NodeIcon({ node, open }: { node: TeamDocNode; open?: boolean }) {
+function NodeIcon({
+  node,
+  open,
+  className = 'size-4',
+}: {
+  node: TeamDocNode
+  open?: boolean
+  className?: string
+}) {
   if (node.type === 'FOLDER')
     return open ? (
-      <FolderOpen className="size-4 text-brand-primary" />
+      <FolderOpen className={`${className} text-brand-primary`} />
     ) : (
-      <Folder className="size-4 text-brand-primary" />
+      <Folder className={`${className} text-brand-primary`} />
     )
-  if (node.type === 'DOC') return <FileText className="size-4 text-text-muted" />
-  return <Paperclip className="size-4 text-text-muted" />
+  if (node.type === 'DOC')
+    return <FileText className={`${className} text-text-muted`} />
+  return <Paperclip className={`${className} text-text-muted`} />
+}
+
+function nodeKindLabel(node: TeamDocNode) {
+  if (node.type === 'FOLDER') return '폴더'
+  if (node.type === 'DOC') return '문서'
+  const name = node.fileName ?? node.title
+  const dot = name.lastIndexOf('.')
+  const ext = dot > 0 ? name.slice(dot + 1).toUpperCase() : ''
+  return ext && ext.length <= 5 ? ext : '파일'
 }
 
 export function TeamDocsPage() {
@@ -322,6 +340,12 @@ export function TeamDocsPage() {
   }
 
   function onRowClick(node: TeamDocNode) {
+    if (
+      docDirty &&
+      node.id !== selectedId &&
+      !window.confirm('저장하지 않은 변경사항이 있습니다. 이동할까요?')
+    )
+      return
     setSelectedId(node.id)
     if (node.type === 'FOLDER') {
       setExpanded((prev) => {
@@ -408,6 +432,20 @@ export function TeamDocsPage() {
     !!detail &&
     (draftTitle !== detail.title || draftContent !== (detail.content ?? ''))
 
+  // Cmd+S / Ctrl+S 저장
+  const handleSaveRef = useRef(handleSave)
+  handleSaveRef.current = handleSave
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        handleSaveRef.current()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   function renderCreateRow(depth: number): ReactNode {
     return (
       <div
@@ -425,6 +463,7 @@ export function TeamDocsPage() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) return
             if (e.key === 'Enter') handleCreate()
             if (e.key === 'Escape') {
               setCreating(null)
@@ -589,52 +628,66 @@ export function TeamDocsPage() {
             </span>
           </div>
         ) : selected.type === 'DOC' ? (
-          <div className="mx-auto w-full max-w-3xl p-6">
-            <Breadcrumb node={selected} />
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <Input
-                value={draftTitle}
-                onChange={(e) => setDraftTitle(e.target.value)}
-                className="flex-1 text-lg font-black"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                tone="danger"
-                onClick={() => {
-                  if (confirmDelete) handleDelete(selected)
-                  else setConfirmDelete(true)
-                }}
-              >
-                <Trash2 className="mr-1.5 size-4" />
-                {confirmDelete ? '정말 삭제?' : '삭제'}
-              </Button>
+          <div className="flex h-full flex-col">
+            {/* 스크롤 영역 */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="mx-auto w-full max-w-[1100px] px-8 py-6">
+                <Breadcrumb node={selected} />
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <Input
+                    value={draftTitle}
+                    onChange={(e) => setDraftTitle(e.target.value)}
+                    className="flex-1 text-lg font-black"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    tone="danger"
+                    onClick={() => {
+                      if (confirmDelete) handleDelete(selected)
+                      else setConfirmDelete(true)
+                    }}
+                  >
+                    <Trash2 className="mr-1.5 size-4" />
+                    {confirmDelete ? '정말 삭제?' : '삭제'}
+                  </Button>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-surface-border">
+                  <LexicalEditor
+                    key={selected.id}
+                    initialState={draftContent}
+                    onChange={setDraftContent}
+                    placeholder="내용을 입력하세요..."
+                    minHeight="calc(100dvh - 22rem)"
+                  />
+                </div>
+              </div>
             </div>
-            <Textarea
-              value={draftContent}
-              onChange={(e) => setDraftContent(e.target.value)}
-              placeholder="내용을 입력하세요. (마크다운)"
-              className="min-h-[420px] resize-y"
-            />
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs text-text-muted">
-                {detail
-                  ? `${detail.updatedByName ?? '-'} · ${formatDateTime(detail.updatedAt)} 수정`
-                  : '불러오는 중…'}
-              </span>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={!docDirty || updateNode.isPending || !draftTitle.trim()}
-              >
-                <Save className="mr-2 size-4" />
-                {updateNode.isPending ? '저장 중' : '저장'}
-              </Button>
+            {/* 하단 sticky 푸터 */}
+            <div className="shrink-0 border-t border-surface-border-soft px-8 py-3">
+              <div className="mx-auto flex max-w-[1100px] items-center justify-between">
+                <span className="text-xs text-text-muted">
+                  {detail
+                    ? `${detail.updatedByName ?? '-'} · ${formatDateTime(detail.updatedAt)} 수정`
+                    : '불러오는 중…'}
+                  {docDirty ? (
+                    <span className="ml-2 text-brand-primary">· 미저장</span>
+                  ) : null}
+                </span>
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={!docDirty || updateNode.isPending || !draftTitle.trim()}
+                >
+                  <Save className="mr-2 size-4" />
+                  {updateNode.isPending ? '저장 중' : '저장'}
+                </Button>
+              </div>
             </div>
           </div>
         ) : selected.type === 'FILE' ? (
-          <div className="mx-auto w-full max-w-3xl p-6">
+          <div className="mx-auto w-full max-w-[1100px] px-8 py-6">
             <Breadcrumb node={selected} />
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="min-w-0 flex-1 truncate text-lg font-black text-text-primary">
@@ -704,13 +757,22 @@ export function TeamDocsPage() {
             </p>
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-3xl p-6">
+          <div className="mx-auto w-full max-w-5xl px-8 py-7">
             <Breadcrumb node={selected} />
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 truncate text-lg font-black text-text-primary">
-                <FolderOpen className="size-5 text-brand-primary" />
-                {selected.title}
-              </h2>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-glass">
+                  <FolderOpen className="size-6 text-brand-primary" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="truncate text-lg font-black text-text-primary">
+                    {selected.title}
+                  </h2>
+                  <p className="text-xs text-text-muted">
+                    항목 {(childrenOf.get(selected.id) ?? []).length}개
+                  </p>
+                </div>
+              </div>
               <Button
                 type="button"
                 variant="secondary"
@@ -725,29 +787,49 @@ export function TeamDocsPage() {
                 {confirmDelete ? '정말 삭제?' : '폴더 삭제'}
               </Button>
             </div>
-            <p className="mb-3 text-xs text-text-muted">
-              폴더를 우클릭하면 하위 폴더·문서·파일을 추가할 수 있어요.
-            </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {(childrenOf.get(selected.id) ?? []).map((child) => (
-                <button
-                  key={child.id}
-                  type="button"
-                  onClick={() => onRowClick(child)}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setMenu({ x: e.clientX, y: e.clientY, node: child })
-                  }}
-                  className="flex items-center gap-2 rounded-md border border-surface-border bg-surface-muted px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass"
-                >
-                  <NodeIcon node={child} />
-                  <span className="truncate">{child.title}</span>
-                </button>
-              ))}
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
+              {(childrenOf.get(selected.id) ?? []).map((child) => {
+                const isFolder = child.type === 'FOLDER'
+                const count = isFolder
+                  ? (childrenOf.get(child.id)?.length ?? 0)
+                  : 0
+                return (
+                  <button
+                    key={child.id}
+                    type="button"
+                    onClick={() => onRowClick(child)}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      setMenu({ x: e.clientX, y: e.clientY, node: child })
+                    }}
+                    className="group flex flex-col gap-2.5 rounded-xl border border-surface-border bg-surface-raised p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-brand-border hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between">
+                      <NodeIcon node={child} className="size-7" />
+                      {isFolder ? (
+                        <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] font-bold text-text-muted group-hover:bg-brand-glass group-hover:text-brand-primary">
+                          {count}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 break-all text-sm font-bold text-text-secondary">
+                        {child.title}
+                      </p>
+                      <p className="mt-0.5 text-[11px] font-medium text-text-muted">
+                        {nodeKindLabel(child)}
+                      </p>
+                    </div>
+                  </button>
+                )
+              })}
               {(childrenOf.get(selected.id) ?? []).length === 0 ? (
-                <p className="col-span-full py-8 text-center text-sm text-text-muted">
-                  빈 폴더입니다. 트리에서 이 폴더를 우클릭해 추가하세요.
-                </p>
+                <div className="col-span-full flex flex-col items-center gap-1 py-14 text-center">
+                  <Folder className="size-8 text-text-muted opacity-60" />
+                  <p className="text-sm text-text-muted">
+                    빈 폴더입니다. 트리에서 이 폴더를 우클릭해 추가하세요.
+                  </p>
+                </div>
               ) : null}
             </div>
           </div>
@@ -832,7 +914,9 @@ function SortableRow({
   depth,
   open,
   selected,
-  into,
+  hint,
+  count,
+  intoActive,
   onClick,
   onContextMenu,
 }: {
