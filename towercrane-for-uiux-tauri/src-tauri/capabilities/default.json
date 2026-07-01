@@ -9,6 +9,9 @@
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "core:window:allow-get-all-windows",
+    "core:webview:allow-create-webview-window",
     "opener:default",
     "opener:allow-open-url",
     "updater:default",
@@ -20,7 +23,9 @@
         { "url": "http://127.0.0.1:3000/*" },
         { "url": "https://hibot-docu.com/*" },
         { "url": "https://api.hibot-docu.com/*" },
-        { "url": "https://hibot-docu.s3.ap-northeast-2.amazonaws.com/*" }
+        { "url": "https://hibot-docu.s3.ap-northeast-2.amazonaws.com/*" },
+        { "url": "http://*/*" },
+        { "url": "https://*/*" }
       ]
     }
   ]

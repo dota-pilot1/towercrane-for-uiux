@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Login from "../features/auth/Login";
 import { getToken, logout as apiLogout, me, setToken, type User } from "../features/auth/api";
 import AppShell from "../widgets/app-shell/AppShell";
 import { ToastViewport } from "../shared/ui/Toast";
 import { checkForUpdates } from "../shared/update/checkForUpdates";
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+});
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -46,10 +51,10 @@ function App() {
   }
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <AppShell user={user} onUserUpdate={setUser} onLogout={handleLogout} />
       <ToastViewport />
-    </>
+    </QueryClientProvider>
   );
 }
 

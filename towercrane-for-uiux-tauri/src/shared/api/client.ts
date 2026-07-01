@@ -6,6 +6,11 @@ export const API_BASE = import.meta.env.DEV
   ? "http://localhost:3000/api"
   : "https://api.hibot-docu.com/api";
 
+// 웹 프론트 오리진 (개발도구 등 web 화면 임베드/새 창용). dev=vite front(5174), prod=운영
+export const WEB_BASE = import.meta.env.DEV
+  ? "http://localhost:5174"
+  : "https://hibot-docu.com";
+
 const TOKEN_KEY = "towercrane.token";
 
 export function getToken(): string | null {

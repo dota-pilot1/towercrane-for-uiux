@@ -5,6 +5,7 @@ import ChatModule from "../chat/ChatModule";
 import TodoModule from "../task/TodoModule";
 import IssueModule from "../issue/IssueModule";
 import DocsModule from "../docs/DocsModule";
+import ApiDocModule from "../apidoc/ApiDocModule";
 import HomePage from "../home/HomePage";
 import ProfilePage from "../profile/ProfilePage";
 import PageHeader from "../../shared/ui/PageHeader";
@@ -16,7 +17,7 @@ type Props = {
   onLogout: () => void;
 };
 
-type ModuleId = "messenger" | "chat" | "todo" | "issue" | "docs";
+type ModuleId = "messenger" | "chat" | "todo" | "issue" | "docs" | "apidoc";
 type ViewId = "home" | "profile" | ModuleId;
 
 type ModuleDef = {
@@ -32,6 +33,7 @@ const MODULES: ModuleDef[] = [
   { id: "todo", label: "할일", icon: "✅", ready: true },
   { id: "issue", label: "이슈", icon: "🐛", ready: true },
   { id: "docs", label: "문서", icon: "📄", ready: true },
+  { id: "apidoc", label: "Postman", icon: "🧪", ready: true },
 ];
 
 function AppShell({ user, onUserUpdate, onLogout }: Props) {
@@ -136,6 +138,8 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <IssueModule user={user} />
         ) : activeModule?.id === "docs" ? (
           <DocsModule />
+        ) : activeModule?.id === "apidoc" ? (
+          <ApiDocModule isAdmin={user.role === "admin"} />
         ) : (
           <PlaceholderModule
             label={activeModule?.label ?? ""}
