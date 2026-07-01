@@ -17,6 +17,8 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  arrayMove,
+  rectSortingStrategy,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
@@ -53,6 +55,15 @@ function nodeIcon(node: TeamDocNode, open: boolean) {
   return "📎";
 }
 
+function nodeKindLabel(node: TeamDocNode) {
+  if (node.type === "FOLDER") return "폴더";
+  if (node.type === "DOC") return "문서";
+  const name = node.fileName ?? node.title;
+  const dot = name.lastIndexOf(".");
+  const ext = dot > 0 ? name.slice(dot + 1).toUpperCase() : "";
+  return ext && ext.length <= 5 ? ext : "파일";
+}
+
 function DocsModule() {
   const [nodes, setNodes] = useState<TeamDocNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +79,12 @@ function DocsModule() {
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [previewMode, setPreviewMode] = useState<"fit" | "full">("fit");
+  const [folderView, setFolderView] = useState<"card" | "list">(() =>
+    (typeof localStorage !== "undefined" &&
+      localStorage.getItem("docs.folderView")) === "list"
+      ? "list"
+      : "card",
+  );
   const [dragOver, setDragOver] = useState(false);
   const [menu, setMenu] = useState<{
     x: number;
@@ -205,24 +222,37 @@ function DocsModule() {
   }
 
   function Breadcrumb({ node }: { node: TeamDocNode }) {
+    const parent = node.parentId ? nodeById.get(node.parentId) : null;
     return (
-      <div className="mb-2 flex flex-wrap items-center gap-1 text-[12px] text-slate-400">
-        <button onClick={() => setSelectedId(null)} className="hover:text-slate-600">
-          최상위
+      <div className="mb-3 flex items-center gap-2">
+        <button
+          onClick={() => setSelectedId(node.parentId)}
+          title={parent ? `${parent.title}(으)로` : "최상위로"}
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-[15px] text-slate-500 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-600"
+        >
+          ←
         </button>
-        {ancestorsOf(node).map((a) => (
-          <span key={a.id} className="flex items-center gap-1">
-            <span>/</span>
-            <button
-              onClick={() => setSelectedId(a.id)}
-              className="hover:text-emerald-600"
-            >
-              {a.title}
-            </button>
-          </span>
-        ))}
-        <span>/</span>
-        <span className="font-bold text-slate-600">{node.title}</span>
+        <div className="flex min-w-0 flex-wrap items-center gap-1 text-[12px] text-slate-400">
+          <button
+            onClick={() => setSelectedId(null)}
+            className="hover:text-slate-600"
+          >
+            최상위
+          </button>
+          {ancestorsOf(node).map((a) => (
+            <span key={a.id} className="flex items-center gap-1">
+              <span>/</span>
+              <button
+                onClick={() => setSelectedId(a.id)}
+                className="hover:text-emerald-600"
+              >
+                {a.title}
+              </button>
+            </span>
+          ))}
+          <span>/</span>
+          <span className="font-bold text-slate-600">{node.title}</span>
+        </div>
       </div>
     );
   }
@@ -334,6 +364,48 @@ function DocsModule() {
       return;
     }
     void placeBeside(activeNode, overNode, kind === "before");
+  }
+
+  // 폴더 상세 뷰(카드/목록)에서 같은 폴더 안 항목 순서변경
+  async function persistFolderOrder(parentId: string, orderedIds: string[]) {
+    const token = getToken();
+    if (!token) return;
+    // 낙관적 반영 (childrenOf 가 orderIdx 로 정렬하므로 즉시 재배치됨)
+    setNodes((prev) =>
+      prev.map((n) => {
+        if (n.parentId !== parentId) return n;
+        const idx = orderedIds.indexOf(n.id);
+        return idx >= 0 ? { ...n, orderIdx: idx } : n;
+      }),
+    );
+    try {
+      await reorderDocNodes(
+        token,
+        parentId,
+        orderedIds.map((id, i) => ({ id, orderIdx: i })),
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "순서를 바꾸지 못했습니다.");
+      await loadTree();
+    }
+  }
+
+  function handleFolderDragEnd(event: DragEndEvent, siblingIds: string[]) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !selected) return;
+    const from = siblingIds.indexOf(String(active.id));
+    const to = siblingIds.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    void persistFolderOrder(selected.id, arrayMove(siblingIds, from, to));
+  }
+
+  function changeFolderView(mode: "card" | "list") {
+    setFolderView(mode);
+    try {
+      localStorage.setItem("docs.folderView", mode);
+    } catch {
+      // ignore
+    }
   }
 
   function onRowClick(node: TeamDocNode) {
@@ -633,7 +705,7 @@ function DocsModule() {
               </span>
             </div>
           ) : selected.type === "DOC" ? (
-            <div className="mx-auto w-full max-w-3xl p-6">
+            <div className="mx-auto w-full max-w-3xl px-8 py-7">
               <Breadcrumb node={selected} />
               <div className="mb-3 flex items-center justify-between gap-3">
                 <input
@@ -671,7 +743,7 @@ function DocsModule() {
               </div>
             </div>
           ) : selected.type === "FILE" ? (
-            <div className="mx-auto w-full max-w-3xl p-6">
+            <div className="mx-auto w-full max-w-5xl px-8 py-7">
               <Breadcrumb node={selected} />
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="min-w-0 flex-1 truncate text-[18px] font-black text-slate-900">
@@ -706,17 +778,24 @@ function DocsModule() {
                 </div>
               </div>
               {selected.contentType?.startsWith("image/") ? (
-                <div className="flex justify-center rounded-xl border border-slate-200 bg-white p-3">
-                  <img
-                    src={selected.fileUrl ?? ""}
-                    alt={selected.title}
+                <div className="flex justify-center">
+                  <div
                     className={
-                      "rounded-lg object-contain " +
-                      (previewMode === "fit"
-                        ? "max-h-[42vh] max-w-md"
-                        : "max-h-[78vh] w-full")
+                      "rounded-xl border border-slate-200 bg-white p-3 " +
+                      (previewMode === "full" ? "w-full" : "")
                     }
-                  />
+                  >
+                    <img
+                      src={selected.fileUrl ?? ""}
+                      alt={selected.title}
+                      className={
+                        "rounded-lg object-contain " +
+                        (previewMode === "fit"
+                          ? "max-h-[60vh] max-w-full"
+                          : "max-h-[80vh] w-full")
+                      }
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4">
@@ -734,47 +813,114 @@ function DocsModule() {
             </div>
           ) : (
             // FOLDER
-            <div className="mx-auto w-full max-w-3xl p-6">
+            <div className="mx-auto w-full max-w-5xl px-8 py-7">
               <Breadcrumb node={selected} />
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="truncate text-[18px] font-black text-slate-900">
-                  📂 {selected.title}
-                </h2>
-                <DeleteButton
-                  confirm={confirmDelete}
-                  label="폴더 삭제"
-                  onClick={() => {
-                    if (confirmDelete) handleDelete(selected);
-                    else setConfirmDelete(true);
-                  }}
-                />
-              </div>
-              <p className="mb-3 text-[12px] text-slate-400">
-                폴더를 우클릭하면 하위 폴더·문서·파일을 추가할 수 있어요.
-              </p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {(childrenOf.get(selected.id) ?? []).map((child) => (
-                  <button
-                    key={child.id}
-                    onClick={() => onRowClick(child)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setMenu({ x: e.clientX, y: e.clientY, node: child });
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[24px]">
+                    📂
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="truncate text-[19px] font-black text-slate-900">
+                      {selected.title}
+                    </h2>
+                    <p className="text-[12px] text-slate-400">
+                      항목 {(childrenOf.get(selected.id) ?? []).length}개
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex overflow-hidden rounded-lg border border-slate-200">
+                    {(["card", "list"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => changeFolderView(mode)}
+                        title={mode === "card" ? "카드형" : "목록형"}
+                        className={
+                          "px-2.5 py-1 text-[12px] font-bold " +
+                          (folderView === mode
+                            ? "bg-emerald-500 text-white"
+                            : "bg-white text-slate-500 hover:bg-slate-50")
+                        }
+                      >
+                        {mode === "card" ? "▦ 카드" : "☰ 목록"}
+                      </button>
+                    ))}
+                  </div>
+                  <DeleteButton
+                    confirm={confirmDelete}
+                    label="폴더 삭제"
+                    onClick={() => {
+                      if (confirmDelete) handleDelete(selected);
+                      else setConfirmDelete(true);
                     }}
-                    className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left text-[13px] text-slate-700 hover:border-emerald-300 hover:bg-emerald-50"
-                  >
-                    <span className="shrink-0 text-[16px]">
-                      {nodeIcon(child, false)}
-                    </span>
-                    <span className="truncate">{child.title}</span>
-                  </button>
-                ))}
-                {(childrenOf.get(selected.id) ?? []).length === 0 ? (
-                  <p className="col-span-full py-8 text-center text-[13px] text-slate-400">
-                    빈 폴더입니다. 트리에서 이 폴더를 우클릭해 추가하세요.
-                  </p>
-                ) : null}
+                  />
+                </div>
               </div>
+              {(() => {
+                const folderChildren = childrenOf.get(selected.id) ?? [];
+                if (folderChildren.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center gap-1 py-14 text-center">
+                      <span className="text-3xl opacity-60">🗂️</span>
+                      <p className="text-[13px] text-slate-400">
+                        빈 폴더입니다. 이 폴더를 우클릭해 추가하세요.
+                      </p>
+                    </div>
+                  );
+                }
+                const childIds = folderChildren.map((c) => c.id);
+                const countOf = (child: TeamDocNode) =>
+                  child.type === "FOLDER"
+                    ? (childrenOf.get(child.id)?.length ?? 0)
+                    : 0;
+                const openMenu = (e: ReactMouseEvent, child: TeamDocNode) => {
+                  e.preventDefault();
+                  setMenu({ x: e.clientX, y: e.clientY, node: child });
+                };
+                return (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(e) => handleFolderDragEnd(e, childIds)}
+                  >
+                    <SortableContext
+                      items={childIds}
+                      strategy={
+                        folderView === "card"
+                          ? rectSortingStrategy
+                          : verticalListSortingStrategy
+                      }
+                    >
+                      {folderView === "card" ? (
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
+                          {folderChildren.map((child) => (
+                            <SortableCard
+                              key={child.id}
+                              node={child}
+                              count={countOf(child)}
+                              onClick={() => onRowClick(child)}
+                              onContextMenu={(e) => openMenu(e, child)}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          {folderChildren.map((child) => (
+                            <SortableListRow
+                              key={child.id}
+                              node={child}
+                              count={countOf(child)}
+                              onClick={() => onRowClick(child)}
+                              onContextMenu={(e) => openMenu(e, child)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </SortableContext>
+                  </DndContext>
+                );
+              })()}
             </div>
           )}
         </section>
@@ -925,6 +1071,103 @@ function SortableRow({
         <div className="pointer-events-none absolute inset-x-1 -bottom-px z-10 h-0.5 rounded-full bg-emerald-500" />
       ) : null}
     </div>
+  );
+}
+
+function SortableCard({
+  node,
+  count,
+  onClick,
+  onContextMenu,
+}: {
+  node: TeamDocNode;
+  count: number;
+  onClick: () => void;
+  onContextMenu: (e: ReactMouseEvent<HTMLButtonElement>) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: node.id });
+  const isFolder = node.type === "FOLDER";
+  return (
+    <button
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : undefined,
+      }}
+      className="group flex touch-none flex-col gap-2.5 rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+    >
+      <div className="flex items-start justify-between">
+        <span className="text-[30px] leading-none">{nodeIcon(node, false)}</span>
+        {isFolder ? (
+          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-600">
+            {count}
+          </span>
+        ) : null}
+      </div>
+      <div className="min-w-0">
+        <p className="line-clamp-2 break-all text-[13px] font-bold text-slate-700">
+          {node.title}
+        </p>
+        <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+          {nodeKindLabel(node)}
+        </p>
+      </div>
+    </button>
+  );
+}
+
+function SortableListRow({
+  node,
+  count,
+  onClick,
+  onContextMenu,
+}: {
+  node: TeamDocNode;
+  count: number;
+  onClick: () => void;
+  onContextMenu: (e: ReactMouseEvent<HTMLButtonElement>) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: node.id });
+  const isFolder = node.type === "FOLDER";
+  return (
+    <button
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : undefined,
+      }}
+      className="group flex touch-none items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50/40"
+    >
+      <span className="shrink-0 text-[13px] text-slate-300 group-hover:text-slate-400">
+        ⠿
+      </span>
+      <span className="shrink-0 text-[20px] leading-none">
+        {nodeIcon(node, false)}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-slate-700">
+        {node.title}
+      </span>
+      {isFolder ? (
+        <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-600">
+          {count}
+        </span>
+      ) : null}
+      <span className="shrink-0 text-[11px] font-medium text-slate-400">
+        {nodeKindLabel(node)}
+      </span>
+    </button>
   );
 }
 
