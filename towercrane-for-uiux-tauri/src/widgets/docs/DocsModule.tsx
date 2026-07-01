@@ -37,6 +37,7 @@ import {
 } from "../../features/docs/api";
 import PageHeader from "../../shared/ui/PageHeader";
 import { toast } from "../../shared/ui/Toast";
+import { LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
 
 function formatTime(value: string) {
   const d = new Date(value);
@@ -735,7 +736,7 @@ function DocsModule() {
                     <input
                       value={draftTitle}
                       onChange={(e) => setDraftTitle(e.target.value)}
-                      className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-1 text-[20px] font-black text-slate-900 outline-none hover:border-slate-200 focus:border-emerald-500 focus:bg-white"
+                      className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-1 text-[20px] font-black text-text-primary outline-none hover:border-surface-border-soft focus:border-brand-border focus:bg-surface-raised"
                     />
                     <DeleteButton
                       confirm={confirmDelete}
@@ -745,30 +746,32 @@ function DocsModule() {
                       }}
                     />
                   </div>
-                  <textarea
-                    value={draftContent}
-                    onChange={(e) => setDraftContent(e.target.value)}
-                    placeholder="내용을 입력하세요. (마크다운)"
-                    className="w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-[14px] leading-relaxed text-slate-800 outline-none focus:border-emerald-500"
-                    style={{ minHeight: "calc(100dvh - 22rem)" }}
-                  />
+                  <div className="overflow-hidden rounded-xl border border-surface-border">
+                    <LexicalEditor
+                      key={selected.id}
+                      initialState={draftContent}
+                      onChange={setDraftContent}
+                      placeholder="내용을 입력하세요..."
+                      minHeight="calc(100dvh - 22rem)"
+                    />
+                  </div>
                 </div>
               </div>
               {/* 하단 sticky 푸터 */}
-              <div className="shrink-0 border-t border-slate-200 bg-white px-8 py-3">
+              <div className="shrink-0 border-t border-surface-border-soft bg-surface-raised px-8 py-3">
                 <div className="mx-auto flex max-w-[1100px] items-center justify-between">
-                  <span className="text-[12px] text-slate-400">
+                  <span className="text-[12px] text-text-muted">
                     {detail
                       ? `${detail.updatedByName ?? "-"} · ${formatTime(detail.updatedAt)} 수정`
                       : "불러오는 중…"}
                     {docDirty ? (
-                      <span className="ml-2 text-emerald-500">· 미저장</span>
+                      <span className="ml-2 text-brand-primary">· 미저장</span>
                     ) : null}
                   </span>
                   <button
                     onClick={handleSave}
                     disabled={!docDirty || saving || !draftTitle.trim()}
-                    className="rounded-lg bg-emerald-500 px-5 py-2 text-[14px] font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    className="rounded-lg bg-brand-primary px-5 py-2 text-[14px] font-bold text-text-on-brand hover:brightness-110 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted"
                   >
                     {saving ? "저장 중…" : "저장"}
                   </button>
