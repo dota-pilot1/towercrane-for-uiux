@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicgirault/tauri-v2-schema/main/schema.json",
   "productName": "Towercrane Messenger",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "identifier": "com.towercrane-for-uiux.tauri",
   "build": {
     "beforeDevCommand": "npm run dev",
