@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import {
   Bot,
@@ -35,6 +35,7 @@ import {
   useMeetingWorkspaces,
   useSendMeetingMessage,
   useStartMeetingDm,
+  useToggleReaction,
 } from '../../../entities/meeting/model/use-meeting'
 import type { MeetingMember, MeetingMessage, MeetingRoom, MeetingRoomType } from '../../../entities/meeting/model/types'
 import { Button } from '../../../shared/ui/button'
@@ -43,6 +44,32 @@ import { PageHeader } from '../../../shared/ui/page-header'
 import { Select } from '../../../shared/ui/select'
 import { Textarea } from '../../../shared/ui/textarea'
 import { useSessionStore } from '../../../shared/store/session-store'
+import { uploadFile } from '../../../shared/api/upload'
+
+// 메시지 payload에서 이미지 URL 추출 (없으면 null)
+function messageImageUrl(payload: Record<string, unknown> | null): string | null {
+  const url = payload?.imageUrl
+  return typeof url === 'string' ? url : null
+}
+
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '✅', '👀']
+
+type MessageReaction = { emoji: string; count: number; mine: boolean }
+
+// payload.reactions ({ emoji: [userId] }) → 렌더용 배열
+function messageReactions(
+  payload: Record<string, unknown> | null,
+  currentUserId: string,
+): MessageReaction[] {
+  const raw = payload?.reactions
+  if (!raw || typeof raw !== 'object') return []
+  return Object.entries(raw as Record<string, unknown>)
+    .map(([emoji, users]) => {
+      const arr = Array.isArray(users) ? (users as string[]) : []
+      return { emoji, count: arr.length, mine: arr.includes(currentUserId) }
+    })
+    .filter((r) => r.count > 0)
+}
 
 const slashCommands = [
   {
@@ -354,7 +381,19 @@ function DeleteChannelConfirm({
   )
 }
 
-function MessageBubble({ message, isMine }: { message: MeetingMessage; isMine: boolean }) {
+function MessageBubble({
+  message,
+  isMine,
+  currentUserId,
+  onToggleReaction,
+}: {
+  message: MeetingMessage
+  isMine: boolean
+  currentUserId: string
+  onToggleReaction: (messageId: string, emoji: string) => void
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+
   if (message.messageType === 'SYSTEM' || message.messageType === 'COMMAND_RESULT') {
     return (
       <div className="flex justify-center py-2">
@@ -378,15 +417,92 @@ function MessageBubble({ message, isMine }: { message: MeetingMessage; isMine: b
           <span className="ui-text-muted">{message.senderRole ?? 'member'}</span>
           <span className="ui-text-muted">{formatMessageTime(message.createdAt)}</span>
         </div>
-        <div
-          className={`rounded-md border px-3.5 py-2.5 text-sm leading-6 shadow-sm ${
-            isMine
-              ? 'border-brand-border bg-brand-glass text-text-primary'
-              : 'border-surface-border-soft bg-surface-raised text-text-primary'
-          }`}
-        >
-          {message.content}
-        </div>
+        {(() => {
+          const imageUrl = messageImageUrl(message.payload)
+          return (
+            <>
+              {imageUrl ? (
+                <a
+                  href={imageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`block overflow-hidden rounded-md border border-surface-border-soft ${message.content ? 'mb-1' : ''}`}
+                >
+                  <img
+                    src={imageUrl}
+                    alt="첨부 이미지"
+                    className="max-h-[320px] max-w-[320px] object-cover"
+                  />
+                </a>
+              ) : null}
+              {message.content ? (
+                <div
+                  className={`rounded-md border px-3.5 py-2.5 text-sm leading-6 shadow-sm ${
+                    isMine
+                      ? 'border-brand-border bg-brand-glass text-text-primary'
+                      : 'border-surface-border-soft bg-surface-raised text-text-primary'
+                  }`}
+                >
+                  {message.content}
+                </div>
+              ) : null}
+            </>
+          )
+        })()}
+        {(() => {
+          const reactions = messageReactions(message.payload, currentUserId)
+          return (
+            <div className={`relative mt-1 flex flex-wrap items-center gap-1 ${isMine ? 'justify-end' : ''}`}>
+              {reactions.map((r) => (
+                <button
+                  key={r.emoji}
+                  type="button"
+                  onClick={() => onToggleReaction(message.id, r.emoji)}
+                  className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs ${
+                    r.mine
+                      ? 'border-brand-border bg-brand-glass text-brand-primary'
+                      : 'border-surface-border-soft bg-surface-muted ui-text-secondary hover:bg-surface-strong'
+                  }`}
+                >
+                  <span>{r.emoji}</span>
+                  <span className="font-bold tabular-nums">{r.count}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPickerOpen((v) => !v)}
+                aria-label="리액션 추가"
+                className="flex size-6 items-center justify-center rounded-full border border-surface-border-soft bg-surface-raised text-text-muted transition-colors hover:bg-surface-muted hover:text-brand-primary"
+              >
+                <Smile className="size-3.5" />
+              </button>
+              {pickerOpen ? (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(false)} />
+                  <div
+                    className={`absolute bottom-7 z-50 flex gap-1 rounded-md border border-surface-border bg-surface-raised p-1.5 shadow-2xl ${
+                      isMine ? 'right-0' : 'left-0'
+                    }`}
+                  >
+                    {REACTION_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => {
+                          onToggleReaction(message.id, emoji)
+                          setPickerOpen(false)
+                        }}
+                        className="flex size-8 items-center justify-center rounded-md text-lg hover:bg-surface-muted"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )
@@ -429,15 +545,37 @@ function MessageInput({
   onSend,
 }: {
   disabled?: boolean
-  onSend: (content: string) => void
+  onSend: (content: string, payload?: Record<string, unknown> | null) => void
 }) {
   const [value, setValue] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const handleSend = () => {
     const trimmed = value.trim()
     if (!trimmed) return
     onSend(trimmed)
     setValue('')
+  }
+
+  const handleImageUpload = async (file: File) => {
+    if (uploading) return
+    if (!file.type.startsWith('image/')) {
+      setUploadError('이미지 파일만 업로드할 수 있습니다.')
+      return
+    }
+    setUploadError(null)
+    setUploading(true)
+    try {
+      const imageUrl = await uploadFile(file)
+      onSend(value.trim(), { imageUrl })
+      setValue('')
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : '이미지 전송에 실패했습니다.')
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -447,25 +585,56 @@ function MessageInput({
     }
   }
 
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = Array.from(event.clipboardData.files).find((f) => f.type.startsWith('image/'))
+    if (file) {
+      event.preventDefault()
+      void handleImageUpload(file)
+    }
+  }
+
+  const busy = disabled || uploading
+
   return (
     <div className="relative border-t border-surface-border-soft bg-surface-raised p-4">
       <SlashCommandPopup query={value} onPick={setValue} />
+      {uploadError ? (
+        <p className="mb-2 text-xs text-status-danger">{uploadError}</p>
+      ) : null}
       <div className="flex gap-2">
-        <Button variant="secondary" size="icon" aria-label="첨부" disabled={disabled}>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (file) void handleImageUpload(file)
+            event.target.value = ''
+          }}
+        />
+        <Button
+          variant="secondary"
+          size="icon"
+          aria-label="이미지 첨부"
+          disabled={busy}
+          onClick={() => fileRef.current?.click()}
+        >
           <Paperclip className="size-4" />
         </Button>
         <Textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={disabled}
-          placeholder="메시지 또는 /명령어를 입력하세요. Ctrl+Enter로 전송"
+          onPaste={handlePaste}
+          disabled={busy}
+          placeholder={uploading ? '이미지 업로드 중…' : '메시지 또는 /명령어를 입력하세요. Ctrl+Enter로 전송'}
           className="min-h-11 flex-1 resize-none py-2.5"
         />
-        <Button variant="secondary" size="icon" aria-label="이모지" disabled={disabled}>
+        <Button variant="secondary" size="icon" aria-label="이모지" disabled={busy}>
           <Smile className="size-4" />
         </Button>
-        <Button size="icon" tone="brand" onClick={handleSend} disabled={disabled || !value.trim()} aria-label="전송">
+        <Button size="icon" tone="brand" onClick={handleSend} disabled={busy || !value.trim()} aria-label="전송">
           <Send className="size-4" />
         </Button>
       </div>
@@ -484,6 +653,7 @@ function MessageArea({
   isClearing,
   onClearMessages,
   onSend,
+  onToggleReaction,
 }: {
   room: MeetingRoom
   messages: MeetingMessage[]
@@ -494,7 +664,8 @@ function MessageArea({
   canClear?: boolean
   isClearing?: boolean
   onClearMessages?: () => void
-  onSend: (content: string) => void
+  onSend: (content: string, payload?: Record<string, unknown> | null) => void
+  onToggleReaction: (messageId: string, emoji: string) => void
 }) {
   const [clearConfirm, setClearConfirm] = useState(false)
   const isChannel = room.roomType !== 'DM'
@@ -581,7 +752,13 @@ function MessageArea({
           </div>
         ) : (
           messages.map((message) => (
-            <MessageBubble key={message.id} message={message} isMine={message.senderId === currentUserId} />
+            <MessageBubble
+              key={message.id}
+              message={message}
+              isMine={message.senderId === currentUserId}
+              currentUserId={currentUserId}
+              onToggleReaction={onToggleReaction}
+            />
           ))
         )}
       </div>
@@ -770,14 +947,19 @@ export function MeetingPage({ workspaceId }: { workspaceId?: string }) {
   const startDmMutation = useStartMeetingDm()
   const deleteRoomMutation = useDeleteMeetingRoom()
   const clearMessagesMutation = useClearMeetingMessages(roomId)
+  const toggleReactionMutation = useToggleReaction(roomId)
   useMeetingWebSocket(roomId)
 
   const members = membersQuery.data ?? []
   const messages = messagesQuery.data ?? []
   const onlineCount = members.filter((member) => member.online).length
 
-  const handleSend = (content: string) => {
-    sendMutation.mutate(content)
+  const handleSend = (content: string, payload?: Record<string, unknown> | null) => {
+    sendMutation.mutate(payload ? { content, payload } : content)
+  }
+
+  const handleToggleReaction = (messageId: string, emoji: string) => {
+    toggleReactionMutation.mutate({ messageId, emoji })
   }
 
   const handleOpenDm = (member: MeetingMember) => {
@@ -864,6 +1046,7 @@ export function MeetingPage({ workspaceId }: { workspaceId?: string }) {
             isClearing={clearMessagesMutation.isPending}
             onClearMessages={() => clearMessagesMutation.mutate()}
             onSend={handleSend}
+            onToggleReaction={handleToggleReaction}
           />
         ) : (
           <section className="ui-panel flex min-h-0 flex-1 items-center justify-center text-center">

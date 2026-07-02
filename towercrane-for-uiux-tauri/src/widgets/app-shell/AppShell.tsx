@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import type { User } from "../../features/auth/api";
 import Messenger from "../messenger/Messenger";
 import ChatModule from "../chat/ChatModule";
@@ -39,6 +40,16 @@ const MODULES: ModuleDef[] = [
 function AppShell({ user, onUserUpdate, onLogout }: Props) {
   const [active, setActive] = useState<ViewId>("home");
   const activeModule = MODULES.find((m) => m.id === active);
+
+  // 실제 설치된 앱 버전 (Tauri). 브라우저 dev 등 Tauri 밖 환경에선 빈 값 → 배지 숨김.
+  const [appVersion, setAppVersion] = useState("");
+  useEffect(() => {
+    getVersion()
+      .then(setAppVersion)
+      .catch(() => {
+        /* Tauri 밖 환경은 조용히 무시 */
+      });
+  }, []);
 
   return (
     <div className="h-screen flex overflow-hidden relative">
@@ -92,6 +103,14 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
 
         {/* 사용자 / 로그아웃 */}
         <div className="w-full flex flex-col items-center gap-1.5 py-2.5 border-t border-white/10">
+          {appVersion && (
+            <span
+              title={`Towercrane v${appVersion}`}
+              className="text-[10px] font-semibold text-sky-50/70 tabular-nums select-none"
+            >
+              v{appVersion}
+            </span>
+          )}
           <button
             onClick={() => setActive("profile")}
             title={`${user.name} · 프로필 수정`}

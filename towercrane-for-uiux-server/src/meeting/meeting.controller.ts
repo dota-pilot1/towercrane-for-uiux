@@ -168,6 +168,19 @@ export class MeetingController {
     return updated;
   }
 
+  // 이모지 리액션 토글 — 멤버 누구나
+  @Post('rooms/:roomId/messages/:messageId/reactions')
+  toggleReaction(
+    @CurrentUser() user: MeetingUser,
+    @Param('roomId') roomId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: unknown,
+  ) {
+    const updated = this.meetingService.toggleReaction(user, roomId, messageId, body);
+    this.meetingGateway.broadcastMeetingMessageReaction(roomId, updated);
+    return updated;
+  }
+
   // 채널 고정 메시지 목록
   @Get('rooms/:roomId/pins')
   listPins(

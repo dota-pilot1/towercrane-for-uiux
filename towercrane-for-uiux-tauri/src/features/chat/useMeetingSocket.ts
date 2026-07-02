@@ -13,15 +13,18 @@ export function useMeetingSocket(
   onMessage: (message: MeetingMessage) => void,
   onCleared?: () => void,
   onPinned?: (message: MeetingMessage) => void,
+  onReaction?: (message: MeetingMessage) => void,
 ) {
   const socketRef = useRef<WebSocket | null>(null);
   const onMessageRef = useRef(onMessage);
   const onClearedRef = useRef(onCleared);
   const onPinnedRef = useRef(onPinned);
+  const onReactionRef = useRef(onReaction);
   const activeRoomRef = useRef<string | null>(activeRoomId);
   onMessageRef.current = onMessage;
   onClearedRef.current = onCleared;
   onPinnedRef.current = onPinned;
+  onReactionRef.current = onReaction;
 
   // 연결 (1회)
   useEffect(() => {
@@ -52,6 +55,11 @@ export function useMeetingSocket(
         const data = msg.data as MeetingMessage;
         if (data.roomId === activeRoomRef.current) {
           onPinnedRef.current?.(data);
+        }
+      } else if (msg.type === "MEETING_MESSAGE_REACTION") {
+        const data = msg.data as MeetingMessage;
+        if (data.roomId === activeRoomRef.current) {
+          onReactionRef.current?.(data);
         }
       }
     };

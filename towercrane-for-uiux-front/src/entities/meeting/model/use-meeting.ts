@@ -94,9 +94,10 @@ export function useSendMeetingMessage(roomId: string | null) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (content: string) => {
+    mutationFn: (input: string | { content: string; payload?: Record<string, unknown> | null }) => {
       if (!roomId) throw new Error('roomId required')
-      return meetingApi.sendMessage(roomId, { content })
+      const normalized = typeof input === 'string' ? { content: input } : input
+      return meetingApi.sendMessage(roomId, normalized)
     },
     onSuccess: (saved) => {
       queryClient.setQueryData<MeetingMessage[]>(
@@ -145,6 +146,23 @@ export function useClearMeetingMessages(roomId: string | null) {
         queryClient.setQueryData<MeetingMessage[]>(meetingKeys.messages(roomId), [])
         queryClient.invalidateQueries({ queryKey: meetingKeys.messages(roomId) })
       }
+    },
+  })
+}
+
+export function useToggleReaction(roomId: string | null) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) => {
+      if (!roomId) throw new Error('roomId required')
+      return meetingApi.toggleReaction(roomId, messageId, emoji)
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<MeetingMessage[]>(
+        meetingKeys.messages(updated.roomId),
+        (prev) => prev?.map((message) => (message.id === updated.id ? updated : message)),
+      )
     },
   })
 }
@@ -230,6 +248,16 @@ export function useMeetingWebSocket(roomId: string | null) {
         const payload = envelope.data as { roomId?: string } | undefined
         if (payload?.roomId === roomId) {
           queryClient.setQueryData<MeetingMessage[]>(meetingKeys.messages(roomId), [])
+        }
+      }
+
+      if (envelope.type === 'MEETING_MESSAGE_REACTION' && envelope.data) {
+        const updated = envelope.data as MeetingMessage
+        if (updated.roomId === roomId) {
+          queryClient.setQueryData<MeetingMessage[]>(
+            meetingKeys.messages(roomId),
+            (prev) => prev?.map((message) => (message.id === updated.id ? updated : message)),
+          )
         }
       }
 

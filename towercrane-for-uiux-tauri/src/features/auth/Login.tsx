@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { login, type User } from "./api";
+import ForgotPassword from "./ForgotPassword";
 
 type Props = {
   onSuccess: (user: User) => void;
@@ -31,6 +32,7 @@ function Login({ onSuccess }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showForgot, setShowForgot] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -120,15 +122,24 @@ function Login({ onSuccess }: Props) {
           </div>
         </label>
 
-        <label className="flex items-center gap-2 text-[13px] text-slate-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={(e) => setRemember(e.target.checked)}
-            className="w-4 h-4 accent-emerald-500 cursor-pointer"
-          />
-          <span>아이디·비밀번호 기억하기</span>
-        </label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="flex items-center gap-2 text-[13px] text-slate-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="w-4 h-4 accent-emerald-500 cursor-pointer"
+            />
+            <span>아이디·비밀번호 기억하기</span>
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowForgot(true)}
+            className="text-[13px] text-emerald-600 hover:text-emerald-700 hover:underline"
+          >
+            비밀번호를 잊으셨나요?
+          </button>
+        </div>
 
         {error && (
           <div className="px-3 py-2.5 text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-xl whitespace-pre-line">
@@ -144,6 +155,13 @@ function Login({ onSuccess }: Props) {
           {loading ? "로그인 중…" : "로그인"}
         </button>
       </form>
+
+      {showForgot && (
+        <ForgotPassword
+          initialEmail={email.trim()}
+          onClose={() => setShowForgot(false)}
+        />
+      )}
     </div>
   );
 }

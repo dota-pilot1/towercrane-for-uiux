@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { getToken } from "../../shared/api/client";
 import {
   clearChannelMessages,
   getPinnedMessages,
   getRoomMessages,
+  messageImageUrl,
+  messageReactions,
   sendMeetingMessage,
   setMessagePinned,
+  toggleReaction,
+  uploadChatImage,
   type MeetingMessage,
   type MeetingRoom,
 } from "./api";
@@ -21,6 +26,8 @@ type Props = {
   membersShown?: boolean;
   onToggleMembers?: () => void;
 };
+
+const REACTION_EMOJIS = ["👍", "❤️", "😂", "🎉", "✅", "👀"];
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -88,6 +95,43 @@ function PinIcon({ size = 15 }: { size?: number }) {
   );
 }
 
+function ClipIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+function SmileIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+      <line x1="9" y1="9" x2="9.01" y2="9" />
+      <line x1="15" y1="9" x2="15.01" y2="9" />
+    </svg>
+  );
+}
+
 function PeopleIcon() {
   return (
     <svg
@@ -125,15 +169,26 @@ function ChatView({
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [clearConfirming, setClearConfirming] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [pinned, setPinned] = useState<MeetingMessage[]>([]);
+  const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const appendMessage = (m: MeetingMessage) =>
     setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+
+  // 갱신된 메시지를 목록·고정 목록에 반영 (리액션 등)
+  const updateMessage = (m: MeetingMessage) => {
+    setMessages((prev) => prev.map((x) => (x.id === m.id ? m : x)));
+    setPinned((prev) => prev.map((x) => (x.id === m.id ? m : x)));
+  };
 
   // pin 상태 변화를 메시지 목록·고정 목록 양쪽에 반영
   const applyPinned = (m: MeetingMessage) => {
@@ -144,7 +199,19 @@ function ChatView({
     });
   };
 
-  useMeetingSocket(room.id, appendMessage, () => setMessages([]), applyPinned);
+  useMeetingSocket(room.id, appendMessage, () => setMessages([]), applyPinned, updateMessage);
+
+  async function handleToggleReaction(m: MeetingMessage, emoji: string) {
+    setReactionPickerFor(null);
+    const token = getToken();
+    if (!token) return;
+    try {
+      const updated = await toggleReaction(token, room.id, m.id, emoji);
+      updateMessage(updated);
+    } catch {
+      // 실패 시 무시 (서버 상태 유지)
+    }
+  }
 
   async function handleTogglePin(m: MeetingMessage) {
     const token = getToken();
@@ -215,6 +282,122 @@ function ChatView({
     } finally {
       setSending(false);
     }
+  }
+
+  // 이미지 업로드 → S3 → 이미지 메시지 전송 (현재 draft는 캡션으로 함께 전송)
+  async function handleImageUpload(file: File) {
+    if (uploading || sending) return;
+    if (!file.type.startsWith("image/")) {
+      setUploadError("이미지 파일만 업로드할 수 있습니다.");
+      return;
+    }
+    const token = getToken();
+    if (!token) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const imageUrl = await uploadChatImage(token, file);
+      const saved = await sendMeetingMessage(token, room.id, draft.trim(), { imageUrl });
+      appendMessage(saved);
+      setDraft("");
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "이미지 전송에 실패했습니다.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleImageUpload(file);
+    e.target.value = ""; // 같은 파일 재선택 허용
+  }
+
+  // 입력창에 이미지 붙여넣기(⌘V) 지원
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const file = Array.from(e.clipboardData.files).find((f) => f.type.startsWith("image/"));
+    if (file) {
+      e.preventDefault();
+      handleImageUpload(file);
+    }
+  }
+
+  // 이미지 파일을 대화 영역에 드래그앤드롭 (tauri dragDropEnabled=false → 웹뷰가 File 수신)
+  function handleDragOver(e: React.DragEvent) {
+    if (Array.from(e.dataTransfer.items).some((i) => i.kind === "file")) {
+      e.preventDefault();
+      if (!dragActive) setDragActive(true);
+    }
+  }
+  function handleDragLeave(e: React.DragEvent) {
+    // 자식으로 이동하는 경우는 무시 (영역 완전히 벗어날 때만 해제)
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDragActive(false);
+  }
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragActive(false);
+    const file = Array.from(e.dataTransfer.files).find((f) => f.type.startsWith("image/"));
+    if (file) handleImageUpload(file);
+  }
+
+  // 리액션 칩 + 추가 피커 (DM·채널 공용)
+  function renderReactions(m: MeetingMessage, align: "start" | "end" = "start") {
+    const reactions = messageReactions(m.payload, currentUserId);
+    const pickerOpen = reactionPickerFor === m.id;
+    return (
+      <div
+        className={
+          "relative mt-1 flex flex-wrap items-center gap-1 " +
+          (align === "end" ? "justify-end" : "")
+        }
+      >
+        {reactions.map((r) => (
+          <button
+            key={r.emoji}
+            onClick={() => handleToggleReaction(m, r.emoji)}
+            className={
+              "flex items-center gap-1 px-1.5 h-6 rounded-full border text-[12px] " +
+              (r.mine
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100")
+            }
+          >
+            <span>{r.emoji}</span>
+            <span className="font-semibold tabular-nums">{r.count}</span>
+          </button>
+        ))}
+        <button
+          onClick={() => setReactionPickerFor(pickerOpen ? null : m.id)}
+          title="리액션 추가"
+          aria-label="리액션 추가"
+          className="flex items-center justify-center w-6 h-6 rounded-full border border-slate-200 bg-white text-slate-400 hover:text-emerald-600 hover:bg-slate-50"
+        >
+          <SmileIcon />
+        </button>
+        {pickerOpen && (
+          <>
+            <div className="fixed inset-0 z-20" onClick={() => setReactionPickerFor(null)} />
+            <div
+              className={
+                "absolute bottom-7 z-30 flex gap-1 p-1.5 bg-white border border-slate-200 rounded-xl shadow-lg " +
+                (align === "end" ? "right-0" : "left-0")
+              }
+            >
+              {REACTION_EMOJIS.map((e) => (
+                <button
+                  key={e}
+                  onClick={() => handleToggleReaction(m, e)}
+                  className="w-8 h-8 flex items-center justify-center text-[18px] rounded-lg hover:bg-slate-100"
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -365,9 +548,19 @@ function ChatView({
                             {formatTime(p.createdAt)}
                           </span>
                         </div>
-                        <div className="text-[13px] text-slate-600 break-words whitespace-pre-wrap">
-                          {p.content}
-                        </div>
+                        {p.content && (
+                          <div className="text-[13px] text-slate-600 break-words whitespace-pre-wrap">
+                            {p.content}
+                          </div>
+                        )}
+                        {messageImageUrl(p.payload) && (
+                          <img
+                            src={messageImageUrl(p.payload) as string}
+                            alt="첨부 이미지"
+                            onClick={() => openUrl(messageImageUrl(p.payload) as string)}
+                            className="mt-1 max-h-24 max-w-[160px] rounded-md border border-slate-200 object-cover cursor-zoom-in"
+                          />
+                        )}
                       </div>
                       <button
                         onClick={() => handleTogglePin(p)}
@@ -390,11 +583,19 @@ function ChatView({
       )}
 
       <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         className={
-          "flex-1 overflow-y-auto " +
+          "relative flex-1 overflow-y-auto " +
           (isDm ? "p-[18px] flex flex-col gap-3" : "py-2.5")
         }
       >
+        {dragActive && (
+          <div className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50/80 text-sm font-semibold text-emerald-600">
+            여기에 이미지를 놓아 업로드
+          </div>
+        )}
         {loading ? (
           <div className={isDm ? "m-auto text-[13px] text-slate-400" : "px-4 py-6 text-[13px] text-slate-400"}>
             불러오는 중…
@@ -407,6 +608,7 @@ function ChatView({
           // DM: 카톡식 말풍선 (내 메시지 오른쪽)
           messages.map((m) => {
             const mine = m.senderId === currentUserId;
+            const img = messageImageUrl(m.payload);
             return (
               <div
                 key={m.id}
@@ -418,16 +620,27 @@ function ChatView({
                 {!mine && (
                   <span className="mb-0.5 text-[11px] text-slate-400">{m.senderName}</span>
                 )}
-                <div
-                  className={
-                    "px-3.5 py-2.5 text-sm leading-snug rounded-2xl whitespace-pre-wrap break-words " +
-                    (mine
-                      ? "bg-emerald-500 text-white rounded-br-sm"
-                      : "bg-white border border-slate-200 rounded-bl-sm")
-                  }
-                >
-                  {m.content}
-                </div>
+                {img && (
+                  <img
+                    src={img}
+                    alt="첨부 이미지"
+                    onClick={() => openUrl(img)}
+                    className="max-w-[240px] max-h-[280px] mb-1 rounded-2xl border border-slate-200 object-cover cursor-zoom-in"
+                  />
+                )}
+                {m.content && (
+                  <div
+                    className={
+                      "px-3.5 py-2.5 text-sm leading-snug rounded-2xl whitespace-pre-wrap break-words " +
+                      (mine
+                        ? "bg-emerald-500 text-white rounded-br-sm"
+                        : "bg-white border border-slate-200 rounded-bl-sm")
+                    }
+                  >
+                    {m.content}
+                  </div>
+                )}
+                {renderReactions(m, mine ? "end" : "start")}
                 <span className="mt-1 text-[10px] text-slate-400">{formatTime(m.createdAt)}</span>
               </div>
             );
@@ -435,6 +648,7 @@ function ChatView({
         ) : (
           // 채널: 왼쪽 정렬, 메시지마다 아바타+이름+시간 (그룹핑 없음)
           messages.map((m) => {
+            const img = messageImageUrl(m.payload);
             return (
               <div
                 key={m.id}
@@ -464,9 +678,20 @@ function ChatView({
                     <span className="text-sm font-semibold text-slate-900">{m.senderName}</span>
                     <span className="text-[11px] text-slate-400">{formatTime(m.createdAt)}</span>
                   </div>
-                  <div className="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap break-words">
-                    {m.content}
-                  </div>
+                  {m.content && (
+                    <div className="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap break-words">
+                      {m.content}
+                    </div>
+                  )}
+                  {img && (
+                    <img
+                      src={img}
+                      alt="첨부 이미지"
+                      onClick={() => openUrl(img)}
+                      className="max-w-[320px] max-h-[360px] mt-1 rounded-lg border border-slate-200 object-cover cursor-zoom-in"
+                    />
+                  )}
+                  {renderReactions(m, "start")}
                 </div>
 
                 {/* hover 액션 — 고정/해제 (행 오른쪽, 세로 중앙) */}
@@ -490,24 +715,45 @@ function ChatView({
         <div ref={endRef} />
       </div>
 
-      <form
-        onSubmit={handleSend}
-        className="flex gap-2 px-4 py-3 bg-white border-t border-slate-200"
-      >
-        <input
-          placeholder="메시지를 입력하세요"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          className="flex-1 px-3.5 py-2.5 text-sm text-slate-900 bg-slate-100 border border-transparent rounded-[10px] outline-none focus:border-emerald-500 focus:bg-white"
-        />
-        <button
-          type="submit"
-          disabled={!draft.trim() || sending}
-          className="px-[18px] text-sm font-semibold text-white bg-emerald-500 rounded-[10px] hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
-        >
-          전송
-        </button>
-      </form>
+      <div className="bg-white border-t border-slate-200">
+        {uploadError && (
+          <div className="px-4 pt-2 text-[12px] text-red-600">{uploadError}</div>
+        )}
+        <form onSubmit={handleSend} className="flex items-center gap-2 px-4 py-3">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading || sending}
+            title="이미지 첨부"
+            aria-label="이미지 첨부"
+            className="shrink-0 w-10 h-10 flex items-center justify-center text-slate-400 rounded-[10px] hover:text-emerald-600 hover:bg-slate-100 disabled:text-slate-300 disabled:cursor-not-allowed"
+          >
+            <ClipIcon />
+          </button>
+          <input
+            placeholder={uploading ? "이미지 업로드 중…" : "메시지를 입력하세요"}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onPaste={handlePaste}
+            disabled={uploading}
+            className="flex-1 px-3.5 py-2.5 text-sm text-slate-900 bg-slate-100 border border-transparent rounded-[10px] outline-none focus:border-emerald-500 focus:bg-white disabled:opacity-60"
+          />
+          <button
+            type="submit"
+            disabled={!draft.trim() || sending || uploading}
+            className="px-[18px] py-2.5 text-sm font-semibold text-white bg-emerald-500 rounded-[10px] hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+          >
+            전송
+          </button>
+        </form>
+      </div>
     </>
   );
 }

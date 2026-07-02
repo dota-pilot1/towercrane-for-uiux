@@ -1,9 +1,21 @@
 import { z } from 'zod';
 
-export const sendMeetingMessageSchema = z.object({
-  content: z.string().trim().min(1).max(4000),
-  messageType: z.enum(['TEXT', 'SYSTEM', 'COMMAND_RESULT', 'BOT_REPLY']).default('TEXT'),
-  payload: z.record(z.string(), z.unknown()).nullable().optional(),
+export const sendMeetingMessageSchema = z
+  .object({
+    content: z.string().trim().max(4000),
+    messageType: z.enum(['TEXT', 'SYSTEM', 'COMMAND_RESULT', 'BOT_REPLY']).default('TEXT'),
+    payload: z.record(z.string(), z.unknown()).nullable().optional(),
+  })
+  // 텍스트가 비어 있어도 이미지(payload.imageUrl)가 있으면 허용 (이미지 전용 메시지)
+  .refine(
+    (value) =>
+      value.content.length > 0 ||
+      (value.payload != null && typeof value.payload.imageUrl === 'string'),
+    { message: '메시지 내용이나 이미지가 필요합니다.', path: ['content'] },
+  );
+
+export const toggleReactionSchema = z.object({
+  emoji: z.string().trim().min(1).max(16),
 });
 
 export const startMeetingDmSchema = z.object({
@@ -31,6 +43,7 @@ export const reorderMeetingWorkspacesSchema = z.object({
 });
 
 export type SendMeetingMessageInput = z.infer<typeof sendMeetingMessageSchema>;
+export type ToggleReactionInput = z.infer<typeof toggleReactionSchema>;
 export type StartMeetingDmInput = z.infer<typeof startMeetingDmSchema>;
 export type CreateMeetingRoomInput = z.infer<typeof createMeetingRoomSchema>;
 export type CreateMeetingWorkspaceInput = z.infer<typeof createMeetingWorkspaceSchema>;

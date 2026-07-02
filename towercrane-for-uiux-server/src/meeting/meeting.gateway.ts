@@ -91,6 +91,14 @@ export class MeetingGateway {
     });
   }
 
+  broadcastMeetingMessageReaction(roomId: string, payload: unknown) {
+    this.broadcast(`meeting/${roomId}`, {
+      type: 'MEETING_MESSAGE_REACTION',
+      topic: `meeting/${roomId}`,
+      data: payload,
+    });
+  }
+
   getPresenceMembers() {
     const deduped = new Map<string, PresenceMember>();
 

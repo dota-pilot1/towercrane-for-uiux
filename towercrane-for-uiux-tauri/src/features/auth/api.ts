@@ -38,6 +38,40 @@ export async function login(email: string, password: string): Promise<LoginResul
   return result;
 }
 
+// 비밀번호 재설정 — 이메일로 6자리 인증코드 발송
+export async function requestPasswordResetCode(email: string): Promise<void> {
+  await apiRequest("/auth/password-reset/request-code", {
+    method: "POST",
+    body: { email },
+    errorMessage: "인증코드 발송에 실패했습니다.",
+  });
+}
+
+// 인증코드 검증 → 이후 비번 변경에 쓸 verifiedToken 반환
+export async function verifyPasswordResetCode(
+  email: string,
+  code: string,
+): Promise<{ verifiedToken: string }> {
+  return apiRequest<{ verifiedToken: string }>("/auth/password-reset/verify-code", {
+    method: "POST",
+    body: { email, code },
+    errorMessage: "인증코드가 올바르지 않습니다.",
+  });
+}
+
+// verifiedToken으로 새 비밀번호 설정
+export async function resetPasswordWithCode(
+  email: string,
+  verifiedToken: string,
+  newPassword: string,
+): Promise<void> {
+  await apiRequest("/auth/password-reset/reset-with-code", {
+    method: "POST",
+    body: { email, verifiedToken, newPassword },
+    errorMessage: "비밀번호 변경에 실패했습니다.",
+  });
+}
+
 export async function me(token: string): Promise<User> {
   return apiRequest<User>("/auth/me", {
     token,

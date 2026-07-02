@@ -1,3 +1,4 @@
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { API_BASE, apiRequest } from "../../shared/api/client";
 
 export type MeetingRoom = {
@@ -98,13 +99,81 @@ export async function sendMeetingMessage(
   token: string,
   roomId: string,
   content: string,
+  payload?: Record<string, unknown> | null,
 ): Promise<MeetingMessage> {
   return apiRequest<MeetingMessage>(`/meeting/rooms/${roomId}/messages`, {
     method: "POST",
-    body: { content },
+    body: payload ? { content, payload } : { content },
     token,
     errorMessage: "메시지 전송에 실패했습니다.",
   });
+}
+
+type PresignResult = { presignedUrl: string; publicUrl: string; key: string };
+
+// 파일 선택 → presign 발급 → S3 PUT 업로드 → 공개 URL 반환 (프로필 이미지와 동일 패턴)
+export async function uploadChatImage(token: string, file: File): Promise<string> {
+  const contentType = file.type || "application/octet-stream";
+  const presign = await apiRequest<PresignResult>("/upload/presign", {
+    method: "POST",
+    token,
+    body: { filename: file.name, contentType },
+    errorMessage: "이미지 업로드를 준비하지 못했습니다.",
+  });
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const putRes = await tauriFetch(presign.presignedUrl, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: bytes,
+  });
+  if (!putRes.ok) {
+    throw new Error("이미지 업로드에 실패했습니다.");
+  }
+
+  return presign.publicUrl;
+}
+
+// 이모지 리액션 토글 → 갱신된 메시지 반환
+export async function toggleReaction(
+  token: string,
+  roomId: string,
+  messageId: string,
+  emoji: string,
+): Promise<MeetingMessage> {
+  return apiRequest<MeetingMessage>(
+    `/meeting/rooms/${roomId}/messages/${messageId}/reactions`,
+    {
+      method: "POST",
+      body: { emoji },
+      token,
+      errorMessage: "리액션을 처리하지 못했습니다.",
+    },
+  );
+}
+
+export type MessageReaction = { emoji: string; count: number; mine: boolean };
+
+// payload.reactions ({ emoji: [userId] }) → 렌더용 배열
+export function messageReactions(payload: unknown, currentUserId: string): MessageReaction[] {
+  if (!payload || typeof payload !== "object" || !("reactions" in payload)) return [];
+  const raw = (payload as { reactions?: unknown }).reactions;
+  if (!raw || typeof raw !== "object") return [];
+  return Object.entries(raw as Record<string, unknown>)
+    .map(([emoji, users]) => {
+      const arr = Array.isArray(users) ? (users as string[]) : [];
+      return { emoji, count: arr.length, mine: arr.includes(currentUserId) };
+    })
+    .filter((r) => r.count > 0);
+}
+
+// 메시지 payload에서 이미지 URL 추출 (없으면 null)
+export function messageImageUrl(payload: unknown): string | null {
+  if (payload && typeof payload === "object" && "imageUrl" in payload) {
+    const url = (payload as { imageUrl?: unknown }).imageUrl;
+    return typeof url === "string" ? url : null;
+  }
+  return null;
 }
 
 // 방(채널/DM) 멤버 명단 + 온라인 상태

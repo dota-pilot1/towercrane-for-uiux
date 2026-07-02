@@ -22,6 +22,7 @@ import {
   reorderMeetingWorkspacesSchema,
   sendMeetingMessageSchema,
   startMeetingDmSchema,
+  toggleReactionSchema,
   updateMeetingWorkspaceSchema,
 } from './meeting.schemas';
 
@@ -482,6 +483,50 @@ export class MeetingService {
       .where(eq(meetingMessagesTable.id, messageId))
       .run();
     return this.toMessageDto({ ...message, pinned });
+  }
+
+  // 이모지 리액션 토글 — payload.reactions[emoji]에 사용자 id 추가/제거 (별도 테이블 없이 저장)
+  toggleReaction(user: MeetingUser, roomId: string, messageId: string, body: unknown) {
+    this.findAccessibleRoom(roomId, user);
+    const { emoji } = toggleReactionSchema.parse(body);
+    const message = this.db
+      .select()
+      .from(meetingMessagesTable)
+      .where(and(eq(meetingMessagesTable.id, messageId), eq(meetingMessagesTable.roomId, roomId)))
+      .get();
+    if (!message) {
+      throw new NotFoundException(`Message not found: ${messageId}`);
+    }
+
+    const currentPayload =
+      message.payload && typeof message.payload === 'object' ? { ...message.payload } : {};
+    const rawReactions = currentPayload.reactions;
+    const reactions: Record<string, string[]> =
+      rawReactions && typeof rawReactions === 'object'
+        ? { ...(rawReactions as Record<string, string[]>) }
+        : {};
+
+    const users = Array.isArray(reactions[emoji]) ? [...reactions[emoji]] : [];
+    const idx = users.indexOf(user.id);
+    if (idx >= 0) {
+      users.splice(idx, 1);
+    } else {
+      users.push(user.id);
+    }
+    if (users.length > 0) {
+      reactions[emoji] = users;
+    } else {
+      delete reactions[emoji];
+    }
+
+    const nextPayload = { ...currentPayload, reactions };
+    this.db
+      .update(meetingMessagesTable)
+      .set({ payload: nextPayload })
+      .where(eq(meetingMessagesTable.id, messageId))
+      .run();
+
+    return this.toMessageDto({ ...message, payload: nextPayload });
   }
 
   // 채널의 고정 메시지 목록 (최신 고정이 위로)

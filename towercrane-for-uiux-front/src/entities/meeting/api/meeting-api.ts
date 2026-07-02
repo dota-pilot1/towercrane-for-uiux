@@ -66,6 +66,12 @@ export const meetingApi = {
       body: JSON.stringify(input),
     }),
 
+  toggleReaction: (roomId: string, messageId: string, emoji: string) =>
+    apiRequest<MeetingMessage>(`/meeting/rooms/${roomId}/messages/${messageId}/reactions`, {
+      method: 'POST',
+      body: JSON.stringify({ emoji }),
+    }),
+
   startDm: (otherUserId: string) =>
     apiRequest<MeetingRoom>('/meeting/dms', {
       method: 'POST',
