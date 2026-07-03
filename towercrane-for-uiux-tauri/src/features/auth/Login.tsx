@@ -1,9 +1,15 @@
 import { useState } from "react";
-import { login, type User } from "./api";
+import { Eye, EyeOff } from "lucide-react";
+import { login } from "./api";
+import type { User } from "../../entities/user";
 import ForgotPassword from "./ForgotPassword";
+import { Button } from "../../shared/ui/button";
+import { Input } from "../../shared/ui/input";
+import { Label } from "../../shared/ui/label";
 
 type Props = {
   onSuccess: (user: User) => void;
+  onSwitchToSignup: () => void;
 };
 
 const REMEMBER_KEY = "towercrane.rememberedCredentials";
@@ -24,7 +30,7 @@ function loadRemembered(): Remembered | null {
   return null;
 }
 
-function Login({ onSuccess }: Props) {
+function Login({ onSuccess, onSwitchToSignup }: Props) {
   const remembered = loadRemembered();
   const [email, setEmail] = useState(remembered?.email ?? "");
   const [password, setPassword] = useState(remembered?.password ?? "");
@@ -59,102 +65,90 @@ function Login({ onSuccess }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-500 to-emerald-500">
-      <form
-        className="w-[340px] flex flex-col gap-3.5 p-8 bg-white rounded-2xl shadow-2xl"
-        onSubmit={handleSubmit}
-      >
-        <div className="flex flex-col items-center gap-1.5 mb-1.5">
-          <span className="w-13 h-13 flex items-center justify-center text-2xl bg-emerald-50 border border-emerald-200 rounded-2xl">
-            💬
-          </span>
-          <h1 className="mt-1.5 text-lg font-bold text-slate-900">Towercrane Messenger</h1>
-          <p className="text-[13px] text-slate-500">업무용 메신저에 로그인하세요</p>
-        </div>
-
-        <label className="flex flex-col gap-1.5 text-[13px] text-slate-600">
-          <span>이메일</span>
-          <input
+    <>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="login-email">이메일</Label>
+          <Input
+            id="login-email"
             type="email"
             autoFocus
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="px-3 py-2.5 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white"
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-1.5 text-[13px] text-slate-600">
-          <span>비밀번호</span>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="login-password">비밀번호</Label>
           <div className="relative">
-            <input
+            <Input
+              id="login-password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full pl-3 pr-11 py-2.5 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white"
+              className="pr-11"
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               title={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
               aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
-              className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center text-slate-400 rounded-lg hover:text-slate-600 hover:bg-slate-100"
+              className="absolute right-1 top-1/2 -translate-y-1/2 flex size-8 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-muted hover:text-text-secondary"
             >
-              {showPassword ? (
-                // eye-off
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-                  <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-                  <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-                  <line x1="2" y1="2" x2="22" y2="22" />
-                </svg>
-              ) : (
-                // eye
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-        </label>
+        </div>
 
         <div className="flex items-center justify-between gap-2">
-          <label className="flex items-center gap-2 text-[13px] text-slate-600 cursor-pointer select-none">
+          <label className="flex cursor-pointer select-none items-center gap-2 text-[13px] text-text-secondary">
             <input
               type="checkbox"
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
-              className="w-4 h-4 accent-emerald-500 cursor-pointer"
+              className="size-4 cursor-pointer accent-brand-primary"
             />
-            <span>아이디·비밀번호 기억하기</span>
+            <span>로그인 정보 기억하기</span>
           </label>
           <button
             type="button"
             onClick={() => setShowForgot(true)}
-            className="text-[13px] text-emerald-600 hover:text-emerald-700 hover:underline"
+            className="text-[13px] font-medium text-brand-primary hover:underline"
           >
             비밀번호를 잊으셨나요?
           </button>
         </div>
 
         {error && (
-          <div className="px-3 py-2.5 text-[13px] text-red-700 bg-red-50 border border-red-200 rounded-xl whitespace-pre-line">
+          <div className="whitespace-pre-line rounded-md border border-destructive/30 bg-danger-glass px-3 py-2.5 text-[13px] text-destructive">
             {error}
           </div>
         )}
 
-        <button
+        <Button
           type="submit"
+          size="auth"
           disabled={loading}
-          className="mt-1 py-2.5 text-[15px] font-bold text-white bg-emerald-500 rounded-xl hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+          className="w-full"
         >
           {loading ? "로그인 중…" : "로그인"}
-        </button>
+        </Button>
       </form>
+
+      <p className="mt-5 text-center text-[13px] text-text-secondary">
+        아직 계정이 없으신가요?{" "}
+        <button
+          type="button"
+          onClick={onSwitchToSignup}
+          className="font-semibold text-brand-primary hover:underline"
+        >
+          회원가입
+        </button>
+      </p>
 
       {showForgot && (
         <ForgotPassword
@@ -162,7 +156,7 @@ function Login({ onSuccess }: Props) {
           onClose={() => setShowForgot(false)}
         />
       )}
-    </div>
+    </>
   );
 }
 

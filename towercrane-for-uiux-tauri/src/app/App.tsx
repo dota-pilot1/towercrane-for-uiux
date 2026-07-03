@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import Login from "../features/auth/Login";
-import { getToken, logout as apiLogout, me, setToken, type User } from "../features/auth/api";
+import AuthScreen from "../features/auth/AuthScreen";
+import { getToken, logout as apiLogout, me, setToken } from "../features/auth/api";
+import type { User } from "../entities/user";
 import AppShell from "../widgets/app-shell/AppShell";
 import { ToastViewport } from "../shared/ui/Toast";
 import { checkForUpdates } from "../shared/update/checkForUpdates";
@@ -40,14 +41,14 @@ function App() {
 
   if (booting) {
     return (
-      <div className="h-screen flex items-center justify-center text-[15px] text-slate-400">
+      <div className="h-screen flex items-center justify-center text-[15px] text-text-secondary">
         불러오는 중…
       </div>
     );
   }
 
   if (!user) {
-    return <Login onSuccess={setUser} />;
+    return <AuthScreen onSuccess={setUser} />;
   }
 
   return (

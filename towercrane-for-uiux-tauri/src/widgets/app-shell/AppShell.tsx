@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import type { User } from "../../features/auth/api";
+import type { User } from "../../entities/user";
+import { useMeetingInbox } from "../../features/chat/useMeetingInbox";
+import { sumUnread, useUnreadStore } from "../../features/chat/unread-store";
 import Messenger from "../messenger/Messenger";
 import ChatModule from "../chat/ChatModule";
 import TodoModule from "../task/TodoModule";
@@ -41,6 +43,12 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
   const [active, setActive] = useState<ViewId>("home");
   const activeModule = MODULES.find((m) => m.id === active);
 
+  // 전역 인박스 — 모든 방의 새 메시지를 수신해 배지/네이티브 알림 처리
+  useMeetingInbox(user.id, user.name);
+  const counts = useUnreadStore((s) => s.counts);
+  const dmBadge = sumUnread(counts, "dm");
+  const channelBadge = sumUnread(counts, "channel");
+
   // 실제 설치된 앱 버전 (Tauri). 브라우저 dev 등 Tauri 밖 환경에선 빈 값 → 배지 숨김.
   const [appVersion, setAppVersion] = useState("");
   useEffect(() => {
@@ -75,6 +83,10 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
         <div className="flex-1 flex flex-col items-center gap-2 pt-2">
           {MODULES.map((m) => {
             const isActive = m.id === active;
+            // 안읽음 배지 — 메신저=DM, 채팅=채널
+            const badge =
+              m.id === "messenger" ? dmBadge : m.id === "chat" ? channelBadge : null;
+            const showBadge = !!badge && badge.unread > 0;
             return (
               <button
                 key={m.id}
@@ -96,6 +108,17 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                 />
                 <span className="text-[22px] leading-none">{m.icon}</span>
                 <span className="text-[10px] font-semibold leading-none">{m.label}</span>
+                {/* 안읽음 배지 — 멘션 있으면 강조 링 */}
+                {showBadge && (
+                  <span
+                    className={
+                      "absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold tabular-nums bg-red-500 text-white " +
+                      (badge.mentions > 0 ? "ring-2 ring-white" : "")
+                    }
+                  >
+                    {badge.unread > 99 ? "99+" : badge.unread}
+                  </span>
+                )}
               </button>
             );
           })}

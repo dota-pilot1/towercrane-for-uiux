@@ -1,16 +1,6 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { ApiError, apiRequest, getToken, setToken } from "../../shared/api/client";
-
-export type User = {
-  id: string;
-  email: string;
-  name: string;
-  profileImageUrl: string | null;
-  role: "admin" | "user";
-  aiAccess: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
+import type { User } from "../../entities/user";
 
 export type LoginResult = {
   token: string;
@@ -34,6 +24,52 @@ export async function login(email: string, password: string): Promise<LoginResul
     }
     throw err;
   }
+  setToken(result.token);
+  return result;
+}
+
+// ── 회원가입 ─────────────────────────────────────────────
+// 이메일 중복 여부 확인
+export async function checkEmail(email: string): Promise<{ available: boolean }> {
+  return apiRequest<{ available: boolean }>(
+    `/auth/check-email?email=${encodeURIComponent(email)}`,
+    { errorMessage: "이메일 확인에 실패했습니다." },
+  );
+}
+
+// 가입용 이메일 인증코드 발송 (6자리)
+export async function sendSignupCode(email: string): Promise<void> {
+  await apiRequest("/auth/email/send-code", {
+    method: "POST",
+    body: { email },
+    errorMessage: "인증코드 발송에 실패했습니다.",
+  });
+}
+
+// 가입용 인증코드 검증 → 가입에 쓸 verifiedToken 반환
+export async function verifySignupCode(
+  email: string,
+  code: string,
+): Promise<{ verifiedToken: string }> {
+  return apiRequest<{ verifiedToken: string }>("/auth/email/verify-code", {
+    method: "POST",
+    body: { email, code },
+    errorMessage: "인증코드가 올바르지 않습니다.",
+  });
+}
+
+// verifiedToken으로 회원가입 완료 → 세션 즉시 발급
+export async function signup(input: {
+  email: string;
+  password: string;
+  name: string;
+  verifiedToken: string;
+}): Promise<LoginResult> {
+  const result = await apiRequest<LoginResult>("/auth/signup", {
+    method: "POST",
+    body: input,
+    errorMessage: "회원가입에 실패했습니다.",
+  });
   setToken(result.token);
   return result;
 }

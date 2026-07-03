@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { User } from "../../features/auth/api";
+import type { User } from "../../entities/user";
 import { getToken } from "../../shared/api/client";
 import {
   CHANNEL_ROOM_TYPES,
@@ -238,10 +238,13 @@ function ChatModule({ user }: Props) {
           <ChatView
             room={activeChannel}
             currentUserId={user.id}
+            currentUserName={user.name}
             onLeave={() => {}}
             canClear={canCreate}
             membersShown={showMembers}
             onToggleMembers={() => setShowMembers((v) => !v)}
+            members={members}
+            onJumpToRoom={setActiveChannelId}
           />
         ) : (
           <>

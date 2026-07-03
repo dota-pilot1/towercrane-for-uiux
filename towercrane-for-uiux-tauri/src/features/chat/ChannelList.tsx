@@ -1,4 +1,5 @@
 import type { MeetingRoom } from "./api";
+import { useUnreadStore } from "./unread-store";
 
 type Props = {
   channels: MeetingRoom[];
@@ -17,6 +18,8 @@ function ChannelList({
   onSelect,
   onCreateClick,
 }: Props) {
+  const counts = useUnreadStore((s) => s.counts);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* 섹션 헤더 + 채널 만들기 — 본문 채널 툴바(h-9 border-b)와 높이·보더 정렬 */}
@@ -56,6 +59,9 @@ function ChannelList({
 
         {channels.map((c) => {
           const active = c.id === activeChannelId;
+          const count = active ? undefined : counts[c.id];
+          const hasUnread = !!count && count.unread > 0;
+          const hasMention = !!count && count.mentions > 0;
           return (
             <button
               key={c.id}
@@ -76,11 +82,28 @@ function ChannelList({
               <span
                 className={
                   "flex-1 min-w-0 truncate text-sm " +
-                  (active ? "font-semibold text-slate-900" : "text-slate-600")
+                  (active
+                    ? "font-semibold text-slate-900"
+                    : hasUnread
+                      ? "font-bold text-slate-900"
+                      : "text-slate-600")
                 }
               >
                 {c.name}
               </span>
+              {/* 안읽음 배지 — 멘션 포함이면 빨간 @배지, 아니면 회색 카운트 */}
+              {hasUnread && (
+                <span
+                  className={
+                    "shrink-0 min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[11px] font-bold tabular-nums " +
+                    (hasMention
+                      ? "bg-red-500 text-white"
+                      : "bg-slate-300 text-white")
+                  }
+                >
+                  {hasMention ? `@${count.mentions}` : count.unread > 99 ? "99+" : count.unread}
+                </span>
+              )}
             </button>
           );
         })}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getToken, type User } from "../../features/auth/api";
+import { getToken } from "../../features/auth/api";
+import type { User } from "../../entities/user";
 import { getRooms, leaveRoom, startDm, type MeetingRoom } from "../../features/chat/api";
 import RoomList from "../../features/chat/RoomList";
 import ChatView from "../../features/chat/ChatView";
@@ -135,6 +136,7 @@ function Messenger({ user }: Props) {
           <ChatView
             room={activeRoom}
             currentUserId={user.id}
+            currentUserName={user.name}
             onLeave={() => handleLeaveRoom(activeRoom.id)}
           />
         ) : (

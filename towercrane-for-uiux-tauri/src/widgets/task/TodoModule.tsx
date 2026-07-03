@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { User } from "../../features/auth/api";
+import type { User } from "../../entities/user";
 import { getToken } from "../../shared/api/client";
 import {
   getMyWorkspaces,
@@ -212,13 +212,13 @@ function WorkspaceCard({
       onClick={onOpen}
       className="group flex h-full w-full flex-col rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[18px] transition-colors group-hover:bg-emerald-500 group-hover:text-white">
             ✅
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-[16px] font-black leading-tight text-slate-900 group-hover:text-emerald-600">
+            <h2 className="line-clamp-2 text-[16px] font-black leading-tight text-slate-900 group-hover:text-emerald-600">
               {workspace.name}
             </h2>
             <p className="mt-0.5 line-clamp-1 text-[13px] text-slate-500">

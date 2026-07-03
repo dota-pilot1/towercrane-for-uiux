@@ -5,27 +5,72 @@ import {
   clearChannelMessages,
   getPinnedMessages,
   getRoomMessages,
+  markRoomRead,
   messageImageUrl,
   messageReactions,
   sendMeetingMessage,
   setMessagePinned,
   toggleReaction,
   uploadChatImage,
+  type MeetingMember,
   type MeetingMessage,
   type MeetingRoom,
 } from "./api";
 import { useMeetingSocket } from "./useMeetingSocket";
 import { avatarColor } from "./avatar";
+import { activeMentionQuery, splitMentions } from "./mention";
+import { useUnreadStore } from "./unread-store";
+import MessageSearch from "./MessageSearch";
 import PageHeader from "../../shared/ui/PageHeader";
 
 type Props = {
   room: MeetingRoom;
   currentUserId: string;
+  currentUserName: string;
   onLeave: () => void;
   canClear?: boolean;
   membersShown?: boolean;
   onToggleMembers?: () => void;
+  // @멘션 자동완성 후보 (없으면 자동완성 비활성)
+  members?: MeetingMember[];
+  // 검색 결과에서 다른 방으로 점프 (채팅 모듈에서 주입)
+  onJumpToRoom?: (roomId: string) => void;
 };
+
+// 멘션 하이라이트 렌더 — 내 멘션은 노란 배경, 남 멘션은 브랜드색
+function MentionText({
+  content,
+  myName,
+  inverted = false,
+}: {
+  content: string;
+  myName: string;
+  inverted?: boolean; // 내 말풍선(초록 배경) 안에서는 색 반전
+}) {
+  const parts = splitMentions(content, myName);
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.type === "text" ? (
+          <span key={i}>{p.text}</span>
+        ) : (
+          <span
+            key={i}
+            className={
+              p.me
+                ? "rounded px-0.5 font-bold bg-amber-200 text-amber-900"
+                : inverted
+                  ? "font-bold underline"
+                  : "font-semibold text-emerald-600"
+            }
+          >
+            {p.text}
+          </span>
+        ),
+      )}
+    </>
+  );
+}
 
 const REACTION_EMOJIS = ["👍", "❤️", "😂", "🎉", "✅", "👀"];
 
@@ -155,10 +200,13 @@ function PeopleIcon() {
 function ChatView({
   room,
   currentUserId,
+  currentUserName,
   onLeave,
   canClear = false,
   membersShown = false,
   onToggleMembers,
+  members = [],
+  onJumpToRoom,
 }: Props) {
   const isDm = room.roomType === "DM";
   const subtitle = isDm ? (room.dmCounterpart?.email ?? "1:1 대화") : (room.description ?? "채널");
@@ -179,10 +227,47 @@ function ChatView({
   const [pinOpen, setPinOpen] = useState(false);
   const [pinned, setPinned] = useState<MeetingMessage[]>([]);
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const draftRef = useRef<HTMLInputElement | null>(null);
+
+  // @멘션 자동완성 상태
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const mentionCandidates =
+    mentionQuery === null
+      ? []
+      : members
+          .filter((mb) => mb.id !== currentUserId)
+          .filter((mb) =>
+            mb.name.toLowerCase().includes(mentionQuery.toLowerCase()),
+          )
+          .slice(0, 6);
 
   const appendMessage = (m: MeetingMessage) =>
     setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+
+  // 이 방을 "보고 있는 방"으로 등록 + 읽음 커서 전진 + 배지 제거
+  useEffect(() => {
+    const store = useUnreadStore.getState();
+    store.setActiveRoom(room.id);
+    store.clearRoom(room.id);
+    const token = getToken();
+    if (token) markRoomRead(token, room.id).catch(() => {});
+    return () => {
+      useUnreadStore.getState().setActiveRoom(null);
+    };
+  }, [room.id]);
+
+  // 활성 방에 새 메시지 수신 → 읽음 커서도 함께 전진
+  const handleIncoming = (m: MeetingMessage) => {
+    appendMessage(m);
+    if (m.senderId !== currentUserId) {
+      const token = getToken();
+      if (token) markRoomRead(token, room.id).catch(() => {});
+      useUnreadStore.getState().clearRoom(room.id);
+    }
+  };
 
   // 갱신된 메시지를 목록·고정 목록에 반영 (리액션 등)
   const updateMessage = (m: MeetingMessage) => {
@@ -199,7 +284,7 @@ function ChatView({
     });
   };
 
-  useMeetingSocket(room.id, appendMessage, () => setMessages([]), applyPinned, updateMessage);
+  useMeetingSocket(room.id, handleIncoming, () => setMessages([]), applyPinned, updateMessage);
 
   async function handleToggleReaction(m: MeetingMessage, emoji: string) {
     setReactionPickerFor(null);
@@ -311,6 +396,46 @@ function ChatView({
     const file = e.target.files?.[0];
     if (file) handleImageUpload(file);
     e.target.value = ""; // 같은 파일 재선택 허용
+  }
+
+  // draft 변경 시 캐럿 직전의 @쿼리 감지 → 자동완성 후보 갱신
+  function handleDraftChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value;
+    setDraft(value);
+    const caret = e.target.selectionStart ?? value.length;
+    const q = activeMentionQuery(value, caret);
+    setMentionQuery(members.length > 0 ? q : null);
+    setMentionIndex(0);
+  }
+
+  // 자동완성 확정 — 캐럿 직전 "@쿼리"를 "@이름 "으로 치환
+  function insertMention(name: string) {
+    const el = draftRef.current;
+    const caret = el?.selectionStart ?? draft.length;
+    const before = draft.slice(0, caret).replace(/@[^\s@]*$/, `@${name} `);
+    const after = draft.slice(caret);
+    setDraft(before + after);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(before.length, before.length);
+    });
+  }
+
+  function handleDraftKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (mentionQuery === null || mentionCandidates.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setMentionIndex((i) => (i + 1) % mentionCandidates.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setMentionIndex((i) => (i - 1 + mentionCandidates.length) % mentionCandidates.length);
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      insertMention(mentionCandidates[mentionIndex].name);
+    } else if (e.key === "Escape") {
+      setMentionQuery(null);
+    }
   }
 
   // 입력창에 이미지 붙여넣기(⌘V) 지원
@@ -447,6 +572,25 @@ function ChatView({
       {/* 디스코드식 얇은 채널 툴바 — [고정][비우기][멤버] 순. 윈도우 버튼과 안 겹치게 별도 줄. */}
       {showToolbar && (
         <div className="relative h-9 shrink-0 flex items-center justify-end gap-1.5 px-4 bg-white border-b border-slate-200">
+          {/* 메시지 검색 */}
+          <button
+            onClick={() => setSearchOpen((v) => !v)}
+            title="메시지 검색"
+            aria-label="메시지 검색"
+            className={
+              "flex items-center gap-1 px-2 h-6 rounded-md text-[12px] font-medium " +
+              (searchOpen
+                ? "text-emerald-600 bg-emerald-50"
+                : "text-slate-400 hover:text-slate-600 hover:bg-slate-100")
+            }
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.5" y2="16.5" />
+            </svg>
+            검색
+          </button>
+
           {/* 고정 메시지 (휴지통 왼쪽) */}
           <button
             onClick={() => setPinOpen((v) => !v)}
@@ -514,6 +658,17 @@ function ChatView({
             </button>
           )}
 
+          {/* 검색 팝오버 */}
+          {searchOpen && (
+            <MessageSearch
+              roomId={room.id}
+              roomName={room.name}
+              currentUserName={currentUserName}
+              onClose={() => setSearchOpen(false)}
+              onJumpToRoom={onJumpToRoom}
+            />
+          )}
+
           {/* 고정 메시지 팝오버 */}
           {pinOpen && (
             <>
@@ -550,7 +705,7 @@ function ChatView({
                         </div>
                         {p.content && (
                           <div className="text-[13px] text-slate-600 break-words whitespace-pre-wrap">
-                            {p.content}
+                            <MentionText content={p.content} myName={currentUserName} />
                           </div>
                         )}
                         {messageImageUrl(p.payload) && (
@@ -637,7 +792,7 @@ function ChatView({
                         : "bg-white border border-slate-200 rounded-bl-sm")
                     }
                   >
-                    {m.content}
+                    <MentionText content={m.content} myName={currentUserName} inverted={mine} />
                   </div>
                 )}
                 {renderReactions(m, mine ? "end" : "start")}
@@ -680,7 +835,7 @@ function ChatView({
                   </div>
                   {m.content && (
                     <div className="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap break-words">
-                      {m.content}
+                      <MentionText content={m.content} myName={currentUserName} />
                     </div>
                   )}
                   {img && (
@@ -719,7 +874,41 @@ function ChatView({
         {uploadError && (
           <div className="px-4 pt-2 text-[12px] text-red-600">{uploadError}</div>
         )}
-        <form onSubmit={handleSend} className="flex items-center gap-2 px-4 py-3">
+        <form onSubmit={handleSend} className="relative flex items-center gap-2 px-4 py-3">
+          {/* @멘션 자동완성 팝업 */}
+          {mentionQuery !== null && mentionCandidates.length > 0 && (
+            <div className="absolute bottom-full left-16 mb-1 z-30 w-[240px] py-1 bg-white border border-slate-200 rounded-xl shadow-lg">
+              <div className="px-3 py-1 text-[11px] font-bold text-slate-400">멤버 멘션</div>
+              {mentionCandidates.map((mb, i) => (
+                <button
+                  key={mb.id}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // input blur 방지
+                    insertMention(mb.name);
+                  }}
+                  onMouseEnter={() => setMentionIndex(i)}
+                  className={
+                    "w-full flex items-center gap-2 px-3 py-1.5 text-left " +
+                    (i === mentionIndex ? "bg-emerald-50" : "")
+                  }
+                >
+                  <span
+                    className={
+                      "w-6 h-6 shrink-0 flex items-center justify-center text-[11px] font-bold text-white rounded-full " +
+                      avatarColor(mb.id)
+                    }
+                  >
+                    {mb.name.charAt(0)}
+                  </span>
+                  <span className="flex-1 min-w-0 truncate text-[13px] font-medium text-slate-800">
+                    {mb.name}
+                  </span>
+                  {mb.online && <span className="w-2 h-2 shrink-0 rounded-full bg-emerald-500" />}
+                </button>
+              ))}
+            </div>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -738,9 +927,12 @@ function ChatView({
             <ClipIcon />
           </button>
           <input
-            placeholder={uploading ? "이미지 업로드 중…" : "메시지를 입력하세요"}
+            ref={draftRef}
+            placeholder={uploading ? "이미지 업로드 중…" : "메시지를 입력하세요 (@로 멘션)"}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={handleDraftChange}
+            onKeyDown={handleDraftKeyDown}
+            onBlur={() => setMentionQuery(null)}
             onPaste={handlePaste}
             disabled={uploading}
             className="flex-1 px-3.5 py-2.5 text-sm text-slate-900 bg-slate-100 border border-transparent rounded-[10px] outline-none focus:border-emerald-500 focus:bg-white disabled:opacity-60"

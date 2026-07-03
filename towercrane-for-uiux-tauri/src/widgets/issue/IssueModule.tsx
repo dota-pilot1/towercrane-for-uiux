@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { User } from "../../features/auth/api";
+import type { User } from "../../entities/user";
 import { getToken } from "../../shared/api/client";
 import {
   createIssue,

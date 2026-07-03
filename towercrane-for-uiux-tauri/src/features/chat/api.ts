@@ -284,6 +284,60 @@ export async function createChannel(
   });
 }
 
+// --- 안읽음 / 검색 ---
+
+export type RoomUnread = {
+  roomId: string;
+  roomType: string;
+  unread: number;
+  mentions: number;
+};
+
+// 접근 가능한 모든 방의 안읽음/멘션 수 (안읽음 있는 방만 내려옴)
+export async function getUnreadCounts(token: string): Promise<RoomUnread[]> {
+  return apiRequest<RoomUnread[]>("/meeting/unread-counts", {
+    token,
+    errorMessage: "안읽음 수를 불러오지 못했습니다.",
+  });
+}
+
+// 방 읽음 처리 (읽음 커서를 지금으로 이동)
+export async function markRoomRead(token: string, roomId: string): Promise<void> {
+  await apiRequest(`/meeting/rooms/${roomId}/read`, {
+    method: "POST",
+    token,
+    errorMessage: "읽음 처리에 실패했습니다.",
+  });
+}
+
+export type MessageSearchResult = MeetingMessage & {
+  roomName: string;
+  roomType: string;
+};
+
+// 메시지 내용 검색 — roomId 지정 시 해당 방만
+export async function searchMessages(
+  token: string,
+  q: string,
+  roomId?: string,
+  limit = 30,
+): Promise<MessageSearchResult[]> {
+  const params = new URLSearchParams({ q, limit: String(limit) });
+  if (roomId) params.set("roomId", roomId);
+  return apiRequest<MessageSearchResult[]>(
+    `/meeting/messages/search?${params.toString()}`,
+    { token, errorMessage: "메시지 검색에 실패했습니다." },
+  );
+}
+
+// 인박스(안읽음/알림) WS 이벤트 payload
+export type InboxEvent = {
+  message: MeetingMessage;
+  roomType: string;
+  roomName: string;
+  workspaceId: string | null;
+};
+
 // WebSocket(실시간 수신)용 URL. http(s)://host/api → ws(s)://host/ws/meeting
 export function meetingSocketUrl(token: string): string {
   const wsBase = API_BASE.replace(/^http/, "ws").replace(/\/api$/, "");

@@ -1,4 +1,4 @@
-import type { User } from "../../features/auth/api";
+import type { User } from "../../entities/user";
 import PageHeader from "../../shared/ui/PageHeader";
 
 export type HomeModule = {
