@@ -75,6 +75,19 @@ export class MeetingGateway {
     });
   }
 
+  // 인박스 이벤트 — 토픽 구독과 무관하게 대상 유저의 모든 소켓으로 전송.
+  // audienceUserIds가 null이면 전체(채널), 배열이면 해당 유저만(DM 프라이버시).
+  broadcastInboxMessage(audienceUserIds: string[] | null, payload: unknown) {
+    const envelope: WsEnvelope = { type: 'MEETING_INBOX', data: payload };
+    for (const socket of this.sockets) {
+      if (audienceUserIds) {
+        const user = this.socketUser.get(socket);
+        if (!user || !audienceUserIds.includes(user.id)) continue;
+      }
+      this.send(socket, envelope);
+    }
+  }
+
   broadcastMeetingMessagesCleared(roomId: string) {
     this.broadcast(`meeting/${roomId}`, {
       type: 'MEETING_MESSAGES_CLEARED',

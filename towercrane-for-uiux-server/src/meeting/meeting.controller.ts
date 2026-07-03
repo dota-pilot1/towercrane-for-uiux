@@ -140,7 +140,46 @@ export class MeetingController {
   ) {
     const saved = this.meetingService.sendMessage(roomId, user, body);
     this.meetingGateway.broadcastMeetingMessage(roomId, saved);
+    // 인박스(안읽음/알림)용 — 채널은 전체, DM은 참여자에게만
+    const { room, audience } = this.meetingService.getRoomAudience(roomId);
+    this.meetingGateway.broadcastInboxMessage(audience, {
+      message: saved,
+      roomType: room.roomType,
+      roomName: room.name,
+      workspaceId: room.workspaceId ?? null,
+    });
     return saved;
+  }
+
+  // 접근 가능한 모든 방의 안읽음/멘션 수
+  @Get('unread-counts')
+  unreadCounts(@CurrentUser() user: MeetingUser) {
+    return this.meetingService.getUnreadCounts(user);
+  }
+
+  // 방 읽음 처리 (읽음 커서 upsert)
+  @Post('rooms/:roomId/read')
+  markRead(
+    @CurrentUser() user: MeetingUser,
+    @Param('roomId') roomId: string,
+  ) {
+    return this.meetingService.markRoomRead(user, roomId);
+  }
+
+  // 메시지 내용 검색 — q 필수, roomId 지정 시 해당 방만
+  @Get('messages/search')
+  searchMessages(
+    @CurrentUser() user: MeetingUser,
+    @Query('q') q: string,
+    @Query('roomId') roomId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.meetingService.searchMessages(
+      user,
+      q ?? '',
+      roomId || undefined,
+      Number(limit) || 30,
+    );
   }
 
   // 채널 메시지 전체 비우기 (admin 전용). DM은 불가.

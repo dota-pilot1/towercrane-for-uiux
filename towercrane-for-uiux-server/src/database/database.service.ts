@@ -732,6 +732,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_meeting_dm_pairs_users
         ON meeting_dm_pairs(user_a_id, user_b_id);
 
+      CREATE TABLE IF NOT EXISTS meeting_room_reads (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        last_read_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(room_id) REFERENCES meeting_rooms(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(room_id, user_id)
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_meeting_room_reads_room_user
+        ON meeting_room_reads(room_id, user_id);
+
       CREATE TABLE IF NOT EXISTS dev_management_rooms (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,

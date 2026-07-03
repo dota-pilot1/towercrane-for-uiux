@@ -6,6 +6,7 @@ import {
   meetingDmPairsTable,
   meetingMessagesTable,
   meetingRoomsTable,
+  meetingRoomReadsTable,
   meetingWorkspacesTable,
   meetingWorkspaceMembersTable,
   usersTable,
@@ -527,6 +528,125 @@ export class MeetingService {
       .run();
 
     return this.toMessageDto({ ...message, payload: nextPayload });
+  }
+
+  // ── 안읽음 / 검색 ─────────────────────────────────────
+
+  // 인박스 브로드캐스트 대상 — 채널은 전체(null), DM은 참여자 2명
+  getRoomAudience(roomId: string): { room: MeetingRoomRow; audience: string[] | null } {
+    const room = this.findRoom(roomId);
+    if (room.roomType !== 'DM') return { room, audience: null };
+    const pair = this.findDmPair(roomId);
+    if (!pair) return { room, audience: [] };
+    return { room, audience: [...new Set([pair.userAId, pair.userBId])] };
+  }
+
+  // 읽음 커서 upsert — 이 시점 이전 메시지는 모두 읽음 처리
+  markRoomRead(user: MeetingUser, roomId: string) {
+    this.findAccessibleRoom(roomId, user);
+    const now = new Date().toISOString();
+    this.db
+      .insert(meetingRoomReadsTable)
+      .values({
+        id: `meeting-read-${randomUUID().slice(0, 12)}`,
+        roomId,
+        userId: user.id,
+        lastReadAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [meetingRoomReadsTable.roomId, meetingRoomReadsTable.userId],
+        set: { lastReadAt: now, updatedAt: now },
+      })
+      .run();
+    return { roomId, lastReadAt: now };
+  }
+
+  // 접근 가능한 모든 방의 안읽음 수 + 내 멘션 수
+  getUnreadCounts(user: MeetingUser) {
+    const rooms = this.listRooms(user); // 채널 전체 + 내 DM
+    const roomIds = new Set(rooms.map((r) => r.id));
+
+    const rows = this.db
+      .select({
+        roomId: meetingMessagesTable.roomId,
+        content: meetingMessagesTable.content,
+        createdAt: meetingMessagesTable.createdAt,
+      })
+      .from(meetingMessagesTable)
+      .leftJoin(
+        meetingRoomReadsTable,
+        and(
+          eq(meetingRoomReadsTable.roomId, meetingMessagesTable.roomId),
+          eq(meetingRoomReadsTable.userId, user.id),
+        ),
+      )
+      .where(
+        and(
+          sql`${meetingMessagesTable.senderId} != ${user.id}`,
+          sql`(${meetingRoomReadsTable.lastReadAt} IS NULL OR ${meetingMessagesTable.createdAt} > ${meetingRoomReadsTable.lastReadAt})`,
+        ),
+      )
+      .all();
+
+    const mentionToken = `@${user.name}`;
+    const counts = new Map<string, { unread: number; mentions: number }>();
+    for (const row of rows) {
+      if (!roomIds.has(row.roomId)) continue;
+      const entry = counts.get(row.roomId) ?? { unread: 0, mentions: 0 };
+      entry.unread += 1;
+      if (row.content.includes(mentionToken)) entry.mentions += 1;
+      counts.set(row.roomId, entry);
+    }
+
+    return rooms
+      .filter((r) => counts.has(r.id))
+      .map((r) => ({
+        roomId: r.id,
+        roomType: r.roomType,
+        unread: counts.get(r.id)!.unread,
+        mentions: counts.get(r.id)!.mentions,
+      }));
+  }
+
+  // 접근 가능한 방에서 메시지 내용 검색 (LIKE, 최신순)
+  searchMessages(user: MeetingUser, query: string, roomId?: string, limit = 30) {
+    const q = query.trim();
+    if (q.length < 1) return [];
+    const normalizedLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
+
+    const rooms = this.listRooms(user);
+    const accessible = new Map(rooms.map((r) => [r.id, r]));
+    if (roomId && !accessible.has(roomId)) return [];
+
+    // LIKE 특수문자 이스케이프 (\, %, _)
+    const escaped = q.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+    const pattern = `%${escaped}%`;
+
+    const conditions = [
+      sql`${meetingMessagesTable.content} LIKE ${pattern} ESCAPE '\\'`,
+    ];
+    if (roomId) conditions.push(eq(meetingMessagesTable.roomId, roomId));
+
+    const rows = this.db
+      .select()
+      .from(meetingMessagesTable)
+      .where(and(...conditions))
+      .orderBy(desc(meetingMessagesTable.createdAt))
+      .limit(normalizedLimit * 3) // 접근 불가 방 필터링 여유분
+      .all();
+
+    return rows
+      .filter((row) => accessible.has(row.roomId))
+      .slice(0, normalizedLimit)
+      .map((row) => {
+        const room = accessible.get(row.roomId)!;
+        return {
+          ...this.toMessageDto(row),
+          roomName: room.name,
+          roomType: room.roomType,
+        };
+      });
   }
 
   // 채널의 고정 메시지 목록 (최신 고정이 위로)

@@ -822,6 +822,19 @@ export const meetingDmPairsTable = sqliteTable('meeting_dm_pairs', {
   createdAt: text('created_at').notNull(),
 });
 
+// 방별 읽음 커서 — 안읽음 카운트는 last_read_at 이후 메시지 수로 계산
+export const meetingRoomReadsTable = sqliteTable('meeting_room_reads', {
+  id: text('id').primaryKey(),
+  roomId: text('room_id')
+    .notNull()
+    .references(() => meetingRoomsTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  lastReadAt: text('last_read_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export type DevManagementRoomType =
   | 'GENERAL'
   | 'PROTOTYPE'
@@ -1941,6 +1954,7 @@ export const schema = {
   meetingRoomsTable,
   meetingMessagesTable,
   meetingDmPairsTable,
+  meetingRoomReadsTable,
   devManagementRoomsTable,
   devManagementMessagesTable,
   devMeetingMinutesTable,
@@ -2096,6 +2110,8 @@ export type MeetingMessageRow = typeof meetingMessagesTable.$inferSelect;
 export type MeetingMessageInsert = typeof meetingMessagesTable.$inferInsert;
 export type MeetingDmPairRow = typeof meetingDmPairsTable.$inferSelect;
 export type MeetingDmPairInsert = typeof meetingDmPairsTable.$inferInsert;
+export type MeetingRoomReadRow = typeof meetingRoomReadsTable.$inferSelect;
+export type MeetingRoomReadInsert = typeof meetingRoomReadsTable.$inferInsert;
 export type DevManagementRoomRow = typeof devManagementRoomsTable.$inferSelect;
 export type DevManagementRoomInsert =
   typeof devManagementRoomsTable.$inferInsert;
