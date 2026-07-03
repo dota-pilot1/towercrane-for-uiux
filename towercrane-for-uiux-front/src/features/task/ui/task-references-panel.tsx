@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { ExternalLink, Link2, Plus, Trash2 } from 'lucide-react'
+import * as Dialog from '@radix-ui/react-dialog'
+import { ExternalLink, Link2, Plus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import type {
   CreateTaskReferenceRequest,
@@ -63,13 +64,10 @@ function formatDateTime(value: string) {
   }).format(date)
 }
 
-export function TaskReferencesPanel({ taskId }: { taskId: string }) {
-  const referencesQuery = useTaskReferences(taskId)
-  const createReference = useCreateTaskReference(taskId)
-  const deleteReference = useDeleteTaskReference(taskId)
-  const [form, setForm] =
-    useState<CreateTaskReferenceRequest>(INITIAL_FORM)
-  const references = referencesQuery.data ?? []
+export function TaskReferenceCreateButton({ taskId }: { taskId: string | null }) {
+  const [open, setOpen] = useState(false)
+  const createReference = useCreateTaskReference(taskId ?? '')
+  const [form, setForm] = useState<CreateTaskReferenceRequest>(INITIAL_FORM)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -83,6 +81,7 @@ export function TaskReferencesPanel({ taskId }: { taskId: string }) {
       url,
     })
     setForm(INITIAL_FORM)
+    setOpen(false)
     toast.success('참고 링크가 추가되었습니다.')
   }
 
@@ -96,78 +95,118 @@ export function TaskReferencesPanel({ taskId }: { taskId: string }) {
   }
 
   return (
-    <div className="space-y-4">
-      <form
-        onSubmit={handleSubmit}
-        className="rounded-md border border-surface-border-soft bg-surface-muted p-3"
-      >
-        <div className="grid gap-2">
-          <div className="grid gap-2 sm:grid-cols-[120px_minmax(0,1fr)]">
-            <label className="block space-y-1.5">
-              <span className="text-xs font-bold text-text-secondary">
-                타입
-              </span>
-              <Select
-                value={form.referenceType}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    referenceType: event.target.value as TaskReferenceType,
-                  }))
-                }
-                className="h-10"
-              >
-                {REFERENCE_TYPE_OPTIONS.map((type) => (
-                  <option key={type} value={type}>
-                    {REFERENCE_TYPE_LABELS[type]}
-                  </option>
-                ))}
-              </Select>
-            </label>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setForm(INITIAL_FORM)
+      }}
+    >
+      <Dialog.Trigger asChild>
+        <Button type="button" size="sm" disabled={!taskId}>
+          <Plus className="mr-1.5 size-3.5" />
+          링크 추가
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-[60] flex w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft bg-surface-muted px-5 py-4">
+            <div>
+              <Dialog.Title className="text-lg font-black text-text-primary">
+                참고 링크 추가
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-text-secondary">
+                Figma, 문서, GitHub 링크를 업무에 연결합니다.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button type="button" className="ui-icon-button size-8" aria-label="닫기">
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <form onSubmit={handleSubmit} className="grid gap-3 p-5">
+            <div className="grid gap-3 sm:grid-cols-[120px_minmax(0,1fr)]">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-bold text-text-secondary">타입</span>
+                <Select
+                  value={form.referenceType}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      referenceType: event.target.value as TaskReferenceType,
+                    }))
+                  }
+                  className="h-10"
+                >
+                  {REFERENCE_TYPE_OPTIONS.map((type) => (
+                    <option key={type} value={type}>
+                      {REFERENCE_TYPE_LABELS[type]}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+
+              <label className="block space-y-1.5">
+                <span className="text-xs font-bold text-text-secondary">제목</span>
+                <Input
+                  autoFocus
+                  value={form.title}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, title: event.target.value }))
+                  }
+                  placeholder="예: 모바일 홈 화면 Figma"
+                  className="h-10"
+                />
+              </label>
+            </div>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-bold text-text-secondary">
-                제목
-              </span>
+              <span className="text-xs font-bold text-text-secondary">URL</span>
               <Input
-                value={form.title}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, title: event.target.value }))
-                }
-                placeholder="예: 모바일 홈 화면 Figma"
+                type="url"
+                value={form.url}
+                onChange={(event) => handleUrlChange(event.target.value)}
+                placeholder="https://www.figma.com/..."
                 className="h-10"
               />
             </label>
-          </div>
 
-          <label className="block space-y-1.5">
-            <span className="text-xs font-bold text-text-secondary">URL</span>
-            <Input
-              type="url"
-              value={form.url}
-              onChange={(event) => handleUrlChange(event.target.value)}
-              placeholder="https://www.figma.com/..."
-              className="h-10"
-            />
-          </label>
+            <div className="mt-1 flex justify-end gap-2">
+              <Dialog.Close asChild>
+                <Button type="button" variant="secondary" size="sm">
+                  취소
+                </Button>
+              </Dialog.Close>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={
+                  createReference.isPending ||
+                  !form.title.trim() ||
+                  !form.url.trim()
+                }
+              >
+                <Plus className="mr-1.5 size-4" />
+                추가
+              </Button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
 
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              size="sm"
-              disabled={
-                createReference.isPending ||
-                !form.title.trim() ||
-                !form.url.trim()
-              }
-            >
-              <Plus className="mr-1.5 size-4" />
-              추가
-            </Button>
-          </div>
-        </div>
-      </form>
+export function TaskReferencesPanel({ taskId }: { taskId: string }) {
+  const referencesQuery = useTaskReferences(taskId)
+  const deleteReference = useDeleteTaskReference(taskId)
+  const references = referencesQuery.data ?? []
 
+  return (
+    <div className="space-y-4">
       {referencesQuery.isLoading ? (
         <div className="rounded-md border border-surface-border-soft bg-surface-muted px-3 py-4 text-sm text-text-muted">
           참고 링크를 불러오는 중입니다.
