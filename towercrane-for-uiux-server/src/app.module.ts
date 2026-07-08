@@ -13,6 +13,7 @@ import { OrgModule } from './org/org.module';
 import { MenusModule } from './menus/menus.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { EnglishChatModule } from './english-chat/english-chat.module';
+import { DevInterviewModule } from './dev-interview/dev-interview.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ProjectIssuesModule } from './project-issues/project-issues.module';
@@ -50,6 +51,7 @@ import { PointsModule } from './points/points.module';
     MenusModule,
     AnalyticsModule,
     EnglishChatModule,
+    DevInterviewModule,
     MeetingModule,
     TasksModule,
     ProjectIssuesModule,
