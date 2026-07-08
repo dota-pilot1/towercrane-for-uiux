@@ -23,6 +23,8 @@ async function bootstrap() {
       'tauri://localhost',
       'http://tauri.localhost',
       'https://hibot-docu.com',
+      'https://www.hibot-docu.com',
+      'https://api.hibot-docu.com',
       'http://hibot-docu.com',
     ],
     credentials: true,
