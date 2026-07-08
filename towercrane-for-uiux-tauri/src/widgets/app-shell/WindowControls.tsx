@@ -9,7 +9,7 @@ function WindowControls() {
       <button
         onClick={() => win.minimize()}
         title="최소화"
-        className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+        className="w-8 h-8 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-muted"
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4">
           <line x1="2.5" y1="6" x2="9.5" y2="6" strokeLinecap="round" />
@@ -18,7 +18,7 @@ function WindowControls() {
       <button
         onClick={() => win.toggleMaximize()}
         title="최대화"
-        className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+        className="w-8 h-8 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-muted"
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4">
           <rect x="2.5" y="2.5" width="7" height="7" rx="1.5" />
@@ -27,7 +27,7 @@ function WindowControls() {
       <button
         onClick={() => win.close()}
         title="닫기"
-        className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-white hover:bg-red-500"
+        className="w-8 h-8 flex items-center justify-center rounded-md text-text-muted hover:text-primary-foreground hover:bg-destructive"
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4">
           <line x1="3" y1="3" x2="9" y2="9" strokeLinecap="round" />

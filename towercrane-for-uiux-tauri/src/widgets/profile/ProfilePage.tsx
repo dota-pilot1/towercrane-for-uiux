@@ -7,25 +7,29 @@ import {
 } from "../../features/auth/api";
 import type { User } from "../../entities/user";
 import PageHeader from "../../shared/ui/PageHeader";
+import { Button } from "../../shared/ui/button";
+import type { useAppUpdate } from "../../shared/lib/useAppUpdate";
+import { AppUpdateCard } from "../../shared/ui/AppUpdateCard";
 
 type Props = {
   user: User;
   onUserUpdate: (user: User) => void;
   onLogout: () => void;
+  appUpdate: ReturnType<typeof useAppUpdate>;
 };
 
-function ProfilePage({ user, onUserUpdate, onLogout }: Props) {
+function ProfilePage({ user, onUserUpdate, onLogout, appUpdate }: Props) {
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <PageHeader>
-        <span className="text-[14px] font-bold tracking-tight text-slate-900">프로필</span>
+        <span className="text-[14px] font-bold tracking-tight text-text-primary">프로필</span>
       </PageHeader>
 
-      <div className="flex-1 overflow-y-auto bg-slate-50">
+      <div className="flex-1 overflow-y-auto bg-surface-muted">
         <div className="mx-auto w-full max-w-[860px] flex flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
           <header className="flex flex-col gap-0.5">
-            <h1 className="text-[15px] font-semibold tracking-tight text-slate-900">설정</h1>
-            <p className="text-[13px] text-slate-500">계정과 보안을 관리하세요.</p>
+            <h1 className="text-[15px] font-semibold tracking-tight text-text-primary">설정</h1>
+            <p className="text-[13px] text-text-secondary">계정과 보안을 관리하세요.</p>
           </header>
 
           <IdentityCard user={user} onUserUpdate={onUserUpdate} onLogout={onLogout} />
@@ -34,6 +38,8 @@ function ProfilePage({ user, onUserUpdate, onLogout }: Props) {
             <AccountCard user={user} />
             <PasswordCard />
           </div>
+
+          <AppUpdateCard appUpdate={appUpdate} />
         </div>
       </div>
     </div>
@@ -182,17 +188,18 @@ function IdentityCard({
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-4">
         {/* 아바타 클릭 → 파일 선택 업로드 */}
-        <button
+        <Button
+          variant="ghost"
           onClick={() => fileRef.current?.click()}
           disabled={busy}
           title="클릭해서 프로필 사진 변경"
-          className="group relative shrink-0 overflow-hidden rounded-xl border border-slate-200 disabled:cursor-wait"
+          className="group relative shrink-0 overflow-hidden rounded-xl border border-surface-border-soft px-0 py-0 disabled:cursor-wait"
         >
           <Avatar user={user} size={72} />
           <span className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-white bg-black/45 opacity-0 group-hover:opacity-100 group-disabled:opacity-100 transition-opacity">
             {busy ? "업로드…" : "변경"}
           </span>
-        </button>
+        </Button>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -206,23 +213,25 @@ function IdentityCard({
             <span className="text-[12px] text-red-600">{error}</span>
           ) : (
             user.profileImageUrl && (
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => run(() => updateProfileImage(getToken()!, null))}
                 disabled={busy}
-                className="self-start text-[12px] text-slate-400 hover:text-slate-600 disabled:opacity-50"
+                className="self-start h-auto px-0 py-0 text-[12px] font-normal text-text-muted hover:text-text-secondary hover:bg-transparent disabled:opacity-50"
               >
                 기본 이미지로
-              </button>
+              </Button>
             )
           )}
         </div>
 
-        <button
+        <Button
+          variant="secondary"
           onClick={onLogout}
-          className="shrink-0 self-start inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3.5 text-[13px] font-medium text-slate-600 shadow-sm transition-colors hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+          className="shrink-0 self-start h-9 rounded-md border-surface-border-soft bg-surface-raised px-3.5 text-[13px] font-medium text-text-secondary shadow-sm hover:bg-danger-glass hover:border-destructive hover:text-destructive"
         >
           로그아웃
-        </button>
+        </Button>
       </div>
 
       <input
@@ -369,13 +378,14 @@ function PasswordCard() {
         {error && <Notice kind="error" text={error} />}
         {done && <Notice kind="ok" text="비밀번호를 변경했습니다." />}
 
-        <button
+        <Button
           type="submit"
+          variant="primary"
           disabled={saving || !valid}
-          className="mt-1 inline-flex h-9 items-center justify-center self-start rounded-md bg-emerald-600 px-4 text-[13px] font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none"
+          className="mt-1 self-start rounded-md h-9 px-4 text-[13px] font-medium shadow-sm disabled:pointer-events-none"
         >
           {saving ? "변경 중…" : "비밀번호 변경"}
-        </button>
+        </Button>
       </form>
     </Card>
   );

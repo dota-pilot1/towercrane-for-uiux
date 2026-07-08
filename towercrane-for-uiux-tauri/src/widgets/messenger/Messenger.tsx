@@ -7,6 +7,7 @@ import ChatView from "../../features/chat/ChatView";
 import { getOrgTree, type OrgMember, type OrgNode } from "../../features/org/api";
 import OrgTree from "../../features/org/OrgTree";
 import PageHeader from "../../shared/ui/PageHeader";
+import { Button } from "../../shared/ui/button";
 
 type Props = {
   user: User;
@@ -87,7 +88,7 @@ function Messenger({ user }: Props) {
       <aside className="w-[270px] shrink-0 flex flex-col bg-white border-r border-slate-200">
         {/* 사이드바 헤더 (천장까지, 드래그 핸들) */}
         <PageHeader>
-          <span className="text-[14px] font-bold tracking-tight text-slate-900">메신저</span>
+          <span className="text-[14px] font-bold tracking-tight text-text-primary">메신저</span>
         </PageHeader>
 
         {/* 탭 — underline 방식 */}
@@ -98,18 +99,19 @@ function Messenger({ user }: Props) {
               ["org", "조직도"],
             ] as const
           ).map(([key, label]) => (
-            <button
+            <Button
               key={key}
+              variant="ghost"
               onClick={() => setTab(key)}
               className={
-                "flex-1 py-2.5 -mb-px text-[13px] font-semibold border-b-2 transition-colors " +
+                "flex-1 rounded-none px-0 py-2.5 -mb-px text-[13px] font-semibold border-b-2 transition-colors hover:bg-transparent " +
                 (tab === key
-                  ? "border-emerald-500 text-emerald-600"
-                  : "border-transparent text-slate-400 hover:text-slate-600")
+                  ? "border-brand-border text-brand-primary"
+                  : "border-transparent text-text-muted hover:text-text-secondary")
               }
             >
               {label}
-            </button>
+            </Button>
           ))}
         </div>
 

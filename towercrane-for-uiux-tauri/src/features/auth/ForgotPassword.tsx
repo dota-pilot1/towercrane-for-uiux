@@ -4,6 +4,7 @@ import {
   resetPasswordWithCode,
   verifyPasswordResetCode,
 } from "./api";
+import { Button } from "../../shared/ui/button";
 
 type Props = {
   initialEmail?: string;
@@ -162,7 +163,7 @@ function ForgotPassword({ initialEmail = "", onClose }: Props) {
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="w-8 h-8 flex items-center justify-center text-slate-400 rounded-lg hover:text-slate-600 hover:bg-slate-100"
+            className="w-8 h-8 flex items-center justify-center text-text-muted rounded-lg hover:text-text-secondary hover:bg-surface-muted"
           >
             ✕
           </button>
@@ -186,13 +187,13 @@ function ForgotPassword({ initialEmail = "", onClose }: Props) {
             </span>
             <p className="text-sm font-medium text-slate-900">비밀번호가 변경되었습니다.</p>
             <p className="text-xs text-slate-500">새 비밀번호로 다시 로그인해 주세요.</p>
-            <button
+            <Button
               type="button"
               onClick={onClose}
-              className="mt-1 w-full py-2.5 text-sm font-bold text-white bg-emerald-500 rounded-xl hover:bg-emerald-600"
+              className="mt-1 w-full rounded-xl py-2.5 text-sm font-bold"
             >
               로그인으로 돌아가기
-            </button>
+            </Button>
           </div>
         ) : (
           <>
@@ -210,18 +211,18 @@ function ForgotPassword({ initialEmail = "", onClose }: Props) {
                     className="px-3 py-2.5 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white"
                   />
                 </label>
-                <button
+                <Button
                   type="button"
                   onClick={handleRequestCode}
                   disabled={loading || resendCountdown > 0}
-                  className="py-2.5 text-sm font-bold text-white bg-emerald-500 rounded-xl hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                  className="rounded-xl py-2.5 text-sm font-bold"
                 >
                   {loading
                     ? "발송 중…"
                     : resendCountdown > 0
                       ? `${resendCountdown}초 후 재발송`
                       : "인증코드 발송"}
-                </button>
+                </Button>
               </div>
             )}
 
@@ -250,21 +251,21 @@ function ForgotPassword({ initialEmail = "", onClose }: Props) {
                         </span>
                       )}
                     </div>
-                    <button
+                    <Button
                       type="button"
                       onClick={handleVerifyCode}
                       disabled={loading || code.length !== 6}
-                      className="px-4 py-2.5 text-sm font-bold text-white bg-emerald-500 rounded-xl hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                      className="shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold"
                     >
                       {loading ? "확인 중…" : "확인"}
-                    </button>
+                    </Button>
                   </div>
                 </label>
                 <button
                   type="button"
                   onClick={handleRequestCode}
                   disabled={loading || resendCountdown > 0}
-                  className="self-end text-xs text-slate-500 hover:text-slate-700 disabled:text-slate-300 disabled:cursor-not-allowed"
+                  className="self-end text-xs text-text-muted hover:text-text-secondary disabled:text-text-muted disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {resendCountdown > 0 ? `${resendCountdown}초 후 재발송` : "인증코드 재발송"}
                 </button>
@@ -298,13 +299,13 @@ function ForgotPassword({ initialEmail = "", onClose }: Props) {
                     className="px-3 py-2.5 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white"
                   />
                 </label>
-                <button
+                <Button
                   type="submit"
                   disabled={loading}
-                  className="py-2.5 text-sm font-bold text-white bg-emerald-500 rounded-xl hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                  className="rounded-xl py-2.5 text-sm font-bold"
                 >
                   {loading ? "변경 중…" : "비밀번호 변경"}
-                </button>
+                </Button>
               </form>
             )}
 

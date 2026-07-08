@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { getToken } from "../../shared/api/client";
 import {
   createIssueChecklist,
@@ -27,6 +28,7 @@ import {
   type ProjectIssueStatus,
   type ProjectIssueType,
 } from "../../features/issue/api";
+import { Button } from "../../shared/ui/button";
 import PageHeader from "../../shared/ui/PageHeader";
 import Select from "../../shared/ui/Select";
 import { toast } from "../../shared/ui/Toast";
@@ -324,14 +326,17 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <PageHeader>
-        <button
+        <Button
+          data-actions
+          variant="ghost"
+          size="sm-icon"
           onClick={onBack}
-          className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
+          className="w-7 h-7 rounded-lg text-text-secondary hover:bg-surface-muted"
           title="목록으로"
         >
           ←
-        </button>
-        <span className="text-[14px] font-bold tracking-tight text-slate-900 truncate">
+        </Button>
+        <span className="text-[14px] font-bold tracking-tight text-text-primary truncate">
           이슈 상세
         </span>
         {issue ? (
@@ -345,15 +350,17 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
           </span>
         ) : null}
         {issue ? (
-          <button
+          <Button
             data-actions
+            variant="ghost"
+            size="sm-icon"
             onClick={handleRefresh}
             disabled={refreshing}
             title="새로고침"
-            className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50"
+            className="w-7 h-7 rounded-lg text-text-secondary hover:bg-surface-muted"
           >
-            <span className={refreshing ? "inline-block animate-spin" : ""}>↻</span>
-          </button>
+            <RefreshCw className={"size-3.5" + (refreshing ? " animate-spin" : "")} strokeWidth={2} />
+          </Button>
         ) : null}
       </PageHeader>
 
@@ -501,8 +508,8 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
                             className={
                               "flex size-5 shrink-0 items-center justify-center rounded-md border text-[12px] " +
                               (item.completed
-                                ? "border-emerald-500 bg-emerald-500 text-white"
-                                : "border-slate-300 bg-white text-transparent hover:border-emerald-400")
+                                ? "border-brand-border bg-brand-primary text-text-on-brand"
+                                : "border-surface-border bg-surface-raised text-transparent hover:border-brand-border")
                             }
                           >
                             ✓
@@ -511,8 +518,8 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
                             className={
                               "flex-1 text-[14px] " +
                               (item.completed
-                                ? "text-slate-400 line-through"
-                                : "text-slate-800")
+                                ? "text-text-muted line-through"
+                                : "text-text-primary")
                             }
                           >
                             {item.content}
@@ -520,7 +527,7 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
                           <button
                             type="button"
                             onClick={() => handleDeleteChecklist(item.id)}
-                            className="shrink-0 rounded-md px-1.5 py-1 text-[12px] text-slate-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+                            className="shrink-0 rounded-md px-1.5 py-1 text-[12px] text-text-muted opacity-0 transition-opacity hover:bg-danger-glass hover:text-destructive group-hover:opacity-100"
                             title="삭제"
                           >
                             ✕
@@ -537,14 +544,16 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
                       placeholder="체크리스트 항목 추가"
                       className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-800 outline-none focus:border-emerald-500 focus:bg-white"
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="sm"
                       onClick={handleAddChecklist}
                       disabled={!newChecklist.trim()}
-                      className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+                      className="shrink-0 h-auto rounded-lg px-3 py-2 text-[13px]"
                     >
                       추가
-                    </button>
+                    </Button>
                   </div>
                 </Section>
 
@@ -552,14 +561,16 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
                   icon="📎"
                   title="첨부"
                   trailing={
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="sm"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+                      className="shrink-0 h-auto rounded-lg px-3 py-1.5 text-[12px]"
                     >
                       {uploading ? "업로드 중…" : "첨부 추가"}
-                    </button>
+                    </Button>
                   }
                 >
                   <input
@@ -604,7 +615,7 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
                             <button
                               type="button"
                               onClick={() => handleDeleteAttachment(a.id)}
-                              className="shrink-0 rounded-md px-1.5 py-1 text-[12px] text-slate-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+                              className="shrink-0 rounded-md px-1.5 py-1 text-[12px] text-text-muted opacity-0 transition-opacity hover:bg-danger-glass hover:text-destructive group-hover:opacity-100"
                               title="삭제"
                             >
                               ✕
@@ -635,7 +646,7 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteComment(c.id)}
-                                className="rounded-md px-1 text-[11px] text-slate-300 opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100"
+                                className="rounded-md px-1 text-[11px] text-text-muted opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
                                 title="삭제"
                               >
                                 ✕
@@ -661,14 +672,15 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
                       placeholder="댓글 입력"
                       className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-800 outline-none focus:border-emerald-500 focus:bg-white"
                     />
-                    <button
+                    <Button
                       type="button"
+                      size="sm"
                       onClick={handleAddComment}
                       disabled={!newComment.trim()}
-                      className="shrink-0 rounded-lg bg-emerald-500 px-3 py-2 text-[13px] font-bold text-white hover:bg-emerald-600 disabled:opacity-50"
+                      className="shrink-0 h-auto rounded-lg px-3 py-2 text-[13px]"
                     >
                       등록
-                    </button>
+                    </Button>
                   </div>
                 </Section>
               </div>
@@ -683,13 +695,13 @@ function IssueDetail({ issueId, onBack, onUpdated }: Props) {
           <span className="text-[12px] text-slate-400">
             {dirty ? "저장하지 않은 변경사항이 있습니다." : "변경사항 없음"}
           </span>
-          <button
+          <Button
             onClick={handleSave}
             disabled={!dirty || saving || !title.trim()}
-            className="rounded-lg bg-emerald-500 px-5 py-2 text-[14px] font-bold text-white hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+            className="h-auto rounded-lg px-5 py-2 text-[14px]"
           >
             {saving ? "저장 중…" : "저장"}
-          </button>
+          </Button>
         </footer>
       ) : null}
     </div>

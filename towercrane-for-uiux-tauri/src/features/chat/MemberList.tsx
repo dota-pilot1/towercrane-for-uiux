@@ -1,5 +1,5 @@
 import type { MeetingMember } from "./api";
-import { avatarColor } from "./avatar";
+import { avatarColor } from "../../shared/lib/avatar-color";
 
 type Props = {
   members: MeetingMember[];
@@ -14,9 +14,9 @@ function MemberRow({ member }: { member: MeetingMember }) {
         <span
           className={
             "w-8 h-8 flex items-center justify-center text-[13px] font-bold text-white rounded-full " +
-            avatarColor(member.id) +
-            (member.online ? "" : " opacity-50")
+            (member.online ? "" : "opacity-50")
           }
+          style={{ backgroundColor: avatarColor(member.id) }}
         >
           {member.name.charAt(0)}
         </span>

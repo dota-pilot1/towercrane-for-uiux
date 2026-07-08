@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
+import { Button } from "../../shared/ui/button";
 import { useApiEnvStore } from "../../features/api-doc/api-env-store";
 import type {
   ApiEnvironment,
@@ -60,12 +61,14 @@ function EnvironmentDialog({ onClose }: { onClose: () => void }) {
               {"{{API_BASE}} 처럼 요청 URL·header·body에서 사용할 수 있습니다."}
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100"
+            className="size-8 rounded-lg border-0"
           >
             <X className="size-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
@@ -77,8 +80,8 @@ function EnvironmentDialog({ onClose }: { onClose: () => void }) {
                 className={
                   "rounded-md border px-3 py-1.5 text-[12px] font-bold " +
                   (activeEnvId === env.id
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-700")
+                    ? "border-brand-border bg-brand-glass text-brand-primary"
+                    : "border-surface-border bg-surface-muted text-text-muted hover:text-text-primary")
                 }
               >
                 {env.name}
@@ -118,7 +121,7 @@ function EnvironmentDialog({ onClose }: { onClose: () => void }) {
                     onClick={() =>
                       setDraft((prev) => prev.filter((_, i) => i !== index))
                     }
-                    className="flex size-7 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    className="flex size-7 items-center justify-center rounded-md text-text-muted hover:bg-danger-glass hover:text-destructive"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -127,30 +130,35 @@ function EnvironmentDialog({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() =>
               setDraft((prev) => [...prev, { key: "", value: "", description: "" }])
             }
-            className="mt-3 flex items-center gap-1.5 rounded-md bg-slate-100 px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
+            className="mt-3 gap-1.5 rounded-md px-3 py-1.5 text-[12px]"
           >
             <Plus className="size-3.5" />
             변수 추가
-          </button>
+          </Button>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50 px-5 py-4">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-[13px] font-bold text-slate-500 hover:bg-slate-100"
+            className="rounded-lg px-4 py-2 text-[13px]"
           >
             취소
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
             onClick={save}
-            className="rounded-lg bg-emerald-500 px-5 py-2 text-[13px] font-bold text-white hover:bg-emerald-600"
+            className="rounded-lg px-5 py-2 text-[13px]"
           >
             저장
-          </button>
+          </Button>
         </div>
       </div>
     </div>

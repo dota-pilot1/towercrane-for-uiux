@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import type { User } from "../../entities/user";
 import { getToken } from "../../shared/api/client";
 import {
@@ -18,6 +19,7 @@ import {
   type ProjectIssueType,
   type ProjectIssueWorkspace,
 } from "../../features/issue/api";
+import { Button } from "../../shared/ui/button";
 import PageHeader from "../../shared/ui/PageHeader";
 import Select from "../../shared/ui/Select";
 import IssueDetail from "./IssueDetail";
@@ -128,18 +130,19 @@ function IssueModule({ user }: Props) {
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <PageHeader>
-        <span className="text-[14px] font-bold tracking-tight text-slate-900">
+        <span className="text-[14px] font-bold tracking-tight text-text-primary">
           프로젝트 이슈
         </span>
         <span className="text-[12px] text-slate-400">{user.name}</span>
         <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
-        <button
+        <Button
           data-actions
           onClick={() => setCreating(true)}
-          className="flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-emerald-600"
+          size="sm"
+          className="gap-1 rounded-lg px-3 py-1.5 text-[12px]"
         >
           + 워크스페이스
-        </button>
+        </Button>
       </PageHeader>
 
       <div className="flex-1 overflow-y-auto bg-slate-50 px-5 py-5">
@@ -160,12 +163,13 @@ function IssueModule({ user }: Props) {
             <span className="text-[13px] text-slate-400">
               먼저 워크스페이스를 만들어 이슈를 모아보세요.
             </span>
-            <button
+            <Button
               onClick={() => setCreating(true)}
-              className="mt-2 rounded-lg bg-emerald-500 px-4 py-2 text-[13px] font-bold text-white hover:bg-emerald-600"
+              size="sm"
+              className="mt-2 rounded-lg px-4 py-2 text-[13px]"
             >
               + 워크스페이스 추가
-            </button>
+            </Button>
           </div>
         ) : (
           <>
@@ -232,15 +236,17 @@ function RefreshButton({
   refreshing: boolean;
 }) {
   return (
-    <button
+    <Button
       data-actions
+      variant="ghost"
+      size="sm-icon"
       onClick={onClick}
       disabled={refreshing}
       title="새로고침"
-      className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50"
+      className="w-7 h-7 rounded-lg text-text-secondary hover:bg-surface-muted"
     >
-      <span className={refreshing ? "inline-block animate-spin" : ""}>↻</span>
-    </button>
+      <RefreshCw className={"size-3.5" + (refreshing ? " animate-spin" : "")} strokeWidth={2} />
+    </Button>
   );
 }
 
@@ -255,39 +261,39 @@ function WorkspaceCard({
     <button
       type="button"
       onClick={onOpen}
-      className="group flex h-full w-full flex-col rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      className="group flex h-full w-full flex-col rounded-xl border border-surface-border-soft bg-surface-raised p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-border hover:shadow-md"
     >
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[18px] transition-colors group-hover:bg-emerald-500 group-hover:text-white">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-glass text-[18px] transition-colors group-hover:bg-brand-primary group-hover:text-text-on-brand">
             🗂️
           </div>
           <div className="min-w-0">
-            <h2 className="line-clamp-2 text-[16px] font-black leading-tight text-slate-900 group-hover:text-emerald-600">
+            <h2 className="line-clamp-2 text-[16px] font-black leading-tight text-text-primary group-hover:text-brand-primary">
               {workspace.name}
             </h2>
-            <p className="mt-0.5 line-clamp-1 text-[13px] text-slate-500">
+            <p className="mt-0.5 line-clamp-1 text-[13px] text-text-muted">
               {workspace.description || "이슈 워크스페이스"}
             </p>
           </div>
         </div>
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-all group-hover:translate-x-0.5 group-hover:bg-emerald-50 group-hover:text-emerald-600">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-surface-border-soft text-text-muted transition-all group-hover:translate-x-0.5 group-hover:bg-brand-glass group-hover:text-brand-primary">
           →
         </span>
       </div>
 
-      <div className="mt-4 grid w-full grid-cols-2 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+      <div className="mt-4 grid w-full grid-cols-2 overflow-hidden rounded-lg border border-surface-border-soft bg-surface-muted">
         <div className="px-3 py-2.5">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
             전체 이슈
           </div>
-          <div className="mt-0.5 text-2xl font-black text-slate-900">
+          <div className="mt-0.5 text-2xl font-black text-text-primary">
             {workspace.issueCount}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 border-l border-slate-200 px-3 py-2.5">
-          <span className="size-2 rounded-full bg-emerald-500" />
-          <span className="text-[13px] font-bold text-emerald-600">활성</span>
+        <div className="flex items-center gap-1.5 border-l border-surface-border-soft px-3 py-2.5">
+          <span className="size-2 rounded-full bg-brand-primary" />
+          <span className="text-[13px] font-bold text-brand-primary">활성</span>
         </div>
       </div>
     </button>
@@ -411,25 +417,29 @@ function WorkspaceIssues({
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <PageHeader>
-        <button
+        <Button
+          data-actions
+          variant="ghost"
+          size="sm-icon"
           onClick={onBack}
-          className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
+          className="w-7 h-7 rounded-lg text-text-secondary hover:bg-surface-muted"
           title="워크스페이스 목록"
         >
           ←
-        </button>
-        <span className="text-[14px] font-bold tracking-tight text-slate-900 truncate">
+        </Button>
+        <span className="text-[14px] font-bold tracking-tight text-text-primary truncate">
           {workspace.name}
         </span>
         <span className="text-[12px] text-slate-400">{issues.length}</span>
         <RefreshButton onClick={handleRefresh} refreshing={refreshing} />
-        <button
+        <Button
           data-actions
           onClick={() => setCreating(true)}
-          className="flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-emerald-600"
+          size="sm"
+          className="gap-1 rounded-lg px-3 py-1.5 text-[12px]"
         >
           + 이슈
-        </button>
+        </Button>
       </PageHeader>
 
       {/* 검색 + 상태 필터 */}
@@ -454,19 +464,18 @@ function WorkspaceIssues({
                   : issues.filter((i) => i.status === s).length;
               const active = statusFilter === s;
               return (
-                <button
+                <Button
                   key={s}
-                  type="button"
+                  variant={active ? "primary" : "secondary"}
+                  size="sm"
                   onClick={() => setStatusFilter(s)}
                   className={
-                    "rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition-colors " +
-                    (active
-                      ? "bg-emerald-500 text-white"
-                      : "bg-slate-100 text-slate-500 hover:bg-slate-200")
+                    "rounded-lg px-2.5 py-1.5 text-[12px]" +
+                    (active ? "" : " text-text-secondary")
                   }
                 >
                   {s === "ALL" ? "전체" : ISSUE_STATUS_LABELS[s]} {count}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -488,12 +497,13 @@ function WorkspaceIssues({
             <span className="text-[14px] text-slate-400">
               이 워크스페이스에 이슈가 없습니다.
             </span>
-            <button
+            <Button
               onClick={() => setCreating(true)}
-              className="mt-1 rounded-lg bg-emerald-500 px-4 py-2 text-[13px] font-bold text-white hover:bg-emerald-600"
+              size="sm"
+              className="mt-1 rounded-lg px-4 py-2 text-[13px]"
             >
               + 이슈 추가
-            </button>
+            </Button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
@@ -527,7 +537,7 @@ function WorkspaceIssues({
                   className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
                 >
                   <span className="flex w-full min-w-0 items-center gap-2">
-                    <span className="min-w-0 truncate text-[14px] font-semibold text-slate-800">
+                    <span className="min-w-0 truncate text-[14px] font-semibold text-text-primary">
                       {issue.title}
                     </span>
                     <span
@@ -539,7 +549,7 @@ function WorkspaceIssues({
                       {ISSUE_TYPE_LABELS[issue.issueType]}
                     </span>
                   </span>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-text-muted">
                     {issue.assigneeName
                       ? `담당 ${issue.assigneeName}`
                       : "담당자 미지정"}
@@ -623,7 +633,7 @@ function Dialog({
           <h3 className="text-[15px] font-bold text-slate-900">{title}</h3>
           <button
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100"
+            className="flex size-7 items-center justify-center rounded-lg text-text-muted hover:bg-surface-muted"
           >
             ✕
           </button>
@@ -680,13 +690,13 @@ function CreateWorkspaceDialog({
           className={inputCls}
         />
         {err ? <p className="text-[12px] text-red-600">{err}</p> : null}
-        <button
+        <Button
           onClick={submit}
           disabled={!name.trim() || saving}
-          className="mt-1 rounded-lg bg-emerald-500 py-2.5 text-[13px] font-bold text-white hover:bg-emerald-600 disabled:opacity-50"
+          className="mt-1 w-full py-2.5 text-[13px]"
         >
           {saving ? "만드는 중…" : "만들기"}
-        </button>
+        </Button>
       </div>
     </Dialog>
   );
@@ -769,13 +779,13 @@ function CreateIssueDialog({
           </Select>
         </div>
         {err ? <p className="text-[12px] text-red-600">{err}</p> : null}
-        <button
+        <Button
           onClick={submit}
           disabled={!title.trim() || saving}
-          className="mt-1 rounded-lg bg-emerald-500 py-2.5 text-[13px] font-bold text-white hover:bg-emerald-600 disabled:opacity-50"
+          className="mt-1 w-full py-2.5 text-[13px]"
         >
           {saving ? "만드는 중…" : "이슈 등록"}
-        </button>
+        </Button>
       </div>
     </Dialog>
   );

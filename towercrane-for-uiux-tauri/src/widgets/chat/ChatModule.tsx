@@ -17,6 +17,8 @@ import ChannelList from "../../features/chat/ChannelList";
 import ChatView from "../../features/chat/ChatView";
 import MemberList from "../../features/chat/MemberList";
 import PageHeader from "../../shared/ui/PageHeader";
+import { Button } from "../../shared/ui/button";
+import { CompactSelect } from "../../shared/ui/compact-select";
 
 type Props = {
   user: User;
@@ -148,12 +150,13 @@ function ChatModule({ user }: Props) {
       <aside className="w-[270px] shrink-0 flex flex-col bg-white border-r border-slate-200">
         {/* 워크스페이스 스위처 (헤더) */}
         <PageHeader>
-          <button
+          <Button
+            variant="ghost"
             onClick={() => setWsMenuOpen((v) => !v)}
             disabled={workspaces.length === 0}
-            className="flex items-center gap-1.5 min-w-0 max-w-full text-left disabled:cursor-default"
+            className="flex items-center gap-1.5 min-w-0 max-w-full px-0 py-0 text-left disabled:cursor-default disabled:opacity-100 disabled:bg-transparent disabled:border-transparent disabled:shadow-none"
           >
-            <span className="text-[14px] font-bold tracking-tight text-slate-900 truncate">
+            <span className="text-[14px] font-bold tracking-tight text-text-primary truncate">
               {activeWs?.name ?? "채팅"}
             </span>
             {workspaces.length > 1 && (
@@ -167,14 +170,14 @@ function ChatModule({ user }: Props) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 className={
-                  "shrink-0 text-slate-400 transition-transform " +
+                  "shrink-0 text-text-muted transition-transform " +
                   (wsMenuOpen ? "rotate-180" : "")
                 }
               >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             )}
-          </button>
+          </Button>
         </PageHeader>
 
         {/* 워크스페이스 드롭다운 */}
@@ -189,12 +192,12 @@ function ChatModule({ user }: Props) {
                     setWsMenuOpen(false);
                   }}
                   className={
-                    "w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 " +
-                    (w.id === activeWsId ? "text-emerald-600 font-semibold" : "text-slate-700")
+                    "w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-surface-muted " +
+                    (w.id === activeWsId ? "text-brand-primary font-semibold" : "text-text-secondary")
                   }
                 >
                   <span className="truncate">{w.name}</span>
-                  <span className="shrink-0 text-[11px] text-slate-400">
+                  <span className="shrink-0 text-[11px] text-text-muted">
                     {w.channelCount} 채널
                   </span>
                 </button>
@@ -209,13 +212,13 @@ function ChatModule({ user }: Props) {
           <div className="px-3 py-4 flex flex-col gap-2.5 text-[13px] text-slate-400 leading-relaxed">
             <span>워크스페이스가 없습니다.</span>
             {canCreate ? (
-              <button
+              <Button
                 onClick={handleCreateWorkspace}
                 disabled={creatingWs}
-                className="self-start px-3 py-2 text-[13px] font-semibold text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 disabled:bg-slate-300"
+                className="self-start rounded-lg px-3 py-2 text-[13px]"
               >
                 {creatingWs ? "만드는 중…" : "기본 워크스페이스 만들기"}
-              </button>
+              </Button>
             ) : (
               <span>관리자가 워크스페이스를 만들어야 합니다.</span>
             )}
@@ -348,17 +351,18 @@ function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProps) {
 
         <label className="flex flex-col gap-1.5 text-[13px] text-slate-600">
           <span>종류</span>
-          <select
+          <CompactSelect
             value={roomType}
             onChange={(e) => setRoomType(e.target.value as ChannelRoomType)}
-            className="px-3 py-2.5 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white"
+            wrapperClassName="w-full"
+            className="h-[42px] rounded-xl text-sm"
           >
             {CHANNEL_ROOM_TYPES.map((t) => (
               <option key={t} value={t}>
                 {ROOM_TYPE_LABELS[t]}
               </option>
             ))}
-          </select>
+          </CompactSelect>
         </label>
 
         {error && (
@@ -368,20 +372,21 @@ function CreateChannelModal({ onClose, onCreate }: CreateChannelModalProps) {
         )}
 
         <div className="mt-1 flex gap-2">
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={onClose}
-            className="flex-1 py-2.5 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200"
+            className="flex-1 rounded-xl py-2.5 text-sm"
           >
             취소
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={!name.trim() || submitting}
-            className="flex-1 py-2.5 text-sm font-bold text-white bg-emerald-500 rounded-xl hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+            className="flex-1 rounded-xl py-2.5 text-sm"
           >
             {submitting ? "만드는 중…" : "만들기"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

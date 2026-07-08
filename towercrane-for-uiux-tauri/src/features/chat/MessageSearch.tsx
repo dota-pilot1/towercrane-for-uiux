@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { getToken } from "../../shared/api/client";
 import { searchMessages, type MessageSearchResult } from "./api";
-import { avatarColor } from "./avatar";
+import { avatarColor } from "../../shared/lib/avatar-color";
 import { splitMentions } from "./mention";
+import { Button } from "../../shared/ui/button";
 
 type Props = {
   roomId: string;
@@ -74,38 +75,41 @@ function MessageSearch({ roomId, roomName, currentUserName, onClose, onJumpToRoo
             className="w-full px-3 py-2 text-sm text-slate-900 bg-slate-100 border border-transparent rounded-lg outline-none focus:border-emerald-500 focus:bg-white"
           />
           <div className="flex items-center gap-1.5">
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setScope("room")}
               className={
                 "px-2 h-6 rounded-md text-[12px] font-semibold " +
                 (scope === "room"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "text-slate-500 hover:bg-slate-100")
+                  ? "bg-brand-glass text-brand-primary hover:bg-brand-glass"
+                  : "text-text-secondary")
               }
             >
               #{roomName}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => setScope("all")}
               className={
                 "px-2 h-6 rounded-md text-[12px] font-semibold " +
                 (scope === "all"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "text-slate-500 hover:bg-slate-100")
+                  ? "bg-brand-glass text-brand-primary hover:bg-brand-glass"
+                  : "text-text-secondary")
               }
             >
               전체
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => {
                 setScope("all");
                 setQuery(`@${currentUserName}`);
               }}
               title="나를 멘션한 메시지"
-              className="ml-auto px-2 h-6 rounded-md text-[12px] font-semibold text-amber-600 hover:bg-amber-50"
+              className="ml-auto px-2 h-6 rounded-md text-[12px] font-semibold text-brand-primary hover:bg-brand-glass"
             >
               @내 멘션
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -126,8 +130,9 @@ function MessageSearch({ roomId, roomName, currentUserName, onClose, onJumpToRoo
               const isCurrentRoom = r.roomId === roomId;
               const canJump = !isCurrentRoom && r.roomType !== "DM" && !!onJumpToRoom;
               return (
-                <button
+                <Button
                   key={r.id}
+                  variant="ghost"
                   onClick={() => {
                     if (canJump) {
                       onJumpToRoom?.(r.roomId);
@@ -135,15 +140,13 @@ function MessageSearch({ roomId, roomName, currentUserName, onClose, onJumpToRoo
                     }
                   }}
                   className={
-                    "w-full flex gap-2 px-3 py-2.5 text-left border-b border-slate-50 " +
-                    (canJump ? "hover:bg-emerald-50/60 cursor-pointer" : "cursor-default")
+                    "w-full flex gap-2 px-3 py-2.5 text-left justify-start h-auto font-normal rounded-none border-b border-surface-border-soft " +
+                    (canJump ? "hover:bg-brand-glass cursor-pointer" : "cursor-default hover:bg-transparent")
                   }
                 >
                   <span
-                    className={
-                      "w-7 h-7 shrink-0 flex items-center justify-center text-[12px] font-bold text-white rounded-full " +
-                      avatarColor(r.senderId)
-                    }
+                    className="w-7 h-7 shrink-0 flex items-center justify-center text-[12px] font-bold text-white rounded-full"
+                    style={{ backgroundColor: avatarColor(r.senderId) }}
                   >
                     {r.senderName.charAt(0)}
                   </span>
@@ -171,7 +174,7 @@ function MessageSearch({ roomId, roomName, currentUserName, onClose, onJumpToRoo
                       <span className="text-[11px] text-slate-400">메신저 탭에서 확인</span>
                     )}
                   </div>
-                </button>
+                </Button>
               );
             })
           )}

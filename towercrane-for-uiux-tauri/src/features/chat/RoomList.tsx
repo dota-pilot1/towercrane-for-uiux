@@ -1,5 +1,6 @@
 import type { MeetingRoom } from "./api";
 import { useUnreadStore } from "./unread-store";
+import { Button } from "../../shared/ui/button";
 
 type Props = {
   rooms: MeetingRoom[];
@@ -26,12 +27,13 @@ function RoomList({ rooms, activeRoomId, error, onSelect }: Props) {
         const count = r.id === activeRoomId ? undefined : counts[r.id];
         const unread = count?.unread ?? 0;
         return (
-          <button
+          <Button
             key={r.id}
+            variant="ghost"
             onClick={() => onSelect(r.id)}
             className={
-              "w-full flex items-center gap-2.5 p-2.5 rounded-[10px] text-left " +
-              (r.id === activeRoomId ? "bg-emerald-50" : "hover:bg-slate-100")
+              "w-full flex items-center gap-2.5 p-2.5 rounded-[10px] text-left justify-start h-auto font-normal " +
+              (r.id === activeRoomId ? "bg-brand-glass hover:bg-brand-glass" : "")
             }
           >
             <span className="w-[38px] h-[38px] shrink-0 flex items-center justify-center text-[15px] font-bold text-white bg-emerald-500 rounded-[11px]">
@@ -55,7 +57,7 @@ function RoomList({ rooms, activeRoomId, error, onSelect }: Props) {
                 {unread > 99 ? "99+" : unread}
               </span>
             )}
-          </button>
+          </Button>
         );
       })}
     </nav>

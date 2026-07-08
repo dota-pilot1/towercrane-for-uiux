@@ -3,6 +3,10 @@ import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import {
   ChevronDown,
   ChevronUp,
+  Check,
+  FileJson,
+  FileText,
+  Slash,
   Loader2,
   RotateCcw,
   Save,
@@ -10,6 +14,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { getToken } from "../../shared/api/client";
+import { CompactSelect } from "../../shared/ui/compact-select";
+import { Button } from "../../shared/ui/button";
 import {
   createDefaultApiBlockContent,
   isJsonString,
@@ -27,7 +33,16 @@ import {
 import { useApiEnvStore } from "../../features/api-doc/api-env-store";
 
 const METHOD_OPTIONS: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
-const BODY_TYPES: BodyType[] = ["none", "json", "raw"];
+const BODY_TYPE_OPTIONS: Array<{
+  type: BodyType;
+  label: string;
+  description: string;
+  Icon: typeof Slash;
+}> = [
+  { type: "none", label: "No Body", description: "요청 본문 없음", Icon: Slash },
+  { type: "json", label: "JSON", description: "application/json", Icon: FileJson },
+  { type: "raw", label: "Raw Text", description: "그대로 전송", Icon: FileText },
+];
 
 const METHOD_BADGE: Record<HttpMethod, string> = {
   GET: "bg-emerald-100 text-emerald-700",
@@ -40,7 +55,7 @@ const METHOD_BADGE: Record<HttpMethod, string> = {
 function statusClass(status: number) {
   if (status === 0) return "bg-red-100 text-red-600";
   if (status >= 200 && status < 300) return "bg-emerald-100 text-emerald-700";
-  return "bg-slate-200 text-slate-600";
+  return "bg-surface-strong text-text-secondary";
 }
 
 function countEnabled(items: KeyValueItem[]) {
@@ -48,7 +63,7 @@ function countEnabled(items: KeyValueItem[]) {
 }
 
 const INPUT_CLASS =
-  "min-w-0 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[12px] text-slate-800 outline-none focus:border-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+  "min-w-0 rounded-md border border-surface-border-soft bg-surface-raised px-2 py-1.5 text-[12px] text-text-primary outline-none focus:border-brand-border disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted";
 
 function KeyValueTable({
   items,
@@ -78,14 +93,14 @@ function KeyValueTable({
   };
 
   return (
-    <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
-      <div className="grid grid-cols-[36px_minmax(0,1fr)_minmax(0,1fr)_36px] items-center gap-2 border-b border-slate-100 bg-slate-50 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+    <div className="overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised">
+      <div className="grid grid-cols-[36px_minmax(0,1fr)_minmax(0,1fr)_36px] items-center gap-2 border-b border-surface-border-soft bg-surface-muted px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">
         <span />
         <span>{keyPlaceholder}</span>
         <span>{valuePlaceholder}</span>
         <span />
       </div>
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-surface-border-soft">
         {rows.map((row, index) => {
           const isPhantom = index === items.length;
           return (
@@ -99,7 +114,7 @@ function KeyValueTable({
                   checked={row.enabled}
                   disabled={disabled || isPhantom}
                   onChange={(e) => updateRow(index, { enabled: e.target.checked })}
-                  className="size-4 accent-emerald-500"
+                  className="size-4 accent-brand-primary"
                 />
               </div>
               <input
@@ -120,7 +135,7 @@ function KeyValueTable({
                 <button
                   onClick={() => removeRow(index)}
                   title="행 삭제"
-                  className="flex size-7 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
+                  className="flex size-7 items-center justify-center rounded-md text-text-muted hover:bg-danger-glass hover:text-destructive"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -296,9 +311,9 @@ function ApiTesterPanel({
 
   if (!endpoint) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 bg-slate-50 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-muted text-center">
         <span className="text-4xl">🧪</span>
-        <span className="text-[14px] text-slate-400">
+        <span className="text-[14px] text-text-muted">
           왼쪽에서 요청을 선택하세요.
         </span>
       </div>
@@ -306,9 +321,9 @@ function ApiTesterPanel({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-slate-50">
+    <div className="flex h-full min-h-0 flex-col bg-surface-muted">
       {/* 상단 바 */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-surface-border-soft bg-surface-raised px-4 py-2.5">
         <span
           className={
             "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-black " +
@@ -317,38 +332,39 @@ function ApiTesterPanel({
         >
           {endpoint.method}
         </span>
-        <p className="min-w-0 flex-1 truncate text-[14px] font-black text-slate-800">
+        <p className="min-w-0 flex-1 truncate text-[14px] font-black text-text-primary">
           {endpoint.title}
         </p>
-        <select
+        <CompactSelect
           value={activeEnvId}
           onChange={(e) => setActiveEnv(e.target.value)}
-          className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[12px] font-bold text-slate-600 outline-none focus:border-emerald-500"
+          wrapperClassName="w-auto"
+          className="h-8 min-h-8 pr-7 text-[12px] font-bold"
         >
           {environments.map((env) => (
             <option key={env.id} value={env.id}>
               {env.name}
             </option>
           ))}
-        </select>
-        <button
-          onClick={onOpenEnv}
-          className="h-8 rounded-md bg-slate-100 px-3 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
-        >
+        </CompactSelect>
+        <Button variant="secondary" size="sm" className="h-8 text-[12px]" onClick={onOpenEnv}>
           환경
-        </button>
-        <button
-          onClick={handleReset}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm-icon"
+          className="size-8"
           title="초기화"
-          className="flex size-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
+          onClick={handleReset}
         >
-          <RotateCcw className="size-4" />
-        </button>
+          <RotateCcw className="size-3.5" />
+        </Button>
         {isAdmin ? (
-          <button
-            onClick={() => onSave(content)}
+          <Button
+            size="sm"
+            className="h-8 gap-1.5 text-[12px]"
             disabled={isSaving || isBlocksLoading}
-            className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-500 px-3 text-[12px] font-bold text-white hover:bg-emerald-600 disabled:opacity-50"
+            onClick={() => onSave(content)}
           >
             {isSaving ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -356,7 +372,7 @@ function ApiTesterPanel({
               <Save className="size-3.5" />
             )}
             저장
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -364,20 +380,21 @@ function ApiTesterPanel({
         {/* 요청 편집 영역 */}
         {!responseExpanded ? (
           <div className="shrink-0 space-y-3 p-3">
-            <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <div className="rounded-lg border border-surface-border-soft bg-surface-raised p-3">
               <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-                <select
+                <CompactSelect
                   value={content.method}
                   disabled={!isAdmin}
                   onChange={(e) => patch({ method: e.target.value as HttpMethod })}
-                  className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-[12px] font-black text-slate-700 outline-none focus:border-emerald-500 disabled:bg-slate-50 lg:w-28"
+                  wrapperClassName="w-full lg:w-28"
+                  className="text-[12px] font-black"
                 >
                   {METHOD_OPTIONS.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
                   ))}
-                </select>
+                </CompactSelect>
                 <input
                   value={content.url}
                   disabled={!isAdmin}
@@ -385,20 +402,20 @@ function ApiTesterPanel({
                   onChange={(e) => patch({ url: e.target.value })}
                   className={INPUT_CLASS + " h-9 flex-1 font-mono"}
                 />
-                <label className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 text-[12px] font-semibold text-slate-500">
+                <label className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 text-[12px] font-semibold text-text-secondary">
                   <input
                     type="checkbox"
                     checked={content.authEnabled}
                     disabled={!isAdmin}
                     onChange={(e) => patch({ authEnabled: e.target.checked })}
-                    className="size-4 accent-emerald-500"
+                    className="size-4 accent-brand-primary"
                   />
                   Auth
                 </label>
-                <button
+                <Button
                   onClick={handleSend}
                   disabled={isSending || !content.url.trim()}
-                  className="flex h-9 items-center justify-center gap-1.5 rounded-md bg-emerald-500 px-4 text-[13px] font-bold text-white hover:bg-emerald-600 disabled:opacity-50 lg:w-28"
+                  className="h-9 gap-1.5 text-[13px] lg:w-28"
                 >
                   {isSending ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -406,34 +423,47 @@ function ApiTesterPanel({
                     <Send className="size-4" />
                   )}
                   Send
-                </button>
+                </Button>
               </div>
               {hasEnvVar ? (
-                <p className="mt-2 truncate rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-[11px] text-slate-400">
+                <p className="mt-2 truncate rounded-md border border-surface-border-soft bg-surface-muted px-3 py-1.5 font-mono text-[11px] text-text-muted">
                   {resolvedUrl}
                 </p>
               ) : null}
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <div className="flex border-b border-slate-100 bg-slate-50 px-2 pt-1.5">
+            <div className="overflow-hidden rounded-lg border border-surface-border-soft bg-surface-raised">
+              <div className="flex items-center gap-4 border-b border-surface-border-soft bg-surface-muted px-3">
                 {tabMeta.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={
-                      "rounded-t-md px-3 py-2 text-[12px] font-bold " +
+                      "relative flex items-center gap-1.5 py-2.5 text-[11.5px] font-semibold tracking-tight transition-colors " +
                       (activeTab === tab.id
-                        ? "border-b-2 border-emerald-500 text-slate-800"
-                        : "text-slate-400 hover:text-slate-600")
+                        ? "text-text-primary"
+                        : "text-text-muted hover:text-text-secondary")
                     }
                   >
                     {tab.label}
                     {tab.count > 0 ? (
-                      <span className="ml-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-600">
+                      <span
+                        className={
+                          "flex h-4 min-w-4 items-center justify-center rounded px-1 text-[10px] font-bold leading-none " +
+                          (activeTab === tab.id
+                            ? "bg-brand-glass text-brand-primary"
+                            : "bg-surface-strong text-text-muted")
+                        }
+                      >
                         {tab.count}
                       </span>
                     ) : null}
+                    <span
+                      className={
+                        "absolute inset-x-0 -bottom-px h-[2px] rounded-full bg-brand-primary transition-opacity " +
+                        (activeTab === tab.id ? "opacity-100" : "opacity-0")
+                      }
+                    />
                   </button>
                 ))}
               </div>
@@ -458,32 +488,53 @@ function ApiTesterPanel({
                 ) : null}
                 {activeTab === "body" ? (
                   <div className="space-y-3">
-                    <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1">
-                      {BODY_TYPES.map((type) => (
-                        <label
-                          key={type}
-                          className={
-                            "rounded-sm px-3 py-1 text-[12px] font-bold " +
-                            (content.body.type === type
-                              ? "bg-white text-slate-800 shadow-sm"
-                              : "text-slate-400") +
-                            (isAdmin ? " cursor-pointer" : " cursor-not-allowed opacity-70")
-                          }
-                        >
-                          <input
-                            type="radio"
-                            className="hidden"
-                            value={type}
-                            checked={content.body.type === type}
-                            disabled={!isAdmin}
-                            onChange={() => updateBody({ type })}
-                          />
-                          {type}
-                        </label>
-                      ))}
+                    <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="요청 Body 형식">
+                      {BODY_TYPE_OPTIONS.map(({ type, label, description, Icon }) => {
+                        const active = content.body.type === type;
+                        return (
+                          <label
+                            key={type}
+                            className={
+                              "relative flex min-h-14 items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-colors " +
+                              (active
+                                ? "border-brand-border bg-brand-glass text-brand-strong shadow-sm"
+                                : "border-surface-border-soft bg-surface-raised text-text-secondary hover:border-surface-border hover:bg-surface-muted") +
+                              (isAdmin ? " cursor-pointer" : " cursor-not-allowed opacity-70")
+                            }
+                          >
+                            <input
+                              type="radio"
+                              className="sr-only"
+                              value={type}
+                              checked={active}
+                              disabled={!isAdmin}
+                              onChange={() => updateBody({ type })}
+                            />
+                            <span
+                              className={
+                                "flex size-8 shrink-0 items-center justify-center rounded-md border " +
+                                (active
+                                  ? "border-brand-border bg-brand-primary text-white"
+                                  : "border-surface-border-soft bg-surface-muted text-text-muted")
+                              }
+                            >
+                              <Icon className="size-4" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-[12px] font-black leading-4">{label}</span>
+                              <span className="block truncate text-[10px] font-semibold leading-4 opacity-75">{description}</span>
+                            </span>
+                            {active ? (
+                              <span className="ml-auto flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white">
+                                <Check className="size-3.5" />
+                              </span>
+                            ) : null}
+                          </label>
+                        );
+                      })}
                     </div>
                     {content.body.type === "none" ? (
-                      <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-[13px] text-slate-400">
+                      <div className="rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-4 py-8 text-[13px] text-text-muted">
                         Body를 포함하지 않는 요청입니다.
                       </div>
                     ) : (
@@ -509,9 +560,9 @@ function ApiTesterPanel({
         ) : null}
 
         {/* 응답 영역 */}
-        <div className="mx-3 mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+        <div className="mx-3 mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-surface-border-soft bg-surface-raised">
+          <div className="flex flex-wrap items-center gap-2 border-b border-surface-border-soft bg-surface-muted px-3 py-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">
               Response
             </span>
             {response ? (
@@ -526,10 +577,10 @@ function ApiTesterPanel({
                     ? "Network Error"
                     : `${response.status} ${response.statusText}`}
                 </span>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-500">
+                <span className="rounded-full bg-surface-strong px-2 py-0.5 font-mono text-[11px] text-text-secondary">
                   {response.durationMs}ms
                 </span>
-                <div className="ml-auto flex rounded-md border border-slate-200 bg-slate-50 p-0.5">
+                <div className="ml-auto flex rounded-md border border-surface-border-soft bg-surface-muted p-0.5">
                   {(["body", "headers"] as const).map((tab) => (
                     <button
                       key={tab}
@@ -537,8 +588,8 @@ function ApiTesterPanel({
                       className={
                         "rounded-sm px-2 py-0.5 text-[11px] font-bold " +
                         (responseTab === tab
-                          ? "bg-white text-slate-800"
-                          : "text-slate-400")
+                          ? "bg-surface-raised text-text-primary"
+                          : "text-text-muted")
                       }
                     >
                       {tab === "body" ? "Body" : "Headers"}
@@ -547,14 +598,14 @@ function ApiTesterPanel({
                 </div>
               </>
             ) : (
-              <span className="ml-auto text-[12px] text-slate-400">
+              <span className="ml-auto text-[12px] text-text-muted">
                 Send 버튼을 눌러 요청하세요.
               </span>
             )}
             <button
               onClick={() => setResponseExpanded((v) => !v)}
               title={responseExpanded ? "요청 영역 보기" : "응답 확대"}
-              className="flex size-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="flex size-7 items-center justify-center rounded-md text-text-muted hover:bg-surface-muted hover:text-text-secondary"
             >
               {responseExpanded ? (
                 <ChevronDown className="size-3.5" />
@@ -565,12 +616,12 @@ function ApiTesterPanel({
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             {isSending ? (
-              <div className="flex h-40 flex-col items-center justify-center gap-2 text-slate-400">
+              <div className="flex h-40 flex-col items-center justify-center gap-2 text-text-muted">
                 <Loader2 className="size-6 animate-spin" />
                 <p className="text-[12px]">요청 중…</p>
               </div>
             ) : !response ? (
-              <div className="flex h-40 flex-col items-center justify-center gap-2 text-slate-400">
+              <div className="flex h-40 flex-col items-center justify-center gap-2 text-text-muted">
                 <Send className="size-6 opacity-40" />
                 <p className="text-[12px]">아직 요청이 없습니다.</p>
               </div>
@@ -578,7 +629,7 @@ function ApiTesterPanel({
               <pre
                 className={
                   "whitespace-pre-wrap break-all font-mono text-[12px] leading-5 " +
-                  (response.status === 0 ? "text-red-600" : "text-slate-700")
+                  (response.status === 0 ? "text-destructive" : "text-text-secondary")
                 }
               >
                 {isJsonString(response.body)
@@ -588,15 +639,15 @@ function ApiTesterPanel({
             ) : (
               <div className="space-y-1.5">
                 {Object.entries(response.headers).length === 0 ? (
-                  <p className="text-[12px] text-slate-400">응답 헤더가 없습니다.</p>
+                  <p className="text-[12px] text-text-muted">응답 헤더가 없습니다.</p>
                 ) : (
                   Object.entries(response.headers).map(([key, value]) => (
                     <div
                       key={key}
-                      className="grid gap-2 rounded-md border border-slate-100 bg-slate-50 px-3 py-1.5 font-mono text-[11px] md:grid-cols-[180px_minmax(0,1fr)]"
+                      className="grid gap-2 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-1.5 font-mono text-[11px] md:grid-cols-[180px_minmax(0,1fr)]"
                     >
-                      <span className="break-all text-slate-400">{key}</span>
-                      <span className="break-all text-slate-700">{value}</span>
+                      <span className="break-all text-text-muted">{key}</span>
+                      <span className="break-all text-text-secondary">{value}</span>
                     </div>
                   ))
                 )}

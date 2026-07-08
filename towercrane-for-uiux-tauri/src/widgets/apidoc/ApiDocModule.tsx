@@ -28,6 +28,9 @@ import {
 } from "lucide-react";
 import PageHeader from "../../shared/ui/PageHeader";
 import { toast } from "../../shared/ui/Toast";
+import { Button } from "../../shared/ui/button";
+import { useAppSettingsStore } from "../../shared/lib/app-settings-store";
+import { useColumnResize } from "../../shared/lib/useColumnResize";
 import ApiTesterPanel from "./ApiTesterPanel";
 import EnvironmentDialog from "./EnvironmentDialog";
 import {
@@ -83,10 +86,10 @@ function IconBtn({
 }) {
   const toneClass =
     tone === "brand"
-      ? "text-emerald-600 hover:bg-emerald-50"
+      ? "text-brand-primary hover:bg-brand-glass"
       : tone === "danger"
-        ? "text-slate-400 hover:bg-red-50 hover:text-red-600"
-        : "text-slate-500 hover:bg-slate-100";
+        ? "text-text-muted hover:bg-danger-glass hover:text-destructive"
+        : "text-text-secondary hover:bg-surface-muted";
   return (
     <button
       onClick={onClick}
@@ -136,27 +139,21 @@ function ApiDocModule({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <PageHeader>
-        <span className="text-[14px] font-bold tracking-tight text-slate-900">
+        <span className="text-[14px] font-bold tracking-tight text-text-primary">
           Postman
         </span>
         {team ? (
-          <button
+          <Button
             data-actions
+            variant="secondary"
+            size="sm"
             onClick={() => setTeamId(null)}
             title="워크스페이스 목록"
-            className="flex items-center gap-1 rounded-lg bg-slate-200 px-2.5 h-7 text-[12px] font-bold text-slate-600 hover:bg-slate-300"
+            className="h-7 gap-1 rounded-lg px-2.5 text-[12px]"
           >
             <ArrowLeft className="size-3.5" /> 워크스페이스
-          </button>
+          </Button>
         ) : null}
-        <button
-          data-actions
-          onClick={() => void teamsQuery.refetch()}
-          title="새로고침"
-          className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
-        >
-          ↻
-        </button>
         {team && isAdmin ? <ImportExportActions /> : null}
       </PageHeader>
 
@@ -212,10 +209,12 @@ function ImportExportActions() {
 
   return (
     <div data-actions className="flex items-center gap-1.5">
-      <button
+      <Button
+        variant="secondary"
+        size="sm"
         onClick={handleExport}
         disabled={busy}
-        className="flex h-7 items-center gap-1 rounded-lg bg-slate-200 px-2.5 text-[12px] font-bold text-slate-600 hover:bg-slate-300 disabled:opacity-50"
+        className="h-7 gap-1 rounded-lg px-2.5 text-[12px]"
       >
         {exportMutation.isPending ? (
           <Loader2 className="size-3.5 animate-spin" />
@@ -223,11 +222,12 @@ function ImportExportActions() {
           <Download className="size-3.5" />
         )}
         내보내기
-      </button>
-      <button
+      </Button>
+      <Button
+        size="sm"
         onClick={() => inputRef.current?.click()}
         disabled={busy}
-        className="flex h-7 items-center gap-1 rounded-lg bg-emerald-500 px-2.5 text-[12px] font-bold text-white hover:bg-emerald-600 disabled:opacity-50"
+        className="h-7 gap-1 rounded-lg px-2.5 text-[12px]"
       >
         {importMutation.isPending ? (
           <Loader2 className="size-3.5 animate-spin" />
@@ -235,7 +235,7 @@ function ImportExportActions() {
           <Upload className="size-3.5" />
         )}
         가져오기
-      </button>
+      </Button>
       <input
         ref={inputRef}
         type="file"
@@ -295,7 +295,7 @@ function WorkspaceHome({
 
   return (
     <div className="min-w-0 flex-1 overflow-y-auto bg-slate-50">
-      <div className="mx-auto w-full max-w-5xl px-8 py-7">
+      <div className="mx-auto w-full max-w-3xl px-8 py-7">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">
@@ -309,16 +309,16 @@ function WorkspaceHome({
             </p>
           </div>
           {isAdmin ? (
-            <button
+            <Button
               onClick={() => {
                 setAdding(true);
                 setNewName("");
                 setNewDesc("");
               }}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-[13px] font-bold text-white hover:bg-emerald-600"
+              className="shrink-0 gap-1.5 rounded-lg px-3 py-2 text-[13px]"
             >
               <Plus className="size-4" /> 워크스페이스 추가
-            </button>
+            </Button>
           ) : null}
         </div>
 
@@ -372,7 +372,7 @@ function WorkspaceHome({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,320px))] justify-center gap-3">
             {teams.map((team) => (
               <div
                 key={team.id}
@@ -382,7 +382,7 @@ function WorkspaceHome({
                   <button
                     onClick={() => handleDelete(team)}
                     title="워크스페이스 삭제"
-                    className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-md text-slate-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+                    className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-md text-text-muted opacity-0 transition-opacity hover:bg-danger-glass hover:text-destructive group-hover:opacity-100"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -564,12 +564,23 @@ function CategorySidebar({
     reorderM.mutate(reordered.map((c, i) => ({ id: c.id, orderIdx: i })));
   };
 
+  const width = useAppSettingsStore((s) => s.apiDocCategoryWidth);
+  const setWidth = useAppSettingsStore((s) => s.setApiDocCategoryWidth);
+  const onResizeStart = useColumnResize(width, setWidth, { min: 180, max: 420 });
+
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-slate-100 px-3">
+    <aside
+      className="relative flex shrink-0 flex-col border-r border-surface-border-soft bg-surface-raised"
+      style={{ width }}
+    >
+      <div
+        onMouseDown={onResizeStart}
+        className="absolute right-0 top-0 z-10 h-full w-1 cursor-col-resize hover:bg-brand-border active:bg-brand-border"
+      />
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-surface-border-soft px-3">
         <div>
-          <p className="text-[13px] font-black text-slate-800">컬렉션</p>
-          <p className="text-[10px] text-slate-400">{categories.length} items</p>
+          <p className="text-[13px] font-black text-text-primary">컬렉션</p>
+          <p className="text-[10px] text-text-muted">{categories.length} items</p>
         </div>
         {isAdmin ? (
           <IconBtn
@@ -638,7 +649,7 @@ function CategorySidebar({
                           <button
                             {...handleProps}
                             title="드래그"
-                            className="flex size-4 shrink-0 cursor-grab items-center justify-center text-slate-300 opacity-40 group-hover:opacity-100"
+                            className="flex size-4 shrink-0 cursor-grab items-center justify-center text-text-muted opacity-40 group-hover:opacity-100"
                           >
                             <GripVertical className="size-3" />
                           </button>
@@ -770,12 +781,23 @@ function EndpointSidebar({
     reorderM.mutate(reordered.map((x, i) => ({ id: x.id, orderIdx: i })));
   };
 
+  const width = useAppSettingsStore((s) => s.apiDocEndpointWidth);
+  const setWidth = useAppSettingsStore((s) => s.setApiDocEndpointWidth);
+  const onResizeStart = useColumnResize(width, setWidth, { min: 200, max: 480 });
+
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-slate-100 px-3">
+    <aside
+      className="relative flex shrink-0 flex-col border-r border-surface-border-soft bg-surface-raised"
+      style={{ width }}
+    >
+      <div
+        onMouseDown={onResizeStart}
+        className="absolute right-0 top-0 z-10 h-full w-1 cursor-col-resize hover:bg-brand-border active:bg-brand-border"
+      />
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-surface-border-soft px-3">
         <div>
-          <p className="text-[13px] font-black text-slate-800">요청</p>
-          <p className="text-[10px] text-slate-400">{endpoints.length} items</p>
+          <p className="text-[13px] font-black text-text-primary">요청</p>
+          <p className="text-[10px] text-text-muted">{endpoints.length} items</p>
         </div>
         {isAdmin ? (
           <IconBtn
@@ -860,7 +882,7 @@ function EndpointSidebar({
                               <button
                                 {...handleProps}
                                 title="드래그"
-                                className="flex size-4 shrink-0 cursor-grab items-center justify-center text-slate-300 opacity-40 group-hover:opacity-100"
+                                className="flex size-4 shrink-0 cursor-grab items-center justify-center text-text-muted opacity-40 group-hover:opacity-100"
                               >
                                 <GripVertical className="size-3" />
                               </button>

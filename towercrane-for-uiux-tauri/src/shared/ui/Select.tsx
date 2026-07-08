@@ -16,13 +16,13 @@ function Select({ size = "md", block = false, className = "", children, ...props
         {...props}
         className={
           (block ? "w-full " : "") +
-          "appearance-none rounded-lg border border-slate-200 bg-slate-50 pl-3 pr-8 text-slate-800 outline-none transition-colors focus:border-emerald-500 focus:bg-white " +
+          "appearance-none rounded-lg border border-surface-border-soft bg-surface-muted pl-3 pr-8 text-text-primary outline-none transition-colors focus:border-brand-border focus:bg-surface-raised " +
           sizeCls
         }
       >
         {children}
       </select>
-      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted">
         <svg
           width="12"
           height="12"

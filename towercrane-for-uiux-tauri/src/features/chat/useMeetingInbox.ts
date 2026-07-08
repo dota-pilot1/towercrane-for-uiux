@@ -13,6 +13,7 @@ import {
 } from "./api";
 import { containsMention } from "./mention";
 import { useUnreadStore } from "./unread-store";
+import { useAppSettingsStore } from "../../shared/lib/app-settings-store";
 
 // 알림 권한 1회 확인 (실패는 조용히 무시 — 브라우저 dev 등 Tauri 밖)
 let notifyReady: Promise<boolean> | null = null;
@@ -31,6 +32,7 @@ function ensureNotifyPermission(): Promise<boolean> {
 }
 
 async function notify(title: string, body: string) {
+  if (!useAppSettingsStore.getState().notificationsEnabled) return;
   if (!(await ensureNotifyPermission())) return;
   try {
     sendNotification({ title, body: body.slice(0, 120) });

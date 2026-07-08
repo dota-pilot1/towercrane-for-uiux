@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { Users } from "lucide-react";
 import { getToken } from "../../shared/api/client";
 import {
   clearChannelMessages,
@@ -17,11 +18,12 @@ import {
   type MeetingRoom,
 } from "./api";
 import { useMeetingSocket } from "./useMeetingSocket";
-import { avatarColor } from "./avatar";
+import { avatarColor } from "../../shared/lib/avatar-color";
 import { activeMentionQuery, splitMentions } from "./mention";
 import { useUnreadStore } from "./unread-store";
 import MessageSearch from "./MessageSearch";
 import PageHeader from "../../shared/ui/PageHeader";
+import { Button } from "../../shared/ui/button";
 
 type Props = {
   room: MeetingRoom;
@@ -173,26 +175,6 @@ function SmileIcon({ size = 14 }: { size?: number }) {
       <path d="M8 14s1.5 2 4 2 4-2 4-2" />
       <line x1="9" y1="9" x2="9.01" y2="9" />
       <line x1="15" y1="9" x2="15.01" y2="9" />
-    </svg>
-  );
-}
-
-function PeopleIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   );
 }
@@ -478,28 +460,31 @@ function ChatView({
         }
       >
         {reactions.map((r) => (
-          <button
+          <Button
             key={r.emoji}
+            variant="secondary"
             onClick={() => handleToggleReaction(m, r.emoji)}
             className={
-              "flex items-center gap-1 px-1.5 h-6 rounded-full border text-[12px] " +
+              "flex items-center gap-1 px-1.5 h-6 rounded-full text-[12px] font-normal " +
               (r.mine
-                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100")
+                ? "border-brand-border bg-brand-glass text-brand-primary hover:bg-brand-glass"
+                : "border-surface-border bg-surface-muted text-text-secondary")
             }
           >
             <span>{r.emoji}</span>
             <span className="font-semibold tabular-nums">{r.count}</span>
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
+          variant="secondary"
+          size="sm-icon"
           onClick={() => setReactionPickerFor(pickerOpen ? null : m.id)}
           title="리액션 추가"
           aria-label="리액션 추가"
-          className="flex items-center justify-center w-6 h-6 rounded-full border border-slate-200 bg-white text-slate-400 hover:text-emerald-600 hover:bg-slate-50"
+          className="w-6 h-6 rounded-full border-surface-border bg-surface-raised text-text-muted hover:text-brand-primary hover:bg-surface-muted"
         >
           <SmileIcon />
-        </button>
+        </Button>
         {pickerOpen && (
           <>
             <div className="fixed inset-0 z-20" onClick={() => setReactionPickerFor(null)} />
@@ -513,7 +498,7 @@ function ChatView({
                 <button
                   key={e}
                   onClick={() => handleToggleReaction(m, e)}
-                  className="w-8 h-8 flex items-center justify-center text-[18px] rounded-lg hover:bg-slate-100"
+                  className="w-8 h-8 flex items-center justify-center text-[18px] rounded-lg hover:bg-surface-muted"
                 >
                   {e}
                 </button>
@@ -528,43 +513,48 @@ function ChatView({
   return (
     <>
       <PageHeader>
-        <span className="w-[30px] h-[30px] flex items-center justify-center text-[14px] font-bold text-white bg-emerald-500 rounded-[9px]">
+        <span className="w-[30px] h-[30px] flex items-center justify-center text-[14px] font-bold text-text-on-brand bg-brand-primary rounded-[9px]">
           {isDm ? room.name.charAt(0) : "#"}
         </span>
         <div className="flex flex-col leading-tight">
-          <strong className="text-[14px] text-slate-900">{room.name}</strong>
-          <span className="text-[11px] text-slate-400">{subtitle}</span>
+          <strong className="text-[14px] text-text-primary">{room.name}</strong>
+          <span className="text-[11px] text-text-muted">{subtitle}</span>
         </div>
 
         {/* 대화방 나가기 — DM 전용. 채널 나가기는 2단계(멤버십)에서. 1차 클릭 → 취소/나가기 확인 */}
         <div data-actions className="ml-3 flex items-center gap-1.5">
           {!isDm ? null : confirming ? (
             <>
-              <span className="text-[12px] text-slate-500">나가시겠어요?</span>
-              <button
+              <span className="text-[12px] text-text-secondary">나가시겠어요?</span>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setConfirming(false)}
-                className="px-2.5 h-7 rounded-md text-[12px] font-semibold text-slate-600 hover:bg-slate-200"
+                className="px-2.5 h-7 rounded-md text-[12px] font-semibold text-text-secondary hover:bg-surface-strong"
               >
                 취소
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={onLeave}
                 title="양쪽 모두에서 대화가 삭제됩니다"
-                className="flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[12px] font-semibold text-white bg-red-500 hover:bg-red-600"
+                className="flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[12px] font-semibold text-text-on-brand bg-destructive border-destructive hover:bg-destructive hover:brightness-110"
               >
                 <LeaveIcon />
                 나가기
-              </button>
+              </Button>
             </>
           ) : (
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setConfirming(true)}
               title="대화방 나가기 (양쪽 모두 삭제)"
-              className="flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[12px] font-semibold text-slate-500 hover:text-red-600 hover:bg-red-50"
+              className="flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[12px] font-semibold text-text-muted hover:text-destructive hover:bg-danger-glass"
             >
               <LeaveIcon />
               나가기
-            </button>
+            </Button>
           )}
         </div>
       </PageHeader>
@@ -573,15 +563,16 @@ function ChatView({
       {showToolbar && (
         <div className="relative h-9 shrink-0 flex items-center justify-end gap-1.5 px-4 bg-white border-b border-slate-200">
           {/* 메시지 검색 */}
-          <button
+          <Button
+            variant="ghost"
             onClick={() => setSearchOpen((v) => !v)}
             title="메시지 검색"
             aria-label="메시지 검색"
             className={
               "flex items-center gap-1 px-2 h-6 rounded-md text-[12px] font-medium " +
               (searchOpen
-                ? "text-emerald-600 bg-emerald-50"
-                : "text-slate-400 hover:text-slate-600 hover:bg-slate-100")
+                ? "text-brand-primary bg-brand-glass hover:bg-brand-glass"
+                : "text-text-muted hover:text-text-secondary")
             }
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -589,73 +580,79 @@ function ChatView({
               <line x1="21" y1="21" x2="16.5" y2="16.5" />
             </svg>
             검색
-          </button>
+          </Button>
 
           {/* 고정 메시지 (휴지통 왼쪽) */}
-          <button
+          <Button
+            variant="ghost"
             onClick={() => setPinOpen((v) => !v)}
             title="고정된 메시지"
             aria-label="고정된 메시지"
             className={
               "flex items-center gap-1 px-2 h-6 rounded-md text-[12px] font-medium " +
               (pinOpen
-                ? "text-emerald-600 bg-emerald-50"
-                : "text-slate-400 hover:text-slate-600 hover:bg-slate-100")
+                ? "text-brand-primary bg-brand-glass hover:bg-brand-glass"
+                : "text-text-muted hover:text-text-secondary")
             }
           >
             <PinIcon />
             {pinned.length > 0 && <span className="font-semibold">{pinned.length}</span>}
-          </button>
+          </Button>
 
           {/* 비우기 (admin) */}
           {canClear &&
             (clearConfirming ? (
               <>
-                <span className="text-[12px] text-slate-500">이 채널 메시지를 모두 비울까요?</span>
-                <button
+                <span className="text-[12px] text-text-secondary">이 채널 메시지를 모두 비울까요?</span>
+                <Button
+                  variant="ghost"
                   onClick={() => setClearConfirming(false)}
                   disabled={clearing}
-                  className="px-2.5 h-6 rounded-md text-[12px] font-semibold text-slate-600 hover:bg-slate-100"
+                  className="px-2.5 h-6 rounded-md text-[12px] font-semibold text-text-secondary"
                 >
                   취소
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={handleClear}
                   disabled={clearing}
                   title="채널의 모든 메시지가 삭제됩니다"
-                  className="flex items-center gap-1 px-2.5 h-6 rounded-md text-[12px] font-semibold text-white bg-red-500 hover:bg-red-600 disabled:bg-slate-300"
+                  className="flex items-center gap-1 px-2.5 h-6 rounded-md text-[12px] font-semibold text-text-on-brand bg-destructive border-destructive hover:bg-destructive hover:brightness-110"
                 >
                   <TrashIcon />
                   {clearing ? "비우는 중…" : "비우기"}
-                </button>
+                </Button>
               </>
             ) : (
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setClearConfirming(true)}
                 title="채널 메시지 비우기 (관리자)"
                 aria-label="채널 메시지 비우기"
-                className="flex items-center gap-1 px-2 h-6 rounded-md text-[12px] font-medium text-slate-400 hover:text-red-600 hover:bg-red-50"
+                className="flex items-center gap-1 px-2 h-6 rounded-md text-[12px] font-medium text-text-muted hover:text-destructive hover:bg-danger-glass"
               >
                 <TrashIcon />
                 비우기
-              </button>
+              </Button>
             ))}
 
           {/* 멤버 토글 (휴지통 오른쪽, 맨 끝) */}
           {onToggleMembers && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm-icon"
               onClick={onToggleMembers}
               title={membersShown ? "멤버 목록 숨기기" : "멤버 목록 보기"}
               aria-label="멤버 목록 토글"
               className={
-                "flex items-center justify-center w-7 h-6 rounded-md " +
+                "flex items-center justify-center w-8 h-6 rounded-md " +
                 (membersShown
-                  ? "text-emerald-600 bg-emerald-50"
-                  : "text-slate-400 hover:text-slate-600 hover:bg-slate-100")
+                  ? "text-text-on-brand bg-brand-primary hover:bg-brand-primary hover:brightness-110"
+                  : "text-text-muted hover:text-text-secondary")
               }
             >
-              <PeopleIcon />
-            </button>
+              <Users className="size-4" strokeWidth={2.4} />
+            </Button>
           )}
 
           {/* 검색 팝오버 */}
@@ -687,10 +684,8 @@ function ChatView({
                   pinned.map((p) => (
                     <div key={p.id} className="flex gap-2 px-3 py-2.5 hover:bg-slate-50 border-b border-slate-50">
                       <span
-                        className={
-                          "w-7 h-7 shrink-0 flex items-center justify-center text-[12px] font-bold text-white rounded-full " +
-                          avatarColor(p.senderId)
-                        }
+                        className="w-7 h-7 shrink-0 flex items-center justify-center text-[12px] font-bold text-white rounded-full"
+                        style={{ backgroundColor: avatarColor(p.senderId) }}
                       >
                         {p.senderName.charAt(0)}
                       </span>
@@ -717,17 +712,18 @@ function ChatView({
                           />
                         )}
                       </div>
-                      <button
+                      <Button
+                        variant="ghost"
                         onClick={() => handleTogglePin(p)}
                         title="고정 해제"
                         aria-label="고정 해제"
-                        className="shrink-0 w-6 h-6 flex items-center justify-center text-slate-300 rounded hover:text-red-500 hover:bg-red-50"
+                        className="shrink-0 w-6 h-6 rounded text-text-muted hover:text-destructive hover:bg-danger-glass"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                           <line x1="18" y1="6" x2="6" y2="18" />
                           <line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
-                      </button>
+                      </Button>
                     </div>
                   ))
                 )}
@@ -814,10 +810,8 @@ function ChatView({
               >
                 <div className="w-9 shrink-0 flex justify-center">
                   <span
-                    className={
-                      "w-9 h-9 flex items-center justify-center text-[14px] font-bold text-white rounded-full " +
-                      avatarColor(m.senderId)
-                    }
+                    className="w-9 h-9 flex items-center justify-center text-[14px] font-bold text-white rounded-full"
+                    style={{ backgroundColor: avatarColor(m.senderId) }}
                   >
                     {m.senderName.charAt(0)}
                   </span>
@@ -855,10 +849,10 @@ function ChatView({
                   title={m.pinned ? "고정 해제" : "메시지 고정"}
                   aria-label={m.pinned ? "고정 해제" : "메시지 고정"}
                   className={
-                    "absolute right-4 top-1.5 w-7 h-7 flex items-center justify-center bg-white border border-slate-200 rounded-md shadow-sm transition-opacity " +
+                    "absolute right-4 top-1.5 w-7 h-7 flex items-center justify-center bg-surface-raised border border-surface-border-soft rounded-md shadow-sm transition-opacity " +
                     (m.pinned
                       ? "text-amber-500 opacity-100"
-                      : "text-slate-400 opacity-0 group-hover:opacity-100 hover:text-emerald-600")
+                      : "text-text-muted opacity-0 group-hover:opacity-100 hover:text-brand-primary")
                   }
                 >
                   <PinIcon size={14} />
@@ -880,8 +874,9 @@ function ChatView({
             <div className="absolute bottom-full left-16 mb-1 z-30 w-[240px] py-1 bg-white border border-slate-200 rounded-xl shadow-lg">
               <div className="px-3 py-1 text-[11px] font-bold text-slate-400">멤버 멘션</div>
               {mentionCandidates.map((mb, i) => (
-                <button
+                <Button
                   key={mb.id}
+                  variant="ghost"
                   type="button"
                   onMouseDown={(e) => {
                     e.preventDefault(); // input blur 방지
@@ -889,15 +884,13 @@ function ChatView({
                   }}
                   onMouseEnter={() => setMentionIndex(i)}
                   className={
-                    "w-full flex items-center gap-2 px-3 py-1.5 text-left " +
-                    (i === mentionIndex ? "bg-emerald-50" : "")
+                    "w-full flex items-center gap-2 px-3 py-1.5 text-left justify-start h-auto font-normal rounded-none " +
+                    (i === mentionIndex ? "bg-brand-glass hover:bg-brand-glass" : "")
                   }
                 >
                   <span
-                    className={
-                      "w-6 h-6 shrink-0 flex items-center justify-center text-[11px] font-bold text-white rounded-full " +
-                      avatarColor(mb.id)
-                    }
+                    className="w-6 h-6 shrink-0 flex items-center justify-center text-[11px] font-bold text-white rounded-full"
+                    style={{ backgroundColor: avatarColor(mb.id) }}
                   >
                     {mb.name.charAt(0)}
                   </span>
@@ -905,7 +898,7 @@ function ChatView({
                     {mb.name}
                   </span>
                   {mb.online && <span className="w-2 h-2 shrink-0 rounded-full bg-emerald-500" />}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -916,16 +909,17 @@ function ChatView({
             className="hidden"
             onChange={handleFileChange}
           />
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploading || sending}
             title="이미지 첨부"
             aria-label="이미지 첨부"
-            className="shrink-0 w-10 h-10 flex items-center justify-center text-slate-400 rounded-[10px] hover:text-emerald-600 hover:bg-slate-100 disabled:text-slate-300 disabled:cursor-not-allowed"
+            className="shrink-0 w-10 h-10 rounded-[10px] text-text-muted hover:text-brand-primary hover:bg-surface-muted"
           >
             <ClipIcon />
-          </button>
+          </Button>
           <input
             ref={draftRef}
             placeholder={uploading ? "이미지 업로드 중…" : "메시지를 입력하세요 (@로 멘션)"}
@@ -937,13 +931,13 @@ function ChatView({
             disabled={uploading}
             className="flex-1 px-3.5 py-2.5 text-sm text-slate-900 bg-slate-100 border border-transparent rounded-[10px] outline-none focus:border-emerald-500 focus:bg-white disabled:opacity-60"
           />
-          <button
+          <Button
             type="submit"
             disabled={!draft.trim() || sending || uploading}
-            className="px-[18px] py-2.5 text-sm font-semibold text-white bg-emerald-500 rounded-[10px] hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+            className="px-[18px] py-2.5 text-sm rounded-[10px]"
           >
             전송
-          </button>
+          </Button>
         </form>
       </div>
     </>

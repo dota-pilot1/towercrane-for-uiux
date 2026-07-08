@@ -23,6 +23,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { RefreshCw } from "lucide-react";
 import { getToken } from "../../shared/api/client";
 import {
   createDocDocument,
@@ -36,6 +37,7 @@ import {
   type TeamDocNode,
 } from "../../features/docs/api";
 import PageHeader from "../../shared/ui/PageHeader";
+import { Button } from "../../shared/ui/button";
 import { toast } from "../../shared/ui/Toast";
 import { LexicalEditor } from "../../shared/ui/lexical/lexical-editor";
 
@@ -229,14 +231,14 @@ function DocsModule() {
         <button
           onClick={() => setSelectedId(node.parentId)}
           title={parent ? `${parent.title}(으)로` : "최상위로"}
-          className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-[15px] text-slate-500 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-600"
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-surface-border bg-surface-raised text-[15px] text-text-muted hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
         >
           ←
         </button>
-        <div className="flex min-w-0 flex-wrap items-center gap-1 text-[12px] text-slate-400">
+        <div className="flex min-w-0 flex-wrap items-center gap-1 text-[12px] text-text-muted">
           <button
             onClick={() => setSelectedId(null)}
-            className="hover:text-slate-600"
+            className="hover:text-text-primary"
           >
             최상위
           </button>
@@ -245,7 +247,7 @@ function DocsModule() {
               <span>/</span>
               <button
                 onClick={() => setSelectedId(a.id)}
-                className="hover:text-emerald-600"
+                className="hover:text-brand-primary"
               >
                 {a.title}
               </button>
@@ -574,26 +576,35 @@ function DocsModule() {
     const rows: ReactNode[] = [];
     for (const node of children) {
       const isOpen = expanded.has(node.id);
+      const isFolder = node.type === "FOLDER";
       rows.push(
-        <SortableRow
-          key={node.id}
-          node={node}
-          depth={depth}
-          open={isOpen}
-          selected={selectedId === node.id}
-          hint={dropHint?.id === node.id ? dropHint.kind : null}
-          count={node.type === "FOLDER" ? (childrenOf.get(node.id)?.length ?? 0) : 0}
-          intoActive={dropHint?.kind === "into"}
-          onClick={() => onRowClick(node)}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            setMenu({ x: e.clientX, y: e.clientY, node });
-          }}
-        />,
+        <div key={node.id}>
+          <SortableRow
+            node={node}
+            depth={depth}
+            open={isOpen}
+            selected={selectedId === node.id}
+            hint={dropHint?.id === node.id ? dropHint.kind : null}
+            count={node.type === "FOLDER" ? (childrenOf.get(node.id)?.length ?? 0) : 0}
+            intoActive={dropHint?.kind === "into"}
+            onClick={() => onRowClick(node)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setMenu({ x: e.clientX, y: e.clientY, node });
+            }}
+          />
+          {isFolder && (
+            <div
+              className={
+                "grid overflow-hidden transition-all duration-200 ease-in-out " +
+                (isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")
+              }
+            >
+              <div className="min-h-0">{renderTree(node.id, depth + 1)}</div>
+            </div>
+          )}
+        </div>,
       );
-      if (node.type === "FOLDER" && isOpen) {
-        rows.push(...renderTree(node.id, depth + 1));
-      }
     }
     if (creating && targetParentId === parentId) {
       rows.push(renderCreateRow(depth));
@@ -634,48 +645,54 @@ function DocsModule() {
         </div>
       ) : null}
       <PageHeader>
-        <span className="text-[14px] font-bold tracking-tight text-slate-900">
+        <span className="text-[14px] font-bold tracking-tight text-text-primary">
           문서
         </span>
-        <button
-          data-actions
+        <Button
+          variant="secondary"
+          size="sm-icon"
           onClick={() => void loadTree()}
           title="새로고침"
-          className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
         >
-          ↻
-        </button>
+          <RefreshCw className="size-3.5" strokeWidth={2} />
+        </Button>
       </PageHeader>
 
       <div className="flex-1 flex min-h-0">
         {/* 왼쪽: 트리 */}
         <aside className="flex w-72 shrink-0 flex-col border-r border-slate-200 bg-white">
           <div className="flex items-center gap-1.5 border-b border-slate-100 px-3 py-2.5">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-auto flex-1 rounded-lg px-2 py-1.5 text-[12px]"
               onClick={() => {
                 setCreating("FOLDER");
                 setNewName("");
               }}
-              className="flex-1 rounded-lg bg-slate-100 px-2 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
             >
               + 폴더
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-auto flex-1 rounded-lg px-2 py-1.5 text-[12px]"
               onClick={() => {
                 setCreating("DOC");
                 setNewName("");
               }}
-              className="flex-1 rounded-lg bg-slate-100 px-2 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
             >
               + 문서
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              className="h-auto flex-1 rounded-lg px-2 py-1.5 text-[12px]"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="flex-1 rounded-lg bg-emerald-500 px-2 py-1.5 text-[12px] font-bold text-white hover:bg-emerald-600 disabled:opacity-50"
             >
               {uploading ? "업로드 중…" : "⬆ 업로드"}
-            </button>
+            </Button>
             <input
               ref={fileInputRef}
               type="file"
@@ -768,13 +785,14 @@ function DocsModule() {
                       <span className="ml-2 text-brand-primary">· 미저장</span>
                     ) : null}
                   </span>
-                  <button
+                  <Button
+                    variant="primary"
+                    className="rounded-lg px-5 py-2 text-[14px]"
                     onClick={handleSave}
                     disabled={!docDirty || saving || !draftTitle.trim()}
-                    className="rounded-lg bg-brand-primary px-5 py-2 text-[14px] font-bold text-text-on-brand hover:brightness-110 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted"
                   >
                     {saving ? "저장 중…" : "저장"}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -795,8 +813,8 @@ function DocsModule() {
                           className={
                             "px-2.5 py-1 text-[12px] font-bold " +
                             (previewMode === mode
-                              ? "bg-emerald-500 text-white"
-                              : "bg-white text-slate-500 hover:bg-slate-50")
+                              ? "bg-brand-primary text-text-on-brand"
+                              : "bg-surface-raised text-text-muted hover:bg-surface-muted")
                           }
                         >
                           {mode === "fit" ? "축소" : "원본"}
@@ -849,7 +867,7 @@ function DocsModule() {
             </div>
           ) : (
             // FOLDER
-            <div className="mx-auto w-full max-w-5xl px-8 py-7">
+            <div className="mx-auto w-full max-w-3xl px-8 py-7">
               <Breadcrumb node={selected} />
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -866,17 +884,17 @@ function DocsModule() {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <div className="flex overflow-hidden rounded-lg border border-slate-200">
+                  <div className="flex h-7 overflow-hidden rounded-lg border border-surface-border-soft">
                     {(["card", "list"] as const).map((mode) => (
                       <button
                         key={mode}
                         onClick={() => changeFolderView(mode)}
                         title={mode === "card" ? "카드형" : "목록형"}
                         className={
-                          "px-2.5 py-1 text-[12px] font-bold " +
+                          "px-2.5 text-[12px] font-bold " +
                           (folderView === mode
-                            ? "bg-emerald-500 text-white"
-                            : "bg-white text-slate-500 hover:bg-slate-50")
+                            ? "bg-brand-primary text-text-on-brand"
+                            : "bg-surface-raised text-text-muted hover:bg-surface-muted")
                         }
                       >
                         {mode === "card" ? "▦ 카드" : "☰ 목록"}
@@ -929,7 +947,7 @@ function DocsModule() {
                       }
                     >
                       {folderView === "card" ? (
-                        <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,200px))] gap-3">
                           {folderChildren.map((child) => (
                             <SortableCard
                               key={child.id}
@@ -1079,10 +1097,10 @@ function SortableRow({
         className={
           "flex w-full items-center gap-1.5 rounded-lg py-1.5 pr-2 text-left text-[13px] " +
           (hint === "into"
-            ? "bg-emerald-50 text-emerald-700 ring-2 ring-inset ring-emerald-400"
+            ? "bg-brand-glass text-brand-primary ring-2 ring-inset ring-brand-border"
             : selected
-              ? "bg-emerald-50 font-bold text-emerald-700"
-              : "text-slate-700 hover:bg-slate-100")
+              ? "bg-brand-glass font-bold text-brand-primary"
+              : "text-text-primary hover:bg-surface-muted")
         }
       >
         {isFolder ? (
@@ -1136,7 +1154,7 @@ function SortableCard({
         transition,
         opacity: isDragging ? 0.4 : undefined,
       }}
-      className="group flex touch-none flex-col gap-2.5 rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      className="group flex touch-none flex-col gap-2.5 rounded-xl border border-surface-border bg-surface-raised p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-brand-border hover:shadow-md"
     >
       <div className="flex items-start justify-between">
         <span className="text-[30px] leading-none">{nodeIcon(node, false)}</span>
@@ -1184,7 +1202,7 @@ function SortableListRow({
         transition,
         opacity: isDragging ? 0.4 : undefined,
       }}
-      className="group flex touch-none items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50/40"
+      className="group flex touch-none items-center gap-3 rounded-xl border border-surface-border bg-surface-raised px-3.5 py-2.5 text-left transition-colors hover:border-brand-border hover:bg-brand-glass"
     >
       <span className="shrink-0 text-[13px] text-slate-300 group-hover:text-slate-400">
         ⠿
@@ -1222,8 +1240,8 @@ function ContextItem({
       className={
         "flex w-full items-center px-3.5 py-2 text-left text-[13px] font-medium " +
         (danger
-          ? "text-red-600 hover:bg-red-50"
-          : "text-slate-700 hover:bg-slate-100")
+          ? "text-destructive hover:bg-danger-glass"
+          : "text-text-primary hover:bg-surface-muted")
       }
     >
       {children}
@@ -1241,17 +1259,19 @@ function DeleteButton({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
+      variant="secondary"
+      size="sm"
       onClick={onClick}
       className={
-        "shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-bold " +
+        "h-7 shrink-0 rounded-lg px-3 text-[12px] " +
         (confirm
-          ? "bg-red-500 text-white hover:bg-red-600"
-          : "bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-600")
+          ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive hover:brightness-110"
+          : "hover:bg-danger-glass hover:text-destructive")
       }
     >
       {confirm ? "정말 삭제?" : label}
-    </button>
+    </Button>
   );
 }
 

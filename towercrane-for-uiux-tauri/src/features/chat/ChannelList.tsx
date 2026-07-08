@@ -1,5 +1,6 @@
 import type { MeetingRoom } from "./api";
 import { useUnreadStore } from "./unread-store";
+import { Button } from "../../shared/ui/button";
 
 type Props = {
   channels: MeetingRoom[];
@@ -28,17 +29,19 @@ function ChannelList({
           채널
         </span>
         {canCreate && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm-icon"
             onClick={onCreateClick}
             title="채널 만들기"
             aria-label="채널 만들기"
-            className="w-6 h-6 flex items-center justify-center text-slate-400 rounded-md hover:text-emerald-600 hover:bg-emerald-50"
+            className="w-6 h-6 rounded-md text-text-muted hover:text-brand-primary hover:bg-brand-glass"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-          </button>
+          </Button>
         )}
       </div>
 
@@ -63,12 +66,13 @@ function ChannelList({
           const hasUnread = !!count && count.unread > 0;
           const hasMention = !!count && count.mentions > 0;
           return (
-            <button
+            <Button
               key={c.id}
+              variant="ghost"
               onClick={() => onSelect(c.id)}
               className={
-                "w-full flex items-center gap-1.5 px-2.5 py-2 rounded-[8px] text-left " +
-                (active ? "bg-emerald-50" : "hover:bg-slate-100")
+                "w-full flex items-center gap-1.5 px-2.5 py-2 rounded-[8px] text-left justify-start h-auto font-normal " +
+                (active ? "bg-brand-glass hover:bg-brand-glass" : "")
               }
             >
               <span
@@ -104,7 +108,7 @@ function ChannelList({
                   {hasMention ? `@${count.mentions}` : count.unread > 99 ? "99+" : count.unread}
                 </span>
               )}
-            </button>
+            </Button>
           );
         })}
       </nav>

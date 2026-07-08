@@ -128,8 +128,11 @@ export function createDefaultApiBlockContent(
   endpoint?: Pick<ApiDocEndpoint, "method" | "path"> | null,
 ): ApiBlockContent {
   const path = endpoint?.path?.trim();
+  const method = endpoint?.method ?? "GET";
+  // POST/PUT/PATCH는 실무에서 거의 항상 JSON 바디를 쓰므로 처음부터 json 탭 + 빈 오브젝트로 시작.
+  const hasBody = method === "POST" || method === "PUT" || method === "PATCH";
   return {
-    method: endpoint?.method ?? "GET",
+    method,
     url: path
       ? path.startsWith("http") || path.startsWith("{{")
         ? path
@@ -140,7 +143,7 @@ export function createDefaultApiBlockContent(
       { key: "Content-Type", value: "application/json", enabled: true },
     ],
     params: [],
-    body: { type: "none", content: "" },
+    body: hasBody ? { type: "json", content: "{\n  \n}" } : { type: "none", content: "" },
     description: "",
     lastResponse: null,
   };

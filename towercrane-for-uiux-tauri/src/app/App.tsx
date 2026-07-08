@@ -5,7 +5,6 @@ import { getToken, logout as apiLogout, me, setToken } from "../features/auth/ap
 import type { User } from "../entities/user";
 import AppShell from "../widgets/app-shell/AppShell";
 import { ToastViewport } from "../shared/ui/Toast";
-import { checkForUpdates } from "../shared/update/checkForUpdates";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -14,11 +13,6 @@ const queryClient = new QueryClient({
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [booting, setBooting] = useState(true);
-
-  // 앱 시작 시 새 버전 확인 (빌드된 앱에서만 동작, 그 외엔 무시)
-  useEffect(() => {
-    void checkForUpdates();
-  }, []);
 
   // 앱 시작 시 저장된 토큰으로 세션 확인
   useEffect(() => {

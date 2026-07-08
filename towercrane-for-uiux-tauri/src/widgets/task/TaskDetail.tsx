@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { RefreshCw } from "lucide-react";
 import { getToken } from "../../shared/api/client";
 import {
   createReference,
@@ -27,6 +28,7 @@ import {
 } from "../../features/task/api";
 import PageHeader from "../../shared/ui/PageHeader";
 import Select from "../../shared/ui/Select";
+import { Button } from "../../shared/ui/button";
 
 type Props = {
   taskId: string;
@@ -284,12 +286,12 @@ function TaskDetail({ taskId, onBack, onUpdated }: Props) {
       <PageHeader>
         <button
           onClick={onBack}
-          className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
+          className="flex size-7 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-strong"
           title="목록으로"
         >
           ←
         </button>
-        <span className="text-[14px] font-bold tracking-tight text-slate-900 truncate">
+        <span className="text-[14px] font-bold tracking-tight text-text-primary truncate">
           업무 상세
         </span>
         {task ? (
@@ -308,9 +310,9 @@ function TaskDetail({ taskId, onBack, onUpdated }: Props) {
             onClick={handleRefresh}
             disabled={refreshing}
             title="새로고침"
-            className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50"
+            className="flex size-7 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-strong disabled:opacity-50"
           >
-            <span className={refreshing ? "inline-block animate-spin" : ""}>↻</span>
+            <RefreshCw className={"size-3.5" + (refreshing ? " animate-spin" : "")} strokeWidth={2} />
           </button>
         ) : null}
       </PageHeader>
@@ -432,7 +434,7 @@ function TaskDetail({ taskId, onBack, onUpdated }: Props) {
                           <button
                             type="button"
                             onClick={() => handleToggleChecklist(item)}
-                            className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-slate-50"
+                            className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-surface-muted"
                           >
                             <span
                               className={
@@ -495,13 +497,13 @@ function TaskDetail({ taskId, onBack, onUpdated }: Props) {
                   title="참고 링크"
                   desc="Figma, 문서, GitHub 링크를 업무에 연결합니다."
                   trailing={
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
+                      className="h-auto shrink-0 px-3 py-1.5 text-[12px]"
                       onClick={openRefModal}
-                      className="shrink-0 rounded-lg bg-emerald-500 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-emerald-600"
                     >
                       + 링크 추가
-                    </button>
+                    </Button>
                   }
                 >
                   {references.length === 0 ? (
@@ -529,7 +531,7 @@ function TaskDetail({ taskId, onBack, onUpdated }: Props) {
                           <button
                             type="button"
                             onClick={() => openExternal(ref.url)}
-                            className="shrink-0 rounded-md px-1.5 py-1 text-[13px] text-slate-400 hover:bg-emerald-50 hover:text-emerald-600"
+                            className="shrink-0 rounded-md px-1.5 py-1 text-[13px] text-text-muted hover:bg-brand-glass hover:text-brand-primary"
                             title="브라우저로 열기"
                           >
                             ↗
@@ -537,7 +539,7 @@ function TaskDetail({ taskId, onBack, onUpdated }: Props) {
                           <button
                             type="button"
                             onClick={() => handleDeleteReference(ref.id)}
-                            className="shrink-0 rounded-md px-1.5 py-1 text-[12px] text-slate-400 hover:bg-red-50 hover:text-red-600"
+                            className="shrink-0 rounded-md px-1.5 py-1 text-[12px] text-text-muted hover:bg-danger-glass hover:text-destructive"
                             title="삭제"
                           >
                             ✕
@@ -593,13 +595,13 @@ function TaskDetail({ taskId, onBack, onUpdated }: Props) {
           <span className="text-[12px] text-slate-400">
             {dirty ? "저장하지 않은 변경사항이 있습니다." : "변경사항 없음"}
           </span>
-          <button
+          <Button
+            className="h-auto px-5 py-2 text-[14px]"
             onClick={handleSave}
             disabled={!dirty || saving || !title.trim()}
-            className="rounded-lg bg-emerald-500 px-5 py-2 text-[14px] font-bold text-white hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
           >
             {saving ? "저장 중…" : "저장"}
-          </button>
+          </Button>
         </footer>
       ) : null}
 
@@ -660,21 +662,20 @@ function TaskDetail({ taskId, onBack, onUpdated }: Props) {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                className="h-auto px-4 py-2 text-[13px]"
                 onClick={() => setRefModalOpen(false)}
-                className="rounded-lg bg-slate-100 px-4 py-2 text-[13px] font-semibold text-slate-600 hover:bg-slate-200"
               >
                 취소
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                className="h-auto px-4 py-2 text-[13px]"
                 onClick={handleAddReference}
                 disabled={!refUrl.trim() || addingRef}
-                className="rounded-lg bg-emerald-500 px-4 py-2 text-[13px] font-bold text-white hover:bg-emerald-600 disabled:bg-slate-300"
               >
                 {addingRef ? "추가 중…" : "추가"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

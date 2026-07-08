@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import type { User } from "../../entities/user";
 import { getToken } from "../../shared/api/client";
 import {
@@ -16,6 +17,7 @@ import {
 } from "../../features/task/api";
 import PageHeader from "../../shared/ui/PageHeader";
 import Select from "../../shared/ui/Select";
+import { Button } from "../../shared/ui/button";
 import TaskDetail from "./TaskDetail";
 
 type Props = {
@@ -89,7 +91,7 @@ function TodoModule({ user }: Props) {
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <PageHeader>
-        <span className="text-[14px] font-bold tracking-tight text-slate-900">
+        <span className="text-[14px] font-bold tracking-tight text-text-primary">
           내 할일
         </span>
         <span className="text-[12px] text-slate-400">{user.name}</span>
@@ -189,9 +191,9 @@ function RefreshButton({
       onClick={onClick}
       disabled={refreshing}
       title="새로고침"
-      className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-50"
+      className="flex size-7 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-strong disabled:opacity-50"
     >
-      <span className={refreshing ? "inline-block animate-spin" : ""}>↻</span>
+      <RefreshCw className={"size-3.5" + (refreshing ? " animate-spin" : "")} strokeWidth={2} />
     </button>
   );
 }
@@ -210,7 +212,7 @@ function WorkspaceCard({
     <button
       type="button"
       onClick={onOpen}
-      className="group flex h-full w-full flex-col rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      className="group flex h-full w-full flex-col rounded-xl border border-surface-border bg-surface-raised p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-border hover:shadow-md"
     >
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -377,12 +379,12 @@ function WorkspaceTasks({
       <PageHeader>
         <button
           onClick={onBack}
-          className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
+          className="flex size-7 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-strong"
           title="워크스페이스 목록"
         >
           ←
         </button>
-        <span className="text-[14px] font-bold tracking-tight text-slate-900 truncate">
+        <span className="text-[14px] font-bold tracking-tight text-text-primary truncate">
           {workspace.name}
         </span>
         <span className="text-[12px] text-slate-400">{tasks.length}</span>
@@ -411,19 +413,14 @@ function WorkspaceTasks({
                   : tasks.filter((t) => t.status === s).length;
               const active = statusFilter === s;
               return (
-                <button
+                <Button
                   key={s}
-                  type="button"
+                  variant={active ? "primary" : "secondary"}
+                  className="h-auto rounded-lg px-2.5 py-1.5 text-[12px] font-semibold"
                   onClick={() => setStatusFilter(s)}
-                  className={
-                    "rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition-colors " +
-                    (active
-                      ? "bg-emerald-500 text-white"
-                      : "bg-slate-100 text-slate-500 hover:bg-slate-200")
-                  }
                 >
                   {s === "ALL" ? "전체" : TASK_STATUS_LABELS[s]} {count}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -466,8 +463,8 @@ function WorkspaceTasks({
                     className={
                       "flex size-5 shrink-0 items-center justify-center rounded-md border text-[12px] transition-colors " +
                       (task.status === "DONE"
-                        ? "border-emerald-500 bg-emerald-500 text-white"
-                        : "border-slate-300 bg-white text-transparent hover:border-emerald-400")
+                        ? "border-brand-border bg-brand-primary text-text-on-brand"
+                        : "border-surface-border bg-surface-raised text-transparent hover:border-brand-border")
                     }
                   >
                     ✓
