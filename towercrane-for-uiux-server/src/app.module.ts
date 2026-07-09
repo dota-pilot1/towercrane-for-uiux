@@ -24,6 +24,8 @@ import { ChallengeModule } from './challenge/challenge.module';
 import { SqlPracticeModule } from './sql-practice/sql-practice.module';
 import { DevChallengeModule } from './dev-challenge/dev-challenge.module';
 import { StudyDiaryModule } from './study-diary/study-diary.module';
+import { AxStudyModule } from './ax-study/ax-study.module';
+import { AxBoardModule } from './ax-board/ax-board.module';
 import { BoardsModule } from './boards/boards.module';
 import { AiEvaluationModule } from './ai-evaluation/ai-evaluation.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
@@ -60,6 +62,8 @@ import { PointsModule } from './points/points.module';
     IssuesModule,
     ChallengeModule,
     StudyDiaryModule,
+    AxStudyModule,
+    AxBoardModule,
     DevChallengeModule,
     SqlPracticeModule,
     BoardsModule,

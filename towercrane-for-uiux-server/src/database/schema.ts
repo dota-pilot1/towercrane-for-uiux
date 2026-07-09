@@ -63,6 +63,74 @@ export const studyDiariesTable = sqliteTable('study_diaries', {
   updatedAt: text('updated_at').notNull(),
 });
 
+// ── AX Study (towercrane-axtrainer-tauri 전용 모듈) ──────────────────
+// study-diary와 별개의 워크스페이스→노트 2단 구조. AX 학습 자료 정리/공유용.
+export const axStudyWorkspacesTable = sqliteTable('ax_study_workspaces', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  visibility: text('visibility')
+    .$type<'private' | 'shared' | 'public'>()
+    .notNull()
+    .default('private'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const axStudyNotesTable = sqliteTable('ax_study_notes', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id')
+    .notNull()
+    .references(() => axStudyWorkspacesTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  tags: text('tags', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type AxStudyWorkspaceRow = typeof axStudyWorkspacesTable.$inferSelect;
+export type AxStudyNoteRow = typeof axStudyNotesTable.$inferSelect;
+
+// ── AX Board (towercrane-axtrainer-tauri 게시판) ─────────────────────
+// 카테고리별 게시글 + 댓글. ax-study(노트)와 완전 별개 기능.
+export type AxBoardCategory = 'news' | 'tips' | 'qna' | 'free';
+
+export const axBoardPostsTable = sqliteTable('ax_board_posts', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  category: text('category').$type<AxBoardCategory>().notNull().default('free'),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const axBoardCommentsTable = sqliteTable('ax_board_comments', {
+  id: text('id').primaryKey(),
+  postId: text('post_id')
+    .notNull()
+    .references(() => axBoardPostsTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type AxBoardPostRow = typeof axBoardPostsTable.$inferSelect;
+export type AxBoardCommentRow = typeof axBoardCommentsTable.$inferSelect;
+
 export const emailVerificationsTable = sqliteTable('email_verifications', {
   id: text('id').primaryKey(),
   email: text('email').notNull(),
