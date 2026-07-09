@@ -1,6 +1,6 @@
 [package]
 name = "towercrane-for-uiux-tauri"
-version = "0.1.8"
+version = "0.1.9"
 description = "프로젝트 업무 관리 메신저"
 authors = ["you"]
 edition = "2021"
