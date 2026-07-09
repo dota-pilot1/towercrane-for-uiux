@@ -184,10 +184,10 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                   : "업데이트 없음"
             }
             className={
-              "grid h-[22px] w-[58px] place-items-center rounded-lg border text-[9px] font-black leading-none transition-colors " +
+              "grid h-[22px] w-[58px] place-items-center rounded-lg border text-[10px] font-black leading-none shadow-sm transition-colors " +
               (appUpdate.state.status === "available"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                : "cursor-default border-white/20 bg-white/15 text-white/50")
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                : "cursor-default border-white/35 bg-white/20 text-white/75")
             }
           >
             <span>
@@ -197,13 +197,13 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
                   ? `${appUpdate.state.progress}%`
                   : appUpdate.state.status === "available"
                     ? "업데이트"
-                    : "update"}
+                    : "최신"}
             </span>
           </button>
           {appVersion && (
             <span
               title={`Towercrane v${appVersion}`}
-              className="overflow-hidden max-h-3 opacity-100 text-[10px] font-semibold text-white/70 tabular-nums select-none"
+              className="overflow-hidden max-h-3 opacity-100 text-[10px] font-bold text-white/85 tabular-nums select-none"
             >
               v{appVersion}
             </span>
@@ -226,11 +226,11 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
             className={
               "grid min-h-[56px] w-[58px] place-items-center gap-1 rounded-[13px] border px-1 py-1.5 text-[9px] font-extrabold transition-all " +
               (accountOpen || active === "profile"
-                ? "border-white/40 bg-white text-slate-700 shadow-lg"
-                : "border-transparent bg-transparent text-white/70 hover:border-white/20 hover:bg-white/15 hover:text-white")
+                ? "border-white/60 bg-white text-slate-900 shadow-lg"
+                : "border-transparent bg-transparent text-white/85 hover:border-white/30 hover:bg-white/20 hover:text-white")
             }
           >
-            <span className="grid h-[38px] w-[38px] place-items-center overflow-hidden rounded-full border border-white/30 bg-white text-[14px] font-black uppercase text-slate-700">
+            <span className="grid h-[38px] w-[38px] place-items-center overflow-hidden rounded-full border border-white/30 bg-white text-[14px] font-black uppercase text-slate-900">
               {user.profileImageUrl ? (
                 <img src={user.profileImageUrl} alt={displayName} className="h-full w-full object-cover" />
               ) : (
