@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bug,
   CheckSquare,
-  Download,
   FileText,
   FlaskConical,
   Loader2,
@@ -10,6 +9,7 @@ import {
   MessageCircle,
   Package,
   Settings,
+  UserCircle,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -58,8 +58,12 @@ const MODULES: ModuleDef[] = [
 
 function AppShell({ user, onUserUpdate, onLogout }: Props) {
   const [active, setActive] = useState<ViewId>("home");
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
   const activeModule = MODULES.find((m) => m.id === active);
   const railTheme = getRailTheme(useAppSettingsStore((s) => s.railTheme));
+  const displayName = user.name || user.email;
+  const roleName = user.role === "admin" ? "관리자" : "사용자";
 
   // 전역 인박스 — 모든 방의 새 메시지를 수신해 배지/네이티브 알림 처리
   useMeetingInbox(user.id, user.name);
@@ -71,16 +75,31 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
   const appUpdate = useAppUpdate();
   const appVersion = appUpdate.state.currentVersion;
   useEffect(() => {
-    appUpdate.checkOnceOnStartup();
+    const timer = window.setTimeout(() => {
+      appUpdate.checkOnceOnStartup();
+    }, 10_000);
+    return () => window.clearTimeout(timer);
   }, [appUpdate.checkOnceOnStartup]);
 
-  // 앱 시작 직후 배지가 바로 튀어나오지 않도록 10초 지연 후에만 레일에 업데이트 버튼 노출.
-  const [showUpdateBadge, setShowUpdateBadge] = useState(false);
   useEffect(() => {
-    const timer = setTimeout(() => setShowUpdateBadge(true), 10_000);
-    return () => clearTimeout(timer);
-  }, []);
-  const railUpdateVisible = showUpdateBadge && appUpdate.hasUpdate;
+    if (!accountOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) {
+        setAccountOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAccountOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [accountOpen]);
 
   return (
     <div className="h-screen flex overflow-hidden relative">
@@ -153,25 +172,41 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
         </div>
 
         {/* 사용자 / 로그아웃 */}
-        <div className="w-full flex flex-col items-center gap-1.5 py-2.5 border-t border-white/10">
-          {railUpdateVisible && (
-            <button
-              onClick={() => void appUpdate.installUpdate()}
-              disabled={appUpdate.busy && appUpdate.state.status !== "downloading"}
-              title={`새 버전 v${appUpdate.state.availableVersion} 설치`}
-              className="flex items-center justify-center gap-1 w-[52px] h-8 rounded-lg bg-white/25 text-primary-foreground hover:bg-white/35 transition-all duration-300 ease-in-out"
-            >
-              {appUpdate.state.status === "downloading" ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Download className="size-3.5" />
-              )}
-              <span className="text-[9px] font-semibold leading-none">
-                {appUpdate.state.status === "downloading"
+        <div className="relative w-full flex flex-col items-center gap-2 py-2.5 border-t border-white/10" ref={accountRef}>
+          <button
+            onClick={() => void appUpdate.installUpdate()}
+            disabled={appUpdate.state.status !== "available" || appUpdate.busy}
+            title={
+              appUpdate.state.status === "available"
+                ? `새 버전 v${appUpdate.state.availableVersion} 설치`
+                : appUpdate.state.status === "checking"
+                  ? "업데이트 확인 중"
+                  : "업데이트 없음"
+            }
+            className={
+              "grid h-[22px] w-[58px] place-items-center rounded-lg border text-[9px] font-black leading-none transition-colors " +
+              (appUpdate.state.status === "available"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                : "cursor-default border-white/20 bg-white/15 text-white/50")
+            }
+          >
+            <span>
+              {appUpdate.state.status === "checking"
+                ? "확인"
+                : appUpdate.state.status === "downloading"
                   ? `${appUpdate.state.progress}%`
-                  : "업데이트"}
-              </span>
-            </button>
+                  : appUpdate.state.status === "available"
+                    ? "업데이트"
+                    : "update"}
+            </span>
+          </button>
+          {appVersion && (
+            <span
+              title={`Towercrane v${appVersion}`}
+              className="overflow-hidden max-h-3 opacity-100 text-[10px] font-semibold text-white/70 tabular-nums select-none"
+            >
+              v{appVersion}
+            </span>
           )}
           <button
             onClick={() => setActive("settings")}
@@ -185,44 +220,72 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           >
             <Settings className="size-[18px]" strokeWidth={2} />
           </button>
-          {appVersion && (
-            <span
-              title={`Towercrane v${appVersion}`}
-              className="overflow-hidden max-h-3 opacity-100 text-[10px] font-semibold text-white/70 tabular-nums select-none"
-            >
-              v{appVersion}
-            </span>
-          )}
           <button
-            onClick={() => setActive("profile")}
-            title={`${user.name} · 프로필 수정`}
+            onClick={() => setAccountOpen((open) => !open)}
+            title={`${displayName} · ${roleName}`}
             className={
-              "w-[44px] h-[44px] flex items-center justify-center text-[18px] font-bold uppercase overflow-hidden transition-all duration-200 " +
-              (active === "profile"
-                ? "text-text-primary bg-surface-raised ring-2 ring-white/60 rounded-[14px]"
-                : "text-primary-foreground bg-white/20 hover:bg-white/30 rounded-[22px] hover:rounded-[14px]")
+              "grid min-h-[56px] w-[58px] place-items-center gap-1 rounded-[13px] border px-1 py-1.5 text-[9px] font-extrabold transition-all " +
+              (accountOpen || active === "profile"
+                ? "border-white/40 bg-white text-slate-700 shadow-lg"
+                : "border-transparent bg-transparent text-white/70 hover:border-white/20 hover:bg-white/15 hover:text-white")
             }
           >
-            {user.profileImageUrl ? (
-              <img
-                src={user.profileImageUrl}
-                alt={user.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              user.name.charAt(0) || "🙂"
-            )}
-          </button>
-          <button
-            onClick={onLogout}
-            title="로그아웃"
-            className="flex items-center justify-center gap-1 w-[52px] py-1 text-[10px] font-semibold text-white/80 rounded-lg hover:text-primary-foreground hover:bg-white/15 transition-all duration-300 ease-in-out"
-          >
-            <LogOut className="size-[13px] shrink-0" strokeWidth={2} />
-            <span className="overflow-hidden whitespace-nowrap max-w-[40px] opacity-100">
-              로그아웃
+            <span className="grid h-[38px] w-[38px] place-items-center overflow-hidden rounded-full border border-white/30 bg-white text-[14px] font-black uppercase text-slate-700">
+              {user.profileImageUrl ? (
+                <img src={user.profileImageUrl} alt={displayName} className="h-full w-full object-cover" />
+              ) : (
+                displayName.charAt(0) || "U"
+              )}
             </span>
+            <span className="max-w-[50px] overflow-hidden text-ellipsis whitespace-nowrap">{roleName}</span>
           </button>
+          {accountOpen && (
+            <div className="absolute bottom-2 left-[calc(100%+12px)] z-30 w-[248px] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-700 shadow-2xl">
+              <div className="flex items-center gap-2.5 border-b border-slate-100 p-3">
+                <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-full border border-slate-200 bg-emerald-50 text-sm font-black uppercase text-emerald-700 shadow-sm">
+                  {user.profileImageUrl ? (
+                    <img src={user.profileImageUrl} alt={displayName} className="h-full w-full object-cover" />
+                  ) : (
+                    displayName.charAt(0) || "U"
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <strong className="block truncate text-[13px] leading-5 text-slate-900">{displayName}</strong>
+                  <span className="block truncate text-xs font-semibold text-slate-400">{user.email}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-extrabold text-slate-600">
+                  {roleName}
+                </span>
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-extrabold text-emerald-700">
+                  로그인됨
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountOpen(false);
+                  setActive("profile");
+                }}
+                className="flex min-h-10 w-full items-center gap-2 bg-white px-3 text-left text-[13px] font-extrabold text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              >
+                <UserCircle className="size-4" />
+                <span>프로필</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountOpen(false);
+                  onLogout();
+                }}
+                className="flex min-h-10 w-full items-center gap-2 bg-white px-3 text-left text-[13px] font-extrabold text-slate-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <LogOut className="size-4" />
+                <span>로그아웃</span>
+              </button>
+            </div>
+          )}
         </div>
       </nav>
 
