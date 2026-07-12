@@ -26,6 +26,7 @@ import { DevChallengeModule } from './dev-challenge/dev-challenge.module';
 import { StudyDiaryModule } from './study-diary/study-diary.module';
 import { AxStudyModule } from './ax-study/ax-study.module';
 import { AxBoardModule } from './ax-board/ax-board.module';
+import { AiStudyNoteModule } from './ai-study-note/ai-study-note.module';
 import { BoardsModule } from './boards/boards.module';
 import { AiEvaluationModule } from './ai-evaluation/ai-evaluation.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
@@ -64,6 +65,7 @@ import { PointsModule } from './points/points.module';
     StudyDiaryModule,
     AxStudyModule,
     AxBoardModule,
+    AiStudyNoteModule,
     DevChallengeModule,
     SqlPracticeModule,
     BoardsModule,

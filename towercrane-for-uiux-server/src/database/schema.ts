@@ -99,6 +99,64 @@ export const axStudyNotesTable = sqliteTable('ax_study_notes', {
 export type AxStudyWorkspaceRow = typeof axStudyWorkspacesTable.$inferSelect;
 export type AxStudyNoteRow = typeof axStudyNotesTable.$inferSelect;
 
+// ── Study Plan (towercrane-axtrainer-tauri 학습 노트) ────────────────
+// 계획(plan)→학습 항목(item) 2단 구조. 항목마다 진행 상태를 두어 진행률 계산.
+export const aiStudyNotesTable = sqliteTable('ai_study_notes', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  visibility: text('visibility')
+    .$type<'private' | 'shared' | 'public'>()
+    .notNull()
+    .default('private'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const aiStudyNoteItemsTable = sqliteTable('ai_study_note_items', {
+  id: text('id').primaryKey(),
+  planId: text('plan_id')
+    .notNull()
+    .references(() => aiStudyNotesTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  resourceUrl: text('resource_url'),
+  status: text('status')
+    .$type<'todo' | 'doing' | 'done'>()
+    .notNull()
+    .default('todo'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// 항목별 단계 노트 — 댓글처럼 여러 개 쌓아 카드로 표시.
+export const aiStudyNoteItemNotesTable = sqliteTable('ai_study_note_item_notes', {
+  id: text('id').primaryKey(),
+  itemId: text('item_id')
+    .notNull()
+    .references(() => aiStudyNoteItemsTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull().default(''),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type AiStudyNoteRow = typeof aiStudyNotesTable.$inferSelect;
+export type AiStudyNoteItemRow = typeof aiStudyNoteItemsTable.$inferSelect;
+export type AiStudyNoteItemNoteRow =
+  typeof aiStudyNoteItemNotesTable.$inferSelect;
+
 // ── AX Board (towercrane-axtrainer-tauri 게시판) ─────────────────────
 // 카테고리별 게시글 + 댓글. ax-study(노트)와 완전 별개 기능.
 export type AxBoardCategory = 'news' | 'tips' | 'qna' | 'free';

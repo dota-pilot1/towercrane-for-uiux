@@ -39,6 +39,55 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly configService: ConfigService) {}
 
+  // study-plan → ai-study-note rename: 기존 데이터를 새 이름 테이블로 보존/이관.
+  // 신 테이블이 이미 만들어졌더라도 비어있으면 버리고 데이터가 든 구 테이블로 교체한다. (멱등)
+  private renameStudyPlanTables() {
+    const renames: [string, string][] = [
+      ['study_plans', 'ai_study_notes'],
+      ['study_plan_items', 'ai_study_note_items'],
+      ['study_plan_item_notes', 'ai_study_note_item_notes'],
+    ];
+    const exists = (name: string) =>
+      Boolean(
+        this.sqlite
+          .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")
+          .get(name),
+      );
+    const rowCount = (name: string) =>
+      (this.sqlite.prepare(`SELECT count(*) AS c FROM ${name}`).get() as {
+        c: number;
+      }).c;
+
+    if (!renames.some(([oldName]) => exists(oldName))) return;
+
+    this.sqlite.pragma('foreign_keys = OFF');
+    this.sqlite.transaction(() => {
+      for (const [oldName, newName] of renames) {
+        if (!exists(oldName)) continue;
+        if (exists(newName)) {
+          if (rowCount(newName) > 0) continue; // 신 테이블에 데이터 있으면 손대지 않음
+          this.sqlite.exec(`DROP TABLE ${newName}`); // 빈 신 테이블 폐기
+        }
+        this.sqlite.exec(`ALTER TABLE ${oldName} RENAME TO ${newName}`);
+      }
+    })();
+    this.sqlite.pragma('foreign_keys = ON');
+  }
+
+  // visibility 'shared' 값 폐기 → 'public'으로 정규화 (멱등).
+  // ai_study_notes가 있을 때만 실행(신규 설치엔 shared 데이터가 없으므로 no-op).
+  private normalizeAiStudyNoteVisibility() {
+    const exists = Boolean(
+      this.sqlite
+        .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")
+        .get('ai_study_notes'),
+    );
+    if (!exists) return;
+    this.sqlite.exec(
+      "UPDATE ai_study_notes SET visibility='public' WHERE visibility='shared'",
+    );
+  }
+
   onModuleInit() {
     const configuredPath =
       this.configService.get<string>('DATABASE_FILE') ??
@@ -54,6 +103,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.sqlite.pragma('journal_mode = WAL');
     this.sqlite.pragma('busy_timeout = 5000');
     this.db = drizzle(this.sqlite, { schema });
+
+    // 테이블 생성 전에 구 study_plan 테이블을 ai_study_note로 rename (데이터 보존)
+    this.renameStudyPlanTables();
+    // 폐기된 'shared' 공개범위를 'public'으로 정규화
+    this.normalizeAiStudyNoteVisibility();
 
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS users (
@@ -140,6 +194,54 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_ax_study_notes_workspace
         ON ax_study_notes(workspace_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS ai_study_notes (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        visibility TEXT NOT NULL DEFAULT 'private',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ai_study_notes_user
+        ON ai_study_notes(user_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS ai_study_note_items (
+        id TEXT PRIMARY KEY,
+        plan_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        resource_url TEXT,
+        status TEXT NOT NULL DEFAULT 'todo',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(plan_id) REFERENCES ai_study_notes(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ai_study_note_items_plan
+        ON ai_study_note_items(plan_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS ai_study_note_item_notes (
+        id TEXT PRIMARY KEY,
+        item_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(item_id) REFERENCES ai_study_note_items(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ai_study_note_item_notes_item
+        ON ai_study_note_item_notes(item_id, order_idx);
 
       CREATE TABLE IF NOT EXISTS ax_board_posts (
         id TEXT PRIMARY KEY,
@@ -1764,6 +1866,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.migrateLegacySchema();
     this.migrateChatSchema();
     this.migrateProjectIssueSchema();
+    this.migrateAiStudyNoteSchema();
     this.seedDefaults();
     this.seedEvalCategories();
     this.seedOrg();
@@ -5124,6 +5227,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.sqlite.exec(statement);
+  }
+
+  // 학습 노트 노트에 제목(title) 컬럼 추가 — 기존 DB 호환
+  private migrateAiStudyNoteSchema() {
+    this.ensureColumn(
+      'ai_study_note_item_notes',
+      'title',
+      "ALTER TABLE ai_study_note_item_notes ADD COLUMN title TEXT NOT NULL DEFAULT ''",
+    );
   }
 
   private migrateProjectIssueSchema() {
