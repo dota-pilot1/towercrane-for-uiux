@@ -34,10 +34,10 @@ export const CATEGORY_ORDER: ApprovalCategory[] = [
 ]
 
 export const STATUS_LABEL: Record<ApprovalStatus, string> = {
-  PENDING: '대기중',
-  APPROVED: '승인',
+  PENDING: '결재 진행 중',
+  APPROVED: '승인 완료',
   REJECTED: '반려',
-  CANCELLED: '취소',
+  CANCELLED: '회수·취소',
 }
 
 // ── 첨부파일 ──────────────────────────────
