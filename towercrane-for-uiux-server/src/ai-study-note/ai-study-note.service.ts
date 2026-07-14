@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { asc, desc, eq, or, sql } from 'drizzle-orm';
+import { asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
 import {
@@ -122,11 +122,27 @@ export class AiStudyNoteService {
         desc(aiStudyNoteItemsTable.createdAt),
       )
       .all();
+    // 항목 카드 인디케이터용 단계 노트 개수 — 항목별로 묶어서 붙인다
+    const itemIds = items.map((i) => i.id);
+    const noteCounts = itemIds.length
+      ? this.db
+          .select({
+            itemId: aiStudyNoteItemNotesTable.itemId,
+            count: sql<number>`count(*)`,
+          })
+          .from(aiStudyNoteItemNotesTable)
+          .where(inArray(aiStudyNoteItemNotesTable.itemId, itemIds))
+          .groupBy(aiStudyNoteItemNotesTable.itemId)
+          .all()
+      : [];
+    const noteCountMap = new Map(
+      noteCounts.map((c) => [c.itemId, Number(c.count)]),
+    );
     return {
       ...plan,
       isMine: plan.userId === userId,
       ownerName: owner?.name,
-      items,
+      items: items.map((i) => ({ ...i, noteCount: noteCountMap.get(i.id) ?? 0 })),
     };
   }
 

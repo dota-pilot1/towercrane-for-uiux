@@ -108,8 +108,9 @@ export const aiStudyNotesTable = sqliteTable('ai_study_notes', {
     .references(() => usersTable.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description'),
+  // UI는 비공개/공개 2단계. shared(팀 범위)는 미도입 → 타입도 2단계로 고정.
   visibility: text('visibility')
-    .$type<'private' | 'shared' | 'public'>()
+    .$type<'private' | 'public'>()
     .notNull()
     .default('private'),
   createdAt: text('created_at').notNull(),
@@ -2037,6 +2038,50 @@ export const knowledgeChunksTable = sqliteTable('knowledge_chunks', {
   createdAt: text('created_at').notNull(),
 });
 
+// ── 전자결재 (towercrane-approval-system) ────────────────────────────────
+export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type ApprovalCategory =
+  | 'LEAVE'
+  | 'PURCHASE'
+  | 'TRIP'
+  | 'EXPENSE'
+  | 'PROPOSAL';
+
+export const approvalRequestsTable = sqliteTable('approval_requests', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  category: text('category').$type<ApprovalCategory>().notNull(),
+  status: text('status').$type<ApprovalStatus>().notNull().default('PENDING'),
+  // 분류별 구조화 데이터(JSON 문자열)
+  meta: text('meta'),
+  submitterId: text('submitter_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const approvalStepsTable = sqliteTable('approval_steps', {
+  id: text('id').primaryKey(),
+  requestId: text('request_id')
+    .notNull()
+    .references(() => approvalRequestsTable.id, { onDelete: 'cascade' }),
+  order: integer('order').notNull(),
+  approverId: text('approver_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  status: text('status').$type<ApprovalStatus>().notNull().default('PENDING'),
+  comment: text('comment'),
+  actedAt: text('acted_at'),
+  createdAt: text('created_at').notNull(),
+});
+
+export type ApprovalRequestRow = typeof approvalRequestsTable.$inferSelect;
+export type ApprovalRequestInsert = typeof approvalRequestsTable.$inferInsert;
+export type ApprovalStepRow = typeof approvalStepsTable.$inferSelect;
+export type ApprovalStepInsert = typeof approvalStepsTable.$inferInsert;
+
 export const schema = {
   usersTable,
   sessionsTable,
@@ -2123,6 +2168,8 @@ export const schema = {
   chatMessagesTable,
   knowledgeDocumentsTable,
   knowledgeChunksTable,
+  approvalRequestsTable,
+  approvalStepsTable,
 };
 
 export type ChatSessionRow = typeof chatSessionsTable.$inferSelect;

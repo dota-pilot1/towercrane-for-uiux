@@ -47,6 +47,7 @@ import { FeaturePlansPage } from '../pages/feature-plans/ui/feature-plans-page'
 import { HomePage } from '../pages/home/ui/home-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
+import { ApprovalPage } from '../pages/approval/ui/approval-page'
 import {
   MarketLecturesPage,
   MarketNotesPage,
@@ -639,6 +640,13 @@ const aiEvaluationRoute = createRoute({
   component: AiEvaluationPage,
 })
 
+// ─── /approval (전자결재) ──────────────────────────────────────────────────────
+const approvalRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/approval',
+  component: ApprovalPage,
+})
+
 // ─── /usage-stats (이용 통계) ──────────────────────────────────────────────────
 
 const usageStatsRoute = createRoute({
@@ -1150,6 +1158,7 @@ export const router = createRouter({
       readmeRoute,
       aiMethodologyRoute,
       aiEvaluationRoute,
+      approvalRoute,
       usageStatsRoute,
       aiUsageStatsRoute,
       marketLecturesRoute,

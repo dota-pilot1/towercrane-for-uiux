@@ -1859,6 +1859,42 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_departments_parent
         ON departments(parent_id, order_idx);
+
+      -- 전자결재 (towercrane-approval-system)
+      CREATE TABLE IF NOT EXISTS approval_requests (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'GENERAL',
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        meta TEXT,
+        submitter_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(submitter_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_approval_requests_submitter
+        ON approval_requests(submitter_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS approval_steps (
+        id TEXT PRIMARY KEY,
+        request_id TEXT NOT NULL,
+        "order" INTEGER NOT NULL,
+        approver_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        comment TEXT,
+        acted_at TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(request_id) REFERENCES approval_requests(id) ON DELETE CASCADE,
+        FOREIGN KEY(approver_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_approval_steps_request
+        ON approval_steps(request_id, "order");
+
+      CREATE INDEX IF NOT EXISTS idx_approval_steps_approver
+        ON approval_steps(approver_id, status);
     `);
 
     // users 컬럼(department_id/position)을 먼저 추가해야 이후 drizzle select(*)가 깨지지 않음
@@ -3318,6 +3354,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `,
       )
       .run();
+
+    // 전자결재 분류별 구조화 데이터 컬럼(기존 DB 호환)
+    this.ensureColumn(
+      'approval_requests',
+      'meta',
+      'ALTER TABLE approval_requests ADD COLUMN meta TEXT',
+    );
   }
 
   private ensureKnowledgeAiSamples(
@@ -3970,6 +4013,34 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             `UPDATE menus SET name='AI 활용 능력 평가', icon='ClipboardCheck', parent_id=?, display_order=99, is_visible=1, updated_at=? WHERE id=?`,
           )
           .run(taskParent.id, now, eval_.id);
+      }
+
+      // ── 결재 신청 → 업무 관리 하위 ────────────────────────────────
+      const approval = this.sqlite
+        .prepare(`SELECT id FROM menus WHERE section_id = 'approval' LIMIT 1`)
+        .get() as { id: string } | undefined;
+      if (!approval) {
+        this.db
+          .insert(menusTable)
+          .values({
+            id: randomUUID(),
+            name: '결재 신청',
+            sectionId: 'approval',
+            icon: 'ClipboardList',
+            displayOrder: 50,
+            isVisible: true,
+            requiredRole: null,
+            parentId: taskParent.id,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+      } else {
+        this.sqlite
+          .prepare(
+            `UPDATE menus SET name='결재 신청', icon='ClipboardList', parent_id=?, display_order=50, is_visible=1, updated_at=? WHERE id=?`,
+          )
+          .run(taskParent.id, now, approval.id);
       }
     }
   }

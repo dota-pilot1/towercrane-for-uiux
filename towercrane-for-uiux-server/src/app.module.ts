@@ -39,6 +39,7 @@ import { FeaturePlansModule } from './feature-plans/feature-plans.module';
 import { TaskIngestModule } from './task-ingest/task-ingest.module';
 import { TaskChatModule } from './task-chat/task-chat.module';
 import { PointsModule } from './points/points.module';
+import { ApprovalsModule } from './approval/approval.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { PointsModule } from './points/points.module';
     TaskIngestModule,
     TaskChatModule,
     PointsModule,
+    ApprovalsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

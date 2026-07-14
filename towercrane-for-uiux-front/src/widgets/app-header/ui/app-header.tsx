@@ -45,6 +45,7 @@ function sectionIdToPath(sectionId: string): string {
     analysis_domain: '/dev-analysis/domain',
     analysis_concepts: '/dev-analysis/concepts',
     ai_evaluation: '/ai-evaluation',
+    approval: '/approval',
     english_group: '/english/chat',
     english_chat: '/english/chat',
     english_diary: '/english/diary',
@@ -122,6 +123,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/dev-analysis/domain')) return 'analysis_domain'
   if (pathname.startsWith('/dev-analysis/concepts')) return 'analysis_concepts'
   if (pathname.startsWith('/ai-evaluation')) return 'ai_evaluation'
+  if (pathname.startsWith('/approval')) return 'approval'
   if (pathname.startsWith('/english/chat')) return 'english_chat'
   if (pathname.startsWith('/english/diary')) return 'english_diary'
   if (pathname.startsWith('/english/news')) return 'english_news'
