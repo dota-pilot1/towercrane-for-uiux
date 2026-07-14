@@ -313,13 +313,22 @@ export function ApprovalCard({
   const CategoryIcon = CATEGORY_ICON[req.category]
 
   return (
-    <article className="overflow-hidden rounded-lg border border-surface-border bg-surface-raised shadow-sm">
+    <article
+      className={`overflow-hidden rounded-lg bg-surface-raised shadow-sm transition-colors ${
+        open ? 'border border-brand-border' : 'border border-surface-border-soft'
+      }`}
+    >
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-4 bg-surface-muted/40 px-5 py-4 text-left transition-colors hover:bg-surface-muted/70 sm:px-6 sm:py-5"
+        className={`relative flex w-full items-center gap-4 px-5 py-4 text-left transition-colors sm:px-6 sm:py-5 ${
+          open ? 'bg-brand-glass' : 'bg-surface-raised hover:bg-surface-muted/60'
+        }`}
       >
+        {open && (
+          <span className="absolute inset-y-0 left-0 w-1 bg-brand-primary" aria-hidden />
+        )}
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-brand-border bg-brand-glass">
           <CategoryIcon className="size-5 text-brand-primary" strokeWidth={2} />
         </span>
@@ -359,9 +368,9 @@ export function ApprovalCard({
       </button>
 
       {open && (
-        <div>
+        <div className="bg-surface-raised">
           {req.meta && (
-            <section className="border-t border-surface-border bg-surface-raised px-5 py-5 sm:px-6">
+            <section className="border-t border-surface-border-soft px-5 py-5 sm:px-6">
               <h3 className="mb-4 text-sm font-semibold text-text-primary">
                 {CATEGORY_LABEL[req.category]} 정보
               </h3>
@@ -371,19 +380,19 @@ export function ApprovalCard({
             </section>
           )}
 
-          <section className="border-t border-surface-border bg-surface-muted/25 px-5 py-5 sm:px-6">
+          <section className="border-t border-surface-border-soft bg-surface-muted/25 px-5 py-5 sm:px-6">
             <h3 className="text-sm font-semibold text-text-primary">신청 내용</h3>
             <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
               {req.content}
             </p>
           </section>
 
-          <section className="border-t border-surface-border bg-surface-raised px-5 py-5 sm:px-6 sm:py-6">
+          <section className="border-t border-surface-border-soft px-5 py-5 sm:px-6 sm:py-6">
             <ApprovalFlow request={req} />
           </section>
 
           {canAct && req.status === 'PENDING' && (
-            <footer className="border-t border-surface-border bg-brand-glass px-5 py-5 sm:px-6">
+            <footer className="border-t border-surface-border-soft bg-brand-glass px-5 py-5 sm:px-6">
               <label htmlFor={`approval-comment-${req.id}`} className="text-sm font-semibold text-text-primary">
                 결재 의견 <span className="font-normal text-text-muted">(선택)</span>
               </label>
