@@ -11,6 +11,7 @@ import { DatabaseService } from '../database/database.service';
 import {
   approvalRequestsTable,
   approvalStepsTable,
+  approvalDraftsTable,
   usersTable,
 } from '../database/schema';
 import {
@@ -19,6 +20,8 @@ import {
   type CreateApprovalInput,
   type ActApprovalInput,
   type ApprovalMeta,
+  saveApprovalDraftSchema,
+  type SaveApprovalDraftInput,
 } from './approval.schemas';
 
 export type ApprovalUser = {
@@ -164,6 +167,10 @@ export class ApprovalService {
           })
           .run();
       }
+
+      tx.delete(approvalDraftsTable)
+        .where(eq(approvalDraftsTable.userId, user.id))
+        .run();
     });
 
     return this.buildResponse(requestId);
@@ -239,6 +246,57 @@ export class ApprovalService {
       .all();
 
     return requests.map((request) => this.buildResponse(request.id));
+  }
+
+  /** 작성 중 초안 — 사용자별 한 건 */
+  getDraft(user: ApprovalUser) {
+    const row = this.db.db
+      .select()
+      .from(approvalDraftsTable)
+      .where(eq(approvalDraftsTable.userId, user.id))
+      .get();
+
+    if (!row) return null;
+
+    const payload = this.parseOrThrow<SaveApprovalDraftInput>(
+      saveApprovalDraftSchema,
+      JSON.parse(row.payload),
+    );
+    return { payload, updatedAt: row.updatedAt };
+  }
+
+  /** 작성 중 초안 저장 — 기존 초안이 있으면 덮어쓴다. */
+  saveDraft(user: ApprovalUser, body: unknown) {
+    const payload = this.parseOrThrow<SaveApprovalDraftInput>(
+      saveApprovalDraftSchema,
+      body,
+    );
+    const now = this.now();
+
+    this.db.db
+      .insert(approvalDraftsTable)
+      .values({
+        userId: user.id,
+        payload: JSON.stringify(payload),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: approvalDraftsTable.userId,
+        set: { payload: JSON.stringify(payload), updatedAt: now },
+      })
+      .run();
+
+    return { payload, updatedAt: now };
+  }
+
+  /** 작성 중 초안 초기화 — 현재 로그인 사용자의 초안만 삭제한다. */
+  deleteDraft(user: ApprovalUser) {
+    this.db.db
+      .delete(approvalDraftsTable)
+      .where(eq(approvalDraftsTable.userId, user.id))
+      .run();
+    return { success: true };
   }
 
   /** 결재 처리 (승인 / 반려) */

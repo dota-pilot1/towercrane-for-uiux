@@ -141,21 +141,91 @@ export type ActApprovalDto = {
   comment?: string
 }
 
+export type ApprovalDraftPayload = {
+  category: ApprovalCategory
+  title: string
+  content: string
+  approvers: Array<{ id: string; name: string; position: string | null }>
+  leaveType: LeaveType
+  leaveStart: string
+  leaveEnd: string
+  itemName: string
+  quantity: string
+  unitPrice: string
+  purchaseFiles: Attachment[]
+  destination: string
+  tripStart: string
+  tripEnd: string
+  estimatedCost: string
+  useDate: string
+  expenseType: ExpenseType
+  paymentMethod: PaymentMethod
+  expenseAmount: string
+  expenseFiles: Attachment[]
+  formFields: FormField[]
+}
+
+export type ServerApprovalDraft = {
+  payload: ApprovalDraftPayload
+  updatedAt: string
+}
+
 export function useApprovalInbox() {
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated)
+  const currentUserId = useSessionStore((s) => s.userId)
   return useQuery({
-    queryKey: ['approval', 'inbox'],
+    queryKey: ['approval', 'inbox', currentUserId],
     queryFn: () => apiRequest<ApprovalRequest[]>('/approvals/inbox'),
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && Boolean(currentUserId),
   })
 }
 
 export function useApprovalSent() {
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated)
+  const currentUserId = useSessionStore((s) => s.userId)
   return useQuery({
-    queryKey: ['approval', 'sent'],
+    queryKey: ['approval', 'sent', currentUserId],
     queryFn: () => apiRequest<ApprovalRequest[]>('/approvals/sent'),
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && Boolean(currentUserId),
+  })
+}
+
+export function useApprovalDraftQuery() {
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated)
+  const currentUserId = useSessionStore((s) => s.userId)
+  return useQuery({
+    queryKey: ['approval', 'draft', currentUserId],
+    queryFn: () => apiRequest<ServerApprovalDraft | null>('/approvals/draft'),
+    enabled: isAuthenticated && Boolean(currentUserId),
+  })
+}
+
+export function useSaveApprovalDraft() {
+  const queryClient = useQueryClient()
+  const currentUserId = useSessionStore((s) => s.userId)
+  return useMutation({
+    mutationFn: (payload: ApprovalDraftPayload) =>
+      apiRequest<ServerApprovalDraft>('/approvals/draft', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: (draft) => {
+      queryClient.setQueryData(['approval', 'draft', currentUserId], draft)
+    },
+  })
+}
+
+export function useDeleteApprovalDraft() {
+  const queryClient = useQueryClient()
+  const currentUserId = useSessionStore((s) => s.userId)
+  return useMutation({
+    mutationFn: () =>
+      apiRequest<{ success: true }>('/approvals/draft', {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.setQueryData(['approval', 'draft', currentUserId], null)
+    },
   })
 }
 
@@ -169,6 +239,7 @@ export function useSubmitApproval() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['approval', 'sent'] })
+      queryClient.invalidateQueries({ queryKey: ['approval', 'draft'] })
     },
   })
 }

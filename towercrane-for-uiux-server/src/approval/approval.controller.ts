@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
@@ -31,6 +33,24 @@ export class ApprovalController {
   @Get('sent')
   sent(@CurrentUser() user: ApprovalUser) {
     return this.approvalService.getSent(user);
+  }
+
+  /** 로그인 사용자의 작성 중 초안 조회 */
+  @Get('draft')
+  draft(@CurrentUser() user: ApprovalUser) {
+    return this.approvalService.getDraft(user);
+  }
+
+  /** 로그인 사용자의 작성 중 초안 저장 */
+  @Put('draft')
+  saveDraft(@CurrentUser() user: ApprovalUser, @Body() body: unknown) {
+    return this.approvalService.saveDraft(user, body);
+  }
+
+  /** 로그인 사용자의 작성 중 초안 초기화 */
+  @Delete('draft')
+  deleteDraft(@CurrentUser() user: ApprovalUser) {
+    return this.approvalService.deleteDraft(user);
   }
 
   /** 결재 처리 (승인 / 반려) */

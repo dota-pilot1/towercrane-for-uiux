@@ -1,11 +1,14 @@
 import { Link } from '@tanstack/react-router'
 import { CheckCircle2, Clock, Inbox, Plus, XCircle } from 'lucide-react'
+import { canActOnApproval } from '../../../entities/approval/model/can-act-on-approval'
+import { ApprovalCard } from '../../../entities/approval/ui/approval-card'
 import { useApprovalInbox, useApprovalSent } from '../../../shared/api/approval'
+import { useSessionStore } from '../../../shared/store/session-store'
 import { APPROVAL_PATHS } from '../config/approval-navigation'
-import { ApprovalCard } from './approval-page-content'
 import { ApprovalPageLayout } from './approval-page-layout'
 
 export function ApprovalHomePage() {
+  const currentUserId = useSessionStore((state) => state.userId)
   const inbox = useApprovalInbox()
   const sent = useApprovalSent()
   const inboxItems = inbox.data ?? []
@@ -14,7 +17,9 @@ export function ApprovalHomePage() {
   const summaries = [
     {
       label: '결재할 문서',
-      value: inboxItems.filter((request) => request.status === 'PENDING').length,
+      value: inboxItems.filter((request) =>
+        canActOnApproval(request, currentUserId),
+      ).length,
       path: APPROVAL_PATHS.inbox,
       icon: Inbox,
     },

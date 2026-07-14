@@ -1897,6 +1897,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_approval_steps_approver
         ON approval_steps(approver_id, status);
+
+      CREATE TABLE IF NOT EXISTS approval_drafts (
+        user_id TEXT PRIMARY KEY,
+        payload TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
     `);
 
     // users 컬럼을 먼저 추가해야 이후 drizzle select(*)가 깨지지 않음

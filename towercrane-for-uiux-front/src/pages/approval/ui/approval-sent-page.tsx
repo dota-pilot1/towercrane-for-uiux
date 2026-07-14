@@ -1,6 +1,6 @@
 import { Send } from 'lucide-react'
+import { ApprovalCard } from '../../../entities/approval/ui/approval-card'
 import { useApprovalSent } from '../../../shared/api/approval'
-import { ApprovalCard } from './approval-page-content'
 import { ApprovalPageLayout } from './approval-page-layout'
 
 export function ApprovalSentPage() {

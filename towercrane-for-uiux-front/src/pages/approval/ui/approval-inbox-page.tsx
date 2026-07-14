@@ -1,13 +1,16 @@
 import { Inbox } from 'lucide-react'
+import { canActOnApproval } from '../../../entities/approval/model/can-act-on-approval'
+import { ApprovalCard } from '../../../entities/approval/ui/approval-card'
 import { useActOnApproval, useApprovalInbox } from '../../../shared/api/approval'
-import { ApprovalCard } from './approval-page-content'
+import { useSessionStore } from '../../../shared/store/session-store'
 import { ApprovalPageLayout } from './approval-page-layout'
 
 export function ApprovalInboxPage() {
+  const currentUserId = useSessionStore((state) => state.userId)
   const inbox = useApprovalInbox()
   const act = useActOnApproval()
   const actionableItems = (inbox.data ?? []).filter(
-    (request) => request.status === 'PENDING',
+    (request) => canActOnApproval(request, currentUserId),
   )
 
   return (
@@ -28,7 +31,7 @@ export function ApprovalInboxPage() {
           <ApprovalCard
             key={request.id}
             req={request}
-            canAct
+            canAct={canActOnApproval(request, currentUserId)}
             onAct={(id, action, comment) =>
               act.mutate({
                 id,

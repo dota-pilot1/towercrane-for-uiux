@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { FolderOpen } from 'lucide-react'
+import { ApprovalCard } from '../../../entities/approval/ui/approval-card'
 import {
   useApprovalInbox,
   useApprovalSent,
   type ApprovalRequest,
   type ApprovalStatus,
 } from '../../../shared/api/approval'
-import { ApprovalCard } from './approval-page-content'
 import { ApprovalPageLayout } from './approval-page-layout'
 
 type DocumentFilter = 'ALL' | ApprovalStatus

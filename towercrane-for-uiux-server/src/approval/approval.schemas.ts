@@ -104,8 +104,39 @@ export const actApprovalSchema = z.object({
   comment: z.string().trim().max(500).optional().default(''),
 });
 
+const draftApproverSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().max(120),
+  position: z.string().max(120).nullable(),
+});
+
+export const saveApprovalDraftSchema = z.object({
+  category: approvalCategorySchema,
+  title: z.string().max(120),
+  content: z.string().max(3000),
+  approvers: z.array(draftApproverSchema).max(5),
+  leaveType: z.enum(['연차', '반차', '병가', '기타']),
+  leaveStart: z.string().max(20),
+  leaveEnd: z.string().max(20),
+  itemName: z.string().max(120),
+  quantity: z.string().max(20),
+  unitPrice: z.string().max(30),
+  purchaseFiles: z.array(attachmentSchema).max(10),
+  destination: z.string().max(120),
+  tripStart: z.string().max(20),
+  tripEnd: z.string().max(20),
+  estimatedCost: z.string().max(30),
+  useDate: z.string().max(20),
+  expenseType: z.enum(['식대', '교통', '숙박', '기타']),
+  paymentMethod: z.enum(['개인', '법인카드']),
+  expenseAmount: z.string().max(30),
+  expenseFiles: z.array(attachmentSchema).max(10),
+  formFields: z.array(formFieldSchema).max(30),
+});
+
 export type ApprovalAttachment = z.infer<typeof attachmentSchema>;
 export type ApprovalFormField = z.infer<typeof formFieldSchema>;
 export type ApprovalMeta = z.infer<typeof approvalMetaSchema>;
 export type CreateApprovalInput = z.infer<typeof createApprovalSchema>;
 export type ActApprovalInput = z.infer<typeof actApprovalSchema>;
+export type SaveApprovalDraftInput = z.infer<typeof saveApprovalDraftSchema>;

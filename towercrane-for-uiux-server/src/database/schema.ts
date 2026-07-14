@@ -2088,10 +2088,22 @@ export const approvalStepsTable = sqliteTable('approval_steps', {
   createdAt: text('created_at').notNull(),
 });
 
+export const approvalDraftsTable = sqliteTable('approval_drafts', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  // 작성 중인 폼의 원시 입력값(JSON 문자열)
+  payload: text('payload').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export type ApprovalRequestRow = typeof approvalRequestsTable.$inferSelect;
 export type ApprovalRequestInsert = typeof approvalRequestsTable.$inferInsert;
 export type ApprovalStepRow = typeof approvalStepsTable.$inferSelect;
 export type ApprovalStepInsert = typeof approvalStepsTable.$inferInsert;
+export type ApprovalDraftRow = typeof approvalDraftsTable.$inferSelect;
+export type ApprovalDraftInsert = typeof approvalDraftsTable.$inferInsert;
 
 export const schema = {
   usersTable,
@@ -2181,6 +2193,7 @@ export const schema = {
   knowledgeChunksTable,
   approvalRequestsTable,
   approvalStepsTable,
+  approvalDraftsTable,
 };
 
 export type ChatSessionRow = typeof chatSessionsTable.$inferSelect;

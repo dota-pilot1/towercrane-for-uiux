@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
-import { SubmitForm } from './approval-page-content'
+import { ApprovalSubmitForm } from '../../../features/create-approval/ui/approval-submit-form'
 import { ApprovalPageLayout } from './approval-page-layout'
 
 export function ApprovalWritePage() {
@@ -7,7 +7,7 @@ export function ApprovalWritePage() {
 
   return (
     <ApprovalPageLayout>
-      <SubmitForm onSuccess={() => navigate({ to: '/approval/sent' })} />
+      <ApprovalSubmitForm onSuccess={() => navigate({ to: '/approval/sent' })} />
     </ApprovalPageLayout>
   )
 }
