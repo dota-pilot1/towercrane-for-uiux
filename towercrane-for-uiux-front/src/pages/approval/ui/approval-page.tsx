@@ -1080,16 +1080,19 @@ function SubmitForm({ onSuccess }: { onSuccess: () => void }) {
         <ApproverPicker approvers={approvers} onChange={setApprovers} />
       </div>
 
-      {error && <p className="text-[13px] text-destructive">{error}</p>}
-
-      <button
-        type="submit"
-        disabled={submit.isPending}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-glass border border-brand-border text-brand-primary text-[13px] font-bold hover:opacity-80 transition-opacity disabled:opacity-50"
-      >
-        <Send className="size-4" />
-        {submit.isPending ? '상신 중…' : '결재 상신'}
-      </button>
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-surface-border-soft pt-4">
+        {error && (
+          <p className="mr-auto text-[13px] font-medium text-destructive">{error}</p>
+        )}
+        <button
+          type="submit"
+          disabled={submit.isPending}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-primary px-6 py-2.5 text-[13px] font-bold text-text-on-brand shadow-sm transition-all hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Send className="size-4" />
+          {submit.isPending ? '상신 중…' : '결재 상신'}
+        </button>
+      </div>
     </form>
   )
 }
