@@ -7,7 +7,6 @@ import {
   ChevronUp,
   Plus,
   Send,
-  Inbox,
   ClipboardList,
   CalendarDays,
   ShoppingCart,
@@ -24,10 +23,8 @@ import {
   X,
 } from 'lucide-react'
 import {
-  useApprovalInbox,
   useApprovalSent,
   useSubmitApproval,
-  useActOnApproval,
   CATEGORY_LABEL,
   CATEGORY_ORDER,
   STATUS_LABEL,
@@ -46,11 +43,10 @@ import { useOrgTree, type OrgNode } from '../../../shared/api/org'
 import { uploadFile } from '../../../shared/api/upload'
 import { CompactSelect } from '../../../shared/ui/compact-select'
 
-type Tab = 'submit' | 'inbox' | 'sent'
+type Tab = 'submit' | 'sent'
 
 const TAB_LIST: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'submit', label: '상신하기', icon: <Plus className="size-4" /> },
-  { id: 'inbox', label: '받은함', icon: <Inbox className="size-4" /> },
   { id: 'sent', label: '보낸함', icon: <Send className="size-4" /> },
 ]
 
@@ -1101,18 +1097,13 @@ function SubmitForm({ onSuccess }: { onSuccess: () => void }) {
 export function ApprovalPage() {
   const [tab, setTab] = useState<Tab>('submit')
 
-  const inbox = useApprovalInbox()
   const sent = useApprovalSent()
-  const act = useActOnApproval()
-
-  const pendingInbox = (inbox.data ?? []).filter((r) => r.status === 'PENDING')
-  const doneInbox = (inbox.data ?? []).filter((r) => r.status !== 'PENDING')
 
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-6">
       <div className="flex items-center gap-2 mb-4">
         <ClipboardList className="size-5 text-brand-primary" strokeWidth={2} />
-        <h1 className="text-lg font-black tracking-tight text-text-primary">전자결재</h1>
+        <h1 className="text-lg font-black tracking-tight text-text-primary">결재 신청</h1>
       </div>
 
       <div className="flex gap-1 border-b border-surface-border-soft mb-5">
@@ -1129,56 +1120,11 @@ export function ApprovalPage() {
           >
             {t.icon}
             {t.label}
-            {t.id === 'inbox' && inbox.data && pendingInbox.length > 0 && (
-              <span className="ml-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
-                {pendingInbox.length}
-              </span>
-            )}
           </button>
         ))}
       </div>
 
       {tab === 'submit' && <SubmitForm onSuccess={() => setTab('sent')} />}
-
-      {tab === 'inbox' && (
-        <div className="space-y-3">
-          {inbox.isLoading && <p className="text-[13px] text-text-muted">불러오는 중…</p>}
-          {inbox.error && (
-            <p className="text-[13px] text-destructive">{(inbox.error as Error).message}</p>
-          )}
-          {!inbox.isLoading && inbox.data?.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 gap-2">
-              <Inbox className="size-8 text-text-muted" strokeWidth={1.5} />
-              <p className="text-[13px] text-text-muted">결재 대기 항목이 없습니다.</p>
-            </div>
-          )}
-          {pendingInbox.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider">
-                결재 대기 ({pendingInbox.length})
-              </p>
-              {pendingInbox.map((req) => (
-                <ApprovalCard
-                  key={req.id}
-                  req={req}
-                  canAct
-                  onAct={(id, action, comment) => act.mutate({ id, dto: { action, comment } })}
-                />
-              ))}
-            </div>
-          )}
-          {doneInbox.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider mt-4">
-                처리 완료 ({doneInbox.length})
-              </p>
-              {doneInbox.map((req) => (
-                <ApprovalCard key={req.id} req={req} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {tab === 'sent' && (
         <div className="space-y-3">
