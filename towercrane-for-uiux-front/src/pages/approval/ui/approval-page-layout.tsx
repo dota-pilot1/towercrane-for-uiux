@@ -76,7 +76,7 @@ function StatusDefinitionList({
       {rows.map((row) => (
         <div
           key={row.label}
-          className="grid min-h-14 items-center gap-2 border-b border-surface-border-soft bg-surface-muted/50 px-3 py-3 last:border-b-0 sm:grid-cols-[7.5rem_1fr] sm:gap-4"
+            className="grid min-h-14 items-center gap-2 border-b border-surface-border-soft bg-surface-muted/50 px-3 py-3 last:border-b-0 sm:grid-cols-[6.75rem_1fr] sm:gap-3"
         >
           <dt
             className={`text-xs font-bold leading-5 ${statusLabelClass(row.tone)}`}
@@ -108,7 +108,7 @@ function ApprovalHelpDialog() {
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 ui-overlay" />
-        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-50 max-h-[min(720px,calc(100vh-2rem))] w-[min(680px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
+        <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 z-50 max-h-[min(720px,calc(100vh-2rem))] w-[min(1040px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border border-surface-border-soft shadow-2xl">
           <div className="flex items-start justify-between gap-4 border-b border-surface-border-soft px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="text-base font-bold text-text-primary">
@@ -129,7 +129,7 @@ function ApprovalHelpDialog() {
             </Dialog.Close>
           </div>
 
-          <div className="max-h-[calc(100vh-12rem)] space-y-4 overflow-y-auto px-5 py-5">
+          <div className="grid max-h-[calc(100vh-12rem)] gap-4 overflow-y-auto px-5 py-5 lg:grid-cols-2">
             <section className="rounded-lg border border-surface-border-soft bg-surface-raised p-4">
               <h2 className="text-sm font-bold text-text-primary">결재 상태</h2>
               <p className="mt-1 text-xs leading-5 text-text-muted">
