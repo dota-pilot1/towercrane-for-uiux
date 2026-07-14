@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { z } from 'zod';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthGuard } from '../auth/auth.guard';
@@ -24,6 +32,12 @@ export class UsersController {
   @Roles('admin')
   findAll() {
     return this.usersService.findAll();
+  }
+
+  @Delete(':id')
+  @Roles('admin')
+  deactivate(@CurrentUser() user: { id: string }, @Param('id') userId: string) {
+    return this.usersService.deactivate(userId, user.id);
   }
 
   @Patch('me/profile-image')

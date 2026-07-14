@@ -38,7 +38,7 @@ export class EmailVerificationService {
     const user = this.databaseService.db
       .select({ id: usersTable.id })
       .from(usersTable)
-      .where(eq(usersTable.email, email))
+      .where(and(eq(usersTable.email, email), eq(usersTable.isActive, true)))
       .get();
 
     if (!user) {

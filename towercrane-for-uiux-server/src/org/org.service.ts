@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { asc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { departmentsTable, usersTable } from '../database/schema';
 
@@ -58,6 +58,7 @@ export class OrgService {
         departmentId: usersTable.departmentId,
       })
       .from(usersTable)
+      .where(eq(usersTable.isActive, true))
       .all();
 
     // 부서별 멤버 그룹핑 + 직급순 정렬

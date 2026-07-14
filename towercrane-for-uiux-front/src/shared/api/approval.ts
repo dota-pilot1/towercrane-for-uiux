@@ -3,6 +3,12 @@ import { apiRequest } from './http'
 import { useSessionStore } from '../store/session-store'
 
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type ApprovalStepStatus =
+  | 'WAITING'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'SKIPPED'
 
 export type ApprovalCategory =
   | 'LEAVE'
@@ -103,7 +109,7 @@ export type ApprovalStep = {
   approverId: string
   approverName: string
   approverPosition: string | null
-  status: ApprovalStatus
+  status: ApprovalStepStatus
   comment: string | null
   actedAt: string | null
 }

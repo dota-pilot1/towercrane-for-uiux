@@ -1,54 +1,45 @@
 import { useMemo, useRef, useState } from 'react'
 import {
+  ArrowDown,
+  ArrowUp,
+  Building2,
+  CalendarDays,
   CheckCircle2,
-  XCircle,
-  Clock,
   ChevronDown,
   ChevronUp,
-  Plus,
-  Send,
-  ClipboardList,
-  CalendarDays,
-  ShoppingCart,
-  Plane,
-  Receipt,
+  Clock,
   FileText,
-  Paperclip,
-  Trash2,
-  ArrowUp,
-  ArrowDown,
-  Building2,
-  UserPlus,
   Loader2,
+  Paperclip,
+  Plane,
+  Plus,
+  Receipt,
+  Send,
+  ShoppingCart,
+  Trash2,
+  UserPlus,
   X,
+  XCircle,
 } from 'lucide-react'
 import {
-  useApprovalSent,
-  useSubmitApproval,
   CATEGORY_LABEL,
   CATEGORY_ORDER,
   STATUS_LABEL,
-  type ApprovalRequest,
-  type ApprovalStatus,
+  useSubmitApproval,
   type ApprovalCategory,
   type ApprovalMeta,
+  type ApprovalRequest,
+  type ApprovalStatus,
   type Attachment,
+  type ExpenseType,
   type FormField,
   type FormFieldType,
   type LeaveType,
-  type ExpenseType,
   type PaymentMethod,
 } from '../../../shared/api/approval'
 import { useOrgTree, type OrgNode } from '../../../shared/api/org'
 import { uploadFile } from '../../../shared/api/upload'
 import { CompactSelect } from '../../../shared/ui/compact-select'
-
-type Tab = 'submit' | 'sent'
-
-const TAB_LIST: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'submit', label: '상신하기', icon: <Plus className="size-4" /> },
-  { id: 'sent', label: '보낸함', icon: <Send className="size-4" /> },
-]
 
 const CATEGORY_ICON: Record<
   ApprovalCategory,
@@ -102,6 +93,131 @@ function StatusBadge({ status }: { status: ApprovalStatus }) {
       <Icon className="size-3" strokeWidth={2.5} />
       {STATUS_LABEL[status]}
     </span>
+  )
+}
+function ApprovalFlow({ req, compact = false }: { req: ApprovalRequest; compact?: boolean }) {
+  const steps = [...req.steps].sort((a, b) => a.order - b.order)
+  const approvedCount = steps.filter((step) => step.status === 'APPROVED').length
+  const currentIndex = req.status === 'PENDING'
+    ? steps.findIndex((step) => step.status === 'PENDING')
+    : -1
+
+  if (compact) {
+    const current = currentIndex >= 0 ? steps[currentIndex] : null
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-text-muted">
+        <span className="font-bold text-text-secondary">
+          {approvedCount}/{steps.length} 승인
+        </span>
+        {current && (
+          <>
+            <span>·</span>
+            <span>
+              현재 <strong className="text-brand-primary">{current.approverName}</strong>
+              {current.approverPosition ? ` ${current.approverPosition}` : ''}
+            </span>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  const progress = steps.length === 0 ? 0 : Math.round((approvedCount / steps.length) * 100)
+
+  return (
+    <div className="rounded-xl border border-surface-border-soft bg-surface-muted/40 p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[12px] font-bold text-text-primary">결재 진행</p>
+          <p className="mt-0.5 text-[11px] text-text-muted">
+            총 {steps.length}단계 중 {approvedCount}단계 승인
+          </p>
+        </div>
+        <StatusBadge status={req.status} />
+      </div>
+
+      <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-surface-strong">
+        <div
+          className="h-full rounded-full bg-brand-primary transition-all"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {steps.map((step, index) => {
+          const isCurrent = currentIndex === index
+          const isUpcoming = req.status === 'PENDING' && currentIndex >= 0 && index > currentIndex
+          const isApproved = step.status === 'APPROVED'
+          const isRejected = step.status === 'REJECTED'
+          const isSkipped = step.status === 'SKIPPED'
+          const label = isApproved
+            ? '승인'
+            : isRejected
+              ? '반려'
+              : isSkipped
+                ? '건너뜀'
+                : isCurrent
+                  ? '결재 대기'
+                  : '예정'
+
+          return (
+            <div
+              key={step.id}
+              className={`relative flex min-h-28 flex-col items-center justify-center rounded-lg border px-3 py-3 text-center ${
+                isApproved
+                  ? 'border-brand-border bg-brand-glass'
+                  : isRejected
+                    ? 'border-destructive/30 bg-danger-glass'
+                    : isCurrent
+                      ? 'border-brand-border bg-surface-raised shadow-sm'
+                      : 'border-surface-border-soft bg-surface-raised opacity-65'
+              }`}
+            >
+              <span className="absolute left-2 top-2 text-[10px] font-bold text-text-muted">
+                {index + 1}차
+              </span>
+              <div
+                className={`mb-2 flex size-12 items-center justify-center rounded-full border-2 text-[12px] font-black ${
+                  isApproved
+                    ? 'border-brand-border text-brand-primary'
+                    : isRejected
+                      ? 'border-destructive text-destructive'
+                      : isCurrent
+                        ? 'border-brand-border text-brand-primary'
+                        : 'border-surface-border text-text-muted'
+                }`}
+              >
+                {isApproved
+                  ? '승인'
+                  : isRejected
+                    ? '반려'
+                    : isSkipped
+                      ? '제외'
+                      : isCurrent
+                        ? <Clock className="size-5" />
+                        : '예정'}
+              </div>
+              <p className="text-[12px] font-bold text-text-primary">{step.approverName}</p>
+              <p className="text-[10px] text-text-muted">{step.approverPosition || `${index + 1}차 결재자`}</p>
+              <span
+                className={`mt-1.5 text-[10px] font-bold ${
+                  isApproved || isCurrent
+                    ? 'text-brand-primary'
+                    : isRejected
+                      ? 'text-destructive'
+                      : 'text-text-muted'
+                }`}
+              >
+                {isUpcoming ? '예정' : label}
+              </span>
+              {step.comment && (
+                <p className="mt-1 line-clamp-1 text-[10px] text-text-muted">“{step.comment}”</p>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -199,7 +315,7 @@ function MetaView({ meta }: { meta: ApprovalMeta }) {
   )
 }
 
-function ApprovalCard({
+export function ApprovalCard({
   req,
   canAct,
   onAct,
@@ -233,8 +349,16 @@ function ApprovalCard({
             <span>·</span>
             <span>{new Date(req.createdAt).toLocaleDateString('ko-KR')}</span>
           </div>
+          <div className="mt-1.5">
+            <ApprovalFlow req={req} compact />
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {canAct && req.status === 'PENDING' && (
+            <span className="hidden rounded-full border border-brand-border bg-brand-glass px-2 py-0.5 text-[10px] font-bold text-brand-primary sm:inline-flex">
+              내 결재 차례
+            </span>
+          )}
           <StatusBadge status={req.status} />
           {open ? (
             <ChevronUp className="size-4 text-text-muted" />
@@ -256,33 +380,7 @@ function ApprovalCard({
             {req.content}
           </p>
 
-          <div>
-            <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-2">
-              결재선
-            </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              {req.steps.map((step, idx) => (
-                <div key={step.id} className="flex items-center gap-2">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-semibold border ${statusColor(step.status)}`}
-                    >
-                      {step.approverName}
-                      {step.approverPosition && (
-                        <span className="text-[10px] opacity-70">({step.approverPosition})</span>
-                      )}
-                    </span>
-                    {step.comment && (
-                      <span className="text-[10px] text-text-muted italic">"{step.comment}"</span>
-                    )}
-                  </div>
-                  {idx < req.steps.length - 1 && (
-                    <span className="text-text-muted text-[12px]">→</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          <ApprovalFlow req={req} />
 
           {canAct && req.status === 'PENDING' && (
             <div className="space-y-2 pt-1 border-t border-surface-border-soft">
@@ -704,7 +802,7 @@ function FormBuilder({
   )
 }
 
-function SubmitForm({ onSuccess }: { onSuccess: () => void }) {
+export function SubmitForm({ onSuccess }: { onSuccess: () => void }) {
   const [category, setCategory] = useState<ApprovalCategory>('LEAVE')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -1096,58 +1194,3 @@ function SubmitForm({ onSuccess }: { onSuccess: () => void }) {
     </form>
   )
 }
-
-export function ApprovalPage() {
-  const [tab, setTab] = useState<Tab>('submit')
-
-  const sent = useApprovalSent()
-
-  return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-6">
-      <div className="flex items-center gap-2 mb-4">
-        <ClipboardList className="size-5 text-brand-primary" strokeWidth={2} />
-        <h1 className="text-lg font-black tracking-tight text-text-primary">결재 신청</h1>
-      </div>
-
-      <div className="flex gap-1 border-b border-surface-border-soft mb-5">
-        {TAB_LIST.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={
-              'flex items-center gap-1.5 px-3 py-2 text-[13px] font-semibold rounded-t-lg border-b-2 transition-colors ' +
-              (tab === t.id
-                ? 'border-brand-primary text-brand-primary'
-                : 'border-transparent text-text-muted hover:text-text-secondary')
-            }
-          >
-            {t.icon}
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'submit' && <SubmitForm onSuccess={() => setTab('sent')} />}
-
-      {tab === 'sent' && (
-        <div className="space-y-3">
-          {sent.isLoading && <p className="text-[13px] text-text-muted">불러오는 중…</p>}
-          {sent.error && (
-            <p className="text-[13px] text-destructive">{(sent.error as Error).message}</p>
-          )}
-          {!sent.isLoading && sent.data?.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 gap-2">
-              <Send className="size-8 text-text-muted" strokeWidth={1.5} />
-              <p className="text-[13px] text-text-muted">상신한 결재가 없습니다.</p>
-            </div>
-          )}
-          {(sent.data ?? []).map((req) => (
-            <ApprovalCard key={req.id} req={req} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-export default ApprovalPage

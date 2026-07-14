@@ -117,6 +117,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         name TEXT NOT NULL,
         profile_image_url TEXT,
         role TEXT NOT NULL DEFAULT 'user',
+        is_active INTEGER NOT NULL DEFAULT 1,
+        deleted_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -1871,7 +1873,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         submitter_id TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(submitter_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY(submitter_id) REFERENCES users(id) ON DELETE RESTRICT
       );
 
       CREATE INDEX IF NOT EXISTS idx_approval_requests_submitter
@@ -1882,12 +1884,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         request_id TEXT NOT NULL,
         "order" INTEGER NOT NULL,
         approver_id TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'PENDING',
+        status TEXT NOT NULL DEFAULT 'WAITING',
         comment TEXT,
         acted_at TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY(request_id) REFERENCES approval_requests(id) ON DELETE CASCADE,
-        FOREIGN KEY(approver_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY(approver_id) REFERENCES users(id) ON DELETE RESTRICT
       );
 
       CREATE INDEX IF NOT EXISTS idx_approval_steps_request
@@ -1897,9 +1899,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         ON approval_steps(approver_id, status);
     `);
 
-    // users 컬럼(department_id/position)을 먼저 추가해야 이후 drizzle select(*)가 깨지지 않음
+    // users 컬럼을 먼저 추가해야 이후 drizzle select(*)가 깨지지 않음
     this.migrateOrgSchema();
+    this.migrateUserSoftDeleteSchema();
     this.migrateLegacySchema();
+    this.migrateApprovalWorkflowSchema();
     this.migrateChatSchema();
     this.migrateProjectIssueSchema();
     this.migrateAiStudyNoteSchema();
@@ -2156,6 +2160,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.reconcileBoardMenus(now);
     this.reconcileSqlPracticeMenus(now);
     this.reconcileDevStudyMenu(now);
+    this.reconcileApprovalMenu(now);
     this.reconcileUsageStatsMenu(now);
     this.reconcileEnglishMenu(now);
     this.reconcileDevMarketMenus(now);
@@ -2572,16 +2577,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }> = [
       { sectionId: 'prototype', displayOrder: 0 },
       { sectionId: ['task_group', 'task'], displayOrder: 1 },
-      { sectionId: 'team_docs', displayOrder: 2 },
-      { sectionId: 'dev_management', displayOrder: 3 },
-      { sectionId: 'meeting', displayOrder: 4 },
-      { sectionId: 'boards', displayOrder: 5 },
-      { sectionId: 'dev_study', displayOrder: 6 },
-      { sectionId: 'dev_market_group', displayOrder: 7 },
-      { sectionId: 'dev_analysis_group', displayOrder: 8 },
-      { sectionId: 'chatbot_pilot', displayOrder: 9 },
-      { sectionId: 'english_group', displayOrder: 10 },
-      { sectionId: 'usage_stats_group', displayOrder: 11 },
+      { sectionId: 'approval', displayOrder: 2 },
+      { sectionId: 'team_docs', displayOrder: 3 },
+      { sectionId: 'dev_management', displayOrder: 4 },
+      { sectionId: 'meeting', displayOrder: 5 },
+      { sectionId: 'boards', displayOrder: 6 },
+      { sectionId: 'dev_study', displayOrder: 7 },
+      { sectionId: 'dev_market_group', displayOrder: 8 },
+      { sectionId: 'dev_analysis_group', displayOrder: 9 },
+      { sectionId: 'chatbot_pilot', displayOrder: 10 },
+      { sectionId: 'english_group', displayOrder: 11 },
       { sectionId: 'admin_dropdown', displayOrder: 12 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
@@ -4015,33 +4020,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           .run(taskParent.id, now, eval_.id);
       }
 
-      // ── 결재 신청 → 업무 관리 하위 ────────────────────────────────
-      const approval = this.sqlite
-        .prepare(`SELECT id FROM menus WHERE section_id = 'approval' LIMIT 1`)
-        .get() as { id: string } | undefined;
-      if (!approval) {
-        this.db
-          .insert(menusTable)
-          .values({
-            id: randomUUID(),
-            name: '결재 신청',
-            sectionId: 'approval',
-            icon: 'ClipboardList',
-            displayOrder: 50,
-            isVisible: true,
-            requiredRole: null,
-            parentId: taskParent.id,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .run();
-      } else {
-        this.sqlite
-          .prepare(
-            `UPDATE menus SET name='결재 신청', icon='ClipboardList', parent_id=?, display_order=50, is_visible=1, updated_at=? WHERE id=?`,
-          )
-          .run(taskParent.id, now, approval.id);
-      }
     }
   }
 
@@ -4535,6 +4513,84 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .run(now);
   }
 
+  private reconcileApprovalMenu(now: string) {
+    let approval = this.sqlite
+      .prepare(`SELECT id FROM menus WHERE section_id = 'approval' LIMIT 1`)
+      .get() as { id: string } | undefined;
+
+    if (!approval) {
+      const id = randomUUID();
+      this.db
+        .insert(menusTable)
+        .values({
+          id,
+          name: '전자결재',
+          sectionId: 'approval',
+          icon: 'ClipboardCheck',
+          displayOrder: 2,
+          isVisible: true,
+          requiredRole: null,
+          parentId: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      approval = { id };
+    } else {
+      this.sqlite
+        .prepare(
+          `UPDATE menus SET name='전자결재', icon='ClipboardCheck', parent_id=NULL, display_order=2, is_visible=1, required_role=NULL, updated_at=? WHERE id=?`,
+        )
+        .run(now, approval.id);
+    }
+
+    this.upsertMenuBySectionId({
+      sectionId: 'approval_home',
+      name: '결재 홈',
+      icon: 'LayoutDashboard',
+      displayOrder: 0,
+      parentId: approval.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'approval_submit',
+      name: '문서 작성',
+      icon: 'FilePlus2',
+      displayOrder: 1,
+      parentId: approval.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'approval_inbox',
+      name: '결재할 문서',
+      icon: 'Inbox',
+      displayOrder: 2,
+      parentId: approval.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'approval_sent',
+      name: '기안 문서',
+      icon: 'Send',
+      displayOrder: 3,
+      parentId: approval.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
+      sectionId: 'approval_documents',
+      name: '문서함',
+      icon: 'FolderOpen',
+      displayOrder: 4,
+      parentId: approval.id,
+      requiredRole: null,
+      now,
+    });
+  }
+
   private reconcileUsageStatsMenu(now: string) {
     // ── 이용 통계 루트 그룹 보장 ────────────────────────────────────────
     let usageStats = this.sqlite
@@ -4553,7 +4609,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           sectionId: 'usage_stats_group',
           icon: 'BarChart3',
           displayOrder: 9,
-          isVisible: true,
+          isVisible: false,
           requiredRole: null,
           parentId: null,
           createdAt: now,
@@ -4564,7 +4620,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     } else {
       this.sqlite
         .prepare(
-          `UPDATE menus SET name='이용 통계', icon='BarChart3', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
+          `UPDATE menus SET name='이용 통계', icon='BarChart3', parent_id=NULL, is_visible=0, updated_at=? WHERE id=?`,
         )
         .run(now, usageStats.id);
     }
@@ -4589,6 +4645,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       requiredRole: null,
       now,
     });
+
+    // 라우트와 데이터는 유지하고 내비게이션에서만 숨긴다.
+    this.sqlite
+      .prepare(
+        `UPDATE menus SET is_visible=0, updated_at=? WHERE section_id IN ('usage_stats_group', 'usage_stats', 'ai_usage_stats')`,
+      )
+      .run(now);
   }
 
   private reconcileEnglishMenu(now: string) {
@@ -5563,6 +5626,147 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
+  private migrateUserSoftDeleteSchema() {
+    this.ensureColumn(
+      'users',
+      'is_active',
+      `ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1`,
+    );
+    this.ensureColumn(
+      'users',
+      'deleted_at',
+      `ALTER TABLE users ADD COLUMN deleted_at TEXT`,
+    );
+  }
+
+  /**
+   * 기존 결재 FK의 사용자 CASCADE를 RESTRICT로 교체하고 단계 상태를 명시화한다.
+   * SQLite는 FK 옵션만 ALTER할 수 없으므로 해당 테이블을 한 번 재구성한다.
+   */
+  private migrateApprovalWorkflowSchema() {
+    const requestForeignKeys = this.sqlite
+      .prepare(`PRAGMA foreign_key_list('approval_requests')`)
+      .all() as Array<{ table: string; on_delete: string }>;
+    const stepForeignKeys = this.sqlite
+      .prepare(`PRAGMA foreign_key_list('approval_steps')`)
+      .all() as Array<{ table: string; on_delete: string }>;
+
+    const needsForeignKeyMigration =
+      requestForeignKeys.some(
+        (fk) => fk.table === 'users' && fk.on_delete.toUpperCase() === 'CASCADE',
+      ) ||
+      stepForeignKeys.some(
+        (fk) => fk.table === 'users' && fk.on_delete.toUpperCase() === 'CASCADE',
+      );
+
+    if (needsForeignKeyMigration) {
+      this.sqlite.pragma('foreign_keys = OFF');
+      try {
+        this.sqlite.transaction(() => {
+          this.sqlite.exec(`
+            CREATE TEMP TABLE approval_requests_backup AS
+              SELECT * FROM approval_requests;
+            CREATE TEMP TABLE approval_steps_backup AS
+              SELECT * FROM approval_steps;
+
+            DROP TABLE approval_steps;
+            DROP TABLE approval_requests;
+
+            CREATE TABLE approval_requests (
+              id TEXT PRIMARY KEY,
+              title TEXT NOT NULL,
+              content TEXT NOT NULL,
+              category TEXT NOT NULL DEFAULT 'GENERAL',
+              status TEXT NOT NULL DEFAULT 'PENDING',
+              meta TEXT,
+              submitter_id TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              FOREIGN KEY(submitter_id) REFERENCES users(id) ON DELETE RESTRICT
+            );
+
+            CREATE TABLE approval_steps (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              "order" INTEGER NOT NULL,
+              approver_id TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'WAITING',
+              comment TEXT,
+              acted_at TEXT,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY(request_id) REFERENCES approval_requests(id) ON DELETE CASCADE,
+              FOREIGN KEY(approver_id) REFERENCES users(id) ON DELETE RESTRICT
+            );
+
+            INSERT INTO approval_requests
+              (id, title, content, category, status, meta, submitter_id, created_at, updated_at)
+            SELECT id, title, content, category, status, meta, submitter_id, created_at, updated_at
+            FROM approval_requests_backup;
+
+            INSERT INTO approval_steps
+              (id, request_id, "order", approver_id, status, comment, acted_at, created_at)
+            SELECT id, request_id, "order", approver_id, status, comment, acted_at, created_at
+            FROM approval_steps_backup;
+
+            DROP TABLE approval_steps_backup;
+            DROP TABLE approval_requests_backup;
+
+            CREATE INDEX idx_approval_requests_submitter
+              ON approval_requests(submitter_id, created_at);
+            CREATE INDEX idx_approval_steps_request
+              ON approval_steps(request_id, "order");
+            CREATE INDEX idx_approval_steps_approver
+              ON approval_steps(approver_id, status);
+          `);
+        })();
+      } finally {
+        this.sqlite.pragma('foreign_keys = ON');
+      }
+    }
+
+    const requests = this.sqlite
+      .prepare(`SELECT id, status FROM approval_requests`)
+      .all() as Array<{ id: string; status: string }>;
+    const selectSteps = this.sqlite.prepare(
+      `SELECT id, status FROM approval_steps WHERE request_id = ? ORDER BY "order"`,
+    );
+    const updateStepStatus = this.sqlite.prepare(
+      `UPDATE approval_steps SET status = ? WHERE id = ?`,
+    );
+
+    this.sqlite.transaction(() => {
+      for (const request of requests) {
+        const steps = selectSteps.all(request.id) as Array<{
+          id: string;
+          status: string;
+        }>;
+
+        if (request.status === 'PENDING') {
+          let currentAssigned = false;
+          for (const step of steps) {
+            if (step.status === 'APPROVED') continue;
+            if (step.status === 'REJECTED') {
+              currentAssigned = true;
+              continue;
+            }
+            const nextStatus = currentAssigned ? 'WAITING' : 'PENDING';
+            updateStepStatus.run(nextStatus, step.id);
+            currentAssigned = true;
+          }
+          continue;
+        }
+
+        if (request.status === 'REJECTED') {
+          for (const step of steps) {
+            if (step.status === 'PENDING' || step.status === 'WAITING') {
+              updateStepStatus.run('SKIPPED', step.id);
+            }
+          }
+        }
+      }
+    })();
+  }
+
   /**
    * 조직도 시드: 부서 계층 + 부서별 데모 구성원.
    * 로그인 계정(terecal@daum.net)은 유지하고 부서/직급만 보강한다.
@@ -5628,26 +5832,25 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { email: 'plan.lead@towercrane.dev', name: '백기획', departmentId: 'dept-plan', position: '팀장', role: 'user' },
     ];
 
-    // 옛 시드(test%@hibot.dev) 및 목록에서 빠진 데모 계정 정리
+    // 옛 시드(test%@hibot.dev) 및 목록에서 빠진 데모 계정은 감사 이력 보존을 위해 비활성화
     const keepEmails = members.map((m) => m.email);
     const stale = this.sqlite
       .prepare(
         `SELECT id, email FROM users
-         WHERE email LIKE 'test%@hibot.dev' OR email LIKE '%@towercrane.dev'`,
+         WHERE is_active = 1
+           AND (email LIKE 'test%@hibot.dev' OR email LIKE '%@towercrane.dev')`,
       )
       .all() as { id: string; email: string }[];
     for (const u of stale) {
       if (keepEmails.includes(u.email)) continue;
-      try {
-        this.sqlite.prepare(`DELETE FROM users WHERE id = ?`).run(u.id);
-      } catch {
-        // 다른 데이터(작업/이슈 등)가 참조 중이면 삭제 불가 → 부서만 비워 조직도에서 제외
-        this.sqlite
-          .prepare(
-            `UPDATE users SET department_id = NULL, position = NULL WHERE id = ?`,
-          )
-          .run(u.id);
-      }
+      this.sqlite
+        .prepare(
+          `UPDATE users
+           SET is_active = 0, deleted_at = COALESCE(deleted_at, ?),
+               department_id = NULL, position = NULL, updated_at = ?
+           WHERE id = ?`,
+        )
+        .run(now, now, u.id);
     }
 
     for (const m of members) {

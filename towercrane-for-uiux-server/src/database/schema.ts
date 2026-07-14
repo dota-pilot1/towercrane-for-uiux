@@ -31,6 +31,8 @@ export const usersTable = sqliteTable('users', {
     onDelete: 'set null',
   }),
   position: text('position'),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  deletedAt: text('deleted_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
@@ -2040,6 +2042,12 @@ export const knowledgeChunksTable = sqliteTable('knowledge_chunks', {
 
 // ── 전자결재 (towercrane-approval-system) ────────────────────────────────
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type ApprovalStepStatus =
+  | 'WAITING'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'SKIPPED';
 export type ApprovalCategory =
   | 'LEAVE'
   | 'PURCHASE'
@@ -2057,7 +2065,7 @@ export const approvalRequestsTable = sqliteTable('approval_requests', {
   meta: text('meta'),
   submitterId: text('submitter_id')
     .notNull()
-    .references(() => usersTable.id, { onDelete: 'cascade' }),
+    .references(() => usersTable.id, { onDelete: 'restrict' }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
@@ -2070,8 +2078,11 @@ export const approvalStepsTable = sqliteTable('approval_steps', {
   order: integer('order').notNull(),
   approverId: text('approver_id')
     .notNull()
-    .references(() => usersTable.id, { onDelete: 'cascade' }),
-  status: text('status').$type<ApprovalStatus>().notNull().default('PENDING'),
+    .references(() => usersTable.id, { onDelete: 'restrict' }),
+  status: text('status')
+    .$type<ApprovalStepStatus>()
+    .notNull()
+    .default('WAITING'),
   comment: text('comment'),
   actedAt: text('acted_at'),
   createdAt: text('created_at').notNull(),

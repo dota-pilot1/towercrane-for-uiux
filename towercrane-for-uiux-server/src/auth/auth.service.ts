@@ -64,16 +64,18 @@ export class AuthService {
         .from(usersTable)
         .get()?.count ?? 0;
 
-    const user = {
+    const user: UserRow = {
       id: randomUUID(),
       email: input.email,
       passwordHash: this.hashPassword(input.password),
       name: input.name,
       profileImageUrl: null,
-      role: (userCount === 0 ? 'admin' : 'user') as 'admin' | 'user',
+      role: userCount === 0 ? 'admin' : 'user',
       aiAccess: 0,
       departmentId: null,
       position: null,
+      isActive: true,
+      deletedAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -88,7 +90,9 @@ export class AuthService {
     const user = this.databaseService.db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.email, input.email))
+      .where(
+        and(eq(usersTable.email, input.email), eq(usersTable.isActive, true)),
+      )
       .get();
 
     if (!user || !this.verifyPassword(input.password, user.passwordHash)) {
@@ -146,7 +150,9 @@ export class AuthService {
     const user = this.databaseService.db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.email, input.email))
+      .where(
+        and(eq(usersTable.email, input.email), eq(usersTable.isActive, true)),
+      )
       .get();
 
     if (!user) {
@@ -278,7 +284,7 @@ export class AuthService {
       .where(eq(usersTable.id, session.userId))
       .get();
 
-    if (!user) {
+    if (!user || !user.isActive) {
       throw new UnauthorizedException('User not found');
     }
 

@@ -47,7 +47,11 @@ import { FeaturePlansPage } from '../pages/feature-plans/ui/feature-plans-page'
 import { HomePage } from '../pages/home/ui/home-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
 import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
-import { ApprovalPage } from '../pages/approval/ui/approval-page'
+import { ApprovalDocumentsPage } from '../pages/approval/ui/approval-documents-page'
+import { ApprovalHomePage } from '../pages/approval/ui/approval-home-page'
+import { ApprovalInboxPage } from '../pages/approval/ui/approval-inbox-page'
+import { ApprovalSentPage } from '../pages/approval/ui/approval-sent-page'
+import { ApprovalWritePage } from '../pages/approval/ui/approval-write-page'
 import {
   MarketLecturesPage,
   MarketNotesPage,
@@ -644,7 +648,31 @@ const aiEvaluationRoute = createRoute({
 const approvalRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/approval',
-  component: ApprovalPage,
+  component: ApprovalHomePage,
+})
+
+const approvalWriteRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/approval/write',
+  component: ApprovalWritePage,
+})
+
+const approvalInboxRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/approval/inbox',
+  component: ApprovalInboxPage,
+})
+
+const approvalSentRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/approval/sent',
+  component: ApprovalSentPage,
+})
+
+const approvalDocumentsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/approval/documents',
+  component: ApprovalDocumentsPage,
 })
 
 // ─── /usage-stats (이용 통계) ──────────────────────────────────────────────────
@@ -1159,6 +1187,10 @@ export const router = createRouter({
       aiMethodologyRoute,
       aiEvaluationRoute,
       approvalRoute,
+      approvalWriteRoute,
+      approvalInboxRoute,
+      approvalSentRoute,
+      approvalDocumentsRoute,
       usageStatsRoute,
       aiUsageStatsRoute,
       marketLecturesRoute,
