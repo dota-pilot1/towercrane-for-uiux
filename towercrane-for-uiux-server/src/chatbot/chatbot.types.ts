@@ -52,6 +52,17 @@ export type StreamContext = StreamBase & {
 /** 스트림으로 조각조각 오는 tool_call을 조립하는 중간 상태 */
 export type ToolCallDraft = { id: string; name: string; arguments: string };
 
+/** 스트림을 끝까지 읽고 나서야 알 수 있는 것들 */
+export type CollectedStream = {
+  /** 툴을 안 썼을 때 흘려보낸 본문 (이미 전송됨 — DB 저장용) */
+  text: string;
+  /** 'tool_calls' 면 툴을 부른 것, 'stop' 이면 그냥 답한 것 */
+  finishReason: string | null;
+  usage: OpenAI.CompletionUsage | null;
+  /** 조각을 다 이어붙인 tool_call. 툴을 안 썼으면 undefined */
+  toolCall: ToolCallDraft | undefined;
+};
+
 export type RealtimeSessionRequest = {
   model?: string;
   voice?: string;

@@ -6,7 +6,12 @@ import { tasksTable } from '../database/schema';
 import { OPENAI_CLIENT } from './lib/openai.provider';
 import { ChatbotSessionService } from './chatbot-session.service';
 import { ChatbotUsageService } from './chatbot-usage.service';
-import type { ChatbotUser, StreamContext, ToolCallDraft } from './chatbot.types';
+import type {
+  ChatbotUser,
+  CollectedStream,
+  StreamContext,
+  ToolCallDraft,
+} from './chatbot.types';
 
 /**
  * GPT에게 건네는 "메뉴판". 실행 코드는 안 보내고 이름과 설명만 보낸다 —
@@ -73,77 +78,102 @@ export class ChatbotToolsService {
   ) {}
 
   async stream(ctx: StreamContext) {
-    const { sessionId, user, sse, messages, model } = ctx;
-
     const stream = await this.openai!.chat.completions.create({
-      model,
+      model: ctx.model,
       stream: true,
       stream_options: { include_usage: true },
-      messages,
+      messages: ctx.messages,
       tools: [SELF_INTRODUCE_TOOL, GET_MY_TASKS_TOOL],
       tool_choice: 'auto', // 쓸지 말지 GPT가 스스로 판단
     });
 
+    const collected = await this.collect(stream, ctx.sse);
+    this.respond(ctx, collected);
+  }
+
+  /**
+   * 스트림을 끝까지 읽어 필요한 것만 뽑아낸다.
+   *
+   * 텍스트는 읽는 족족 흘려보내고 툴 조각은 모으기만 하는 게 핵심이다 —
+   * 텍스트는 이어붙이는 순간 의미가 있지만 툴 인자는 JSON이라 완성 전엔
+   * 아무것도 할 수 없다. 어느 쪽인지도 스트림이 끝나야 알 수 있다.
+   */
+  private async collect(
+    stream: AsyncIterable<OpenAI.ChatCompletionChunk>,
+    sse: StreamContext['sse'],
+  ): Promise<CollectedStream> {
     const drafts: ToolCallDraft[] = [];
-    let directContent = '';
+    let text = '';
     let finishReason: string | null = null;
     let usage: OpenAI.CompletionUsage | null = null;
 
-    // 텍스트는 즉시 흘려보내고 툴 조각은 모으기만 한다.
-    // 어느 쪽인지는 스트림이 끝나고 finish_reason이 확정돼야 알 수 있다.
     for await (const chunk of stream) {
-      if (chunk.usage) usage = chunk.usage;
+      if (chunk.usage) usage = chunk.usage; // 마지막 청크에만 실려온다
 
+      // choices가 배열인 건 n:3 처럼 답변을 여러 개 받을 수 있어서다. 우린 안 쓴다.
       const choice = chunk.choices[0];
       if (!choice) continue;
       if (choice.finish_reason) finishReason = choice.finish_reason;
 
-      const text = choice.delta?.content ?? '';
-      if (text) {
-        directContent += text;
-        sse.send({ text });
+      const piece = choice.delta?.content ?? '';
+      if (piece) {
+        text += piece; // DB 저장용으로 모으고
+        sse.send({ text: piece }); // 동시에 화면으로 흘려보낸다
       }
 
-      // 툴 인자는 JSON이라 완성 전엔 파싱할 수 없다 — index별로 이어붙인다
-      for (const fragment of choice.delta?.tool_calls ?? []) {
-        const draft = (drafts[fragment.index] ??= {
-          id: '',
-          name: '',
-          arguments: '',
-        });
-        if (fragment.id) draft.id = fragment.id;
-        if (fragment.function?.name) draft.name += fragment.function.name;
-        if (fragment.function?.arguments) {
-          draft.arguments += fragment.function.arguments;
-        }
-      }
+      this.mergeToolFragments(drafts, choice.delta?.tool_calls);
     }
 
-    // drafts는 index를 첨자로 쓰는 희소 배열이라 [0]이 비어 있을 수 있다
-    const toolCall = drafts.find((draft) => draft?.name);
+    return {
+      text,
+      finishReason,
+      usage,
+      // drafts는 index를 첨자로 쓰는 희소 배열이라 [0]이 비어 있을 수 있다
+      toolCall: drafts.find((draft) => draft?.name),
+    };
+  }
+
+  /** 조각난 tool_call을 index별로 이어붙인다 — name은 보통 첫 조각에, arguments는 여러 조각에 */
+  private mergeToolFragments(
+    drafts: ToolCallDraft[],
+    fragments: OpenAI.ChatCompletionChunk.Choice.Delta.ToolCall[] | undefined,
+  ) {
+    for (const fragment of fragments ?? []) {
+      const draft = (drafts[fragment.index] ??= {
+        id: '',
+        name: '',
+        arguments: '',
+      });
+      if (fragment.id) draft.id = fragment.id;
+      if (fragment.function?.name) draft.name += fragment.function.name;
+      if (fragment.function?.arguments) {
+        draft.arguments += fragment.function.arguments;
+      }
+    }
+  }
+
+  /** 툴을 불렀으면 실행해 결과를 보내고, 아니면 이미 흘려보낸 텍스트를 저장하고 끝낸다 */
+  private respond(
+    ctx: StreamContext,
+    { text, finishReason, usage, toolCall }: CollectedStream,
+  ) {
+    const { sessionId, user, sse, model } = ctx;
 
     if (finishReason === 'tool_calls' && toolCall) {
-      const input = this.parseArguments(toolCall.arguments);
-      const result = this.execute(toolCall.name, user);
-
-      sse.send({ type: 'tool_call', name: toolCall.name, input, result });
-
+      sse.send({
+        type: 'tool_call',
+        name: toolCall.name,
+        input: this.parseArguments(toolCall.arguments),
+        result: this.execute(toolCall.name, user),
+      });
       // 결과는 다이얼로그로만 보여주므로 채팅창엔 빈 메시지가 남는다
       // (프론트가 content === '' 인 assistant 메시지를 필터로 숨긴다)
-      const assistantMessage = this.sessionService.insertMessage(
-        sessionId,
-        'assistant',
-        '',
-      );
-      sse.finish(assistantMessage);
+      sse.finish(this.sessionService.insertMessage(sessionId, 'assistant', ''));
     } else {
-      // 툴을 안 썼다 — 본문은 위 루프에서 이미 전송됐고 저장·종료만 남았다
-      const assistantMessage = this.sessionService.insertMessage(
-        sessionId,
-        'assistant',
-        directContent,
+      // 툴을 안 썼다 — 본문은 collect에서 이미 전송됐고 저장·종료만 남았다
+      sse.finish(
+        this.sessionService.insertMessage(sessionId, 'assistant', text),
       );
-      sse.finish(assistantMessage);
     }
 
     this.usageService.record(user, sessionId, model, usage);
