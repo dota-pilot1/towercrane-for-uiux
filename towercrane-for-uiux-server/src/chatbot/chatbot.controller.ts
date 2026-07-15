@@ -13,7 +13,9 @@ import type { Response } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthService } from '../auth/auth.service';
-import { ChatbotService } from './chatbot.service';
+import { ChatbotSessionService } from './chatbot-session.service';
+import { ChatbotStreamService } from './chatbot-stream.service';
+import { ChatbotRealtimeService } from './chatbot-realtime.service';
 import type { KnowledgeChannel } from '../database/schema';
 
 type User = ReturnType<AuthService['getSessionUser']>;
@@ -21,16 +23,20 @@ type User = ReturnType<AuthService['getSessionUser']>;
 @UseGuards(AuthGuard)
 @Controller('chatbot')
 export class ChatbotController {
-  constructor(private readonly chatbotService: ChatbotService) {}
+  constructor(
+    private readonly sessionService: ChatbotSessionService,
+    private readonly streamService: ChatbotStreamService,
+    private readonly realtimeService: ChatbotRealtimeService,
+  ) {}
 
   @Get('sessions')
   listSessions(@CurrentUser() user: User) {
-    return this.chatbotService.listSessions(user.id);
+    return this.sessionService.listSessions(user.id);
   }
 
   @Post('sessions')
   createSession(@CurrentUser() user: User, @Body() body: { title?: string }) {
-    return this.chatbotService.createSession(user.id, body?.title);
+    return this.sessionService.createSession(user.id, body?.title);
   }
 
   @Patch('sessions/:id')
@@ -39,19 +45,27 @@ export class ChatbotController {
     @Param('id') id: string,
     @Body() body: { title: string },
   ) {
-    return this.chatbotService.renameSession(id, body.title, user.id);
+    return this.sessionService.renameSession(id, body.title, user.id);
   }
 
   @Delete('sessions/:id')
   deleteSession(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.chatbotService.deleteSession(id, user.id);
+    return this.sessionService.deleteSession(id, user.id);
   }
 
   @Get('sessions/:id/messages')
   listMessages(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.chatbotService.listMessages(id, user.id);
+    return this.sessionService.listMessages(id, user.id);
   }
 
+  /**
+   * 챗봇 응답 스트리밍 (SSE). 화면 메뉴 5개가 mode 로 갈려 이 하나를 공유한다.
+   *
+   * @Res() 로 raw Response 를 직접 받는 게 핵심 — Nest 가 응답을 대신 닫아버리면
+   * 스트리밍이 불가능하다. 아래 헤더 3줄과 Content-Length 를 안 정하는 것까지가
+   * "끝을 모른 채 조금씩 보내기"의 조건이다.
+   * (운영에선 nginx 의 proxy_buffering off 도 함께 필요하다)
+   */
   @Post('stream')
   async stream(
     @CurrentUser() user: User,
@@ -60,7 +74,6 @@ export class ChatbotController {
       sessionId: string;
       message: string;
       fileUrls?: string[];
-      // STEP 5: body에 tools 모드 추가
       mode?: 'general' | 'knowledge' | 'tools';
       channels?: KnowledgeChannel[];
     },
@@ -70,7 +83,7 @@ export class ChatbotController {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    await this.chatbotService.streamGpt(body.sessionId, body.message, user, res, {
+    await this.streamService.streamGpt(body.sessionId, body.message, user, res, {
       fileUrls: body.fileUrls,
       mode: body.mode,
       channels: body.channels,
@@ -91,7 +104,7 @@ export class ChatbotController {
       enabledTools?: string[];
     },
   ) {
-    return this.chatbotService.createRealtimeClientSecret(user, body ?? {});
+    return this.realtimeService.createRealtimeClientSecret(user, body ?? {});
   }
 
   @Post('realtime/tools/execute')
@@ -105,6 +118,6 @@ export class ChatbotController {
       arguments?: Record<string, unknown>;
     },
   ) {
-    return this.chatbotService.executeRealtimeTool(user, body);
+    return this.realtimeService.executeRealtimeTool(user, body);
   }
 }
