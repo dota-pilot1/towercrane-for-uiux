@@ -696,23 +696,61 @@ export class ChatbotService {
 
     // STEP 3: tools 모드 분기 — 기존 스트리밍 흐름과 완전히 분리
     if (isToolsMode) {
-      // STEP 3-A: 1차 요청 — stream: false (tool_calls JSON 완성본이 필요하므로)
-      // stream: true 로 하면 tool_calls 인자가 청크로 쪼개져서 파싱이 복잡해짐
-      const firstResponse = await this.openai.chat.completions.create({
+      // STEP 3-A: 1차 요청 — stream: true
+      // tool_calls 인자는 청크로 쪼개져 오므로 index별로 조각을 누적해 조립한다.
+      // 툴을 안 쓰고 일반 답변을 하는 경우엔 delta.content가 그대로 흘러나간다.
+      const firstStream = await this.openai.chat.completions.create({
         model,
-        stream: false,
+        stream: true,
+        stream_options: { include_usage: true },
         messages,
         tools: [SELF_INTRODUCE_TOOL, GET_MY_TASKS_TOOL],
         tool_choice: 'auto', // AI가 툴 쓸지 말지 스스로 판단
       });
 
-      const choice = firstResponse.choices[0];
+      const toolCallDrafts: { id: string; name: string; arguments: string }[] = [];
+      let directContent = '';
+      let finishReason: string | null = null;
+      let toolUsage: {
+        prompt_tokens: number;
+        completion_tokens: number;
+        total_tokens: number;
+      } | null = null;
 
-      // STEP 3-B: AI가 tool_calls를 반환했는지 확인
-      if (choice.finish_reason === 'tool_calls' && choice.message.tool_calls?.length) {
-        const toolCall = choice.message.tool_calls[0] as OpenAI.ChatCompletionMessageFunctionToolCall;
-        const toolName = toolCall.function.name;
-        const toolInput = JSON.parse(toolCall.function.arguments) as Record<string, unknown>;
+      for await (const chunk of firstStream) {
+        if (chunk.usage) toolUsage = chunk.usage;
+
+        const choice = chunk.choices[0];
+        if (!choice) continue;
+        if (choice.finish_reason) finishReason = choice.finish_reason;
+
+        // 일반 답변 토큰 — 도착하는 즉시 흘려보낸다
+        const text = choice.delta?.content ?? '';
+        if (text) {
+          directContent += text;
+          res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        }
+
+        // tool_calls 조각 누적 — name은 보통 첫 청크에, arguments는 여러 청크에 걸쳐 온다
+        for (const fragment of choice.delta?.tool_calls ?? []) {
+          const draft = (toolCallDrafts[fragment.index] ??= {
+            id: '',
+            name: '',
+            arguments: '',
+          });
+          if (fragment.id) draft.id = fragment.id;
+          if (fragment.function?.name) draft.name += fragment.function.name;
+          if (fragment.function?.arguments) {
+            draft.arguments += fragment.function.arguments;
+          }
+        }
+      }
+
+      // STEP 3-B: 조립된 tool_calls가 있는지 확인
+      const toolCall = toolCallDrafts.find((draft) => draft?.name);
+      if (finishReason === 'tool_calls' && toolCall) {
+        const toolName = toolCall.name;
+        const toolInput = this.parseToolArguments(toolCall.arguments);
 
         // STEP 3-C: 툴 이름별 실행 분기
         let toolResult: Record<string, unknown>;
@@ -751,44 +789,18 @@ export class ChatbotService {
         res.write('data: [DONE]\n\n');
         res.end();
 
-        // STEP 3-F: tools 모드 usage 기록 — firstResponse.usage 사용
-        const toolUsage = firstResponse.usage;
-        if (toolUsage) {
-          const COST_PER_1K: Record<string, { prompt: number; completion: number }> = {
-            'gpt-4o':       { prompt: 0.005,   completion: 0.015 },
-            'gpt-4o-mini':  { prompt: 0.00015, completion: 0.0006 },
-            'gpt-4.1':      { prompt: 0.002,   completion: 0.008 },
-            'gpt-4.1-mini': { prompt: 0.0004,  completion: 0.0016 },
-            'gpt-4.1-nano': { prompt: 0.0001,  completion: 0.0004 },
-          };
-          const rate = COST_PER_1K[model] ?? { prompt: 0.00015, completion: 0.0006 };
-          const estimatedCostUsd =
-            (toolUsage.prompt_tokens / 1000) * rate.prompt +
-            (toolUsage.completion_tokens / 1000) * rate.completion;
-          this.db.insert(usageLogsTable).values({
-            id: randomUUID(),
-            userId: user.id,
-            userName: user.name,
-            sessionId,
-            model,
-            promptTokens: toolUsage.prompt_tokens,
-            completionTokens: toolUsage.completion_tokens,
-            totalTokens: toolUsage.total_tokens,
-            estimatedCostUsd,
-            isError: 0,
-            createdAt: new Date().toISOString(),
-          }).run();
-        }
+        // STEP 3-F: tools 모드 usage 기록 — 스트림 마지막 청크의 usage 사용
+        this.recordUsage(user, sessionId, model, toolUsage);
         return;
       }
 
-      // STEP 3-H: tool_calls 없이 일반 답변으로 판단된 경우 — 텍스트 그대로 반환
-      const directContent = choice.message.content ?? '';
+      // STEP 3-H: tool_calls 없이 일반 답변으로 판단된 경우
+      // 본문은 위 루프에서 토큰 단위로 이미 전송됨 — 여기선 저장/종료만 한다
       const assistantMessage = this.insertMessage(sessionId, 'assistant', directContent);
-      res.write(`data: ${JSON.stringify({ text: directContent })}\n\n`);
       res.write(`data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources: [] })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
+      this.recordUsage(user, sessionId, model, toolUsage);
       return;
     }
 
@@ -823,32 +835,55 @@ export class ChatbotService {
     res.end();
 
     // usage 기록 (비동기 — 응답 후 처리)
-    if (usage) {
-      const COST_PER_1K: Record<string, { prompt: number; completion: number }> = {
-        'gpt-4o':           { prompt: 0.005,   completion: 0.015 },
-        'gpt-4o-mini':      { prompt: 0.00015, completion: 0.0006 },
-        'gpt-4.1':          { prompt: 0.002,   completion: 0.008 },
-        'gpt-4.1-mini':     { prompt: 0.0004,  completion: 0.0016 },
-        'gpt-4.1-nano':     { prompt: 0.0001,  completion: 0.0004 },
-      };
-      const rate = COST_PER_1K[model] ?? { prompt: 0.00015, completion: 0.0006 };
-      const estimatedCostUsd =
-        (usage.prompt_tokens / 1000) * rate.prompt +
-        (usage.completion_tokens / 1000) * rate.completion;
+    this.recordUsage(user, sessionId, model, usage);
+  }
 
-      this.db.insert(usageLogsTable).values({
-        id: randomUUID(),
-        userId: user.id,
-        userName: user.name,
-        sessionId,
-        model,
-        promptTokens: usage.prompt_tokens,
-        completionTokens: usage.completion_tokens,
-        totalTokens: usage.total_tokens,
-        estimatedCostUsd,
-        isError: 0,
-        createdAt: new Date().toISOString(),
-      }).run();
+  // 툴 인자 조립 결과는 LLM이 만든 JSON 문자열 — 깨져 있어도 스트림을 죽이지 않는다
+  private parseToolArguments(raw: string): Record<string, unknown> {
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      return {};
     }
+  }
+
+  private recordUsage(
+    user: ChatbotUser,
+    sessionId: string,
+    model: string,
+    usage: {
+      prompt_tokens: number;
+      completion_tokens: number;
+      total_tokens: number;
+    } | null,
+  ) {
+    if (!usage) return;
+
+    const COST_PER_1K: Record<string, { prompt: number; completion: number }> = {
+      'gpt-4o':           { prompt: 0.005,   completion: 0.015 },
+      'gpt-4o-mini':      { prompt: 0.00015, completion: 0.0006 },
+      'gpt-4.1':          { prompt: 0.002,   completion: 0.008 },
+      'gpt-4.1-mini':     { prompt: 0.0004,  completion: 0.0016 },
+      'gpt-4.1-nano':     { prompt: 0.0001,  completion: 0.0004 },
+    };
+    const rate = COST_PER_1K[model] ?? { prompt: 0.00015, completion: 0.0006 };
+    const estimatedCostUsd =
+      (usage.prompt_tokens / 1000) * rate.prompt +
+      (usage.completion_tokens / 1000) * rate.completion;
+
+    this.db.insert(usageLogsTable).values({
+      id: randomUUID(),
+      userId: user.id,
+      userName: user.name,
+      sessionId,
+      model,
+      promptTokens: usage.prompt_tokens,
+      completionTokens: usage.completion_tokens,
+      totalTokens: usage.total_tokens,
+      estimatedCostUsd,
+      isError: 0,
+      createdAt: new Date().toISOString(),
+    }).run();
   }
 }
