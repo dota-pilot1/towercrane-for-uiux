@@ -51,6 +51,19 @@ type StreamOptions = {
   channels?: KnowledgeChannel[];
 };
 
+// prepareStream이 모아서 모드별 함수에 넘기는 것들
+type StreamContext = {
+  sessionId: string;
+  user: ChatbotUser;
+  sse: ReturnType<ChatbotService['sse']>;
+  messages: OpenAI.ChatCompletionMessageParam[];
+  knowledgeSources: KnowledgeSource[];
+  model: string;
+};
+
+// 스트림으로 조각조각 오는 tool_call을 조립하는 중간 상태
+type ToolCallDraft = { id: string; name: string; arguments: string };
+
 type RealtimeSessionRequest = {
   model?: string;
   voice?: string;
@@ -630,212 +643,23 @@ export class ChatbotService {
     throw new BadRequestException(`unsupported realtime tool: ${name}`);
   }
 
-  async streamGpt(
-    sessionId: string,
-    message: string,
-    user: ChatbotUser,
-    res: Response,
-    options: StreamOptions = {},
-  ) {
-    if (!this.openai) {
-      throw new ServiceUnavailableException(
-        'OpenAI API key is not configured.',
-      );
-    }
-
-    const fileUrls = options.fileUrls ?? [];
-    const isKnowledgeMode = options.mode === 'knowledge';
-    // STEP 2: tools 모드 여부 판단
-    const isToolsMode = options.mode === 'tools';
-
-    this.assertOwnership(sessionId, user.id);
-    const meta = this.touchSession(sessionId, message || '파일 첨부');
-    const userMessage = this.insertMessage(sessionId, 'user', message, fileUrls);
-
-    res.write(
-      `data: ${JSON.stringify({ type: 'meta', userMessage, sessionTitle: meta.title })}\n\n`,
-    );
-
-    const knowledgeSources = isKnowledgeMode
-      ? this.searchKnowledgeSources(message, user, options.channels)
-      : [];
-
-    if (isKnowledgeMode) {
-      res.write(
-        `data: ${JSON.stringify({ type: 'knowledge_sources', items: knowledgeSources })}\n\n`,
-      );
-    }
-
-    const content = this.buildUserContent(message, fileUrls)
-
-    const hasImage = fileUrls.some((url) =>
-      /\.(jpg|jpeg|png|gif|webp)/i.test(url.split('?')[0]),
-    )
-    const defaultModel =
-      this.configService.get<string>('OPENAI_DEFAULT_MODEL') ?? 'gpt-4o-mini'
-    const model = hasImage ? 'gpt-4o-mini' : defaultModel
-
-    // 이전 대화 히스토리 로드 (현재 메시지 제외 — insertMessage 이후라 이미 포함됨)
-    const history = this.buildHistory(sessionId)
-    const messages: OpenAI.ChatCompletionMessageParam[] = [
-      {
-        role: 'system',
-        content: isKnowledgeMode ? KNOWLEDGE_SYSTEM_PROMPT : CHATBOT_SYSTEM_PROMPT,
-      },
-      ...(isKnowledgeMode
-        ? [
-            {
-              role: 'system',
-              content: this.buildKnowledgeContext(knowledgeSources),
-            } as OpenAI.ChatCompletionMessageParam,
-          ]
-        : []),
-      ...history.slice(0, -1), // 마지막은 방금 insert한 현재 메시지 → content로 교체
-      { role: 'user', content },
-    ]
-
-    // STEP 3: tools 모드 분기 — 기존 스트리밍 흐름과 완전히 분리
-    if (isToolsMode) {
-      // STEP 3-A: 1차 요청 — stream: true
-      // tool_calls 인자는 청크로 쪼개져 오므로 index별로 조각을 누적해 조립한다.
-      // 툴을 안 쓰고 일반 답변을 하는 경우엔 delta.content가 그대로 흘러나간다.
-      const firstStream = await this.openai.chat.completions.create({
-        model,
-        stream: true,
-        stream_options: { include_usage: true },
-        messages,
-        tools: [SELF_INTRODUCE_TOOL, GET_MY_TASKS_TOOL],
-        tool_choice: 'auto', // AI가 툴 쓸지 말지 스스로 판단
-      });
-
-      const toolCallDrafts: { id: string; name: string; arguments: string }[] = [];
-      let directContent = '';
-      let finishReason: string | null = null;
-      let toolUsage: {
-        prompt_tokens: number;
-        completion_tokens: number;
-        total_tokens: number;
-      } | null = null;
-
-      for await (const chunk of firstStream) {
-        if (chunk.usage) toolUsage = chunk.usage;
-
-        const choice = chunk.choices[0];
-        if (!choice) continue;
-        if (choice.finish_reason) finishReason = choice.finish_reason;
-
-        // 일반 답변 토큰 — 도착하는 즉시 흘려보낸다
-        const text = choice.delta?.content ?? '';
-        if (text) {
-          directContent += text;
-          res.write(`data: ${JSON.stringify({ text })}\n\n`);
-        }
-
-        // tool_calls 조각 누적 — name은 보통 첫 청크에, arguments는 여러 청크에 걸쳐 온다
-        for (const fragment of choice.delta?.tool_calls ?? []) {
-          const draft = (toolCallDrafts[fragment.index] ??= {
-            id: '',
-            name: '',
-            arguments: '',
-          });
-          if (fragment.id) draft.id = fragment.id;
-          if (fragment.function?.name) draft.name += fragment.function.name;
-          if (fragment.function?.arguments) {
-            draft.arguments += fragment.function.arguments;
-          }
-        }
-      }
-
-      // STEP 3-B: 조립된 tool_calls가 있는지 확인
-      const toolCall = toolCallDrafts.find((draft) => draft?.name);
-      if (finishReason === 'tool_calls' && toolCall) {
-        const toolName = toolCall.name;
-        const toolInput = this.parseToolArguments(toolCall.arguments);
-
-        // STEP 3-C: 툴 이름별 실행 분기
-        let toolResult: Record<string, unknown>;
-        if (toolName === 'get_my_tasks') {
-          const tasks = this.db
-            .select({
-              id: tasksTable.id,
-              title: tasksTable.title,
-              status: tasksTable.status,
-              priority: tasksTable.priority,
-              taskType: tasksTable.taskType,
-              dueDate: tasksTable.dueDate,
-            })
-            .from(tasksTable)
-            .where(eq(tasksTable.assigneeId, user.id))
-            .all();
-          toolResult = { tasks };
-        } else {
-          toolResult = executeSelfIntroduce();
-        }
-
-        // STEP 3-D: 프론트 오른쪽 패널용 SSE 이벤트 전송
-        // 프론트에서 type === 'tool_call' 로 파싱해서 도구 호출 로그에 표시
+  // SSE 프레임 쓰기 — 'data: …\n\n' 규약을 한 곳에 가둔다
+  private sse(res: Response) {
+    return {
+      send: (payload: unknown) =>
+        res.write(`data: ${JSON.stringify(payload)}\n\n`),
+      // 스트림 종료 3종 세트 — done 프레임 + [DONE] 표식 + 연결 닫기
+      finish: (
+        assistantMessage: unknown,
+        knowledgeSources: KnowledgeSource[] = [],
+      ) => {
         res.write(
-          `data: ${JSON.stringify({
-            type: 'tool_call',
-            name: toolName,
-            input: toolInput,
-            result: toolResult,
-          })}\n\n`,
+          `data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources })}\n\n`,
         );
-
-        // STEP 3-E: 다이얼로그 전용 툴은 채팅창 응답 없이 바로 종료
-        const assistantMessage = this.insertMessage(sessionId, 'assistant', '');
-        res.write(`data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources: [] })}\n\n`);
         res.write('data: [DONE]\n\n');
         res.end();
-
-        // STEP 3-F: tools 모드 usage 기록 — 스트림 마지막 청크의 usage 사용
-        this.recordUsage(user, sessionId, model, toolUsage);
-        return;
-      }
-
-      // STEP 3-H: tool_calls 없이 일반 답변으로 판단된 경우
-      // 본문은 위 루프에서 토큰 단위로 이미 전송됨 — 여기선 저장/종료만 한다
-      const assistantMessage = this.insertMessage(sessionId, 'assistant', directContent);
-      res.write(`data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources: [] })}\n\n`);
-      res.write('data: [DONE]\n\n');
-      res.end();
-      this.recordUsage(user, sessionId, model, toolUsage);
-      return;
-    }
-
-    // STEP 4: 기존 general / knowledge 흐름 — 변경 없음
-    const stream = await this.openai.chat.completions.create({
-      model,
-      stream: true,
-      stream_options: { include_usage: true },
-      messages,
-    });
-
-    let assistantContent = '';
-    let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | null = null;
-    for await (const chunk of stream) {
-      const text = chunk.choices[0]?.delta?.content ?? '';
-      if (text) {
-        assistantContent += text;
-        res.write(`data: ${JSON.stringify({ text })}\n\n`);
-      }
-      if (chunk.usage) usage = chunk.usage;
-    }
-
-    const assistantMessage = this.insertMessage(
-      sessionId,
-      'assistant',
-      assistantContent,
-    );
-    res.write(
-      `data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources })}\n\n`,
-    );
-    res.write('data: [DONE]\n\n');
-    res.end();
-
-    // usage 기록 (비동기 — 응답 후 처리)
-    this.recordUsage(user, sessionId, model, usage);
+      },
+    };
   }
 
   // 툴 인자 조립 결과는 LLM이 만든 JSON 문자열 — 깨져 있어도 스트림을 죽이지 않는다
@@ -885,5 +709,229 @@ export class ChatbotService {
       isError: 0,
       createdAt: new Date().toISOString(),
     }).run();
+  }
+
+  /**
+   * 챗봇 응답 진입점. 기본 채팅 / 지식 검색 / 도구 호출 세 모드가 공유한다.
+   * 준비(권한·저장·프롬프트 조립)까지는 같고, OpenAI 호출부터 모드별로 갈린다.
+   */
+  async streamGpt(
+    sessionId: string,
+    message: string,
+    user: ChatbotUser,
+    res: Response,
+    options: StreamOptions = {},
+  ) {
+    if (!this.openai) {
+      throw new ServiceUnavailableException(
+        'OpenAI API key is not configured.',
+      );
+    }
+
+    const ctx = this.prepareStream(sessionId, message, user, res, options);
+
+    if (options.mode === 'tools') return this.streamToolsMode(ctx);
+    return this.streamPlainMode(ctx);
+  }
+
+  /**
+   * 모든 모드의 공통 준비 단계.
+   * 권한 검사 → 질문 저장 → meta 프레임 전송 → 모델·프롬프트 조립까지.
+   */
+  private prepareStream(
+    sessionId: string,
+    message: string,
+    user: ChatbotUser,
+    res: Response,
+    options: StreamOptions,
+  ): StreamContext {
+    const fileUrls = options.fileUrls ?? [];
+    const isKnowledgeMode = options.mode === 'knowledge';
+    const sse = this.sse(res);
+
+    // body의 sessionId는 사용자가 조작할 수 있다 — 헤더 토큰의 user.id로 대조한다
+    this.assertOwnership(sessionId, user.id);
+    const meta = this.touchSession(sessionId, message || '파일 첨부');
+    const userMessage = this.insertMessage(sessionId, 'user', message, fileUrls);
+
+    // 프론트의 임시 id를 진짜 DB id로 바꿔치우게 해준다
+    sse.send({ type: 'meta', userMessage, sessionTitle: meta.title });
+
+    const knowledgeSources = isKnowledgeMode
+      ? this.searchKnowledgeSources(message, user, options.channels)
+      : [];
+    if (isKnowledgeMode) {
+      sse.send({ type: 'knowledge_sources', items: knowledgeSources });
+    }
+
+    const content = this.buildUserContent(message, fileUrls);
+    const hasImage = fileUrls.some((url) =>
+      /\.(jpg|jpeg|png|gif|webp)/i.test(url.split('?')[0]),
+    );
+    const defaultModel =
+      this.configService.get<string>('OPENAI_DEFAULT_MODEL') ?? 'gpt-4o-mini';
+
+    // GPT는 이전 대화를 기억하지 못한다 — 매번 DB에서 읽어 통째로 넣어준다
+    const history = this.buildHistory(sessionId);
+    const messages: OpenAI.ChatCompletionMessageParam[] = [
+      {
+        role: 'system',
+        content: isKnowledgeMode
+          ? KNOWLEDGE_SYSTEM_PROMPT
+          : CHATBOT_SYSTEM_PROMPT,
+      },
+      ...(isKnowledgeMode
+        ? [
+            {
+              role: 'system',
+              content: this.buildKnowledgeContext(knowledgeSources),
+            } as OpenAI.ChatCompletionMessageParam,
+          ]
+        : []),
+      // 마지막은 방금 insert한 이번 질문 → 이미지가 붙은 content로 교체한다
+      ...history.slice(0, -1),
+      { role: 'user', content },
+    ];
+
+    return {
+      sessionId,
+      user,
+      sse,
+      messages,
+      knowledgeSources,
+      model: hasImage ? 'gpt-4o-mini' : defaultModel,
+    };
+  }
+
+  /**
+   * 기본 채팅 / 지식 검색 — 토큰을 도착하는 즉시 흘려보낸다.
+   */
+  private async streamPlainMode(ctx: StreamContext) {
+    const { sessionId, user, sse, messages, model, knowledgeSources } = ctx;
+
+    const stream = await this.openai!.chat.completions.create({
+      model,
+      stream: true,
+      stream_options: { include_usage: true },
+      messages,
+    });
+
+    let assistantContent = '';
+    let usage: OpenAI.CompletionUsage | null = null;
+    for await (const chunk of stream) {
+      if (chunk.usage) usage = chunk.usage;
+      const text = chunk.choices[0]?.delta?.content ?? '';
+      if (text) {
+        assistantContent += text; // DB 저장용으로 모으고
+        sse.send({ text }); // 동시에 화면으로 흘려보낸다
+      }
+    }
+
+    const assistantMessage = this.insertMessage(
+      sessionId,
+      'assistant',
+      assistantContent,
+    );
+    sse.finish(assistantMessage, knowledgeSources);
+    this.recordUsage(user, sessionId, model, usage);
+  }
+
+  /**
+   * 도구 호출 — tools 목록을 함께 보내고 GPT가 쓸지 말지 스스로 판단한다.
+   * 텍스트는 즉시 흘려보내되 tool_calls 조각은 모아만 둔다. 어느 쪽인지는
+   * 스트림이 끝나고 finish_reason이 확정돼야 알 수 있기 때문이다.
+   */
+  private async streamToolsMode(ctx: StreamContext) {
+    const { sessionId, user, sse, messages, model } = ctx;
+
+    const stream = await this.openai!.chat.completions.create({
+      model,
+      stream: true,
+      stream_options: { include_usage: true },
+      messages,
+      tools: [SELF_INTRODUCE_TOOL, GET_MY_TASKS_TOOL],
+      tool_choice: 'auto',
+    });
+
+    const drafts: ToolCallDraft[] = [];
+    let directContent = '';
+    let finishReason: string | null = null;
+    let usage: OpenAI.CompletionUsage | null = null;
+
+    for await (const chunk of stream) {
+      if (chunk.usage) usage = chunk.usage;
+
+      const choice = chunk.choices[0];
+      if (!choice) continue;
+      if (choice.finish_reason) finishReason = choice.finish_reason;
+
+      // 툴을 안 쓰는 답변이면 여기로 토큰이 흘러나온다
+      const text = choice.delta?.content ?? '';
+      if (text) {
+        directContent += text;
+        sse.send({ text });
+      }
+
+      // 툴 인자는 JSON이라 완성 전엔 쓸 수 없다 — index별로 조각을 이어붙인다
+      for (const fragment of choice.delta?.tool_calls ?? []) {
+        const draft = (drafts[fragment.index] ??= {
+          id: '',
+          name: '',
+          arguments: '',
+        });
+        if (fragment.id) draft.id = fragment.id;
+        if (fragment.function?.name) draft.name += fragment.function.name;
+        if (fragment.function?.arguments) {
+          draft.arguments += fragment.function.arguments;
+        }
+      }
+    }
+
+    // drafts는 index를 첨자로 쓰는 희소 배열이라 [0]이 빌 수 있다
+    const toolCall = drafts.find((draft) => draft?.name);
+
+    if (finishReason === 'tool_calls' && toolCall) {
+      const input = this.parseToolArguments(toolCall.arguments);
+      const result = this.executeTool(toolCall.name, user);
+
+      sse.send({ type: 'tool_call', name: toolCall.name, input, result });
+
+      // 다이얼로그 전용 툴이라 채팅창엔 빈 메시지가 남는다 (프론트가 필터로 숨김)
+      const assistantMessage = this.insertMessage(sessionId, 'assistant', '');
+      sse.finish(assistantMessage);
+    } else {
+      // 본문은 위 루프에서 이미 전송됨 — 저장·종료만 한다
+      const assistantMessage = this.insertMessage(
+        sessionId,
+        'assistant',
+        directContent,
+      );
+      sse.finish(assistantMessage);
+    }
+
+    this.recordUsage(user, sessionId, model, usage);
+  }
+
+  /**
+   * 툴 이름으로 실제 실행. GPT는 이름만 정하고 실행은 서버가 한다 —
+   * user.id는 헤더 토큰에서만 나오는 값이라 GPT에게 맡길 수 없다.
+   */
+  private executeTool(name: string, user: ChatbotUser): Record<string, unknown> {
+    if (name === 'get_my_tasks') {
+      const tasks = this.db
+        .select({
+          id: tasksTable.id,
+          title: tasksTable.title,
+          status: tasksTable.status,
+          priority: tasksTable.priority,
+          taskType: tasksTable.taskType,
+          dueDate: tasksTable.dueDate,
+        })
+        .from(tasksTable)
+        .where(eq(tasksTable.assigneeId, user.id))
+        .all();
+      return { tasks };
+    }
+    return executeSelfIntroduce();
   }
 }
