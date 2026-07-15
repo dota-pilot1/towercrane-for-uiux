@@ -58,7 +58,7 @@ import {
   useUpdateTaskPriority,
   useUpdateTaskStatus,
 } from '../model/use-task-queries'
-import { TaskTypeBadge } from './task-badges'
+import { TaskTypeBadge } from '../../../entities/task/ui/task-badges'
 import { AssigneeSelect } from './assignee-select'
 
 function formatDate(value?: string | null, fallback = '-') {

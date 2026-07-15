@@ -78,7 +78,7 @@ import {
   TaskPriorityBadge,
   TaskStatusBadge,
   TaskTypeBadge,
-} from '../../../features/task/ui/task-badges'
+} from '../../../entities/task/ui/task-badges'
 import { TaskChecklistPanel } from '../../../features/task/ui/task-checklist-panel'
 import {
   TaskCommentCreateButton,

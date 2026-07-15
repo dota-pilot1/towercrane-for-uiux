@@ -1,7 +1,7 @@
 import { CalendarDays, ExternalLink, UserRound } from 'lucide-react'
 import { clsx } from 'clsx'
 import type { Task } from '../../../entities/task/model/types'
-import { TaskPriorityBadge, TaskStatusBadge, TaskTypeBadge } from './task-badges'
+import { TaskPriorityBadge, TaskStatusBadge, TaskTypeBadge } from '../../../entities/task/ui/task-badges'
 
 function formatDate(value?: string | null) {
   if (!value) return '마감 없음'

@@ -7,8 +7,8 @@ import {
   TASK_STATUS_LABELS,
   TASK_TYPE_BADGE_CLASS,
   TASK_TYPE_LABELS,
-} from '../../../entities/task/model/constants'
-import type { TaskPriority, TaskStatus, TaskType } from '../../../entities/task/model/types'
+} from '../model/constants'
+import type { TaskPriority, TaskStatus, TaskType } from '../model/types'
 
 type BadgeProps = {
   className?: string

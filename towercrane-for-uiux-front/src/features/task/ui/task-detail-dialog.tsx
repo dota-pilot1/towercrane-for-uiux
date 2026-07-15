@@ -31,7 +31,7 @@ import {
 import { TaskChecklistPanel } from './task-checklist-panel'
 import { TaskCommentsPanel } from './task-comments-panel'
 import { TaskActivityPanel } from './task-activity-panel'
-import { TaskPriorityBadge, TaskStatusBadge, TaskTypeBadge } from './task-badges'
+import { TaskPriorityBadge, TaskStatusBadge, TaskTypeBadge } from '../../../entities/task/ui/task-badges'
 import { TaskAttachmentsPanel } from './task-attachments-panel'
 import { TaskReferencesPanel } from './task-references-panel'
 

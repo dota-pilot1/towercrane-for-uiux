@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { TaskPriority, TaskStatus, TaskType } from '../../../entities/task/model/types'
 
 export type GptProfile = {
   model: string
@@ -11,12 +12,13 @@ export type GptProfile = {
   description: string
 }
 
+// get_my_tasks 툴이 DB에서 그대로 실어오는 값 — 서버 schema.ts의 union과 동일하다
 export type TaskItem = {
   id: string
   title: string
-  status: string
-  priority: string
-  taskType: string
+  status: TaskStatus
+  priority: TaskPriority
+  taskType: TaskType
   dueDate: string | null
 }
 
