@@ -28,19 +28,25 @@ export type KnowledgeSource = {
 
 export type StreamOptions = {
   fileUrls?: string[];
-  // 화면 메뉴와 1:1 — 지식 검색 / 도구 호출 / 그 외(기본 채팅·스트리밍·파일 첨부)
-  mode?: 'general' | 'knowledge' | 'tools';
-  channels?: KnowledgeChannel[];
+  channels?: KnowledgeChannel[]; // 지식 검색 전용 — 검색할 채널 범위
 };
 
-/** prepareStream이 모아서 모드별 서비스에 넘기는 꾸러미 */
-export type StreamContext = {
+/**
+ * prepareStream이 모드와 무관하게 만들어내는 것들.
+ * conversation은 시스템 프롬프트가 빠진 상태 — 모드가 자기 것을 앞에 붙인다.
+ */
+export type StreamBase = {
   sessionId: string;
   user: ChatbotUser;
   sse: ReturnType<typeof createSse>;
+  conversation: OpenAI.ChatCompletionMessageParam[];
+  model: string;
+};
+
+/** 시스템 프롬프트까지 붙어 OpenAI를 부를 준비가 끝난 상태 */
+export type StreamContext = StreamBase & {
   messages: OpenAI.ChatCompletionMessageParam[];
   knowledgeSources: KnowledgeSource[];
-  model: string;
 };
 
 /** 스트림으로 조각조각 오는 tool_call을 조립하는 중간 상태 */

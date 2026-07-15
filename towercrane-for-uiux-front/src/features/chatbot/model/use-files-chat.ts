@@ -61,6 +61,13 @@ async function uploadFiles(files: File[]): Promise<string[]> {
   return Promise.all(files.map((f) => uploadFile(f)))
 }
 
+// 모드마다 엔드포인트가 다르다 — DevTools Network 탭에서 URL 만 보고 구분된다
+function streamUrl(mode: UseFilesChatOptions['mode']) {
+  if (mode === 'tools') return `${API_BASE_URL}/chatbot/stream/tools`
+  if (mode === 'knowledge') return `${API_BASE_URL}/chatbot/stream/knowledge`
+  return `${API_BASE_URL}/chatbot/stream`
+}
+
 export function useFilesChat(options: UseFilesChatOptions = {}) {
   const {
     sessions,
@@ -137,7 +144,7 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
 
     try {
       const token = useSessionStore.getState().token
-      const res = await fetch(`${API_BASE_URL}/chatbot/stream`, {
+      const res = await fetch(streamUrl(options.mode), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +154,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
           sessionId: currentActiveId,
           message: text,
           fileUrls,
-          mode: options.mode,
           channels: options.channels,
         }),
       })
@@ -157,12 +163,24 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
       let buffer = ''
 
       while (true) {
+        // STEP 6-E: SSE 이벤트 수신 처리 — tool_call 이벤트 포함
+        // 백엔드에서 전송되는 SSE 이벤트를 읽고 처리
+        // done 의 의미는 스트림이 끝났다는 것, value 는 Uint8Array 형태의 데이터
         const { done, value } = await reader.read()
         if (done) break
 
+        // 디코딩 후 버퍼에 누적
         buffer += decoder.decode(value, { stream: true })
+
+        console.log('###### SSE buffer:', buffer) // 디버깅용 로그
+
+        // 버퍼를 줄 단위로 분리, 마지막 줄은 아직 완전하지 않을 수 있으므로 남겨둠
         const lines = buffer.split('\n')
+        // 마지막 줄은 아직 완전하지 않을 수 있으므로 버퍼에 남겨둠
         buffer = lines.pop() ?? ''
+
+        // console.log('###### SSE lines:', lines) // 디버깅용 로그
+
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const payload = line.slice(6).trim()
@@ -250,7 +268,7 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
 
     try {
       const token = useSessionStore.getState().token
-      const res = await fetch(`${API_BASE_URL}/chatbot/stream`, {
+      const res = await fetch(streamUrl(options.mode), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -260,7 +278,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
           sessionId: currentActiveId,
           message: lastUserMsg.content,
           fileUrls,
-          mode: options.mode,
           channels: options.channels,
         }),
       })

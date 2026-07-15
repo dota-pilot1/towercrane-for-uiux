@@ -20,6 +20,14 @@ import type { KnowledgeChannel } from '../database/schema';
 
 type User = ReturnType<AuthService['getSessionUser']>;
 
+/** 스트리밍 3개 라우트가 공유하는 body. 어느 모드인지는 이제 URL이 말해준다 */
+type StreamBody = {
+  sessionId: string;
+  message: string;
+  fileUrls?: string[];
+  channels?: KnowledgeChannel[]; // 지식 검색 전용 — 검색할 채널 범위
+};
+
 @UseGuards(AuthGuard)
 @Controller('chatbot')
 export class ChatbotController {
@@ -59,34 +67,59 @@ export class ChatbotController {
   }
 
   /**
-   * 챗봇 응답 스트리밍 (SSE). 화면 메뉴 5개가 mode 로 갈려 이 하나를 공유한다.
+   * SSE 응답을 시작하겠다고 선언한다.
    *
    * @Res() 로 raw Response 를 직접 받는 게 핵심 — Nest 가 응답을 대신 닫아버리면
-   * 스트리밍이 불가능하다. 아래 헤더 3줄과 Content-Length 를 안 정하는 것까지가
+   * 스트리밍이 불가능하다. 이 헤더 3줄과 Content-Length 를 안 정하는 것까지가
    * "끝을 모른 채 조금씩 보내기"의 조건이다.
    * (운영에선 nginx 의 proxy_buffering off 도 함께 필요하다)
    */
-  @Post('stream')
-  async stream(
-    @CurrentUser() user: User,
-    @Body()
-    body: {
-      sessionId: string;
-      message: string;
-      fileUrls?: string[];
-      mode?: 'general' | 'knowledge' | 'tools';
-      channels?: KnowledgeChannel[];
-    },
-    @Res() res: Response,
-  ) {
+  private openSseStream(res: Response) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+  }
 
-    await this.streamService.streamGpt(body.sessionId, body.message, user, res, {
+  /** 기본 채팅 · 스트리밍 응답 · 파일 첨부 */
+  @Post('stream')
+  async stream(
+    @CurrentUser() user: User,
+    @Body() body: StreamBody,
+    @Res() res: Response,
+  ) {
+    this.openSseStream(res);
+    await this.streamService.streamPlain(body.sessionId, body.message, user, res, {
       fileUrls: body.fileUrls,
-      mode: body.mode,
-      channels: body.channels,
+    });
+  }
+
+  /** 지식 검색 — 사내 문서를 검색해 그것만 근거로 답하게 한다 (RAG) */
+  @Post('stream/knowledge')
+  async streamKnowledge(
+    @CurrentUser() user: User,
+    @Body() body: StreamBody,
+    @Res() res: Response,
+  ) {
+    this.openSseStream(res);
+    await this.streamService.streamKnowledge(
+      body.sessionId,
+      body.message,
+      user,
+      res,
+      { fileUrls: body.fileUrls, channels: body.channels },
+    );
+  }
+
+  /** 도구 호출 — GPT가 툴을 쓸지 스스로 판단한다 (Function Calling) */
+  @Post('stream/tools')
+  async streamTools(
+    @CurrentUser() user: User,
+    @Body() body: StreamBody,
+    @Res() res: Response,
+  ) {
+    this.openSseStream(res);
+    await this.streamService.streamTools(body.sessionId, body.message, user, res, {
+      fileUrls: body.fileUrls,
     });
   }
 
