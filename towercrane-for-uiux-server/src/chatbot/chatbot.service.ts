@@ -746,7 +746,6 @@ export class ChatbotService {
     options: StreamOptions,
   ): StreamContext {
     const fileUrls = options.fileUrls ?? [];
-    const isKnowledgeMode = options.mode === 'knowledge';
     const sse = this.sse(res);
 
     // body의 sessionId는 사용자가 조작할 수 있다 — 헤더 토큰의 user.id로 대조한다
@@ -757,40 +756,24 @@ export class ChatbotService {
     // 프론트의 임시 id를 진짜 DB id로 바꿔치우게 해준다
     sse.send({ type: 'meta', userMessage, sessionTitle: meta.title });
 
-    const knowledgeSources = isKnowledgeMode
-      ? this.searchKnowledgeSources(message, user, options.channels)
-      : [];
-    if (isKnowledgeMode) {
-      sse.send({ type: 'knowledge_sources', items: knowledgeSources });
-    }
-
-    const content = this.buildUserContent(message, fileUrls);
-    const hasImage = fileUrls.some((url) =>
-      /\.(jpg|jpeg|png|gif|webp)/i.test(url.split('?')[0]),
-    );
-    const defaultModel =
-      this.configService.get<string>('OPENAI_DEFAULT_MODEL') ?? 'gpt-4o-mini';
+    // 지식 모드만 사내 문서를 찾아 프롬프트에 얹는다 — 나머지 모드는 빈손
+    const knowledge =
+      options.mode === 'knowledge'
+        ? this.prepareKnowledge(message, user, options.channels, sse)
+        : {
+            sources: [],
+            systemPrompts: [
+              { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
+            ] as OpenAI.ChatCompletionMessageParam[],
+          };
 
     // GPT는 이전 대화를 기억하지 못한다 — 매번 DB에서 읽어 통째로 넣어준다
     const history = this.buildHistory(sessionId);
     const messages: OpenAI.ChatCompletionMessageParam[] = [
-      {
-        role: 'system',
-        content: isKnowledgeMode
-          ? KNOWLEDGE_SYSTEM_PROMPT
-          : CHATBOT_SYSTEM_PROMPT,
-      },
-      ...(isKnowledgeMode
-        ? [
-            {
-              role: 'system',
-              content: this.buildKnowledgeContext(knowledgeSources),
-            } as OpenAI.ChatCompletionMessageParam,
-          ]
-        : []),
+      ...knowledge.systemPrompts,
       // 마지막은 방금 insert한 이번 질문 → 이미지가 붙은 content로 교체한다
       ...history.slice(0, -1),
-      { role: 'user', content },
+      { role: 'user', content: this.buildUserContent(message, fileUrls) },
     ];
 
     return {
@@ -798,9 +781,44 @@ export class ChatbotService {
       user,
       sse,
       messages,
-      knowledgeSources,
-      model: hasImage ? 'gpt-4o-mini' : defaultModel,
+      knowledgeSources: knowledge.sources,
+      model: this.pickModel(fileUrls),
     };
+  }
+
+  /**
+   * 지식 검색(RAG) 전용 준비. 사내 문서를 찾아 프론트에 알리고,
+   * 그 문서를 근거로만 답하도록 시스템 프롬프트를 짠다.
+   */
+  private prepareKnowledge(
+    message: string,
+    user: ChatbotUser,
+    channels: KnowledgeChannel[] | undefined,
+    sse: ReturnType<ChatbotService['sse']>,
+  ) {
+    const sources = this.searchKnowledgeSources(message, user, channels);
+
+    // 화면 오른쪽 "참고 문서" 패널용 — 답변보다 먼저 보낸다
+    sse.send({ type: 'knowledge_sources', items: sources });
+
+    return {
+      sources,
+      systemPrompts: [
+        { role: 'system', content: KNOWLEDGE_SYSTEM_PROMPT },
+        { role: 'system', content: this.buildKnowledgeContext(sources) },
+      ] as OpenAI.ChatCompletionMessageParam[],
+    };
+  }
+
+  // 이미지가 붙으면 vision 지원 모델로 강제한다
+  private pickModel(fileUrls: string[]) {
+    const hasImage = fileUrls.some((url) =>
+      /\.(jpg|jpeg|png|gif|webp)/i.test(url.split('?')[0]),
+    );
+    if (hasImage) return 'gpt-4o-mini';
+    return (
+      this.configService.get<string>('OPENAI_DEFAULT_MODEL') ?? 'gpt-4o-mini'
+    );
   }
 
   /**
