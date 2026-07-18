@@ -1105,6 +1105,23 @@ export type CodeReviewChangedFile = {
   excludedReason: string | null;
 };
 
+export type CodeReviewDocumentType =
+  | 'overview'
+  | 'review'
+  | 'checklist'
+  | 'issue'
+  | 'note';
+
+export type CodeReviewDocument = {
+  id: string;
+  type: CodeReviewDocumentType;
+  title: string;
+  content: string;
+  orderIdx: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export const codeReviewsTable = sqliteTable('code_reviews', {
   id: text('id').primaryKey(),
   taskId: text('task_id').references(() => tasksTable.id, {
@@ -1130,6 +1147,10 @@ export const codeReviewsTable = sqliteTable('code_reviews', {
     .default([]),
   excludedFiles: text('excluded_files', { mode: 'json' })
     .$type<CodeReviewChangedFile[]>()
+    .notNull()
+    .default([]),
+  reviewDocuments: text('review_documents', { mode: 'json' })
+    .$type<CodeReviewDocument[]>()
     .notNull()
     .default([]),
   diffHash: text('diff_hash').notNull(),

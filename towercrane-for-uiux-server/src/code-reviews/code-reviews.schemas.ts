@@ -40,6 +40,24 @@ export const codeReviewChangedFileSchema = z.object({
   excludedReason: z.string().trim().max(200).nullable().optional().default(null),
 });
 
+export const codeReviewDocumentTypeSchema = z.enum([
+  'overview',
+  'review',
+  'checklist',
+  'issue',
+  'note',
+]);
+
+export const codeReviewDocumentSchema = z.object({
+  id: z.string().trim().min(1).max(120),
+  type: codeReviewDocumentTypeSchema,
+  title: z.string().trim().min(1).max(180),
+  content: z.string().max(120000).default(''),
+  orderIdx: z.coerce.number().int().min(0).default(0),
+  createdAt: z.string().trim().min(1),
+  updatedAt: z.string().trim().min(1),
+});
+
 export const listCodeReviewsQuerySchema = z.object({
   q: z.string().trim().max(120).optional().default(''),
   repository: z.string().trim().max(200).optional().default(''),
@@ -64,6 +82,19 @@ export const createCodeReviewSchema = z.object({
   diffHash: z.string().trim().min(12).max(128),
   diffSnapshot: z.string().max(120000).nullable().optional().default(null),
   model: z.string().trim().max(120).nullable().optional().default(null),
+});
+
+export const createManualCodeReviewSchema = z.object({
+  taskId: z.string().trim().min(1).max(80).nullable().optional().default(null),
+  title: z.string().trim().min(1).max(180),
+  summary: z.string().trim().max(12000).default(''),
+  repository: z.string().trim().max(240).optional().default('manual'),
+  riskLevel: riskLevelSchema.default('low'),
+  documents: z.array(codeReviewDocumentSchema).default([]),
+});
+
+export const replaceCodeReviewDocumentsSchema = z.object({
+  documents: z.array(codeReviewDocumentSchema),
 });
 
 export const uploadCodeReviewSchema = z.object({
@@ -109,6 +140,12 @@ export const updateCodeReviewSchema = z
 
 export type ListCodeReviewsQuery = z.infer<typeof listCodeReviewsQuerySchema>;
 export type CreateCodeReviewInput = z.infer<typeof createCodeReviewSchema>;
+export type CreateManualCodeReviewInput = z.infer<
+  typeof createManualCodeReviewSchema
+>;
+export type ReplaceCodeReviewDocumentsInput = z.infer<
+  typeof replaceCodeReviewDocumentsSchema
+>;
 export type AnalyzeCodeReviewInput = z.infer<typeof analyzeCodeReviewSchema>;
 export type ValidateCodeReviewRepositoryInput = z.infer<
   typeof validateCodeReviewRepositorySchema

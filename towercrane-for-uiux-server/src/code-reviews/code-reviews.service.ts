@@ -12,6 +12,7 @@ import OpenAI from 'openai';
 import { DatabaseService } from '../database/database.service';
 import {
   codeReviewsTable,
+  type CodeReviewDocument,
   type CodeReviewChangedFile,
   type CodeReviewFinding,
   type CodeReviewInsert,
@@ -22,7 +23,9 @@ import {
 import {
   analyzeCodeReviewSchema,
   createCodeReviewSchema,
+  createManualCodeReviewSchema,
   listCodeReviewsQuerySchema,
+  replaceCodeReviewDocumentsSchema,
   updateCodeReviewSchema,
   uploadCodeReviewSchema,
   validateCodeReviewRepositorySchema,
@@ -299,6 +302,38 @@ export class CodeReviewsService {
     return this.detail(user, row.id);
   }
 
+  createManual(user: CodeReviewUser, payload: unknown) {
+    this.ensureSignedIn(user);
+    const input = createManualCodeReviewSchema.parse(payload);
+    const now = new Date().toISOString();
+    const id = `code-review-${randomUUID().slice(0, 12)}`;
+    const row: CodeReviewInsert = {
+      id,
+      taskId: input.taskId,
+      sourceType: 'diff_url',
+      sourceUrl: `manual:${id}`,
+      repository: input.repository || 'manual',
+      title: input.title,
+      summary: input.summary,
+      riskLevel: input.riskLevel,
+      findings: [],
+      testGaps: [],
+      changedFiles: [],
+      excludedFiles: [],
+      reviewDocuments: this.normalizeDocuments(input.documents, now),
+      diffHash: createHash('sha256').update(`manual:${id}`).digest('hex'),
+      diffSnapshot: null,
+      model: 'manual',
+      createdBy: user.id,
+      createdByName: user.name || user.email,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.db.insert(codeReviewsTable).values(row).run();
+    return this.detail(user, row.id);
+  }
+
   uploadFromIngest(user: CodeReviewUser, taskId: string, payload: unknown) {
     const input = uploadCodeReviewSchema.parse({
       ...(typeof payload === 'object' && payload ? payload : {}),
@@ -423,6 +458,22 @@ export class CodeReviewsService {
       .where(eq(codeReviewsTable.id, reviewId))
       .run();
 
+    return this.detail(user, reviewId);
+  }
+
+  replaceDocuments(user: CodeReviewUser, reviewId: string, payload: unknown) {
+    const row = this.ensureReview(reviewId);
+    this.assertOwnerOrAdmin(row, user);
+    const input = replaceCodeReviewDocumentsSchema.parse(payload);
+    const now = new Date().toISOString();
+    this.db
+      .update(codeReviewsTable)
+      .set({
+        reviewDocuments: this.normalizeDocuments(input.documents, now),
+        updatedAt: now,
+      })
+      .where(eq(codeReviewsTable.id, reviewId))
+      .run();
     return this.detail(user, reviewId);
   }
 
@@ -2529,6 +2580,18 @@ export class CodeReviewsService {
     throw new ForbiddenException('이 코드 리뷰를 수정할 권한이 없습니다.');
   }
 
+  private normalizeDocuments(documents: CodeReviewDocument[], fallbackDate: string) {
+    return documents
+      .map((document, index) => ({
+        ...document,
+        title: document.title.trim(),
+        orderIdx: document.orderIdx ?? index,
+        createdAt: document.createdAt || fallbackDate,
+        updatedAt: document.updatedAt || fallbackDate,
+      }))
+      .sort((a, b) => a.orderIdx - b.orderIdx || a.createdAt.localeCompare(b.createdAt));
+  }
+
   private toSummaryDto(row: CodeReviewRow) {
     const highSeverityCount = row.findings.filter(
       (finding) => finding.severity === 'high',
@@ -2547,6 +2610,7 @@ export class CodeReviewsService {
       testGapCount: row.testGaps.length,
       changedFileCount: row.changedFiles.length,
       excludedFileCount: row.excludedFiles.length,
+      documentCount: row.reviewDocuments.length,
       model: row.model,
       createdBy: row.createdBy,
       createdByName: row.createdByName,
@@ -2565,6 +2629,7 @@ export class CodeReviewsService {
       testGaps: row.testGaps,
       changedFiles: row.changedFiles,
       excludedFiles: row.excludedFiles,
+      reviewDocuments: row.reviewDocuments,
       diffHash: row.diffHash,
       diffSnapshot: row.diffSnapshot,
       canEdit: user.role === 'admin' || row.createdBy === user.id,

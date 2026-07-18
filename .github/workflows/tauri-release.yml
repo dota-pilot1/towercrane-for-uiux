@@ -64,7 +64,7 @@ jobs:
         with:
           projectPath: towercrane-for-uiux-tauri
           tagName: ${{ github.ref_name }}
-          releaseName: "Towercrane Messenger ${{ github.ref_name }}"
+          releaseName: "Towercrane Dev Task ${{ github.ref_name }}"
           releaseBody: "자동 빌드된 릴리스입니다. macOS는 .dmg, Windows는 .exe(setup)를 받아 설치하세요."
           releaseDraft: false
           prerelease: false

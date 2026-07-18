@@ -1,6 +1,6 @@
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("Hello, {}! Welcome to Towercrane Messenger!", name)
+    format!("Hello, {}! Welcome to Towercrane Dev Task!", name)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

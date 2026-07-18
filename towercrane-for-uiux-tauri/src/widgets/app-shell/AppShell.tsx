@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   Bug,
   CheckSquare,
+  ClipboardCheck,
+  Code2,
   FileText,
   FlaskConical,
   Loader2,
@@ -22,6 +24,7 @@ import TodoModule from "../task/TodoModule";
 import IssueModule from "../issue/IssueModule";
 import DocsModule from "../docs/DocsModule";
 import ApiDocModule from "../apidoc/ApiDocModule";
+import CodeReviewModule from "../code-review/CodeReviewModule";
 import HomePage from "../home/HomePage";
 import ProfilePage from "../profile/ProfilePage";
 import SettingsPage from "../settings/SettingsPage";
@@ -37,7 +40,15 @@ type Props = {
   onLogout: () => void;
 };
 
-type ModuleId = "messenger" | "chat" | "todo" | "issue" | "docs" | "apidoc";
+type ModuleId =
+  | "messenger"
+  | "chat"
+  | "todo"
+  | "issue"
+  | "docs"
+  | "apidoc"
+  | "codereview"
+  | "devqa";
 type ViewId = "home" | "profile" | "settings" | ModuleId;
 
 type ModuleDef = {
@@ -54,6 +65,8 @@ const MODULES: ModuleDef[] = [
   { id: "issue", label: "이슈", icon: Bug, ready: true },
   { id: "docs", label: "문서", icon: FileText, ready: true },
   { id: "apidoc", label: "Postman", icon: FlaskConical, ready: true },
+  { id: "codereview", label: "코드 리뷰", icon: Code2, ready: true },
+  { id: "devqa", label: "개발 QA", icon: ClipboardCheck, ready: true },
 ];
 
 function AppShell({ user, onUserUpdate, onLogout }: Props) {
@@ -314,6 +327,10 @@ function AppShell({ user, onUserUpdate, onLogout }: Props) {
           <DocsModule />
         ) : activeModule?.id === "apidoc" ? (
           <ApiDocModule isAdmin={user.role === "admin"} />
+        ) : activeModule?.id === "codereview" ? (
+          <CodeReviewModule />
+        ) : activeModule?.id === "devqa" ? (
+          <ApiDocModule isAdmin={user.role === "admin"} mode="qa" />
         ) : (
           <PlaceholderModule
             label={activeModule?.label ?? ""}

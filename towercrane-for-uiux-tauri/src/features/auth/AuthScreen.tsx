@@ -30,12 +30,12 @@ function AuthScreen({ onSuccess }: Props) {
       <Card className="w-[360px] max-w-full">
         <CardHeader className="items-center text-center">
           <span className="mb-1 flex size-13 items-center justify-center rounded-2xl border border-brand-border bg-brand-glass text-2xl">
-            💬
+            🏗️
           </span>
-          <CardTitle>Towercrane Messenger</CardTitle>
+          <CardTitle>Towercrane Dev Task</CardTitle>
           <CardDescription>
             {mode === "login"
-              ? "업무용 메신저에 로그인하세요"
+              ? "개발 업무 앱에 로그인하세요"
               : "새 계정을 만들어 시작하세요"}
           </CardDescription>
         </CardHeader>

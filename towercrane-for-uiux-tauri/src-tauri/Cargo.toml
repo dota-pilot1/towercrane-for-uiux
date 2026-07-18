@@ -1,12 +1,12 @@
 [package]
-name = "towercrane-for-uiux-tauri"
-version = "0.1.9"
-description = "프로젝트 업무 관리 메신저"
+name = "towercrane-dev-task-tauri"
+version = "0.1.10"
+description = "개발 업무 전용 앱"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "towercrane_for_uiux_tauri_lib"
+name = "towercrane_dev_task_tauri_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

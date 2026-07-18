@@ -540,9 +540,10 @@ function DocsModule() {
     return (
       <div
         key="__create__"
-        style={{ paddingLeft: depth * 14 + 10 }}
-        className="flex items-center gap-2 py-1 pr-2"
+        style={{ paddingLeft: depth * 14 + 8 }}
+        className="flex items-center gap-1.5 py-1.5 pr-2 text-[13px]"
       >
+        <span className="w-3 shrink-0" />
         <span className="shrink-0 text-[14px]">
           {creating === "FOLDER" ? "📁" : "📝"}
         </span>

@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -29,6 +30,11 @@ export class CodeReviewsController {
   @Post()
   create(@CurrentUser() user: CodeReviewUser, @Body() body: unknown) {
     return this.codeReviewsService.create(user, body);
+  }
+
+  @Post('manual')
+  createManual(@CurrentUser() user: CodeReviewUser, @Body() body: unknown) {
+    return this.codeReviewsService.createManual(user, body);
   }
 
   @Post('analyze')
@@ -61,6 +67,15 @@ export class CodeReviewsController {
     @Body() body: unknown,
   ) {
     return this.codeReviewsService.update(user, reviewId, body);
+  }
+
+  @Put(':reviewId/documents')
+  replaceDocuments(
+    @CurrentUser() user: CodeReviewUser,
+    @Param('reviewId') reviewId: string,
+    @Body() body: unknown,
+  ) {
+    return this.codeReviewsService.replaceDocuments(user, reviewId, body);
   }
 
   @Delete(':reviewId')

@@ -67,6 +67,34 @@ export type ApiResponse = {
   timestamp: string;
 };
 
+export type ApiQaStatus = "draft" | "passed" | "failed" | "needs_check";
+
+export type ApiQaChecklistStatus = "unchecked" | "passed" | "failed" | "needs_check";
+
+export type ApiQaImage = {
+  id: string;
+  url: string;
+  caption: string;
+};
+
+export type ApiQaChecklistItem = {
+  id: string;
+  text: string;
+  status: ApiQaChecklistStatus;
+  resultImageIds: string[];
+};
+
+export type ApiQaContent = {
+  title: string;
+  status: ApiQaStatus;
+  scope: string;
+  referenceImages: ApiQaImage[];
+  checklist: ApiQaChecklistItem[];
+  resultImages: ApiQaImage[];
+  issueNotes: string;
+  notes: string;
+};
+
 export type ApiBlockContent = {
   method: HttpMethod;
   url: string;
@@ -78,6 +106,7 @@ export type ApiBlockContent = {
     content: string;
   };
   description?: string;
+  qa: ApiQaContent;
   lastResponse?: ApiResponse | null;
 };
 
@@ -145,6 +174,16 @@ export function createDefaultApiBlockContent(
     params: [],
     body: hasBody ? { type: "json", content: "{\n  \n}" } : { type: "none", content: "" },
     description: "",
+    qa: {
+      title: endpoint?.path ? `${method} ${endpoint.path}` : "",
+      status: "draft",
+      scope: "",
+      referenceImages: [],
+      checklist: [],
+      resultImages: [],
+      issueNotes: "",
+      notes: "",
+    },
     lastResponse: null,
   };
 }
@@ -153,21 +192,26 @@ export function parseApiBlockContent(
   blocks: ApiDocBlock[],
   endpoint?: Pick<ApiDocEndpoint, "method" | "path"> | null,
 ) {
+  const base = createDefaultApiBlockContent(endpoint);
   const block = blocks.find((item) => item.blockType === "API");
-  if (!block) return createDefaultApiBlockContent(endpoint);
+  if (!block) return base;
 
   try {
     const parsed = JSON.parse(block.content) as Partial<ApiBlockContent>;
     return {
-      ...createDefaultApiBlockContent(endpoint),
+      ...base,
       ...parsed,
       body: {
-        ...createDefaultApiBlockContent(endpoint).body,
+        ...base.body,
         ...parsed.body,
+      },
+      qa: {
+        ...base.qa,
+        ...parsed.qa,
       },
     };
   } catch {
-    return createDefaultApiBlockContent(endpoint);
+    return base;
   }
 }
 

@@ -130,17 +130,26 @@ function SortableRow({
   );
 }
 
-function ApiDocModule({ isAdmin }: { isAdmin: boolean }) {
+type ApiDocModuleMode = "postman" | "qa";
+
+function ApiDocModule({
+  isAdmin,
+  mode = "postman",
+}: {
+  isAdmin: boolean;
+  mode?: ApiDocModuleMode;
+}) {
   const [teamId, setTeamId] = useState<string | null>(null);
   const teamsQuery = useApiDocTeams();
   const teams = teamsQuery.data ?? [];
   const team = teamId ? teams.find((t) => t.id === teamId) ?? null : null;
+  const isQaMode = mode === "qa";
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <PageHeader>
         <span className="text-[14px] font-bold tracking-tight text-text-primary">
-          Postman
+          {isQaMode ? "개발 QA" : "Postman"}
         </span>
         {team ? (
           <Button
@@ -163,9 +172,10 @@ function ApiDocModule({ isAdmin }: { isAdmin: boolean }) {
           loading={teamsQuery.isLoading}
           isAdmin={isAdmin}
           onOpen={setTeamId}
+          mode={mode}
         />
       ) : (
-        <Workbench team={team} isAdmin={isAdmin} />
+        <Workbench team={team} isAdmin={isAdmin} mode={mode} />
       )}
     </div>
   );
@@ -256,11 +266,13 @@ function WorkspaceHome({
   loading,
   isAdmin,
   onOpen,
+  mode,
 }: {
   teams: ApiDocTeam[];
   loading: boolean;
   isAdmin: boolean;
   onOpen: (id: string) => void;
+  mode: ApiDocModuleMode;
 }) {
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -299,13 +311,15 @@ function WorkspaceHome({
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">
-              Postman Workspaces
+              {mode === "qa" ? "Dev QA Workspaces" : "Postman Workspaces"}
             </div>
             <h2 className="mt-0.5 text-[19px] font-black text-slate-900">
-              팀별 API 요청 공간
+              {mode === "qa" ? "팀별 개발 QA 공간" : "팀별 API 요청 공간"}
             </h2>
             <p className="mt-0.5 text-[13px] text-slate-400">
-              워크스페이스를 선택하면 해당 팀의 컬렉션과 요청을 관리합니다.
+              {mode === "qa"
+                ? "워크스페이스를 선택하면 요청별 QA 시나리오와 검증 결과를 문서화합니다."
+                : "워크스페이스를 선택하면 해당 팀의 컬렉션과 요청을 관리합니다."}
             </p>
           </div>
           {isAdmin ? (
@@ -422,7 +436,15 @@ function WorkspaceHome({
   );
 }
 
-function Workbench({ team, isAdmin }: { team: ApiDocTeam; isAdmin: boolean }) {
+function Workbench({
+  team,
+  isAdmin,
+  mode,
+}: {
+  team: ApiDocTeam;
+  isAdmin: boolean;
+  mode: ApiDocModuleMode;
+}) {
   const categoriesQuery = useApiDocCategories(team.id);
   const categories = categoriesQuery.data ?? [];
   const [requestedCategoryId, setRequestedCategoryId] = useState<string | null>(null);
@@ -486,6 +508,7 @@ function Workbench({ team, isAdmin }: { team: ApiDocTeam; isAdmin: boolean }) {
             }
           }}
           onOpenEnv={() => setEnvOpen(true)}
+          initialView={mode === "qa" ? "qa" : "request"}
         />
       </section>
 

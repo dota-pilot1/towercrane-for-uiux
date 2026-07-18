@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicgirault/tauri-v2-schema/main/schema.json",
-  "productName": "Towercrane Messenger",
-  "version": "0.1.9",
+  "productName": "Towercrane Dev Task",
+  "version": "0.1.10",
   "identifier": "com.towercrane-for-uiux.tauri",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -32,14 +32,20 @@
   "app": {
     "windows": [
       {
-        "title": "Towercrane Messenger",
+        "title": "Towercrane Dev Task",
         "width": 1280,
         "height": 800,
         "minWidth": 1000,
         "minHeight": 600,
         "resizable": true,
         "fullscreen": false,
-        "decorations": false,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": -100,
+          "y": 0
+        },
         "dragDropEnabled": false
       }
     ],

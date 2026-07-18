@@ -4,18 +4,24 @@ import {
   ChevronDown,
   ChevronUp,
   Check,
+  ClipboardCheck,
   FileJson,
   FileText,
+  Image as ImageIcon,
   Slash,
   Loader2,
+  Plus,
   RotateCcw,
   Save,
   Send,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { getToken } from "../../shared/api/client";
 import { CompactSelect } from "../../shared/ui/compact-select";
 import { Button } from "../../shared/ui/button";
+import { toast } from "../../shared/ui/Toast";
+import { uploadImageToS3 } from "../../shared/ui/lexical/utils/upload-image";
 import {
   createDefaultApiBlockContent,
   isJsonString,
@@ -25,6 +31,10 @@ import {
   type ApiBlockContent,
   type ApiDocBlock,
   type ApiDocEndpoint,
+  type ApiQaChecklistItem,
+  type ApiQaChecklistStatus,
+  type ApiQaImage,
+  type ApiQaStatus,
   type ApiResponse,
   type BodyType,
   type HttpMethod,
@@ -52,6 +62,37 @@ const METHOD_BADGE: Record<HttpMethod, string> = {
   DELETE: "bg-red-100 text-red-600",
 };
 
+const QA_STATUS_OPTIONS: Array<{ value: ApiQaStatus; label: string }> = [
+  { value: "draft", label: "작성 중" },
+  { value: "passed", label: "성공" },
+  { value: "failed", label: "실패" },
+  { value: "needs_check", label: "확인 필요" },
+];
+
+const QA_STATUS_CLASS: Record<ApiQaStatus, string> = {
+  draft: "bg-surface-strong text-text-secondary",
+  passed: "bg-brand-glass text-brand-primary",
+  failed: "bg-danger-glass text-destructive",
+  needs_check: "bg-surface-muted text-text-primary",
+};
+
+const QA_CHECK_STATUS_OPTIONS: Array<{
+  value: ApiQaChecklistStatus;
+  label: string;
+}> = [
+  { value: "unchecked", label: "미확인" },
+  { value: "passed", label: "통과" },
+  { value: "failed", label: "실패" },
+  { value: "needs_check", label: "확인 필요" },
+];
+
+const QA_CHECK_STATUS_CLASS: Record<ApiQaChecklistStatus, string> = {
+  unchecked: "bg-surface-strong text-text-secondary",
+  passed: "bg-brand-glass text-brand-primary",
+  failed: "bg-danger-glass text-destructive",
+  needs_check: "bg-surface-muted text-text-primary",
+};
+
 function statusClass(status: number) {
   if (status === 0) return "bg-red-100 text-red-600";
   if (status >= 200 && status < 300) return "bg-emerald-100 text-emerald-700";
@@ -64,6 +105,10 @@ function countEnabled(items: KeyValueItem[]) {
 
 const INPUT_CLASS =
   "min-w-0 rounded-md border border-surface-border-soft bg-surface-raised px-2 py-1.5 text-[12px] text-text-primary outline-none focus:border-brand-border disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted";
+
+function createId() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+}
 
 function KeyValueTable({
   items,
@@ -150,6 +195,215 @@ function KeyValueTable({
   );
 }
 
+function QaImageGrid({
+  title,
+  description,
+  images,
+  disabled,
+  uploading,
+  onUpload,
+  onCaptionChange,
+  onRemove,
+}: {
+  title: string;
+  description: string;
+  images: ApiQaImage[];
+  disabled: boolean;
+  uploading: boolean;
+  onUpload: (file: File) => void;
+  onCaptionChange: (id: string, caption: string) => void;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <div className="ui-panel-soft p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <ImageIcon className="size-4 text-brand-primary" />
+        <div className="min-w-0 flex-1">
+          <h4 className="text-[13px] font-black text-text-primary">{title}</h4>
+          <p className="text-[11px] text-text-muted">{description}</p>
+        </div>
+        <label
+          className={
+            "inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-surface-border-soft bg-surface-muted px-2.5 text-[12px] font-bold text-text-primary shadow-sm " +
+            (disabled || uploading
+              ? "cursor-not-allowed opacity-50"
+              : "cursor-pointer hover:bg-surface-strong")
+          }
+        >
+          {uploading ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Upload className="size-3.5" />
+          )}
+          업로드
+          <input
+            type="file"
+            accept="image/*"
+            disabled={disabled || uploading}
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) onUpload(file);
+            }}
+          />
+        </label>
+      </div>
+
+      {images.length === 0 ? (
+        <div className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-surface-border-soft bg-surface-muted text-text-muted">
+          <ImageIcon className="size-6 opacity-50" />
+          <p className="text-[12px]">이미지를 추가하세요.</p>
+        </div>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {images.map((image) => (
+            <div
+              key={image.id}
+              className="overflow-hidden rounded-md border border-surface-border-soft bg-surface-raised"
+            >
+              <div className="aspect-video bg-surface-muted">
+                <img
+                  src={image.url}
+                  alt={image.caption || title}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 border-t border-surface-border-soft p-1.5">
+                <input
+                  value={image.caption}
+                  disabled={disabled}
+                  onChange={(event) => onCaptionChange(image.id, event.target.value)}
+                  placeholder="이미지 설명"
+                  className={INPUT_CLASS + " h-8 flex-1"}
+                />
+                {!disabled ? (
+                  <button
+                    title="이미지 삭제"
+                    onClick={() => onRemove(image.id)}
+                    className="flex size-8 shrink-0 items-center justify-center rounded-md text-text-muted hover:bg-danger-glass hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QaChecklist({
+  items,
+  disabled,
+  onAdd,
+  onUpdate,
+  onRemove,
+}: {
+  items: ApiQaChecklistItem[];
+  disabled: boolean;
+  onAdd: (text: string) => void;
+  onUpdate: (id: string, patch: Partial<ApiQaChecklistItem>) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+
+  const submit = () => {
+    const text = draft.trim();
+    if (!text) return;
+    onAdd(text);
+    setDraft("");
+  };
+
+  return (
+    <div className="ui-panel-soft p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <ClipboardCheck className="size-4 text-brand-primary" />
+        <div className="min-w-0 flex-1">
+          <h4 className="text-[13px] font-black text-text-primary">체크리스트</h4>
+          <p className="text-[11px] text-text-muted">
+            검수 항목별로 통과, 실패, 확인 필요 상태를 기록합니다.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        {items.length === 0 ? (
+          <div className="rounded-md border border-dashed border-surface-border-soft bg-surface-muted px-3 py-6 text-center text-[12px] text-text-muted">
+            체크 항목을 추가하세요.
+          </div>
+        ) : (
+          items.map((item, index) => (
+            <div
+              key={item.id}
+              className="grid gap-2 rounded-md border border-surface-border-soft bg-surface-raised p-2 md:grid-cols-[40px_minmax(0,1fr)_130px_32px]"
+            >
+              <span className="flex h-8 items-center justify-center rounded-md bg-surface-muted text-[11px] font-black text-text-muted">
+                {index + 1}
+              </span>
+              <input
+                value={item.text}
+                disabled={disabled}
+                onChange={(event) => onUpdate(item.id, { text: event.target.value })}
+                className={INPUT_CLASS + " h-8 w-full"}
+              />
+              <CompactSelect
+                value={item.status}
+                disabled={disabled}
+                onChange={(event) =>
+                  onUpdate(item.id, { status: event.target.value as ApiQaChecklistStatus })
+                }
+                wrapperClassName="w-full"
+                className={
+                  "h-8 min-h-8 text-[12px] font-bold " +
+                  QA_CHECK_STATUS_CLASS[item.status]
+                }
+              >
+                {QA_CHECK_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </CompactSelect>
+              {!disabled ? (
+                <button
+                  title="체크 항목 삭제"
+                  onClick={() => onRemove(item.id)}
+                  className="flex size-8 items-center justify-center rounded-md text-text-muted hover:bg-danger-glass hover:text-destructive"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              ) : (
+                <span />
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {!disabled ? (
+        <div className="mt-2 flex gap-2">
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.nativeEvent.isComposing) submit();
+            }}
+            placeholder="체크 항목 추가"
+            className={INPUT_CLASS + " h-9 flex-1"}
+          />
+          <Button onClick={submit} className="h-9 gap-1.5 text-[12px]">
+            <Plus className="size-3.5" />
+            추가
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ApiTesterPanel({
   endpoint,
   blocks,
@@ -158,6 +412,7 @@ function ApiTesterPanel({
   isSaving,
   onSave,
   onOpenEnv,
+  initialView = "request",
 }: {
   endpoint: ApiDocEndpoint | null;
   blocks: ApiDocBlock[];
@@ -166,6 +421,7 @@ function ApiTesterPanel({
   isSaving: boolean;
   onSave: (content: ApiBlockContent) => void;
   onOpenEnv: () => void;
+  initialView?: "request" | "qa";
 }) {
   const environments = useApiEnvStore((s) => s.environments);
   const activeEnvId = useApiEnvStore((s) => s.activeEnvId);
@@ -177,6 +433,8 @@ function ApiTesterPanel({
   );
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [qaUploading, setQaUploading] = useState<"reference" | "result" | null>(null);
+  const [activeView, setActiveView] = useState<"request" | "qa">(initialView);
   const [activeTab, setActiveTab] = useState<"params" | "headers" | "body">("params");
   const [responseTab, setResponseTab] = useState<"body" | "headers">("body");
   const [responseExpanded, setResponseExpanded] = useState(false);
@@ -184,9 +442,10 @@ function ApiTesterPanel({
   useEffect(() => {
     setContent(parseApiBlockContent(blocks, endpoint));
     setResponse(null);
+    setActiveView(initialView);
     setActiveTab("params");
     setResponseExpanded(false);
-  }, [blocks, endpoint]);
+  }, [blocks, endpoint, initialView]);
 
   const envVars = getActiveVarsMap();
   const resolvedUrl = resolveEnvVars(content.url, envVars);
@@ -196,6 +455,79 @@ function ApiTesterPanel({
     setContent((prev) => ({ ...prev, ...partial }));
   const updateBody = (partial: Partial<ApiBlockContent["body"]>) =>
     setContent((prev) => ({ ...prev, body: { ...prev.body, ...partial } }));
+  const updateQa = (partial: Partial<ApiBlockContent["qa"]>) =>
+    setContent((prev) => ({ ...prev, qa: { ...prev.qa, ...partial } }));
+
+  const uploadQaImage = async (kind: "reference" | "result", file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("이미지 파일만 업로드할 수 있습니다.");
+      return;
+    }
+    setQaUploading(kind);
+    try {
+      const url = await uploadImageToS3(file);
+      const image: ApiQaImage = { id: createId(), url, caption: file.name };
+      setContent((prev) => ({
+        ...prev,
+        qa: {
+          ...prev.qa,
+          [kind === "reference" ? "referenceImages" : "resultImages"]: [
+            ...(kind === "reference"
+              ? prev.qa.referenceImages
+              : prev.qa.resultImages),
+            image,
+          ],
+        },
+      }));
+      toast.success("이미지를 추가했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "이미지 업로드에 실패했습니다.");
+    } finally {
+      setQaUploading(null);
+    }
+  };
+
+  const updateQaImage = (
+    kind: "reference" | "result",
+    id: string,
+    patch: Partial<ApiQaImage>,
+  ) => {
+    const key = kind === "reference" ? "referenceImages" : "resultImages";
+    updateQa({
+      [key]: content.qa[key].map((image) =>
+        image.id === id ? { ...image, ...patch } : image,
+      ),
+    });
+  };
+
+  const removeQaImage = (kind: "reference" | "result", id: string) => {
+    const key = kind === "reference" ? "referenceImages" : "resultImages";
+    updateQa({ [key]: content.qa[key].filter((image) => image.id !== id) });
+  };
+
+  const addQaChecklistItem = (text: string) => {
+    updateQa({
+      checklist: [
+        ...content.qa.checklist,
+        { id: createId(), text, status: "unchecked", resultImageIds: [] },
+      ],
+    });
+  };
+
+  const updateQaChecklistItem = (
+    id: string,
+    patch: Partial<ApiQaChecklistItem>,
+  ) => {
+    updateQa({
+      checklist: content.qa.checklist.map((item) =>
+        item.id === id ? { ...item, ...patch } : item,
+      ),
+    });
+  };
+
+  const removeQaChecklistItem = (id: string) => {
+    updateQa({ checklist: content.qa.checklist.filter((item) => item.id !== id) });
+  };
 
   const handleReset = () => {
     if (!endpoint) return;
@@ -335,6 +667,23 @@ function ApiTesterPanel({
         <p className="min-w-0 flex-1 truncate text-[14px] font-black text-text-primary">
           {endpoint.title}
         </p>
+        <div data-actions className="flex rounded-md border border-surface-border-soft bg-surface-muted p-0.5">
+          {(["request", "qa"] as const).map((view) => (
+            <button
+              key={view}
+              onClick={() => setActiveView(view)}
+              className={
+                "flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-[12px] font-bold transition-colors " +
+                (activeView === view
+                  ? "bg-surface-raised text-text-primary shadow-sm"
+                  : "text-text-muted hover:text-text-secondary")
+              }
+            >
+              {view === "qa" ? <ClipboardCheck className="size-3.5" /> : null}
+              {view === "request" ? "요청" : "개발 QA"}
+            </button>
+          ))}
+        </div>
         <CompactSelect
           value={activeEnvId}
           onChange={(e) => setActiveEnv(e.target.value)}
@@ -378,7 +727,7 @@ function ApiTesterPanel({
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {/* 요청 편집 영역 */}
-        {!responseExpanded ? (
+        {!responseExpanded && activeView === "request" ? (
           <div className="shrink-0 space-y-3 p-3">
             <div className="rounded-lg border border-surface-border-soft bg-surface-raised p-3">
               <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
@@ -559,7 +908,144 @@ function ApiTesterPanel({
           </div>
         ) : null}
 
+        {!responseExpanded && activeView === "qa" ? (
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+            <div className="ui-panel-soft p-3">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <ClipboardCheck className="size-4 text-brand-primary" />
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate text-[14px] font-black text-text-primary">
+                    개발 QA 문서
+                  </h3>
+                  <p className="text-[12px] text-text-muted">
+                    개발 완료 후 검수할 주제, 참고 이미지, 체크리스트와 결과 이미지를 기록합니다.
+                  </p>
+                </div>
+                <span
+                  className={
+                    "rounded-full px-2 py-0.5 text-[11px] font-black " +
+                    QA_STATUS_CLASS[content.qa.status]
+                  }
+                >
+                  {QA_STATUS_OPTIONS.find((option) => option.value === content.qa.status)?.label}
+                </span>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px]">
+                <label className="block min-w-0">
+                  <span className="mb-1 block text-[12px] font-bold text-text-secondary">
+                    테스트 주제
+                  </span>
+                  <input
+                    value={content.qa.title}
+                    disabled={!isAdmin}
+                    onChange={(e) => updateQa({ title: e.target.value })}
+                    placeholder="예: 회원가입 완료 후 로그인까지 정상 동작한다"
+                    className={INPUT_CLASS + " h-9 w-full"}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[12px] font-bold text-text-secondary">
+                    상태
+                  </span>
+                  <CompactSelect
+                    value={content.qa.status}
+                    disabled={!isAdmin}
+                    onChange={(e) => updateQa({ status: e.target.value as ApiQaStatus })}
+                    wrapperClassName="w-full"
+                    className="h-9 min-h-9 text-[12px] font-bold"
+                  >
+                    {QA_STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </CompactSelect>
+                </label>
+              </div>
+
+              <label className="mt-3 block min-w-0">
+                <span className="mb-1 block text-[12px] font-bold text-text-secondary">
+                  테스트 범위
+                </span>
+                <textarea
+                  value={content.qa.scope}
+                  disabled={!isAdmin}
+                  onChange={(e) => updateQa({ scope: e.target.value })}
+                  rows={3}
+                  placeholder="검수 대상 화면, API, 조건, 제외 범위를 적습니다."
+                  className={INPUT_CLASS + " min-h-20 w-full resize-y py-2 leading-5"}
+                />
+              </label>
+            </div>
+
+            <QaImageGrid
+              title="참고 이미지"
+              description="기획 화면, 요구사항 캡처, 기존 정상 화면 등을 첨부합니다."
+              images={content.qa.referenceImages}
+              disabled={!isAdmin}
+              uploading={qaUploading === "reference"}
+              onUpload={(file) => void uploadQaImage("reference", file)}
+              onCaptionChange={(id, caption) =>
+                updateQaImage("reference", id, { caption })
+              }
+              onRemove={(id) => removeQaImage("reference", id)}
+            />
+
+            <QaChecklist
+              items={content.qa.checklist}
+              disabled={!isAdmin}
+              onAdd={addQaChecklistItem}
+              onUpdate={updateQaChecklistItem}
+              onRemove={removeQaChecklistItem}
+            />
+
+            <QaImageGrid
+              title="결과 이미지"
+              description="실패 화면, 수정 후 정상 화면, 검수 완료 캡처를 첨부합니다."
+              images={content.qa.resultImages}
+              disabled={!isAdmin}
+              uploading={qaUploading === "result"}
+              onUpload={(file) => void uploadQaImage("result", file)}
+              onCaptionChange={(id, caption) =>
+                updateQaImage("result", id, { caption })
+              }
+              onRemove={(id) => removeQaImage("result", id)}
+            />
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <label className="block min-w-0">
+                <span className="mb-1 block text-[12px] font-bold text-text-secondary">
+                  이슈 메모
+                </span>
+                <textarea
+                  value={content.qa.issueNotes}
+                  disabled={!isAdmin}
+                  onChange={(e) => updateQa({ issueNotes: e.target.value })}
+                  rows={6}
+                  placeholder="실패 원인, 재현 조건, 담당자에게 전달할 내용을 적습니다."
+                  className={INPUT_CLASS + " min-h-32 w-full resize-y py-2 leading-5"}
+                />
+              </label>
+              <label className="block min-w-0">
+                <span className="mb-1 block text-[12px] font-bold text-text-secondary">
+                  후속 조치
+                </span>
+                <textarea
+                  value={content.qa.notes}
+                  disabled={!isAdmin}
+                  onChange={(e) => updateQa({ notes: e.target.value })}
+                  rows={6}
+                  placeholder="수정 요청, 재검수 일정, 관련 업무/이슈 링크를 적습니다."
+                  className={INPUT_CLASS + " min-h-32 w-full resize-y py-2 leading-5"}
+                />
+              </label>
+            </div>
+          </div>
+        ) : null}
+
         {/* 응답 영역 */}
+        {activeView === "request" ? (
         <div className="mx-3 mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-surface-border-soft bg-surface-raised">
           <div className="flex flex-wrap items-center gap-2 border-b border-surface-border-soft bg-surface-muted px-3 py-2">
             <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">
@@ -655,6 +1141,7 @@ function ApiTesterPanel({
             )}
           </div>
         </div>
+        ) : null}
       </div>
     </div>
   );

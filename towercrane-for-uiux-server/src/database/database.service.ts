@@ -980,6 +980,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         test_gaps TEXT NOT NULL DEFAULT '[]',
         changed_files TEXT NOT NULL DEFAULT '[]',
         excluded_files TEXT NOT NULL DEFAULT '[]',
+        review_documents TEXT NOT NULL DEFAULT '[]',
         diff_hash TEXT NOT NULL,
         diff_snapshot TEXT,
         model TEXT,
@@ -3270,6 +3271,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'code_reviews',
       'task_id',
       'ALTER TABLE code_reviews ADD COLUMN task_id TEXT',
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'review_documents',
+      "ALTER TABLE code_reviews ADD COLUMN review_documents TEXT NOT NULL DEFAULT '[]'",
     );
     this.sqlite.exec(`
       DROP INDEX IF EXISTS idx_study_diaries_user;
