@@ -106,9 +106,15 @@ import { AdminBoardManagementPage } from '../pages/board-admin/ui/admin-board-ma
 import { ChatbotMonitoringPage } from '../pages/chatbot-monitoring/ui/chatbot-monitoring-page'
 import { useSessionStore } from '../shared/store/session-store'
 import { useCurrentUser } from '../shared/api/auth'
-import { useUsersList } from '../shared/api/users'
+import {
+  useUsersList,
+  useDepartments,
+  useUpdateUserAssignment,
+  type ManagedUser,
+} from '../shared/api/users'
 import { useUiStore } from '../shared/store/ui-store'
 import { Card } from '../shared/ui/card'
+import { Select } from '../shared/ui/select'
 
 // ─── Root ───────────────────────────────────────────────────────────────────
 
@@ -980,9 +986,38 @@ const adminUsersRoute = createRoute({
   component: AdminUsersRoute,
 })
 
+const POSITION_OPTIONS = ['대표이사', '본부장', '팀장', '시니어', '주니어', '사원']
+
 function AdminUsersRoute() {
   const usersListQuery = useUsersList()
+  const departmentsQuery = useDepartments()
+  const updateAssignment = useUpdateUserAssignment()
   const users = usersListQuery.data || []
+  const departments = departmentsQuery.data || []
+  const departmentsById = new Map(departments.map((d) => [d.id, d]))
+
+  function departmentLabel(id: string) {
+    const dept = departmentsById.get(id)
+    if (!dept) return id
+    const parent = dept.parentId ? departmentsById.get(dept.parentId) : null
+    return parent ? `${parent.name} > ${dept.name}` : dept.name
+  }
+
+  function handleDepartmentChange(u: ManagedUser, value: string) {
+    updateAssignment.mutate({
+      userId: u.id,
+      departmentId: value || null,
+      position: u.position ?? null,
+    })
+  }
+
+  function handlePositionChange(u: ManagedUser, value: string) {
+    updateAssignment.mutate({
+      userId: u.id,
+      departmentId: u.departmentId ?? null,
+      position: value || null,
+    })
+  }
 
   return (
     <Card className="rounded-md p-6">
@@ -1017,6 +1052,12 @@ function AdminUsersRoute() {
                 Role
               </th>
               <th className="px-6 py-4 text-[11px] font-bold ui-text-secondary uppercase tracking-widest">
+                부서
+              </th>
+              <th className="px-6 py-4 text-[11px] font-bold ui-text-secondary uppercase tracking-widest">
+                직급
+              </th>
+              <th className="px-6 py-4 text-[11px] font-bold ui-text-secondary uppercase tracking-widest">
                 Joined
               </th>
             </tr>
@@ -1025,7 +1066,7 @@ function AdminUsersRoute() {
             {usersListQuery.isLoading ? (
               <tr>
                 <td
-                  colSpan={4}
+                  colSpan={6}
                   className="px-6 py-20 text-center ui-text-muted"
                 >
                   Loading users...
@@ -1034,7 +1075,7 @@ function AdminUsersRoute() {
             ) : users.length === 0 ? (
               <tr>
                 <td
-                  colSpan={4}
+                  colSpan={6}
                   className="px-6 py-20 text-center ui-text-muted"
                 >
                   No users found.
@@ -1062,6 +1103,36 @@ function AdminUsersRoute() {
                     >
                       {u.role}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <Select
+                      className="h-9 text-xs"
+                      value={u.departmentId ?? ''}
+                      onChange={(e) => handleDepartmentChange(u, e.target.value)}
+                      disabled={updateAssignment.isPending}
+                    >
+                      <option value="">미지정</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {departmentLabel(d.id)}
+                        </option>
+                      ))}
+                    </Select>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <Select
+                      className="h-9 text-xs"
+                      value={u.position ?? ''}
+                      onChange={(e) => handlePositionChange(u, e.target.value)}
+                      disabled={updateAssignment.isPending}
+                    >
+                      <option value="">미지정</option>
+                      {POSITION_OPTIONS.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </Select>
                   </td>
                   <td className="px-6 py-4 text-sm ui-text-muted">
                     {new Date(u.createdAt).toLocaleDateString()}

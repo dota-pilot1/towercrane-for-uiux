@@ -33,6 +33,19 @@ const POSITION_RANK: Record<string, number> = {
 export class OrgService {
   constructor(private readonly databaseService: DatabaseService) {}
 
+  listDepartments() {
+    return this.databaseService.db
+      .select({
+        id: departmentsTable.id,
+        name: departmentsTable.name,
+        parentId: departmentsTable.parentId,
+        orderIdx: departmentsTable.orderIdx,
+      })
+      .from(departmentsTable)
+      .orderBy(asc(departmentsTable.orderIdx))
+      .all();
+  }
+
   getTree(): OrgNode[] {
     const db = this.databaseService.db;
 

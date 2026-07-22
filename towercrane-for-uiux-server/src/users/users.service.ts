@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
-import { sessionsTable, usersTable } from '../database/schema';
+import { departmentsTable, sessionsTable, usersTable } from '../database/schema';
 
 @Injectable()
 export class UsersService {
@@ -38,9 +38,57 @@ export class UsersService {
         isActive: usersTable.isActive,
         deletedAt: usersTable.deletedAt,
         createdAt: usersTable.createdAt,
+        departmentId: usersTable.departmentId,
+        position: usersTable.position,
       })
       .from(usersTable)
       .all();
+  }
+
+  updateAssignment(
+    userId: string,
+    departmentId: string | null,
+    position: string | null,
+  ) {
+    const target = this.databaseService.db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .get();
+    if (!target) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+
+    if (departmentId) {
+      const dept = this.databaseService.db
+        .select({ id: departmentsTable.id })
+        .from(departmentsTable)
+        .where(eq(departmentsTable.id, departmentId))
+        .get();
+      if (!dept) throw new BadRequestException('존재하지 않는 부서입니다.');
+    }
+
+    const now = new Date().toISOString();
+    this.databaseService.db
+      .update(usersTable)
+      .set({ departmentId, position, updatedAt: now })
+      .where(eq(usersTable.id, userId))
+      .run();
+
+    return this.databaseService.db
+      .select({
+        id: usersTable.id,
+        email: usersTable.email,
+        name: usersTable.name,
+        profileImageUrl: usersTable.profileImageUrl,
+        role: usersTable.role,
+        isActive: usersTable.isActive,
+        deletedAt: usersTable.deletedAt,
+        createdAt: usersTable.createdAt,
+        departmentId: usersTable.departmentId,
+        position: usersTable.position,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .get();
   }
 
   deactivate(userId: string, actorId: string) {

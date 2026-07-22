@@ -11,4 +11,9 @@ export class OrgController {
   getTree() {
     return this.orgService.getTree();
   }
+
+  @Get('departments')
+  listDepartments() {
+    return this.orgService.listDepartments();
+  }
 }

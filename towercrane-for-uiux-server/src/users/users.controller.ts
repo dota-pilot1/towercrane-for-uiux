@@ -18,6 +18,11 @@ const updateProfileImageSchema = z.object({
   profileImageUrl: z.string().url().nullable(),
 });
 
+const updateAssignmentSchema = z.object({
+  departmentId: z.string().min(1).nullable(),
+  position: z.string().min(1).max(20).nullable(),
+});
+
 @Controller('users')
 @UseGuards(AuthGuard, RolesGuard)
 export class UsersController {
@@ -47,5 +52,16 @@ export class UsersController {
   ) {
     const input = updateProfileImageSchema.parse(body);
     return this.usersService.updateProfileImage(user.id, input.profileImageUrl);
+  }
+
+  @Patch(':id')
+  @Roles('admin')
+  updateAssignment(@Param('id') userId: string, @Body() body: unknown) {
+    const input = updateAssignmentSchema.parse(body);
+    return this.usersService.updateAssignment(
+      userId,
+      input.departmentId,
+      input.position,
+    );
   }
 }
