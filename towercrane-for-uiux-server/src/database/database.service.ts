@@ -5782,8 +5782,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 조직도 시드: 부서 계층 + 부서별 데모 구성원.
-   * 로그인 계정(terecal@daum.net)은 유지하고 부서/직급만 보강한다.
+   * 조직도 시드: 부서 계층 + 실제 구성원(members)만 유지.
+   * members에 없는 계정은 도메인 무관하게 전부 비활성화(soft-delete)한다.
    * 멱등 — 부서는 고정 id로 upsert, 사용자는 email 기준 upsert.
    */
   private seedOrg() {
@@ -5830,30 +5830,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       role: 'admin' | 'user';
     }> = [
       { email: 'terecal@daum.net', name: '오현석', departmentId: 'dept-exec', position: '대표이사', role: 'admin' },
-      { email: 'mgmt.head@towercrane.dev', name: '김경영', departmentId: 'dept-mgmt', position: '본부장', role: 'user' },
-      { email: 'hr.lead@towercrane.dev', name: '이인사', departmentId: 'dept-hr', position: '팀장', role: 'user' },
-      { email: 'hr01@towercrane.dev', name: '박채용', departmentId: 'dept-hr', position: '사원', role: 'user' },
-      { email: 'fin.lead@towercrane.dev', name: '최재무', departmentId: 'dept-fin', position: '팀장', role: 'user' },
-      { email: 'dev.head@towercrane.dev', name: '정개발', departmentId: 'dept-dev', position: '본부장', role: 'admin' },
-      { email: 'fe.lead@towercrane.dev', name: '강프론트', departmentId: 'dept-fe', position: '팀장', role: 'user' },
-      { email: 'fe01@towercrane.dev', name: '윤리액트', departmentId: 'dept-fe', position: '시니어', role: 'user' },
-      { email: 'fe02@towercrane.dev', name: '임타입', departmentId: 'dept-fe', position: '주니어', role: 'user' },
-      { email: 'be.lead@towercrane.dev', name: '한백엔드', departmentId: 'dept-be', position: '팀장', role: 'user' },
-      { email: 'be01@towercrane.dev', name: '서네스트', departmentId: 'dept-be', position: '시니어', role: 'user' },
-      { email: 'qa.lead@towercrane.dev', name: '노품질', departmentId: 'dept-qa', position: '팀장', role: 'user' },
-      { email: 'design.lead@towercrane.dev', name: '도디자인', departmentId: 'dept-design', position: '팀장', role: 'user' },
-      { email: 'design01@towercrane.dev', name: '유피그마', departmentId: 'dept-design', position: '주니어', role: 'user' },
-      { email: 'plan.lead@towercrane.dev', name: '백기획', departmentId: 'dept-plan', position: '팀장', role: 'user' },
     ];
 
-    // 옛 시드(test%@hibot.dev) 및 목록에서 빠진 데모 계정은 감사 이력 보존을 위해 비활성화
+    // 목록(keepEmails)에 없는 모든 활성 계정은 감사 이력 보존을 위해 비활성화 (도메인 무관 — 데모/테스트 계정 전부 정리)
     const keepEmails = members.map((m) => m.email);
     const stale = this.sqlite
-      .prepare(
-        `SELECT id, email FROM users
-         WHERE is_active = 1
-           AND (email LIKE 'test%@hibot.dev' OR email LIKE '%@towercrane.dev')`,
-      )
+      .prepare(`SELECT id, email FROM users WHERE is_active = 1`)
       .all() as { id: string; email: string }[];
     for (const u of stale) {
       if (keepEmails.includes(u.email)) continue;
@@ -5898,11 +5880,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           .run();
       }
     }
-
-    // 데모 환경: 모든 계정 비밀번호를 password123으로 통일 (재시작 시 매번 보정)
-    this.sqlite
-      .prepare(`UPDATE users SET password_hash = ?`)
-      .run(this.hashSeedPassword('password123'));
   }
 
   private hashSeedPassword(password: string) {
