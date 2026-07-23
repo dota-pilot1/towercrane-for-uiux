@@ -65,6 +65,66 @@ export const studyDiariesTable = sqliteTable('study_diaries', {
   updatedAt: text('updated_at').notNull(),
 });
 
+// ── Arch Note (아키텍처 노트 — 워크스페이스=분류(백엔드/프론트/DevOps)) ──
+// study-diary와 별개의 독립 도메인. 워크스페이스→1차 주제→2차 주제→노트 4단 구조.
+export const archNoteWorkspacesTable = sqliteTable('arch_note_workspaces', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  icon: text('icon').notNull().default('Layers'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const archNoteCategoriesTable = sqliteTable('arch_note_categories', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id')
+    .notNull()
+    .references(() => archNoteWorkspacesTable.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const archNoteSectionsTable = sqliteTable('arch_note_sections', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id')
+    .notNull()
+    .references(() => archNoteCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const archNoteNotesTable = sqliteTable('arch_note_notes', {
+  id: text('id').primaryKey(),
+  sectionId: text('section_id')
+    .notNull()
+    .references(() => archNoteSectionsTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull().default(''),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type ArchNoteWorkspaceRow = typeof archNoteWorkspacesTable.$inferSelect;
+export type ArchNoteCategoryRow = typeof archNoteCategoriesTable.$inferSelect;
+export type ArchNoteSectionRow = typeof archNoteSectionsTable.$inferSelect;
+export type ArchNoteNoteRow = typeof archNoteNotesTable.$inferSelect;
+
 // ── AX Study (towercrane-axtrainer-tauri 전용 모듈) ──────────────────
 // study-diary와 별개의 워크스페이스→노트 2단 구조. AX 학습 자료 정리/공유용.
 export const axStudyWorkspacesTable = sqliteTable('ax_study_workspaces', {
@@ -2130,6 +2190,10 @@ export const schema = {
   usersTable,
   sessionsTable,
   studyDiariesTable,
+  archNoteWorkspacesTable,
+  archNoteCategoriesTable,
+  archNoteSectionsTable,
+  archNoteNotesTable,
   emailVerificationsTable,
   prototypeWorkspacesTable,
   prototypeWorkspaceMembersTable,

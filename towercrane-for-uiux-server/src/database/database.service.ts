@@ -166,6 +166,65 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_study_diaries_user
         ON study_diaries(user_id, created_at);
 
+      CREATE TABLE IF NOT EXISTS arch_note_workspaces (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        icon TEXT NOT NULL DEFAULT 'Layers',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_arch_note_workspaces_user
+        ON arch_note_workspaces(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS arch_note_categories (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES arch_note_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_arch_note_categories_workspace
+        ON arch_note_categories(workspace_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS arch_note_sections (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES arch_note_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_arch_note_sections_category
+        ON arch_note_sections(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS arch_note_notes (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES arch_note_sections(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_arch_note_notes_section
+        ON arch_note_notes(section_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS ax_study_workspaces (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
