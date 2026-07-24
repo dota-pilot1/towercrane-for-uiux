@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 import { createHash, randomUUID } from 'node:crypto';
 import {
@@ -20,16 +20,19 @@ import {
 } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { DatabaseService } from '../database/database.service';
+import { sqlToMermaidErd } from './sql-erd';
 import {
   sqlPracticeNotesTable,
   sqlPracticeSubmissionLogsTable,
   sqlPracticeSubmissionsTable,
+  sqlPersonalPracticeProblemSetsTable,
   sqlPersonalPracticeProblemsTable,
   sqlPersonalPracticeSchemaVersionsTable,
   sqlPersonalPracticeSharesTable,
   sqlPersonalPracticeSubmissionsTable,
   sqlPersonalPracticeWorkspacesTable,
   sqlTeamPracticeMembersTable,
+  sqlTeamPracticeProblemSetsTable,
   sqlTeamPracticeProblemsTable,
   sqlTeamPracticeSchemaVersionsTable,
   sqlTeamPracticeSubmissionsTable,
@@ -48,9 +51,12 @@ import {
   sqlPracticeSubmissionActivityQuerySchema,
   sqlPracticeSubmissionSeedQuerySchema,
   type AddSqlTeamPracticeMemberInput,
+  type CreateSqlPracticeProblemSetInput,
+  type CreateSqlPersonalPracticeWorkspaceInput,
   type CreateSqlTeamPracticeWorkspaceInput,
   type CreateSqlPracticeNoteInput,
   type CreateSqlUserPracticeProblemInput,
+  type GenerateSqlPracticeProblemSetProblemsInput,
   type GenerateSqlUserPracticeAnswerInput,
   type GradeSqlUserPracticeProblemInput,
   type GradeSqlPracticeSubmissionInput,
@@ -60,6 +66,9 @@ import {
   type SqlTeamPracticeProblemListQuery,
   type SqlUserPracticeProblemListQuery,
   type UpdateSqlTeamPracticeMemberInput,
+  type UpdateSqlPracticeProblemSetInput,
+  type UpdateSqlPersonalPracticeWorkspaceInput,
+  type UpdateSqlStudyErdInput,
   type UpdateSqlTeamPracticeWorkspaceInput,
   type UpdateSqlPracticeNoteInput,
   type UpdateSqlUserPracticeProblemInput,
@@ -70,6 +79,7 @@ import type {
   SqlActivateSeedResponse,
   SqlExecuteResponse,
   SqlPracticeActivityResponse,
+  SqlPracticeGeneratedProblemSetResponse,
   SqlPracticeGradeSubmissionResponse,
   SqlPracticeMySubmissionsResponse,
   SqlPracticeMeta,
@@ -81,6 +91,8 @@ import type {
   SqlPracticeSubmission,
   SqlPracticeSubmissionLevel,
   SqlPracticeSubmissionStatus,
+  SqlPracticeProblemSet,
+  SqlPracticeProblemSetListResponse,
   SqlTeamPracticeMember,
   SqlTeamPracticeMemberRole,
   SqlTeamPracticeProblem,
@@ -104,6 +116,9 @@ import type {
   SqlUserPracticeSchema,
   SqlQueryType,
   SqlResetResponse,
+  SqlStudyLevel,
+  SqlStudyMeta,
+  SqlStudyVisibility,
   TableInfo,
 } from './sql-practice.types';
 
@@ -231,6 +246,84 @@ export class SqlPracticeService {
     };
   }
 
+  getSeedContent(source: unknown, fileName: string) {
+    const seedSource: SqlPracticeSeedSource =
+      source === 'uploaded' ? 'uploaded' : 'builtin';
+    const seed = this.resolveSeedFile(seedSource, fileName);
+    const content = readFileSync(seed.filePath, 'utf8');
+    return { source: seed.source, fileName: seed.fileName, content };
+  }
+
+  uploadSeed(
+    file: { originalname?: string; buffer?: Buffer } | undefined,
+    userId: string,
+  ) {
+    if (!file?.buffer) {
+      throw new BadRequestException('업로드할 .sql 파일이 필요합니다.');
+    }
+
+    const parsedName = seedFileNameSchema.safeParse(
+      (file.originalname ?? '').trim(),
+    );
+    if (!parsedName.success) {
+      throw new BadRequestException(
+        '파일명은 영문/숫자/._- 만 허용하며 .sql 확장자여야 합니다.',
+      );
+    }
+    const fileName = parsedName.data;
+
+    const sql = file.buffer.toString('utf8');
+    // :memory: DB에 실제 실행해 SQL 유효성 검증 (실패 시 BadRequest)
+    this.validateSeedSql(sql, fileName);
+
+    const seedDir = this.getUploadedSeedDir();
+    if (!existsSync(seedDir)) {
+      mkdirSync(seedDir, { recursive: true });
+    }
+    const targetPath = join(seedDir, fileName);
+    const isOverwrite = existsSync(targetPath);
+    writeFileSync(targetPath, sql, 'utf8');
+
+    const activeSeed = this.resolveActiveSeedFile(userId);
+    const seedSummary = this.buildSeedSummary(
+      { source: 'uploaded', fileName, filePath: targetPath },
+      activeSeed,
+    );
+
+    return {
+      success: true,
+      overwritten: isOverwrite,
+      message: isOverwrite
+        ? `${fileName} 파일을 새 내용으로 교체했습니다.`
+        : `${fileName} 파일을 업로드했습니다.`,
+      seed: seedSummary,
+    };
+  }
+
+  deleteSeed(source: unknown, fileName: string, userId: string) {
+    if (source !== 'uploaded') {
+      throw new BadRequestException(
+        '기본 제공 연습 파일은 삭제할 수 없습니다.',
+      );
+    }
+
+    const seed = this.resolveSeedFile('uploaded', fileName);
+    const activeSeed = this.resolveActiveSeedFile(userId);
+    if (resolve(seed.filePath) === resolve(activeSeed.filePath)) {
+      throw new BadRequestException(
+        '현재 사용 중인 파일은 삭제할 수 없습니다. 먼저 다른 세트로 교체하세요.',
+      );
+    }
+
+    rmSync(seed.filePath, { force: true });
+
+    return {
+      success: true,
+      message: `${seed.fileName} 파일을 삭제했습니다.`,
+      fileName: seed.fileName,
+    };
+  }
+
   getTables(userId: string): TableInfo[] {
     this.ensureDatabaseFresh(userId);
     const db = this.openDatabase(userId);
@@ -329,8 +422,16 @@ export class SqlPracticeService {
     const baseName = parsed.data.replace(/\.sql$/, '');
     const mmdFile = join(this.getBuiltinSeedDir(), `${baseName}.mmd`);
 
-    if (!existsSync(mmdFile)) return { mmd: null };
-    return { mmd: readFileSync(mmdFile, 'utf8') };
+    if (existsSync(mmdFile)) return { mmd: readFileSync(mmdFile, 'utf8') };
+
+    // prebuilt .mmd가 없으면 시드 SQL에서 ERD 자동 생성 (builtin → uploaded 순 탐색)
+    for (const dir of [this.getBuiltinSeedDir(), this.getUploadedSeedDir()]) {
+      const sqlPath = join(dir, parsed.data);
+      if (existsSync(sqlPath) && statSync(sqlPath).isFile()) {
+        return { mmd: this.buildErdMmd(readFileSync(sqlPath, 'utf8')) };
+      }
+    }
+    return { mmd: null };
   }
 
   getUserPracticeMeta(userId: string): SqlPracticeMeta {
@@ -477,6 +578,108 @@ export class SqlPracticeService {
     return this.ensureDefaultPersonalWorkspace(userId);
   }
 
+  createPersonalPracticeWorkspace(
+    input: CreateSqlPersonalPracticeWorkspaceInput,
+    userId: string,
+  ): SqlPersonalPracticeWorkspace {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    this.databaseService.db
+      .insert(sqlPersonalPracticeWorkspacesTable)
+      .values({
+        id,
+        ownerId: userId,
+        title: input.title,
+        description: input.description ?? '',
+        activeSchemaVersionId: null,
+        learningGoal: input.learningGoal ?? null,
+        level: input.level ?? null,
+        topics: JSON.stringify(input.topics ?? []),
+        visibility: input.visibility ?? 'private',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+    this.createInitialPersonalSchemaVersion(id, userId);
+    return this.assertPersonalWorkspaceOwner(id, userId);
+  }
+
+  getPersonalPracticeWorkspace(
+    workspaceId: string,
+    userId: string,
+  ): SqlPersonalPracticeWorkspace {
+    return this.assertPersonalWorkspaceOwner(workspaceId, userId);
+  }
+
+  updatePersonalPracticeWorkspace(
+    workspaceId: string,
+    input: UpdateSqlPersonalPracticeWorkspaceInput,
+    userId: string,
+  ): SqlPersonalPracticeWorkspace {
+    this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const updates: Partial<
+      typeof sqlPersonalPracticeWorkspacesTable.$inferInsert
+    > = { updatedAt: new Date().toISOString() };
+    if (input.title !== undefined) updates.title = input.title;
+    if (input.description !== undefined)
+      updates.description = input.description;
+    if (input.learningGoal !== undefined)
+      updates.learningGoal = input.learningGoal;
+    if (input.level !== undefined) updates.level = input.level;
+    if (input.topics !== undefined)
+      updates.topics = JSON.stringify(input.topics);
+    if (input.visibility !== undefined) updates.visibility = input.visibility;
+
+    this.databaseService.db
+      .update(sqlPersonalPracticeWorkspacesTable)
+      .set(updates)
+      .where(eq(sqlPersonalPracticeWorkspacesTable.id, workspaceId))
+      .run();
+    return this.assertPersonalWorkspaceOwner(workspaceId, userId);
+  }
+
+  deletePersonalPracticeWorkspace(workspaceId: string, userId: string) {
+    this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersions = this.databaseService.db
+      .select({ id: sqlPersonalPracticeSchemaVersionsTable.id })
+      .from(sqlPersonalPracticeSchemaVersionsTable)
+      .where(
+        eq(sqlPersonalPracticeSchemaVersionsTable.workspaceId, workspaceId),
+      )
+      .all();
+
+    this.databaseService.db.transaction((tx) => {
+      tx.delete(sqlPersonalPracticeSubmissionsTable)
+        .where(eq(sqlPersonalPracticeSubmissionsTable.workspaceId, workspaceId))
+        .run();
+      tx.delete(sqlPersonalPracticeSharesTable)
+        .where(eq(sqlPersonalPracticeSharesTable.workspaceId, workspaceId))
+        .run();
+      tx.delete(sqlPersonalPracticeProblemsTable)
+        .where(eq(sqlPersonalPracticeProblemsTable.workspaceId, workspaceId))
+        .run();
+      tx.delete(sqlPersonalPracticeSchemaVersionsTable)
+        .where(
+          eq(sqlPersonalPracticeSchemaVersionsTable.workspaceId, workspaceId),
+        )
+        .run();
+      tx.delete(sqlPersonalPracticeWorkspacesTable)
+        .where(eq(sqlPersonalPracticeWorkspacesTable.id, workspaceId))
+        .run();
+    });
+
+    for (const schemaVersion of schemaVersions) {
+      this.removePersonalPracticeSeedFile(schemaVersion.id);
+      this.removeRuntimeDatabase(
+        this.getPersonalPracticeRuntimeUserId(
+          workspaceId,
+          schemaVersion.id,
+          userId,
+        ),
+      );
+    }
+  }
+
   getPersonalPracticeWorkspaceMeta(
     workspaceId: string,
     userId: string,
@@ -621,6 +824,7 @@ export class SqlPracticeService {
     const now = new Date().toISOString();
     const schemaVersionId = randomUUID();
     const dbFileHash = this.hashSql(schemaSql);
+    const erdMmd = this.buildErdMmd(schemaSql);
     const tempRuntimeUserId = `${PERSONAL_PRACTICE_RUNTIME_SCOPE}:validate:${schemaVersionId}`;
 
     const previewSchemaVersion: SqlPersonalPracticeSchemaVersion & {
@@ -631,7 +835,7 @@ export class SqlPracticeService {
       version: nextVersion,
       title: input.title?.trim() || file!.originalname.replace(/\.sql$/i, ''),
       description: input.description?.trim() || '',
-      erdMmd: null,
+      erdMmd,
       dbFileHash,
       sourceType: 'uploaded_sql',
       sourceFileName: file!.originalname,
@@ -670,7 +874,7 @@ export class SqlPracticeService {
             title: previewSchemaVersion.title,
             description: previewSchemaVersion.description,
             schemaSql,
-            erdMmd: null,
+            erdMmd,
             dbFileHash,
             sourceType: 'uploaded_sql',
             sourceFileName: file!.originalname,
@@ -719,6 +923,160 @@ export class SqlPracticeService {
     return { mmd: schemaVersion.erdMmd ?? null };
   }
 
+  updatePersonalPracticeErd(
+    workspaceId: string,
+    input: UpdateSqlStudyErdInput,
+    userId: string,
+  ): { mmd: string } {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    this.databaseService.db
+      .update(sqlPersonalPracticeSchemaVersionsTable)
+      .set({ erdMmd: input.erdMmd })
+      .where(eq(sqlPersonalPracticeSchemaVersionsTable.id, schemaVersion.id))
+      .run();
+    return { mmd: input.erdMmd };
+  }
+
+  regeneratePersonalPracticeErd(
+    workspaceId: string,
+    userId: string,
+  ): { mmd: string | null } {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const schemaSql = this.getPersonalSchemaSql(schemaVersion.id);
+    const mmd = this.buildErdMmd(schemaSql);
+    this.databaseService.db
+      .update(sqlPersonalPracticeSchemaVersionsTable)
+      .set({ erdMmd: mmd })
+      .where(eq(sqlPersonalPracticeSchemaVersionsTable.id, schemaVersion.id))
+      .run();
+    return { mmd };
+  }
+
+  listPersonalPracticeProblemSets(
+    workspaceId: string,
+    userId: string,
+  ): SqlPracticeProblemSetListResponse {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    this.ensureDefaultPersonalProblemSet(workspace.id, userId);
+    return {
+      workspaceId: workspace.id,
+      problemSets: this.listPersonalProblemSetsForWorkspace(workspace.id),
+    };
+  }
+
+  createPersonalPracticeProblemSet(
+    workspaceId: string,
+    input: CreateSqlPracticeProblemSetInput,
+    userId: string,
+  ): SqlPracticeProblemSet {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    this.databaseService.db
+      .insert(sqlPersonalPracticeProblemSetsTable)
+      .values({
+        id,
+        workspaceId: workspace.id,
+        schemaVersionId: schemaVersion.id,
+        title: input.title,
+        description: input.description ?? '',
+        level: input.level ?? null,
+        status: input.status,
+        orderIdx: this.getNextPersonalProblemSetOrder(workspace.id),
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+    return this.getPersonalProblemSet(workspace.id, id);
+  }
+
+  updatePersonalPracticeProblemSet(
+    workspaceId: string,
+    id: string,
+    input: UpdateSqlPracticeProblemSetInput,
+    userId: string,
+  ): SqlPracticeProblemSet {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    this.getPersonalProblemSet(workspace.id, id);
+    const updates: Partial<
+      typeof sqlPersonalPracticeProblemSetsTable.$inferInsert
+    > = { updatedAt: new Date().toISOString() };
+    if (input.title !== undefined) updates.title = input.title;
+    if (input.description !== undefined)
+      updates.description = input.description;
+    if (input.level !== undefined) updates.level = input.level;
+    if (input.status !== undefined) updates.status = input.status;
+    this.databaseService.db
+      .update(sqlPersonalPracticeProblemSetsTable)
+      .set(updates)
+      .where(eq(sqlPersonalPracticeProblemSetsTable.id, id))
+      .run();
+    return this.getPersonalProblemSet(workspace.id, id);
+  }
+
+  async generatePersonalPracticeProblemSetProblems(
+    workspaceId: string,
+    input: GenerateSqlPracticeProblemSetProblemsInput,
+    userId: string,
+  ): Promise<SqlPracticeGeneratedProblemSetResponse> {
+    const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
+    const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const problemSet = input.problemSetId
+      ? this.getPersonalProblemSet(workspace.id, input.problemSetId)
+      : this.ensureDefaultPersonalProblemSet(workspace.id, userId);
+    const runtimeUserId = this.getPersonalPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+    const tables = this.getPersonalPracticeTablesForSchema(
+      workspace.id,
+      schemaVersion,
+      runtimeUserId,
+    );
+    const raw = await this.callGroq(
+      this.buildProblemSetGenerationPrompt({
+        workspaceTitle: workspace.title,
+        workspaceGoal: workspace.learningGoal,
+        problemSet,
+        tables,
+        count: input.count,
+        additionalInstructions: input.additionalInstructions,
+      }),
+      'general',
+    );
+    const drafts = this.parseGeneratedProblemDrafts(raw);
+    const problems: SqlPersonalPracticeProblem[] = [];
+    const skipped: Array<{ title: string; reason: string }> = [];
+
+    for (const draft of drafts.slice(0, input.count)) {
+      try {
+        const created = this.createPersonalPracticeProblem(
+          workspace.id,
+          {
+            ...draft,
+            problemSetId: problemSet.id,
+            visibility: 'private',
+            status: 'draft',
+          },
+          userId,
+        );
+        if (created) problems.push(created);
+      } catch (error) {
+        skipped.push({
+          title: draft.title,
+          reason: error instanceof Error ? error.message : '생성 실패',
+        });
+      }
+    }
+
+    return { problemSet, problems, skipped };
+  }
+
   listPersonalPracticeProblems(
     workspaceId: string,
     query: SqlPersonalPracticeProblemListQuery,
@@ -726,6 +1084,7 @@ export class SqlPracticeService {
   ): SqlPersonalPracticeProblemListResponse {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    this.ensureDefaultPersonalProblemSet(workspace.id, userId);
     const conditions = [
       eq(sqlPersonalPracticeProblemsTable.workspaceId, workspace.id),
     ];
@@ -733,15 +1092,22 @@ export class SqlPracticeService {
     if (query.level) {
       conditions.push(eq(sqlPersonalPracticeProblemsTable.level, query.level));
     }
+    if (query.problemSetId) {
+      conditions.push(
+        eq(sqlPersonalPracticeProblemsTable.problemSetId, query.problemSetId),
+      );
+    }
 
     const rows = this.databaseService.db
       .select({
         id: sqlPersonalPracticeProblemsTable.id,
         workspaceId: sqlPersonalPracticeProblemsTable.workspaceId,
         schemaVersionId: sqlPersonalPracticeProblemsTable.schemaVersionId,
+        problemSetId: sqlPersonalPracticeProblemsTable.problemSetId,
         title: sqlPersonalPracticeProblemsTable.title,
         description: sqlPersonalPracticeProblemsTable.description,
         level: sqlPersonalPracticeProblemsTable.level,
+        orderIdx: sqlPersonalPracticeProblemsTable.orderIdx,
         targetTables: sqlPersonalPracticeProblemsTable.targetTables,
         starterSql: sqlPersonalPracticeProblemsTable.starterSql,
         answerSql: sqlPersonalPracticeProblemsTable.answerSql,
@@ -771,7 +1137,8 @@ export class SqlPracticeService {
       )
       .where(and(...conditions))
       .orderBy(
-        sqlPersonalPracticeProblemsTable.level,
+        asc(sqlPersonalPracticeProblemsTable.orderIdx),
+        asc(sqlPersonalPracticeProblemsTable.level),
         desc(sqlPersonalPracticeProblemsTable.updatedAt),
       )
       .all();
@@ -785,6 +1152,7 @@ export class SqlPracticeService {
     return {
       workspace,
       schemaVersion,
+      problemSets: this.listPersonalProblemSetsForWorkspace(workspace.id),
       problems: rows.map((row) =>
         this.toPersonalProblem(row, submissionStatusByProblem[row.id] ?? null),
       ),
@@ -812,6 +1180,9 @@ export class SqlPracticeService {
   ): SqlPersonalPracticeProblem | null {
     const workspace = this.assertPersonalWorkspaceOwner(workspaceId, userId);
     const schemaVersion = this.getActivePersonalSchemaVersion(workspace.id);
+    const problemSet = input.problemSetId
+      ? this.getPersonalProblemSet(workspace.id, input.problemSetId)
+      : this.ensureDefaultPersonalProblemSet(workspace.id, userId);
     const runtimeUserId = this.getPersonalPracticeRuntimeUserId(
       workspace.id,
       schemaVersion.id,
@@ -838,9 +1209,12 @@ export class SqlPracticeService {
         id,
         workspaceId: workspace.id,
         schemaVersionId: schemaVersion.id,
+        problemSetId: problemSet.id,
         title: input.title,
         description: input.description,
         level: input.level,
+        orderIdx:
+          input.orderIdx ?? this.getNextPersonalProblemOrder(problemSet.id),
         targetTables: input.targetTables,
         starterSql: input.starterSql,
         answerSql: input.answerSql,
@@ -892,13 +1266,18 @@ export class SqlPracticeService {
         runtimeUserId,
       );
     }
+    if (input.problemSetId !== undefined) {
+      this.getPersonalProblemSet(workspace.id, input.problemSetId);
+    }
 
     this.databaseService.db
       .update(sqlPersonalPracticeProblemsTable)
       .set({
+        problemSetId: input.problemSetId ?? problem.problemSetId,
         title: input.title,
         description: input.description,
         level: input.level,
+        orderIdx: input.orderIdx,
         targetTables: input.targetTables,
         starterSql: input.starterSql,
         answerSql: input.answerSql,
@@ -1197,6 +1576,10 @@ export class SqlPracticeService {
             description: sqlTeamPracticeWorkspacesTable.description,
             activeSchemaVersionId:
               sqlTeamPracticeWorkspacesTable.activeSchemaVersionId,
+            learningGoal: sqlTeamPracticeWorkspacesTable.learningGoal,
+            level: sqlTeamPracticeWorkspacesTable.level,
+            topics: sqlTeamPracticeWorkspacesTable.topics,
+            visibility: sqlTeamPracticeWorkspacesTable.visibility,
             createdBy: sqlTeamPracticeWorkspacesTable.createdBy,
             archived: sqlTeamPracticeWorkspacesTable.archived,
             createdAt: sqlTeamPracticeWorkspacesTable.createdAt,
@@ -1273,14 +1656,22 @@ export class SqlPracticeService {
     input: UpdateSqlTeamPracticeWorkspaceInput,
     userId: string,
   ): SqlTeamPracticeWorkspace {
-    this.assertTeamPracticeOwner(workspaceId, userId);
+    this.assertTeamPracticeEditor(workspaceId, userId);
+    const updates: Partial<typeof sqlTeamPracticeWorkspacesTable.$inferInsert> =
+      { updatedAt: new Date().toISOString() };
+    if (input.title !== undefined) updates.title = input.title;
+    if (input.description !== undefined)
+      updates.description = input.description;
+    if (input.learningGoal !== undefined)
+      updates.learningGoal = input.learningGoal;
+    if (input.level !== undefined) updates.level = input.level;
+    if (input.topics !== undefined)
+      updates.topics = JSON.stringify(input.topics);
+    if (input.visibility !== undefined) updates.visibility = input.visibility;
+
     this.databaseService.db
       .update(sqlTeamPracticeWorkspacesTable)
-      .set({
-        title: input.title,
-        description: input.description,
-        updatedAt: new Date().toISOString(),
-      })
+      .set(updates)
       .where(eq(sqlTeamPracticeWorkspacesTable.id, workspaceId))
       .run();
     return this.assertTeamPracticeAccess(workspaceId, userId);
@@ -1537,6 +1928,160 @@ export class SqlPracticeService {
     return { mmd: schemaVersion.erdMmd ?? null };
   }
 
+  updateTeamPracticeErd(
+    workspaceId: string,
+    input: UpdateSqlStudyErdInput,
+    userId: string,
+  ): { mmd: string } {
+    const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    this.databaseService.db
+      .update(sqlTeamPracticeSchemaVersionsTable)
+      .set({ erdMmd: input.erdMmd })
+      .where(eq(sqlTeamPracticeSchemaVersionsTable.id, schemaVersion.id))
+      .run();
+    return { mmd: input.erdMmd };
+  }
+
+  regenerateTeamPracticeErd(
+    workspaceId: string,
+    userId: string,
+  ): { mmd: string | null } {
+    const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const schemaSql = this.getTeamSchemaSql(schemaVersion.id);
+    const mmd = this.buildErdMmd(schemaSql);
+    this.databaseService.db
+      .update(sqlTeamPracticeSchemaVersionsTable)
+      .set({ erdMmd: mmd })
+      .where(eq(sqlTeamPracticeSchemaVersionsTable.id, schemaVersion.id))
+      .run();
+    return { mmd };
+  }
+
+  listTeamPracticeProblemSets(
+    workspaceId: string,
+    userId: string,
+  ): SqlPracticeProblemSetListResponse {
+    const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
+    this.ensureDefaultTeamProblemSet(workspace.id, userId);
+    return {
+      workspaceId: workspace.id,
+      problemSets: this.listTeamProblemSetsForWorkspace(workspace.id),
+    };
+  }
+
+  createTeamPracticeProblemSet(
+    workspaceId: string,
+    input: CreateSqlPracticeProblemSetInput,
+    userId: string,
+  ): SqlPracticeProblemSet {
+    const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    this.databaseService.db
+      .insert(sqlTeamPracticeProblemSetsTable)
+      .values({
+        id,
+        workspaceId: workspace.id,
+        schemaVersionId: schemaVersion.id,
+        title: input.title,
+        description: input.description ?? '',
+        level: input.level ?? null,
+        status: input.status,
+        orderIdx: this.getNextTeamProblemSetOrder(workspace.id),
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+    return this.getTeamProblemSet(workspace.id, id);
+  }
+
+  updateTeamPracticeProblemSet(
+    workspaceId: string,
+    id: string,
+    input: UpdateSqlPracticeProblemSetInput,
+    userId: string,
+  ): SqlPracticeProblemSet {
+    const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
+    this.getTeamProblemSet(workspace.id, id);
+    const updates: Partial<
+      typeof sqlTeamPracticeProblemSetsTable.$inferInsert
+    > = { updatedAt: new Date().toISOString() };
+    if (input.title !== undefined) updates.title = input.title;
+    if (input.description !== undefined)
+      updates.description = input.description;
+    if (input.level !== undefined) updates.level = input.level;
+    if (input.status !== undefined) updates.status = input.status;
+    this.databaseService.db
+      .update(sqlTeamPracticeProblemSetsTable)
+      .set(updates)
+      .where(eq(sqlTeamPracticeProblemSetsTable.id, id))
+      .run();
+    return this.getTeamProblemSet(workspace.id, id);
+  }
+
+  async generateTeamPracticeProblemSetProblems(
+    workspaceId: string,
+    input: GenerateSqlPracticeProblemSetProblemsInput,
+    userId: string,
+  ): Promise<SqlPracticeGeneratedProblemSetResponse> {
+    const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
+    const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const problemSet = input.problemSetId
+      ? this.getTeamProblemSet(workspace.id, input.problemSetId)
+      : this.ensureDefaultTeamProblemSet(workspace.id, userId);
+    const runtimeUserId = this.getTeamPracticeRuntimeUserId(
+      workspace.id,
+      schemaVersion.id,
+      userId,
+    );
+    const tables = this.getTeamPracticeTablesForSchema(
+      workspace.id,
+      schemaVersion,
+      runtimeUserId,
+    );
+    const raw = await this.callGroq(
+      this.buildProblemSetGenerationPrompt({
+        workspaceTitle: workspace.title,
+        workspaceGoal: workspace.learningGoal,
+        problemSet,
+        tables,
+        count: input.count,
+        additionalInstructions: input.additionalInstructions,
+      }),
+      'general',
+    );
+    const drafts = this.parseGeneratedProblemDrafts(raw);
+    const problems: SqlTeamPracticeProblem[] = [];
+    const skipped: Array<{ title: string; reason: string }> = [];
+
+    for (const draft of drafts.slice(0, input.count)) {
+      try {
+        const created = this.createTeamPracticeProblem(
+          workspace.id,
+          {
+            ...draft,
+            problemSetId: problemSet.id,
+            visibility: 'private',
+            status: 'draft',
+          },
+          userId,
+        );
+        if (created) problems.push(created);
+      } catch (error) {
+        skipped.push({
+          title: draft.title,
+          reason: error instanceof Error ? error.message : '생성 실패',
+        });
+      }
+    }
+
+    return { problemSet, problems, skipped };
+  }
+
   replaceTeamPracticeSchemaVersion(
     workspaceId: string,
     file: UploadedSqlFile | undefined,
@@ -1552,6 +2097,7 @@ export class SqlPracticeService {
     const now = new Date().toISOString();
     const schemaVersionId = randomUUID();
     const dbFileHash = this.hashSql(schemaSql);
+    const erdMmd = this.buildErdMmd(schemaSql);
     const tempRuntimeUserId = `${TEAM_PRACTICE_RUNTIME_SCOPE}:validate:${schemaVersionId}`;
     const previewSchemaVersion: SqlTeamPracticeSchemaVersion & {
       schemaSql: string;
@@ -1561,7 +2107,7 @@ export class SqlPracticeService {
       version: nextVersion,
       title: input.title?.trim() || file!.originalname.replace(/\.sql$/i, ''),
       description: input.description?.trim() || '',
-      erdMmd: null,
+      erdMmd,
       dbFileHash,
       sourceType: 'uploaded_sql',
       sourceFileName: file!.originalname,
@@ -1597,7 +2143,7 @@ export class SqlPracticeService {
             title: previewSchemaVersion.title,
             description: previewSchemaVersion.description,
             schemaSql,
-            erdMmd: null,
+            erdMmd,
             dbFileHash,
             sourceType: 'uploaded_sql',
             sourceFileName: file!.originalname,
@@ -1644,6 +2190,7 @@ export class SqlPracticeService {
   ): SqlTeamPracticeProblemListResponse {
     const workspace = this.assertTeamPracticeAccess(workspaceId, userId);
     const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    this.ensureDefaultTeamProblemSet(workspace.id, userId);
     const conditions = [
       eq(sqlTeamPracticeProblemsTable.workspaceId, workspace.id),
     ];
@@ -1654,15 +2201,22 @@ export class SqlPracticeService {
     if (query.mine) {
       conditions.push(eq(sqlTeamPracticeProblemsTable.createdBy, userId));
     }
+    if (query.problemSetId) {
+      conditions.push(
+        eq(sqlTeamPracticeProblemsTable.problemSetId, query.problemSetId),
+      );
+    }
 
     const rows = this.databaseService.db
       .select({
         id: sqlTeamPracticeProblemsTable.id,
         workspaceId: sqlTeamPracticeProblemsTable.workspaceId,
         schemaVersionId: sqlTeamPracticeProblemsTable.schemaVersionId,
+        problemSetId: sqlTeamPracticeProblemsTable.problemSetId,
         title: sqlTeamPracticeProblemsTable.title,
         description: sqlTeamPracticeProblemsTable.description,
         level: sqlTeamPracticeProblemsTable.level,
+        orderIdx: sqlTeamPracticeProblemsTable.orderIdx,
         targetTables: sqlTeamPracticeProblemsTable.targetTables,
         starterSql: sqlTeamPracticeProblemsTable.starterSql,
         answerSql: sqlTeamPracticeProblemsTable.answerSql,
@@ -1680,7 +2234,8 @@ export class SqlPracticeService {
       )
       .where(and(...conditions))
       .orderBy(
-        sqlTeamPracticeProblemsTable.level,
+        asc(sqlTeamPracticeProblemsTable.orderIdx),
+        asc(sqlTeamPracticeProblemsTable.level),
         desc(sqlTeamPracticeProblemsTable.updatedAt),
       )
       .all();
@@ -1693,6 +2248,7 @@ export class SqlPracticeService {
     return {
       workspace,
       schemaVersion,
+      problemSets: this.listTeamProblemSetsForWorkspace(workspace.id),
       problems: rows.map((row) =>
         this.toTeamProblem(row, submissionStatusByProblem[row.id] ?? null),
       ),
@@ -1706,6 +2262,9 @@ export class SqlPracticeService {
   ): SqlTeamPracticeProblem | null {
     const workspace = this.assertTeamPracticeEditor(workspaceId, userId);
     const schemaVersion = this.getActiveTeamSchemaVersion(workspace.id);
+    const problemSet = input.problemSetId
+      ? this.getTeamProblemSet(workspace.id, input.problemSetId)
+      : this.ensureDefaultTeamProblemSet(workspace.id, userId);
     const runtimeUserId = this.getTeamPracticeRuntimeUserId(
       workspace.id,
       schemaVersion.id,
@@ -1732,9 +2291,11 @@ export class SqlPracticeService {
         id,
         workspaceId: workspace.id,
         schemaVersionId: schemaVersion.id,
+        problemSetId: problemSet.id,
         title: input.title,
         description: input.description,
         level: input.level,
+        orderIdx: input.orderIdx ?? this.getNextTeamProblemOrder(problemSet.id),
         targetTables: input.targetTables,
         starterSql: input.starterSql,
         answerSql: input.answerSql,
@@ -1796,13 +2357,18 @@ export class SqlPracticeService {
         runtimeUserId,
       );
     }
+    if (input.problemSetId !== undefined) {
+      this.getTeamProblemSet(workspace.id, input.problemSetId);
+    }
 
     this.databaseService.db
       .update(sqlTeamPracticeProblemsTable)
       .set({
+        problemSetId: input.problemSetId ?? problem.problemSetId,
         title: input.title,
         description: input.description,
         level: input.level,
+        orderIdx: input.orderIdx,
         targetTables: input.targetTables,
         starterSql: input.starterSql,
         answerSql: input.answerSql,
@@ -3492,6 +4058,18 @@ export class SqlPracticeService {
     return this.toPersonalSchemaVersion(row);
   }
 
+  private getPersonalSchemaSql(id: string): string {
+    const row = this.databaseService.db
+      .select({ schemaSql: sqlPersonalPracticeSchemaVersionsTable.schemaSql })
+      .from(sqlPersonalPracticeSchemaVersionsTable)
+      .where(eq(sqlPersonalPracticeSchemaVersionsTable.id, id))
+      .get();
+    if (!row) {
+      throw new NotFoundException('SQL personal schema version not found.');
+    }
+    return row.schemaSql;
+  }
+
   private buildPersonalPracticeSeed(
     schemaVersion: SqlPersonalPracticeSchemaVersion & { schemaSql?: string },
   ): ResolvedSeed {
@@ -3710,6 +4288,18 @@ export class SqlPracticeService {
       .get();
     if (!row) throw new NotFoundException('SQL team schema version not found.');
     return this.toTeamSchemaVersion(row);
+  }
+
+  private getTeamSchemaSql(id: string): string {
+    const row = this.databaseService.db
+      .select({ schemaSql: sqlTeamPracticeSchemaVersionsTable.schemaSql })
+      .from(sqlTeamPracticeSchemaVersionsTable)
+      .where(eq(sqlTeamPracticeSchemaVersionsTable.id, id))
+      .get();
+    if (!row) {
+      throw new NotFoundException('SQL team schema version not found.');
+    }
+    return row.schemaSql;
   }
 
   private buildTeamPracticeSeed(
@@ -4060,9 +4650,11 @@ ${tableSummaries}
         id: sqlTeamPracticeProblemsTable.id,
         workspaceId: sqlTeamPracticeProblemsTable.workspaceId,
         schemaVersionId: sqlTeamPracticeProblemsTable.schemaVersionId,
+        problemSetId: sqlTeamPracticeProblemsTable.problemSetId,
         title: sqlTeamPracticeProblemsTable.title,
         description: sqlTeamPracticeProblemsTable.description,
         level: sqlTeamPracticeProblemsTable.level,
+        orderIdx: sqlTeamPracticeProblemsTable.orderIdx,
         targetTables: sqlTeamPracticeProblemsTable.targetTables,
         starterSql: sqlTeamPracticeProblemsTable.starterSql,
         answerSql: sqlTeamPracticeProblemsTable.answerSql,
@@ -4230,6 +4822,7 @@ ${tableSummaries}
       .all().length;
 
     return {
+      ...this.mapStudyMeta(row),
       id: row.id,
       title: row.title,
       description: row.description,
@@ -4262,14 +4855,125 @@ ${tableSummaries}
     };
   }
 
+  private listTeamProblemSetsForWorkspace(
+    workspaceId: string,
+  ): SqlPracticeProblemSet[] {
+    const rows = this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeProblemSetsTable)
+      .where(eq(sqlTeamPracticeProblemSetsTable.workspaceId, workspaceId))
+      .orderBy(
+        sqlTeamPracticeProblemSetsTable.orderIdx,
+        desc(sqlTeamPracticeProblemSetsTable.updatedAt),
+      )
+      .all();
+    const problems = this.databaseService.db
+      .select({
+        problemSetId: sqlTeamPracticeProblemsTable.problemSetId,
+      })
+      .from(sqlTeamPracticeProblemsTable)
+      .where(eq(sqlTeamPracticeProblemsTable.workspaceId, workspaceId))
+      .all();
+
+    return rows.map((row) => {
+      const problemCount = problems.filter(
+        (problem) => problem.problemSetId === row.id,
+      ).length;
+      return this.toProblemSet(row, problemCount);
+    });
+  }
+
+  private getTeamProblemSet(
+    workspaceId: string,
+    id: string,
+  ): SqlPracticeProblemSet {
+    const row = this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeProblemSetsTable)
+      .where(
+        and(
+          eq(sqlTeamPracticeProblemSetsTable.workspaceId, workspaceId),
+          eq(sqlTeamPracticeProblemSetsTable.id, id),
+        ),
+      )
+      .get();
+    if (!row) throw new NotFoundException('SQL team problem set not found.');
+    const count = this.databaseService.db
+      .select({ id: sqlTeamPracticeProblemsTable.id })
+      .from(sqlTeamPracticeProblemsTable)
+      .where(eq(sqlTeamPracticeProblemsTable.problemSetId, row.id))
+      .all().length;
+    return this.toProblemSet(row, count);
+  }
+
+  private ensureDefaultTeamProblemSet(
+    workspaceId: string,
+    userId: string,
+  ): SqlPracticeProblemSet {
+    const existing = this.databaseService.db
+      .select()
+      .from(sqlTeamPracticeProblemSetsTable)
+      .where(eq(sqlTeamPracticeProblemSetsTable.workspaceId, workspaceId))
+      .orderBy(sqlTeamPracticeProblemSetsTable.orderIdx)
+      .get();
+    const setId = existing?.id ?? randomUUID();
+
+    if (!existing) {
+      const schemaVersion = this.getActiveTeamSchemaVersion(workspaceId);
+      const now = new Date().toISOString();
+      this.databaseService.db
+        .insert(sqlTeamPracticeProblemSetsTable)
+        .values({
+          id: setId,
+          workspaceId,
+          schemaVersionId: schemaVersion.id,
+          title: '기본 시험지',
+          description: '',
+          level: null,
+          status: 'draft',
+          orderIdx: 0,
+          createdBy: userId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+
+    this.databaseService.db
+      .update(sqlTeamPracticeProblemsTable)
+      .set({ problemSetId: setId })
+      .where(
+        and(
+          eq(sqlTeamPracticeProblemsTable.workspaceId, workspaceId),
+          isNull(sqlTeamPracticeProblemsTable.problemSetId),
+        ),
+      )
+      .run();
+    return this.getTeamProblemSet(workspaceId, setId);
+  }
+
+  private getNextTeamProblemSetOrder(workspaceId: string) {
+    return this.listTeamProblemSetsForWorkspace(workspaceId).length;
+  }
+
+  private getNextTeamProblemOrder(problemSetId: string) {
+    return this.databaseService.db
+      .select({ id: sqlTeamPracticeProblemsTable.id })
+      .from(sqlTeamPracticeProblemsTable)
+      .where(eq(sqlTeamPracticeProblemsTable.problemSetId, problemSetId))
+      .all().length;
+  }
+
   private toTeamProblem(
     row: {
       id: string;
       workspaceId: string;
       schemaVersionId: string;
+      problemSetId: string | null;
       title: string;
       description: string;
       level: number;
+      orderIdx: number;
       targetTables: string[];
       starterSql: string | null;
       answerSql: string;
@@ -4286,9 +4990,11 @@ ${tableSummaries}
       id: row.id,
       workspaceId: row.workspaceId,
       schemaVersionId: row.schemaVersionId,
+      problemSetId: row.problemSetId,
       title: row.title,
       description: row.description,
       level: row.level,
+      orderIdx: row.orderIdx,
       targetTables: row.targetTables,
       starterSql: row.starterSql,
       answerSql: row.answerSql,
@@ -4328,9 +5034,11 @@ ${tableSummaries}
         id: sqlPersonalPracticeProblemsTable.id,
         workspaceId: sqlPersonalPracticeProblemsTable.workspaceId,
         schemaVersionId: sqlPersonalPracticeProblemsTable.schemaVersionId,
+        problemSetId: sqlPersonalPracticeProblemsTable.problemSetId,
         title: sqlPersonalPracticeProblemsTable.title,
         description: sqlPersonalPracticeProblemsTable.description,
         level: sqlPersonalPracticeProblemsTable.level,
+        orderIdx: sqlPersonalPracticeProblemsTable.orderIdx,
         targetTables: sqlPersonalPracticeProblemsTable.targetTables,
         starterSql: sqlPersonalPracticeProblemsTable.starterSql,
         answerSql: sqlPersonalPracticeProblemsTable.answerSql,
@@ -4720,6 +5428,7 @@ ${tableSummaries}
     row: typeof sqlPersonalPracticeWorkspacesTable.$inferSelect,
   ): SqlPersonalPracticeWorkspace {
     return {
+      ...this.mapStudyMeta(row),
       id: row.id,
       ownerId: row.ownerId,
       title: row.title,
@@ -4748,14 +5457,148 @@ ${tableSummaries}
     };
   }
 
+  private toProblemSet(
+    row:
+      | typeof sqlPersonalPracticeProblemSetsTable.$inferSelect
+      | typeof sqlTeamPracticeProblemSetsTable.$inferSelect,
+    problemCount: number,
+  ): SqlPracticeProblemSet {
+    return {
+      id: row.id,
+      workspaceId: row.workspaceId,
+      schemaVersionId: row.schemaVersionId,
+      title: row.title,
+      description: row.description,
+      level: row.level,
+      status: row.status,
+      orderIdx: row.orderIdx,
+      problemCount,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  private listPersonalProblemSetsForWorkspace(
+    workspaceId: string,
+  ): SqlPracticeProblemSet[] {
+    const rows = this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeProblemSetsTable)
+      .where(eq(sqlPersonalPracticeProblemSetsTable.workspaceId, workspaceId))
+      .orderBy(
+        sqlPersonalPracticeProblemSetsTable.orderIdx,
+        desc(sqlPersonalPracticeProblemSetsTable.updatedAt),
+      )
+      .all();
+    const problems = this.databaseService.db
+      .select({
+        problemSetId: sqlPersonalPracticeProblemsTable.problemSetId,
+      })
+      .from(sqlPersonalPracticeProblemsTable)
+      .where(eq(sqlPersonalPracticeProblemsTable.workspaceId, workspaceId))
+      .all();
+
+    return rows.map((row) => {
+      const problemCount = problems.filter(
+        (problem) => problem.problemSetId === row.id,
+      ).length;
+      return this.toProblemSet(row, problemCount);
+    });
+  }
+
+  private getPersonalProblemSet(
+    workspaceId: string,
+    id: string,
+  ): SqlPracticeProblemSet {
+    const row = this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeProblemSetsTable)
+      .where(
+        and(
+          eq(sqlPersonalPracticeProblemSetsTable.workspaceId, workspaceId),
+          eq(sqlPersonalPracticeProblemSetsTable.id, id),
+        ),
+      )
+      .get();
+    if (!row)
+      throw new NotFoundException('SQL personal problem set not found.');
+    const count = this.databaseService.db
+      .select({ id: sqlPersonalPracticeProblemsTable.id })
+      .from(sqlPersonalPracticeProblemsTable)
+      .where(eq(sqlPersonalPracticeProblemsTable.problemSetId, row.id))
+      .all().length;
+    return this.toProblemSet(row, count);
+  }
+
+  private ensureDefaultPersonalProblemSet(
+    workspaceId: string,
+    userId: string,
+  ): SqlPracticeProblemSet {
+    const existing = this.databaseService.db
+      .select()
+      .from(sqlPersonalPracticeProblemSetsTable)
+      .where(eq(sqlPersonalPracticeProblemSetsTable.workspaceId, workspaceId))
+      .orderBy(sqlPersonalPracticeProblemSetsTable.orderIdx)
+      .get();
+    const setId = existing?.id ?? randomUUID();
+
+    if (!existing) {
+      const schemaVersion = this.getActivePersonalSchemaVersion(workspaceId);
+      const now = new Date().toISOString();
+      this.databaseService.db
+        .insert(sqlPersonalPracticeProblemSetsTable)
+        .values({
+          id: setId,
+          workspaceId,
+          schemaVersionId: schemaVersion.id,
+          title: '기본 시험지',
+          description: '',
+          level: null,
+          status: 'draft',
+          orderIdx: 0,
+          createdBy: userId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+
+    this.databaseService.db
+      .update(sqlPersonalPracticeProblemsTable)
+      .set({ problemSetId: setId })
+      .where(
+        and(
+          eq(sqlPersonalPracticeProblemsTable.workspaceId, workspaceId),
+          isNull(sqlPersonalPracticeProblemsTable.problemSetId),
+        ),
+      )
+      .run();
+    return this.getPersonalProblemSet(workspaceId, setId);
+  }
+
+  private getNextPersonalProblemSetOrder(workspaceId: string) {
+    return this.listPersonalProblemSetsForWorkspace(workspaceId).length;
+  }
+
+  private getNextPersonalProblemOrder(problemSetId: string) {
+    return this.databaseService.db
+      .select({ id: sqlPersonalPracticeProblemsTable.id })
+      .from(sqlPersonalPracticeProblemsTable)
+      .where(eq(sqlPersonalPracticeProblemsTable.problemSetId, problemSetId))
+      .all().length;
+  }
+
   private toPersonalProblem(
     row: {
       id: string;
       workspaceId: string;
       schemaVersionId: string;
+      problemSetId: string | null;
       title: string;
       description: string;
       level: number;
+      orderIdx: number;
       targetTables: string[];
       starterSql: string | null;
       answerSql: string;
@@ -4774,9 +5617,11 @@ ${tableSummaries}
       id: row.id,
       workspaceId: row.workspaceId,
       schemaVersionId: row.schemaVersionId,
+      problemSetId: row.problemSetId,
       title: row.title,
       description: row.description,
       level: row.level,
+      orderIdx: row.orderIdx,
       targetTables: row.targetTables,
       starterSql: row.starterSql,
       answerSql: row.answerSql,
@@ -4934,6 +5779,128 @@ ${tableSummaries}
       answerSql: this.stripSqlCodeFence(sqlBlock).trim(),
       explanation,
     };
+  }
+
+  private buildProblemSetGenerationPrompt(input: {
+    workspaceTitle: string;
+    workspaceGoal: string | null;
+    problemSet: SqlPracticeProblemSet;
+    tables: TableInfo[];
+    count: number;
+    additionalInstructions?: string;
+  }) {
+    const tableSummaries = input.tables
+      .map((table) => {
+        const columns = table.columns
+          .map((column) => {
+            const flags = [
+              column.primaryKey ? 'PK' : '',
+              column.notNull ? 'NOT NULL' : '',
+            ].filter(Boolean);
+            return `- ${column.name} ${column.type}${flags.length ? ` (${flags.join(', ')})` : ''}`;
+          })
+          .join('\n');
+        return `table ${table.tableName} (${table.rowCount} rows)\n${columns}`;
+      })
+      .join('\n\n');
+
+    return `SQL 스터디 시험지에 넣을 SQLite 문제 ${input.count}개를 생성하세요.
+
+반드시 JSON 배열만 출력하세요. Markdown, code fence, 설명 문장은 금지합니다.
+
+각 항목 형식:
+{
+  "title": "80자 이하 문제 제목",
+  "description": "학습자가 풀어야 할 요구사항",
+  "level": 1,
+  "targetTables": ["orders"],
+  "starterSql": "SELECT ...",
+  "answerSql": "SELECT ...",
+  "explanation": "한국어 해설 한 문장"
+}
+
+[스터디]
+${input.workspaceTitle}
+
+[학습 목표]
+${input.workspaceGoal ?? '(미설정)'}
+
+[시험지]
+${input.problemSet.title}
+${input.problemSet.description}
+
+[추가 생성 지침]
+${input.additionalInstructions?.trim() || '(없음)'}
+
+[테이블 스키마]
+${tableSummaries}
+
+[생성 규칙]
+- level은 1~5 정수만 사용하세요.
+- answerSql은 SELECT 또는 WITH로 시작하는 SQLite 조회 쿼리만 사용하세요.
+- INSERT, UPDATE, DELETE, CREATE, DROP, ALTER는 절대 사용하지 마세요.
+- targetTables에는 실제 테이블명만 넣으세요.
+- 난이도는 쉬운 문제부터 어려운 문제까지 섞되, 같은 요구사항을 반복하지 마세요.`;
+  }
+
+  private parseGeneratedProblemDrafts(
+    raw: string,
+  ): Array<CreateSqlUserPracticeProblemInput> {
+    const jsonText =
+      raw.match(/```json\s*([\s\S]*?)```/i)?.[1] ??
+      raw.match(/```\s*([\s\S]*?)```/i)?.[1] ??
+      raw;
+    const start = jsonText.indexOf('[');
+    const end = jsonText.lastIndexOf(']');
+    if (start < 0 || end < start) {
+      throw new InternalServerErrorException(
+        '문제 생성 JSON을 찾지 못했습니다.',
+      );
+    }
+
+    const parsed = JSON.parse(jsonText.slice(start, end + 1)) as Array<{
+      title?: unknown;
+      description?: unknown;
+      level?: unknown;
+      targetTables?: unknown;
+      starterSql?: unknown;
+      answerSql?: unknown;
+      explanation?: unknown;
+    }>;
+    const toText = (value: unknown) =>
+      typeof value === 'string' || typeof value === 'number'
+        ? String(value).trim()
+        : '';
+
+    return parsed
+      .map((item) => ({
+        title: toText(item.title),
+        description: toText(item.description),
+        level: Number(item.level ?? 1),
+        targetTables: Array.isArray(item.targetTables)
+          ? item.targetTables.map((table) => toText(table)).filter(Boolean)
+          : [],
+        starterSql:
+          typeof item.starterSql === 'string' && item.starterSql.trim()
+            ? item.starterSql.trim()
+            : undefined,
+        answerSql: toText(item.answerSql),
+        explanation:
+          typeof item.explanation === 'string' && item.explanation.trim()
+            ? item.explanation.trim()
+            : undefined,
+        visibility: 'private' as const,
+        status: 'draft' as const,
+      }))
+      .filter(
+        (item) =>
+          item.title &&
+          item.description &&
+          item.answerSql &&
+          Number.isInteger(item.level) &&
+          item.level >= 1 &&
+          item.level <= 5,
+      );
   }
 
   private stripSqlCodeFence(value: string) {
@@ -5105,6 +6072,42 @@ ${tableSummaries}
 
   private hashSql(sql: string) {
     return createHash('sha256').update(sql).digest('hex');
+  }
+
+  /** 스키마 SQL에서 mermaid ERD를 생성. 실패해도 저장은 막지 않도록 null 폴백. */
+  private buildErdMmd(sql: string): string | null {
+    try {
+      return sqlToMermaidErd(sql);
+    } catch {
+      return null;
+    }
+  }
+
+  /** 워크스페이스 행 → 스터디 학습 정보 메타로 매핑 */
+  private mapStudyMeta(row: {
+    learningGoal: string | null;
+    level: string | null;
+    topics: string | null;
+    visibility: string | null;
+  }): SqlStudyMeta {
+    return {
+      learningGoal: row.learningGoal ?? null,
+      level: (row.level as SqlStudyLevel | null) ?? null,
+      topics: this.parseStudyTopics(row.topics),
+      visibility: (row.visibility as SqlStudyVisibility | null) ?? 'private',
+    };
+  }
+
+  private parseStudyTopics(value: string | null): string[] {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === 'string')
+        : [];
+    } catch {
+      return [];
+    }
   }
 
   private getSeedStateFile(userId: string) {

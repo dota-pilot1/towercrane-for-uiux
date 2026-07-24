@@ -250,7 +250,36 @@ export type SqlPersonalPracticeSubmissionStatus = {
   lastSubmissionId: string;
 };
 
-export type SqlPersonalPracticeWorkspace = {
+export type SqlPracticeProblemSetStatus = 'draft' | 'published' | 'archived';
+
+export type SqlPracticeProblemSet = {
+  id: string;
+  workspaceId: string;
+  schemaVersionId: string | null;
+  title: string;
+  description: string;
+  level: number | null;
+  status: SqlPracticeProblemSetStatus;
+  orderIdx: number;
+  problemCount: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SqlStudyLevel = 'beginner' | 'basic' | 'intermediate' | 'advanced';
+
+export type SqlStudyVisibility = 'private' | 'public' | 'official';
+
+/** 워크스페이스(=스터디)의 학습 정보 메타 */
+export type SqlStudyMeta = {
+  learningGoal: string | null;
+  level: SqlStudyLevel | null;
+  topics: string[];
+  visibility: SqlStudyVisibility;
+};
+
+export type SqlPersonalPracticeWorkspace = SqlStudyMeta & {
   id: string;
   ownerId: string;
   title: string;
@@ -278,9 +307,11 @@ export type SqlPersonalPracticeProblem = {
   id: string;
   workspaceId: string;
   schemaVersionId: string;
+  problemSetId: string | null;
   title: string;
   description: string;
   level: number;
+  orderIdx: number;
   targetTables: string[];
   starterSql: string | null;
   answerSql: string;
@@ -298,7 +329,19 @@ export type SqlPersonalPracticeProblem = {
 export type SqlPersonalPracticeProblemListResponse = {
   workspace: SqlPersonalPracticeWorkspace;
   schemaVersion: SqlPersonalPracticeSchemaVersion;
+  problemSets: SqlPracticeProblemSet[];
   problems: SqlPersonalPracticeProblem[];
+};
+
+export type SqlPracticeProblemSetListResponse = {
+  workspaceId: string;
+  problemSets: SqlPracticeProblemSet[];
+};
+
+export type SqlPracticeGeneratedProblemSetResponse = {
+  problemSet: SqlPracticeProblemSet;
+  problems: Array<SqlPersonalPracticeProblem | SqlTeamPracticeProblem>;
+  skipped: Array<{ title: string; reason: string }>;
 };
 
 export type SqlPersonalPracticeSchemaReplaceResponse = {
@@ -334,7 +377,7 @@ export type SqlTeamPracticeSubmissionStatus = {
   lastSubmissionId: string;
 };
 
-export type SqlTeamPracticeWorkspace = {
+export type SqlTeamPracticeWorkspace = SqlStudyMeta & {
   id: string;
   title: string;
   description: string;
@@ -377,9 +420,11 @@ export type SqlTeamPracticeProblem = {
   id: string;
   workspaceId: string;
   schemaVersionId: string;
+  problemSetId: string | null;
   title: string;
   description: string;
   level: number;
+  orderIdx: number;
   targetTables: string[];
   starterSql: string | null;
   answerSql: string;
@@ -395,6 +440,7 @@ export type SqlTeamPracticeProblem = {
 export type SqlTeamPracticeProblemListResponse = {
   workspace: SqlTeamPracticeWorkspace;
   schemaVersion: SqlTeamPracticeSchemaVersion;
+  problemSets: SqlPracticeProblemSet[];
   problems: SqlTeamPracticeProblem[];
 };
 

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Card } from '../../../shared/ui/card'
 import { SqlInputBar, type SqlInputBarHandle } from '../../../features/sql-practice/ui/sql-input-bar'
 import { SqlMyActivityDialog } from '../../../features/sql-practice/ui/sql-my-activity-dialog'
@@ -31,7 +31,6 @@ export function SqlPracticeDesktopView({ workbench }: SqlPracticeDesktopViewProp
     handleNextExample,
     handlePrevExample,
     handleRefresh,
-    handleReloadSeed,
     handleReset,
     handleSeedChange,
     handleSelectExample,
@@ -42,7 +41,6 @@ export function SqlPracticeDesktopView({ workbench }: SqlPracticeDesktopViewProp
     quizSidebarOpen,
     rankingQuery,
     activityQuery,
-    reloadSeedMutation,
     resetMutation,
     selectedExample,
     selectedTable,
@@ -61,6 +59,8 @@ export function SqlPracticeDesktopView({ workbench }: SqlPracticeDesktopViewProp
   } = workbench
 
   const inputBarRef = useRef<SqlInputBarHandle>(null)
+  const [swapOpen, setSwapOpen] = useState(false)
+  const [manageOpen, setManageOpen] = useState(false)
 
   return (
     <section className={footerOpen ? 'space-y-4 pb-[400px]' : 'space-y-4 pb-16'}>
@@ -69,6 +69,8 @@ export function SqlPracticeDesktopView({ workbench }: SqlPracticeDesktopViewProp
         seedFile={metaQuery.data?.seedFile}
         hasHistory={history.length > 0}
         onOpenNotes={() => window.open('/sql/notes', '_blank', 'noopener,noreferrer')}
+        onOpenSwap={() => setSwapOpen(true)}
+        onOpenManage={() => setManageOpen(true)}
         onClearHistory={() => setHistory([])}
       />
 
@@ -138,13 +140,14 @@ export function SqlPracticeDesktopView({ workbench }: SqlPracticeDesktopViewProp
           selectedTable={selectedTable}
           isLoading={metaQuery.isFetching || tablesQuery.isFetching}
           isResetting={resetMutation.isPending}
-          isReloading={reloadSeedMutation.isPending}
           onSelectTable={setSelectedTableOverride}
           onRefresh={handleRefresh}
           onReset={handleReset}
-          onReloadSeed={handleReloadSeed}
           onSeedActivated={handleSeedChange}
-          onInsert={!selectedExample ? (text) => inputBarRef.current?.insert(text) : undefined}
+          swapOpen={swapOpen}
+          onSwapOpenChange={setSwapOpen}
+          manageOpen={manageOpen}
+          onManageOpenChange={setManageOpen}
         />
       </div>
 

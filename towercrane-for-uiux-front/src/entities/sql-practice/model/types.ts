@@ -82,6 +82,19 @@ export type SqlActivateSeedResponse = SqlResetResponse & {
   activeSeed: SqlPracticeSeedSummary
 }
 
+export type SqlSeedContentResponse = {
+  source: SqlPracticeSeedSource
+  fileName: string
+  content: string
+}
+
+export type SqlUploadSeedResponse = {
+  success: boolean
+  overwritten: boolean
+  message: string
+  seed: SqlPracticeSeedSummary
+}
+
 export type SqlPracticeNote = {
   id: string
   userId: string
@@ -249,6 +262,7 @@ export type SqlUserPracticeProblem = {
   title: string
   description: string
   level: number
+  orderIdx: number
   targetTables: string[]
   starterSql: string | null
   answerSql: string
@@ -267,9 +281,11 @@ export type SqlUserPracticeProblemListResponse = {
 }
 
 export type SqlUserPracticeProblemPayload = {
+  problemSetId?: string
   title: string
   description: string
   level: number
+  orderIdx?: number
   targetTables: string[]
   starterSql?: string
   answerSql: string
@@ -304,7 +320,29 @@ export type SqlUserPracticeGradeResponse = {
   answerExecution: SqlExecuteResponse | null
 }
 
-export type SqlPersonalPracticeWorkspace = {
+export type SqlStudyLevel = 'beginner' | 'basic' | 'intermediate' | 'advanced'
+
+export type SqlStudyVisibility = 'private' | 'public' | 'official'
+export type SqlPracticeProblemSetStatus = 'draft' | 'published' | 'archived'
+
+/** 워크스페이스(=스터디)의 학습 정보 메타 */
+export type SqlStudyMeta = {
+  learningGoal: string | null
+  level: SqlStudyLevel | null
+  topics: string[]
+  visibility: SqlStudyVisibility
+}
+
+export type SqlStudyWorkspacePayload = {
+  title: string
+  description?: string
+  learningGoal?: string | null
+  level?: SqlStudyLevel | null
+  topics?: string[]
+  visibility?: SqlStudyVisibility
+}
+
+export type SqlPersonalPracticeWorkspace = SqlStudyMeta & {
   id: string
   ownerId: string
   title: string
@@ -336,10 +374,38 @@ export type SqlPersonalPracticeSubmissionStatus = {
   lastSubmissionId: string
 }
 
+export type SqlPracticeProblemSet = {
+  id: string
+  workspaceId: string
+  schemaVersionId: string | null
+  title: string
+  description: string
+  level: number | null
+  status: SqlPracticeProblemSetStatus
+  orderIdx: number
+  problemCount: number
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type SqlPracticeProblemSetPayload = {
+  title: string
+  description?: string
+  level?: number | null
+  status?: Exclude<SqlPracticeProblemSetStatus, 'archived'>
+}
+
+export type SqlPracticeProblemSetListResponse = {
+  workspaceId: string
+  problemSets: SqlPracticeProblemSet[]
+}
+
 export type SqlPersonalPracticeProblem = {
   id: string
   workspaceId: string
   schemaVersionId: string
+  problemSetId: string | null
   title: string
   description: string
   level: number
@@ -360,6 +426,7 @@ export type SqlPersonalPracticeProblem = {
 export type SqlPersonalPracticeProblemListResponse = {
   workspace: SqlPersonalPracticeWorkspace
   schemaVersion: SqlPersonalPracticeSchemaVersion
+  problemSets: SqlPracticeProblemSet[]
   problems: SqlPersonalPracticeProblem[]
 }
 
@@ -405,7 +472,7 @@ export type SqlTeamPracticeSubmissionStatus = {
   lastSubmissionId: string
 }
 
-export type SqlTeamPracticeWorkspace = {
+export type SqlTeamPracticeWorkspace = SqlStudyMeta & {
   id: string
   title: string
   description: string
@@ -448,6 +515,7 @@ export type SqlTeamPracticeProblem = {
   id: string
   workspaceId: string
   schemaVersionId: string
+  problemSetId: string | null
   title: string
   description: string
   level: number
@@ -466,7 +534,14 @@ export type SqlTeamPracticeProblem = {
 export type SqlTeamPracticeProblemListResponse = {
   workspace: SqlTeamPracticeWorkspace
   schemaVersion: SqlTeamPracticeSchemaVersion
+  problemSets: SqlPracticeProblemSet[]
   problems: SqlTeamPracticeProblem[]
+}
+
+export type SqlPracticeGeneratedProblemSetResponse = {
+  problemSet: SqlPracticeProblemSet
+  problems: Array<SqlPersonalPracticeProblem | SqlTeamPracticeProblem>
+  skipped: Array<{ title: string; reason: string }>
 }
 
 export type SqlTeamPracticeSchemaReplaceResponse = {

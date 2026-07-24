@@ -1,17 +1,8 @@
-import {
-  ChevronLeft,
-  ChevronRight,
-  Database,
-  Info,
-  RefreshCw,
-  RotateCcw,
-  Settings,
-  Table2,
-  UploadCloud,
-} from "lucide-react";
+import { Database, Info, RefreshCw, Table2 } from "lucide-react";
 import { useState } from "react";
 import type {
   SqlPracticeMeta,
+  SqlPracticeSeedLevel,
   SqlPracticeSeedSummary,
   TableInfo,
 } from "../../../entities/sql-practice/model/types";
@@ -22,6 +13,7 @@ import {
   useSqlPracticeSeeds,
 } from "../model/use-sql-practice-queries";
 import { SqlErdDialog } from "./sql-erd-dialog";
+import { SqlSeedManageDialog } from "./sql-seed-manage-dialog";
 import { SqlSeedManagerDialog } from "./sql-seed-manager-dialog";
 import { SqlTableSchemaDialog } from "./sql-table-schema-dialog";
 
@@ -31,13 +23,14 @@ type SqlSchemaSidebarProps = {
   selectedTable: string | null;
   isLoading: boolean;
   isResetting: boolean;
-  isReloading: boolean;
   onSelectTable: (tableName: string) => void;
   onRefresh: () => void;
   onReset: () => void;
-  onReloadSeed: () => void;
   onSeedActivated: () => void;
-  onInsert?: (text: string) => void;
+  swapOpen: boolean;
+  onSwapOpenChange: (open: boolean) => void;
+  manageOpen: boolean;
+  onManageOpenChange: (open: boolean) => void;
 };
 
 export function SqlSchemaSidebar({
@@ -46,23 +39,23 @@ export function SqlSchemaSidebar({
   selectedTable,
   isLoading,
   isResetting,
-  isReloading,
   onSelectTable,
   onRefresh,
   onReset,
-  onReloadSeed,
   onSeedActivated,
-  onInsert,
+  swapOpen,
+  onSwapOpenChange,
+  manageOpen,
+  onManageOpenChange,
 }: SqlSchemaSidebarProps) {
   const [schemaDialog, setSchemaDialog] = useState<TableInfo | null>(null);
-  const [seedDialogOpen, setSeedDialogOpen] = useState(false);
   const [erdDialogOpen, setErdDialogOpen] = useState(false);
   const seedsQuery = useSqlPracticeSeeds();
   const erdQuery = useSqlPracticeErd(meta?.seedFile);
   const activateSeedMutation = useActivateSqlPracticeSeed({
     onSuccess: () => {
       onSeedActivated();
-      setSeedDialogOpen(false);
+      onSwapOpenChange(false);
     },
   });
   const isAdmin = useSessionStore((s) => s.userRole === "admin");
@@ -70,10 +63,7 @@ export function SqlSchemaSidebar({
   const seeds = seedsQuery.data?.seeds ?? [];
   const activeSeed =
     seeds.find((seed) => seed.isActive) ?? meta?.activeSeed;
-
-  const activeIndex = seeds.findIndex((s) => s.isActive);
-  const prevSeed = activeIndex > 0 ? seeds[activeIndex - 1] : null;
-  const nextSeed = activeIndex >= 0 && activeIndex < seeds.length - 1 ? seeds[activeIndex + 1] : null;
+  const tableCount = meta?.tableCount ?? tables.length;
 
   const handleActivateSeed = (seed: SqlPracticeSeedSummary) => {
     return activateSeedMutation.mutateAsync({
@@ -84,11 +74,45 @@ export function SqlSchemaSidebar({
 
   return (
     <>
-      <aside className="ui-panel flex h-full min-h-0 w-[300px] shrink-0 flex-col overflow-hidden rounded-md p-0">
-        <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
-          <div>
-            <h2 className="text-sm font-bold text-text-primary">테이블</h2>
+      <aside className="ui-panel flex h-full min-h-0 w-[340px] shrink-0 flex-col overflow-hidden rounded-md p-0">
+        <div className="border-b border-surface-border p-3">
+          <h2 className="px-1 text-xs font-bold uppercase tracking-wide text-text-muted">
+            문제 세트
+          </h2>
+          <div className="mt-2 rounded-md border border-surface-border-soft bg-surface-muted p-3">
+            <div className="flex items-center gap-2">
+              <span className="ui-icon-button-brand size-7 shrink-0">
+                <Database className="size-3.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-text-primary">
+                  {activeSeed?.title ?? meta?.seedFile ?? "연습 세트"}
+                </p>
+                <p className="truncate text-[11px] text-text-muted">
+                  {activeSeed?.fileName ?? meta?.seedFile ?? ""}
+                </p>
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {activeSeed && (
+                <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
+                  {levelLabel(activeSeed.level)}
+                </span>
+              )}
+              <span className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-0.5 text-[11px] font-semibold text-text-secondary">
+                테이블 {tableCount}개
+              </span>
+            </div>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
+          <h2 className="text-sm font-bold text-text-primary">
+            테이블
+            <span className="ml-1.5 text-xs font-semibold text-text-muted">
+              {tableCount}
+            </span>
+          </h2>
           <div className="flex items-center gap-1.5">
             {erdQuery.data?.mmd && (
               <button
@@ -112,96 +136,6 @@ export function SqlSchemaSidebar({
               />
             </button>
           </div>
-        </div>
-
-        <div className="border-b border-surface-border p-3">
-          <div className="rounded-md border border-surface-border-soft bg-surface-muted p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2 text-xs font-bold text-text-primary">
-                <Database className="size-3.5 shrink-0 text-brand-primary" />
-                <span className="truncate">
-                  {meta?.dbFile ?? "practice.sqlite"}
-                </span>
-              </div>
-              <button
-                className="ui-icon-button size-7 shrink-0"
-                type="button"
-                aria-label="SQL 연습 파일 관리"
-                title="SQL 연습 파일 관리"
-                onClick={() => setSeedDialogOpen(true)}
-              >
-                <Settings className="size-3.5" />
-              </button>
-            </div>
-            <div className="mt-2 space-y-1 text-xs text-text-secondary">
-              <p>seed: {meta?.seedFile ?? "01_board_basic.sql"}</p>
-              <p>tables: {meta?.tableCount ?? tables.length}</p>
-              <p>
-                hash: {meta?.seedHash ? meta.seedHash.slice(0, 10) : "loading"}
-              </p>
-            </div>
-
-            <div className="mt-3 flex items-center gap-1">
-              {prevSeed ? (
-                <button
-                  type="button"
-                  className="ui-icon-button size-7 shrink-0"
-                  onClick={() => handleActivateSeed(prevSeed)}
-                  disabled={activateSeedMutation.isPending}
-                  title={`이전: ${prevSeed.fileName}`}
-                >
-                  <ChevronLeft className="size-3.5" />
-                </button>
-              ) : (
-                <span className="size-7 shrink-0" />
-              )}
-              <span className="flex-1 truncate text-center text-xs text-text-muted">
-                {activeSeed?.fileName ?? meta?.seedFile ?? "파일 선택"}
-              </span>
-              {nextSeed ? (
-                <button
-                  type="button"
-                  className="ui-icon-button size-7 shrink-0"
-                  onClick={() => handleActivateSeed(nextSeed)}
-                  disabled={activateSeedMutation.isPending}
-                  title={`다음: ${nextSeed.fileName}`}
-                >
-                  <ChevronRight className="size-3.5" />
-                </button>
-              ) : (
-                <span className="size-7 shrink-0" />
-              )}
-            </div>
-          </div>
-
-          {isAdmin && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                className="ui-icon-button h-8 gap-1.5 text-xs"
-                onClick={onReset}
-                disabled={isResetting || isReloading}
-                title="테이블 구조 + 데이터 전체 초기화"
-              >
-                <RotateCcw
-                  className={`size-3.5 ${isResetting ? "animate-spin" : ""}`}
-                />
-                테이블 리셋
-              </button>
-              <button
-                type="button"
-                className="ui-icon-button h-8 gap-1.5 text-xs"
-                onClick={onReloadSeed}
-                disabled={isResetting || isReloading}
-                title="데이터만 seed 재적용"
-              >
-                <UploadCloud
-                  className={`size-3.5 ${isReloading ? "animate-spin" : ""}`}
-                />
-                데이터 리셋
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
@@ -272,13 +206,23 @@ export function SqlSchemaSidebar({
       )}
 
       <SqlSeedManagerDialog
-        open={seedDialogOpen}
+        open={swapOpen}
         activeSeed={activeSeed}
         seeds={seedsQuery.data?.seeds ?? []}
         isLoading={seedsQuery.isLoading || seedsQuery.isFetching}
         isActivating={activateSeedMutation.isPending}
-        onClose={() => setSeedDialogOpen(false)}
+        onClose={() => onSwapOpenChange(false)}
         onActivate={handleActivateSeed}
+      />
+
+      <SqlSeedManageDialog
+        open={manageOpen}
+        onClose={() => onManageOpenChange(false)}
+        seeds={seedsQuery.data?.seeds ?? []}
+        isLoading={seedsQuery.isLoading || seedsQuery.isFetching}
+        isAdmin={isAdmin}
+        isResetting={isResetting}
+        onReset={onReset}
       />
 
       {erdQuery.data?.mmd && (
@@ -291,4 +235,14 @@ export function SqlSchemaSidebar({
       )}
     </>
   );
+}
+
+function levelLabel(level: SqlPracticeSeedLevel) {
+  const labels: Record<SqlPracticeSeedLevel, string> = {
+    beginner: "초급",
+    basic: "기본",
+    intermediate: "중급",
+    advanced: "고급",
+  };
+  return labels[level];
 }

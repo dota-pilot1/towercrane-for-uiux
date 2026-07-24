@@ -16,13 +16,10 @@ import {
   boardConfigsTable,
   challengeCategoriesTable,
   challengeSectionsTable,
-  devChallengeWorkspacesTable,
-  devChallengeWorkspaceMembersTable,
   devChallengeCategoriesTable,
   devChallengeSectionsTable,
   devChallengeAssignmentsTable,
   devChallengeAssignmentBlocksTable,
-  featurePlansTable,
   menusTable,
   prototypesTable,
   schema,
@@ -1391,13 +1388,35 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_sql_personal_schema_versions_workspace_created
         ON sql_personal_practice_schema_versions(workspace_id, created_at);
 
+      CREATE TABLE IF NOT EXISTS sql_personal_practice_problem_sets (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        schema_version_id TEXT,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        level INTEGER,
+        status TEXT NOT NULL DEFAULT 'draft',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES sql_personal_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(schema_version_id) REFERENCES sql_personal_practice_schema_versions(id) ON DELETE SET NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_problem_sets_workspace
+        ON sql_personal_practice_problem_sets(workspace_id, order_idx, updated_at);
+
       CREATE TABLE IF NOT EXISTS sql_personal_practice_problems (
         id TEXT PRIMARY KEY,
         workspace_id TEXT NOT NULL,
         schema_version_id TEXT NOT NULL,
+        problem_set_id TEXT,
         title TEXT NOT NULL,
         description TEXT NOT NULL,
         level INTEGER NOT NULL DEFAULT 1,
+        order_idx INTEGER NOT NULL DEFAULT 0,
         target_tables TEXT NOT NULL DEFAULT '[]',
         starter_sql TEXT,
         answer_sql TEXT NOT NULL,
@@ -1408,6 +1427,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_at TEXT NOT NULL,
         FOREIGN KEY(workspace_id) REFERENCES sql_personal_practice_workspaces(id) ON DELETE CASCADE,
         FOREIGN KEY(schema_version_id) REFERENCES sql_personal_practice_schema_versions(id) ON DELETE RESTRICT,
+        FOREIGN KEY(problem_set_id) REFERENCES sql_personal_practice_problem_sets(id) ON DELETE SET NULL,
         FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
@@ -1527,10 +1547,31 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_sql_team_schema_versions_workspace_created
         ON sql_team_practice_schema_versions(workspace_id, created_at);
 
+      CREATE TABLE IF NOT EXISTS sql_team_practice_problem_sets (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        schema_version_id TEXT,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        level INTEGER,
+        status TEXT NOT NULL DEFAULT 'draft',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(schema_version_id) REFERENCES sql_team_practice_schema_versions(id) ON DELETE SET NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_problem_sets_workspace
+        ON sql_team_practice_problem_sets(workspace_id, order_idx, updated_at);
+
       CREATE TABLE IF NOT EXISTS sql_team_practice_problems (
         id TEXT PRIMARY KEY,
         workspace_id TEXT NOT NULL,
         schema_version_id TEXT NOT NULL,
+        problem_set_id TEXT,
         title TEXT NOT NULL,
         description TEXT NOT NULL,
         level INTEGER NOT NULL DEFAULT 1,
@@ -1545,6 +1586,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_at TEXT NOT NULL,
         FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
         FOREIGN KEY(schema_version_id) REFERENCES sql_team_practice_schema_versions(id) ON DELETE RESTRICT,
+        FOREIGN KEY(problem_set_id) REFERENCES sql_team_practice_problem_sets(id) ON DELETE SET NULL,
         FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE SET NULL
       );
@@ -1975,6 +2017,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.migrateChatSchema();
     this.migrateProjectIssueSchema();
     this.migrateAiStudyNoteSchema();
+    this.migrateSqlStudyMetaSchema();
+    this.migrateSqlStudyProblemSetSchema();
     this.seedDefaults();
     this.seedEvalCategories();
     this.seedOrg();
@@ -5443,6 +5487,183 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'title',
       "ALTER TABLE ai_study_note_item_notes ADD COLUMN title TEXT NOT NULL DEFAULT ''",
     );
+  }
+
+  // SQL 스터디 리팩토링: 워크스페이스에 학습 정보(주제/목표/난이도/태그/공개범위) 컬럼 추가
+  private migrateSqlStudyMetaSchema() {
+    for (const table of [
+      'sql_personal_practice_workspaces',
+      'sql_team_practice_workspaces',
+    ]) {
+      this.ensureColumn(
+        table,
+        'learning_goal',
+        `ALTER TABLE ${table} ADD COLUMN learning_goal TEXT`,
+      );
+      this.ensureColumn(
+        table,
+        'level',
+        `ALTER TABLE ${table} ADD COLUMN level TEXT`,
+      );
+      this.ensureColumn(
+        table,
+        'topics',
+        `ALTER TABLE ${table} ADD COLUMN topics TEXT`,
+      );
+      this.ensureColumn(
+        table,
+        'visibility',
+        `ALTER TABLE ${table} ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'`,
+      );
+    }
+  }
+
+  private migrateSqlStudyProblemSetSchema() {
+    this.sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS sql_personal_practice_problem_sets (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        schema_version_id TEXT,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        level INTEGER,
+        status TEXT NOT NULL DEFAULT 'draft',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES sql_personal_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(schema_version_id) REFERENCES sql_personal_practice_schema_versions(id) ON DELETE SET NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_problem_sets_workspace
+        ON sql_personal_practice_problem_sets(workspace_id, order_idx, updated_at);
+
+      CREATE TABLE IF NOT EXISTS sql_team_practice_problem_sets (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        schema_version_id TEXT,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        level INTEGER,
+        status TEXT NOT NULL DEFAULT 'draft',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(schema_version_id) REFERENCES sql_team_practice_schema_versions(id) ON DELETE SET NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sql_team_problem_sets_workspace
+        ON sql_team_practice_problem_sets(workspace_id, order_idx, updated_at);
+    `);
+
+    this.ensureColumn(
+      'sql_personal_practice_problems',
+      'problem_set_id',
+      'ALTER TABLE sql_personal_practice_problems ADD COLUMN problem_set_id TEXT',
+    );
+    this.ensureColumn(
+      'sql_team_practice_problems',
+      'problem_set_id',
+      'ALTER TABLE sql_team_practice_problems ADD COLUMN problem_set_id TEXT',
+    );
+    this.ensureColumn(
+      'sql_personal_practice_problems',
+      'order_idx',
+      'ALTER TABLE sql_personal_practice_problems ADD COLUMN order_idx INTEGER NOT NULL DEFAULT 0',
+    );
+    this.ensureColumn(
+      'sql_team_practice_problems',
+      'order_idx',
+      'ALTER TABLE sql_team_practice_problems ADD COLUMN order_idx INTEGER NOT NULL DEFAULT 0',
+    );
+    this.sqlite.exec(`
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_problems_problem_set
+        ON sql_personal_practice_problems(problem_set_id, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_sql_team_problems_problem_set
+        ON sql_team_practice_problems(problem_set_id, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_sql_personal_problems_problem_set_order
+        ON sql_personal_practice_problems(problem_set_id, order_idx, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_sql_team_problems_problem_set_order
+        ON sql_team_practice_problems(problem_set_id, order_idx, updated_at);
+    `);
+
+    this.backfillSqlStudyProblemSets(
+      'sql_personal_practice_workspaces',
+      'sql_personal_practice_schema_versions',
+      'sql_personal_practice_problem_sets',
+      'sql_personal_practice_problems',
+      'owner_id',
+    );
+    this.backfillSqlStudyProblemSets(
+      'sql_team_practice_workspaces',
+      'sql_team_practice_schema_versions',
+      'sql_team_practice_problem_sets',
+      'sql_team_practice_problems',
+      'created_by',
+    );
+  }
+
+  private backfillSqlStudyProblemSets(
+    workspaceTable: string,
+    schemaTable: string,
+    setTable: string,
+    problemTable: string,
+    creatorColumn: string,
+  ) {
+    const now = new Date().toISOString();
+    const workspaces = this.sqlite
+      .prepare(
+        `SELECT id, ${creatorColumn} AS created_by, active_schema_version_id FROM ${workspaceTable}`,
+      )
+      .all() as Array<{
+      id: string;
+      created_by: string;
+      active_schema_version_id: string | null;
+    }>;
+
+    for (const workspace of workspaces) {
+      const existing = this.sqlite
+        .prepare(`SELECT id FROM ${setTable} WHERE workspace_id = ? LIMIT 1`)
+        .get(workspace.id) as { id: string } | undefined;
+      const setId = existing?.id ?? randomUUID();
+
+      if (!existing) {
+        const schemaVersionId =
+          workspace.active_schema_version_id ??
+          (
+            this.sqlite
+              .prepare(
+                `SELECT id FROM ${schemaTable} WHERE workspace_id = ? ORDER BY version DESC LIMIT 1`,
+              )
+              .get(workspace.id) as { id: string } | undefined
+          )?.id ??
+          null;
+        this.sqlite
+          .prepare(
+            `INSERT INTO ${setTable} (id, workspace_id, schema_version_id, title, description, level, status, order_idx, created_by, created_at, updated_at)
+             VALUES (?, ?, ?, '기본 시험지', '', NULL, 'draft', 0, ?, ?, ?)`,
+          )
+          .run(
+            setId,
+            workspace.id,
+            schemaVersionId,
+            workspace.created_by,
+            now,
+            now,
+          );
+      }
+
+      this.sqlite
+        .prepare(
+          `UPDATE ${problemTable} SET problem_set_id = ? WHERE workspace_id = ? AND problem_set_id IS NULL`,
+        )
+        .run(setId, workspace.id);
+    }
   }
 
   private migrateProjectIssueSchema() {

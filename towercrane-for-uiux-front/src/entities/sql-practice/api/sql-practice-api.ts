@@ -11,6 +11,7 @@ import type {
   SqlPersonalPracticeSchemaReplaceResponse,
   SqlPersonalPracticeShare,
   SqlPersonalPracticeWorkspace,
+  SqlStudyWorkspacePayload,
   SqlPracticeGradePayload,
   SqlPracticeGradeResponse,
   SqlPracticeActivityResponse,
@@ -19,10 +20,16 @@ import type {
   SqlPracticeNote,
   SqlPracticeNoteFilter,
   SqlPracticeMeta,
+  SqlPracticeGeneratedProblemSetResponse,
+  SqlPracticeProblemSet,
+  SqlPracticeProblemSetListResponse,
+  SqlPracticeProblemSetPayload,
   SqlPracticeRankingResponse,
   SqlPracticeSeedListResponse,
   SqlPracticeSeedSource,
   SqlResetResponse,
+  SqlSeedContentResponse,
+  SqlUploadSeedResponse,
   SqlTeamPracticeMember,
   SqlTeamPracticeMemberRole,
   SqlTeamPracticeProblem,
@@ -77,6 +84,23 @@ export const sqlPracticeApi = {
     }),
   getSeedErd: (fileName: string) =>
     apiRequest<{ mmd: string | null }>(`/sql/seeds/${encodeURIComponent(fileName)}/erd`),
+  downloadSeed: (source: SqlPracticeSeedSource, fileName: string) =>
+    apiRequest<SqlSeedContentResponse>(
+      `/sql/seeds/${encodeURIComponent(fileName)}/download?source=${encodeURIComponent(source)}`,
+    ),
+  uploadSeed: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiRequest<SqlUploadSeedResponse>('/sql/seeds/upload', {
+      method: 'POST',
+      body: formData,
+    })
+  },
+  deleteSeed: (source: SqlPracticeSeedSource, fileName: string) =>
+    apiRequest<{ success: boolean; message: string; fileName: string }>(
+      `/sql/seeds/${encodeURIComponent(fileName)}?source=${encodeURIComponent(source)}`,
+      { method: 'DELETE' },
+    ),
   geminiAsk: (content: string, mode: 'sql' | 'general' | 'grading') =>
     apiRequest<{ answer: string }>('/sql/gemini', {
       method: 'POST',
@@ -198,6 +222,27 @@ export const sqlPracticeApi = {
     apiRequest<SqlPersonalPracticeWorkspace[]>('/sql/personal/workspaces'),
   getDefaultPersonalWorkspace: () =>
     apiRequest<SqlPersonalPracticeWorkspace>('/sql/personal/workspaces/default'),
+  createPersonalWorkspace: (payload: SqlStudyWorkspacePayload) =>
+    apiRequest<SqlPersonalPracticeWorkspace>('/sql/personal/workspaces', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getPersonalWorkspace: (workspaceId: string) =>
+    apiRequest<SqlPersonalPracticeWorkspace>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}`,
+    ),
+  updatePersonalWorkspace: (
+    workspaceId: string,
+    payload: Partial<SqlStudyWorkspacePayload>,
+  ) =>
+    apiRequest<SqlPersonalPracticeWorkspace>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}`,
+      { method: 'PATCH', body: JSON.stringify(payload) },
+    ),
+  deletePersonalWorkspace: (workspaceId: string) =>
+    apiRequest<void>(`/sql/personal/workspaces/${encodeURIComponent(workspaceId)}`, {
+      method: 'DELETE',
+    }),
   getPersonalMeta: (workspaceId: string) =>
     apiRequest<SqlPracticeMeta>(`/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/meta`),
   getPersonalTables: (workspaceId: string) =>
@@ -237,9 +282,46 @@ export const sqlPracticeApi = {
     apiRequest<{ mmd: string | null }>(
       `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/erd`,
     ),
-  getPersonalProblems: (workspaceId: string, filter?: { level?: number }) => {
+  updatePersonalErd: (workspaceId: string, erdMmd: string) =>
+    apiRequest<{ mmd: string }>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/erd`,
+      { method: 'PATCH', body: JSON.stringify({ erdMmd }) },
+    ),
+  regeneratePersonalErd: (workspaceId: string) =>
+    apiRequest<{ mmd: string | null }>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/erd/regenerate`,
+      { method: 'POST' },
+    ),
+  getPersonalProblemSets: (workspaceId: string) =>
+    apiRequest<SqlPracticeProblemSetListResponse>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problem-sets`,
+    ),
+  createPersonalProblemSet: (workspaceId: string, payload: SqlPracticeProblemSetPayload) =>
+    apiRequest<SqlPracticeProblemSet>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problem-sets`,
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
+  updatePersonalProblemSet: (
+    workspaceId: string,
+    id: string,
+    payload: Partial<SqlPracticeProblemSetPayload>,
+  ) =>
+    apiRequest<SqlPracticeProblemSet>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problem-sets/${encodeURIComponent(id)}`,
+      { method: 'PATCH', body: JSON.stringify(payload) },
+    ),
+  generatePersonalProblemSetProblems: (
+    workspaceId: string,
+    payload: { problemSetId?: string; count?: number; additionalInstructions?: string },
+  ) =>
+    apiRequest<SqlPracticeGeneratedProblemSetResponse>(
+      `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problem-sets/generate-problems`,
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
+  getPersonalProblems: (workspaceId: string, filter?: { level?: number; problemSetId?: string }) => {
     const params = new URLSearchParams()
     if (filter?.level) params.set('level', String(filter.level))
+    if (filter?.problemSetId) params.set('problemSetId', filter.problemSetId)
     const query = params.toString()
     return apiRequest<SqlPersonalPracticeProblemListResponse>(
       `/sql/personal/workspaces/${encodeURIComponent(workspaceId)}/problems${query ? `?${query}` : ''}`,
@@ -330,7 +412,7 @@ export const sqlPracticeApi = {
     ),
   updateTeamWorkspace: (
     workspaceId: string,
-    payload: Partial<{ title: string; description: string }>,
+    payload: Partial<SqlStudyWorkspacePayload>,
   ) =>
     apiRequest<SqlTeamPracticeWorkspace>(
       `/sql/team/workspaces/${encodeURIComponent(workspaceId)}`,
@@ -409,10 +491,47 @@ export const sqlPracticeApi = {
     apiRequest<{ mmd: string | null }>(
       `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/erd`,
     ),
-  getTeamProblems: (workspaceId: string, filter?: { level?: number; mine?: boolean }) => {
+  updateTeamErd: (workspaceId: string, erdMmd: string) =>
+    apiRequest<{ mmd: string }>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/erd`,
+      { method: 'PATCH', body: JSON.stringify({ erdMmd }) },
+    ),
+  regenerateTeamErd: (workspaceId: string) =>
+    apiRequest<{ mmd: string | null }>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/erd/regenerate`,
+      { method: 'POST' },
+    ),
+  getTeamProblemSets: (workspaceId: string) =>
+    apiRequest<SqlPracticeProblemSetListResponse>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problem-sets`,
+    ),
+  createTeamProblemSet: (workspaceId: string, payload: SqlPracticeProblemSetPayload) =>
+    apiRequest<SqlPracticeProblemSet>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problem-sets`,
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
+  updateTeamProblemSet: (
+    workspaceId: string,
+    id: string,
+    payload: Partial<SqlPracticeProblemSetPayload>,
+  ) =>
+    apiRequest<SqlPracticeProblemSet>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problem-sets/${encodeURIComponent(id)}`,
+      { method: 'PATCH', body: JSON.stringify(payload) },
+    ),
+  generateTeamProblemSetProblems: (
+    workspaceId: string,
+    payload: { problemSetId?: string; count?: number; additionalInstructions?: string },
+  ) =>
+    apiRequest<SqlPracticeGeneratedProblemSetResponse>(
+      `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problem-sets/generate-problems`,
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
+  getTeamProblems: (workspaceId: string, filter?: { level?: number; mine?: boolean; problemSetId?: string }) => {
     const params = new URLSearchParams()
     if (filter?.level) params.set('level', String(filter.level))
     if (filter?.mine) params.set('mine', 'true')
+    if (filter?.problemSetId) params.set('problemSetId', filter.problemSetId)
     const query = params.toString()
     return apiRequest<SqlTeamPracticeProblemListResponse>(
       `/sql/team/workspaces/${encodeURIComponent(workspaceId)}/problems${query ? `?${query}` : ''}`,

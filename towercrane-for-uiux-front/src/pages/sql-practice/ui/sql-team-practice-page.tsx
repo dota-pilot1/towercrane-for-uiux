@@ -31,7 +31,7 @@ export function SqlTeamPracticePage() {
     })
     setTitle('')
     setDescription('')
-    navigate({ to: `/sql/team/workspaces/${workspace.id}` })
+    navigate({ to: `/sql/team/workspaces/${workspace.id}/edit` })
   }
 
   return (

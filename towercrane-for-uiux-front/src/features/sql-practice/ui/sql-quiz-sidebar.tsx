@@ -83,7 +83,7 @@ export function SqlQuizSidebar({
   }
 
   return (
-    <aside className="ui-panel flex h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden rounded-md p-0">
+    <aside className="ui-panel flex h-full min-h-0 w-80 shrink-0 flex-col overflow-hidden rounded-md p-0">
       <div className="border-b border-surface-border bg-surface-raised px-4 py-3.5">
         <div className="flex h-8 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">

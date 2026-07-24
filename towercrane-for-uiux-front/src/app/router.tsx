@@ -95,9 +95,11 @@ import { SqlNotesPage } from '../pages/sql-practice/ui/sql-notes-page'
 import { SqlNoteDetailPage } from '../pages/sql-practice/ui/sql-note-detail-page'
 import { SqlPublicNotePage } from '../pages/sql-practice/ui/sql-public-note-page'
 import { SqlPublicPersonalPracticePage } from '../pages/sql-practice/ui/sql-public-personal-practice-page'
-import { SqlUserPracticePage } from '../pages/sql-practice/ui/sql-user-practice-page'
 import { SqlTeamPracticePage } from '../pages/sql-practice/ui/sql-team-practice-page'
 import { SqlTeamWorkspacePage } from '../pages/sql-practice/ui/sql-team-workspace-page'
+import { SqlPersonalStudyListPage } from '../pages/sql-practice/ui/sql-personal-study-list-page'
+import { SqlPersonalWorkspacePage } from '../pages/sql-practice/ui/sql-personal-workspace-page'
+import { SqlStudyEditorPage } from '../pages/sql-practice/ui/sql-study-editor-page'
 import { BoardHomePage } from '../pages/board/ui/board-home-page'
 import { BoardListPage } from '../pages/board/ui/board-list-page'
 import { BoardDetailPage } from '../pages/board/ui/board-detail-page'
@@ -819,7 +821,19 @@ function SqlUserPracticeRedirect() {
 const sqlPersonalPracticeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/sql/personal',
-  component: () => <SqlUserPracticePage mode="personal" />,
+  component: SqlPersonalStudyListPage,
+})
+
+const sqlPersonalWorkspaceRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql/personal/workspaces/$workspaceId',
+  component: SqlPersonalWorkspacePage,
+})
+
+const sqlPersonalStudyEditorRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql/personal/workspaces/$workspaceId/edit',
+  component: () => <SqlStudyEditorPage scope="personal" />,
 })
 
 const sqlTeamPracticeRoute = createRoute({
@@ -832,6 +846,12 @@ const sqlTeamWorkspaceRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/sql/team/workspaces/$workspaceId',
   component: SqlTeamWorkspacePage,
+})
+
+const sqlTeamStudyEditorRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/sql/team/workspaces/$workspaceId/edit',
+  component: () => <SqlStudyEditorPage scope="team" />,
 })
 
 const sqlPracticeExamplesRoute = createRoute({
@@ -1282,8 +1302,11 @@ export const router = createRouter({
       sqlPracticeRoute,
       sqlUserPracticeRoute,
       sqlPersonalPracticeRoute,
+      sqlPersonalWorkspaceRoute,
+      sqlPersonalStudyEditorRoute,
       sqlTeamPracticeRoute,
       sqlTeamWorkspaceRoute,
+      sqlTeamStudyEditorRoute,
       sqlPracticeExamplesRoute,
       sqlNotesRoute,
       boardsHomeRoute,

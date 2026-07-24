@@ -79,7 +79,7 @@ export function SqlPersonalSchemaReplaceDialog({
                 SQL 파일 교체
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-xs leading-5 text-text-muted">
-                새 schema version을 만들고 개인 연습장의 active DB를 변경합니다.
+                새 schema version을 만들고 스터디의 active SQLite DB를 변경합니다.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>

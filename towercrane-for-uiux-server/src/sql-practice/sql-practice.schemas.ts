@@ -89,9 +89,11 @@ export const sqlUserPracticeProblemListQuerySchema = z.object({
 });
 
 export const createSqlUserPracticeProblemSchema = z.object({
+  problemSetId: optionalTrimmedString,
   title: z.string().trim().min(1, 'Title is required').max(80),
   description: z.string().trim().min(1, 'Description is required').max(4000),
   level: sqlUserPracticeLevelSchema.default(1),
+  orderIdx: z.coerce.number().int().min(0).optional(),
   targetTables: z.array(z.string().trim().min(1)).max(12).default([]),
   starterSql: optionalTrimmedString,
   answerSql: z.string().trim().min(1, 'Answer SQL is required').max(10000),
@@ -114,6 +116,26 @@ export const generateSqlUserPracticeAnswerSchema = z.object({
   targetTables: z.array(z.string().trim().min(1)).max(12).default([]),
 });
 
+export const createSqlPracticeProblemSetSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(80),
+  description: z.string().trim().max(1000).optional().default(''),
+  level: sqlUserPracticeLevelSchema.nullable().optional(),
+  status: z.enum(['draft', 'published']).default('draft'),
+});
+
+export const updateSqlPracticeProblemSetSchema =
+  createSqlPracticeProblemSetSchema
+    .partial()
+    .refine((data) => Object.keys(data).length > 0, {
+      message: 'At least one field must be provided',
+    });
+
+export const generateSqlPracticeProblemSetProblemsSchema = z.object({
+  problemSetId: optionalTrimmedString,
+  count: z.coerce.number().int().min(1).max(10).optional().default(10),
+  additionalInstructions: z.string().trim().max(2000).optional(),
+});
+
 export const gradeSqlUserPracticeProblemSchema = z.object({
   submittedSql: z
     .string()
@@ -127,6 +149,7 @@ export const sqlPersonalPracticeProblemListQuerySchema = z.object({
     .union([sqlUserPracticeLevelSchema, z.literal('all')])
     .optional()
     .transform((value) => (value === 'all' ? undefined : value)),
+  problemSetId: optionalTrimmedString,
 });
 
 export const replacePersonalSchemaVersionSchema = z.object({
@@ -134,17 +157,44 @@ export const replacePersonalSchemaVersionSchema = z.object({
   description: z.string().trim().max(500).optional().default(''),
 });
 
-export const createSqlTeamPracticeWorkspaceSchema = z.object({
+const sqlStudyWorkspaceBaseSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(80),
   description: z.string().trim().max(1000).optional().default(''),
 });
 
-export const updateSqlTeamPracticeWorkspaceSchema =
-  createSqlTeamPracticeWorkspaceSchema
+export const sqlStudyMetaPatchSchema = z.object({
+  learningGoal: z.string().trim().max(2000).nullable().optional(),
+  level: z
+    .enum(['beginner', 'basic', 'intermediate', 'advanced'])
+    .nullable()
+    .optional(),
+  topics: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+  visibility: z.enum(['private', 'public', 'official']).optional(),
+});
+
+export const createSqlPersonalPracticeWorkspaceSchema =
+  sqlStudyWorkspaceBaseSchema.extend(sqlStudyMetaPatchSchema.shape);
+
+export const updateSqlPersonalPracticeWorkspaceSchema =
+  createSqlPersonalPracticeWorkspaceSchema
     .partial()
     .refine((data) => Object.keys(data).length > 0, {
       message: 'At least one field must be provided',
     });
+
+export const createSqlTeamPracticeWorkspaceSchema = sqlStudyWorkspaceBaseSchema;
+
+export const updateSqlTeamPracticeWorkspaceSchema =
+  createSqlTeamPracticeWorkspaceSchema
+    .partial()
+    .extend(sqlStudyMetaPatchSchema.shape)
+    .refine((data) => Object.keys(data).length > 0, {
+      message: 'At least one field must be provided',
+    });
+
+export const updateSqlStudyErdSchema = z.object({
+  erdMmd: z.string().trim().min(1, 'ERD is required').max(200000),
+});
 
 export const sqlTeamPracticeProblemListQuerySchema = z.object({
   level: z
@@ -152,6 +202,7 @@ export const sqlTeamPracticeProblemListQuerySchema = z.object({
     .optional()
     .transform((value) => (value === 'all' ? undefined : value)),
   mine: z.coerce.boolean().optional().default(false),
+  problemSetId: optionalTrimmedString,
 });
 
 export const addSqlTeamPracticeMemberSchema = z.object({
@@ -198,6 +249,15 @@ export type UpdateSqlUserPracticeProblemInput = z.infer<
 export type GenerateSqlUserPracticeAnswerInput = z.infer<
   typeof generateSqlUserPracticeAnswerSchema
 >;
+export type CreateSqlPracticeProblemSetInput = z.infer<
+  typeof createSqlPracticeProblemSetSchema
+>;
+export type UpdateSqlPracticeProblemSetInput = z.infer<
+  typeof updateSqlPracticeProblemSetSchema
+>;
+export type GenerateSqlPracticeProblemSetProblemsInput = z.infer<
+  typeof generateSqlPracticeProblemSetProblemsSchema
+>;
 export type GradeSqlUserPracticeProblemInput = z.infer<
   typeof gradeSqlUserPracticeProblemSchema
 >;
@@ -206,6 +266,12 @@ export type SqlPersonalPracticeProblemListQuery = z.infer<
 >;
 export type ReplacePersonalSchemaVersionInput = z.infer<
   typeof replacePersonalSchemaVersionSchema
+>;
+export type CreateSqlPersonalPracticeWorkspaceInput = z.infer<
+  typeof createSqlPersonalPracticeWorkspaceSchema
+>;
+export type UpdateSqlPersonalPracticeWorkspaceInput = z.infer<
+  typeof updateSqlPersonalPracticeWorkspaceSchema
 >;
 export type CreateSqlTeamPracticeWorkspaceInput = z.infer<
   typeof createSqlTeamPracticeWorkspaceSchema
@@ -222,3 +288,4 @@ export type AddSqlTeamPracticeMemberInput = z.infer<
 export type UpdateSqlTeamPracticeMemberInput = z.infer<
   typeof updateSqlTeamPracticeMemberSchema
 >;
+export type UpdateSqlStudyErdInput = z.infer<typeof updateSqlStudyErdSchema>;

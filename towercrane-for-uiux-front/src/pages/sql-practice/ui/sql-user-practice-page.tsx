@@ -1,4 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
+import { useNavigate } from '@tanstack/react-router'
 import {
   useEffect,
   useMemo,
@@ -53,6 +54,7 @@ import {
   useReplaceSqlPersonalPracticeSchemaVersion,
   useShareSqlPersonalPracticeProblem,
   useSqlPersonalDefaultWorkspace,
+  useSqlPersonalPracticeWorkspace,
   useSqlPersonalPracticeErd,
   useSqlPersonalPracticeMeta,
   useSqlPersonalPracticeProblems,
@@ -79,6 +81,7 @@ import { useSessionStore } from '../../../shared/store/session-store'
 
 type SqlUserPracticePageProps = {
   mode: 'user' | 'personal'
+  workspaceId?: string
 }
 
 type LevelFilter = 'all' | number
@@ -136,8 +139,8 @@ const initialForm: SqlUserPracticeProblemPayload = {
   status: 'published',
 }
 
-export function SqlUserPracticePage({ mode }: SqlUserPracticePageProps) {
-  if (mode === 'personal') return <SqlPersonalPracticeWorkspace />
+export function SqlUserPracticePage({ mode, workspaceId }: SqlUserPracticePageProps) {
+  if (mode === 'personal') return <SqlPersonalPracticeWorkspace selectedWorkspaceId={workspaceId} />
 
   return <SqlUserPracticeWorkspace />
 }
@@ -932,9 +935,12 @@ function FormRow({ label, hint, action, children }: FormRowProps) {
   )
 }
 
-function SqlPersonalPracticeWorkspace() {
+function SqlPersonalPracticeWorkspace({ selectedWorkspaceId }: { selectedWorkspaceId?: string }) {
+  const navigate = useNavigate()
   const userId = useSessionStore((state) => state.userId)
-  const workspaceQuery = useSqlPersonalDefaultWorkspace()
+  const defaultWorkspaceQuery = useSqlPersonalDefaultWorkspace()
+  const selectedWorkspaceQuery = useSqlPersonalPracticeWorkspace(selectedWorkspaceId)
+  const workspaceQuery = selectedWorkspaceId ? selectedWorkspaceQuery : defaultWorkspaceQuery
   const workspaceId = workspaceQuery.data?.id
   const [levelFilter, setLevelFilter] = useState<LevelFilter>(1)
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null)
@@ -1148,22 +1154,38 @@ function SqlPersonalPracticeWorkspace() {
             </p>
           </div>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="gap-1.5 self-start md:self-auto shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
-          onClick={handleRefresh}
-          disabled={workspaceQuery.isFetching || metaQuery.isFetching || problemsQuery.isFetching}
-        >
-          <RefreshCw
-            className={`size-3.5 ${
-              workspaceQuery.isFetching || metaQuery.isFetching || problemsQuery.isFetching
-                ? 'animate-spin'
-                : ''
-            }`}
-          />
-          새로고침
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => navigate({ to: '/sql/personal' })}>
+            스터디 목록
+          </Button>
+          {workspaceId && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => navigate({ to: `/sql/personal/workspaces/${workspaceId}/edit` })}
+            >
+              <Settings className="size-3.5" />
+              스터디 편집
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1.5 shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+            onClick={handleRefresh}
+            disabled={workspaceQuery.isFetching || metaQuery.isFetching || problemsQuery.isFetching}
+          >
+            <RefreshCw
+              className={`size-3.5 ${
+                workspaceQuery.isFetching || metaQuery.isFetching || problemsQuery.isFetching
+                  ? 'animate-spin'
+                  : ''
+              }`}
+            />
+            새로고침
+          </Button>
+        </div>
       </div>
 
       <div className="grid h-[calc(100dvh-220px)] min-h-0 gap-4 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)_320px]">

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   Param,
@@ -21,17 +22,23 @@ import type { SessionRequest } from '../auth/types';
 import { SqlPracticeService } from './sql-practice.service';
 import {
   addSqlTeamPracticeMemberSchema,
+  createSqlPracticeProblemSetSchema,
+  createSqlPersonalPracticeWorkspaceSchema,
   createSqlUserPracticeProblemSchema,
   createSqlTeamPracticeWorkspaceSchema,
   createSqlPracticeNoteSchema,
   generateSqlUserPracticeAnswerSchema,
+  generateSqlPracticeProblemSetProblemsSchema,
   listSqlPracticeNotesQuerySchema,
   replacePersonalSchemaVersionSchema,
   sqlPersonalPracticeProblemListQuerySchema,
   sqlTeamPracticeProblemListQuerySchema,
   sqlUserPracticeProblemListQuerySchema,
   updateSqlTeamPracticeMemberSchema,
+  updateSqlPracticeProblemSetSchema,
   updateSqlTeamPracticeWorkspaceSchema,
+  updateSqlPersonalPracticeWorkspaceSchema,
+  updateSqlStudyErdSchema,
   updateSqlUserPracticeProblemSchema,
   updateSqlPracticeNoteSchema,
 } from './sql-practice.schemas';
@@ -86,6 +93,52 @@ export class SqlPracticeController {
   @Get('personal/workspaces/default')
   defaultPersonalWorkspace(@Req() req: SessionRequest) {
     return this.sqlPracticeService.getDefaultPersonalPracticeWorkspace(
+      req.user.id,
+    );
+  }
+
+  @Post('personal/workspaces')
+  createPersonalWorkspace(@Body() body: unknown, @Req() req: SessionRequest) {
+    const input = createSqlPersonalPracticeWorkspaceSchema.parse(body);
+    return this.sqlPracticeService.createPersonalPracticeWorkspace(
+      input,
+      req.user.id,
+    );
+  }
+
+  @Get('personal/workspaces/:workspaceId')
+  personalWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.getPersonalPracticeWorkspace(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Patch('personal/workspaces/:workspaceId')
+  updatePersonalWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSqlPersonalPracticeWorkspaceSchema.parse(body);
+    return this.sqlPracticeService.updatePersonalPracticeWorkspace(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Delete('personal/workspaces/:workspaceId')
+  @HttpCode(204)
+  deletePersonalWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.deletePersonalPracticeWorkspace(
+      workspaceId,
       req.user.id,
     );
   }
@@ -164,6 +217,86 @@ export class SqlPracticeController {
   ) {
     return this.sqlPracticeService.getPersonalPracticeErd(
       workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Patch('personal/workspaces/:workspaceId/erd')
+  updatePersonalWorkspaceErd(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSqlStudyErdSchema.parse(body);
+    return this.sqlPracticeService.updatePersonalPracticeErd(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Post('personal/workspaces/:workspaceId/erd/regenerate')
+  regeneratePersonalWorkspaceErd(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.regeneratePersonalPracticeErd(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Get('personal/workspaces/:workspaceId/problem-sets')
+  personalProblemSets(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.listPersonalPracticeProblemSets(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Post('personal/workspaces/:workspaceId/problem-sets')
+  createPersonalProblemSet(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = createSqlPracticeProblemSetSchema.parse(body);
+    return this.sqlPracticeService.createPersonalPracticeProblemSet(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Patch('personal/workspaces/:workspaceId/problem-sets/:id')
+  updatePersonalProblemSet(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSqlPracticeProblemSetSchema.parse(body);
+    return this.sqlPracticeService.updatePersonalPracticeProblemSet(
+      workspaceId,
+      id,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Post('personal/workspaces/:workspaceId/problem-sets/generate-problems')
+  generatePersonalProblemSetProblems(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = generateSqlPracticeProblemSetProblemsSchema.parse(body);
+    return this.sqlPracticeService.generatePersonalPracticeProblemSetProblems(
+      workspaceId,
+      input,
       req.user.id,
     );
   }
@@ -462,6 +595,86 @@ export class SqlPracticeController {
     return this.sqlPracticeService.getTeamPracticeErd(workspaceId, req.user.id);
   }
 
+  @Patch('team/workspaces/:workspaceId/erd')
+  updateTeamWorkspaceErd(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSqlStudyErdSchema.parse(body);
+    return this.sqlPracticeService.updateTeamPracticeErd(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Post('team/workspaces/:workspaceId/erd/regenerate')
+  regenerateTeamWorkspaceErd(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.regenerateTeamPracticeErd(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Get('team/workspaces/:workspaceId/problem-sets')
+  teamProblemSets(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.sqlPracticeService.listTeamPracticeProblemSets(
+      workspaceId,
+      req.user.id,
+    );
+  }
+
+  @Post('team/workspaces/:workspaceId/problem-sets')
+  createTeamProblemSet(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = createSqlPracticeProblemSetSchema.parse(body);
+    return this.sqlPracticeService.createTeamPracticeProblemSet(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Patch('team/workspaces/:workspaceId/problem-sets/:id')
+  updateTeamProblemSet(
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSqlPracticeProblemSetSchema.parse(body);
+    return this.sqlPracticeService.updateTeamPracticeProblemSet(
+      workspaceId,
+      id,
+      input,
+      req.user.id,
+    );
+  }
+
+  @Post('team/workspaces/:workspaceId/problem-sets/generate-problems')
+  generateTeamProblemSetProblems(
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = generateSqlPracticeProblemSetProblemsSchema.parse(body);
+    return this.sqlPracticeService.generateTeamPracticeProblemSetProblems(
+      workspaceId,
+      input,
+      req.user.id,
+    );
+  }
+
   @Get('team/workspaces/:workspaceId/problems')
   teamProblems(
     @Param('workspaceId') workspaceId: string,
@@ -677,6 +890,42 @@ export class SqlPracticeController {
   @Get('seeds/:fileName/erd')
   seedErd(@Param('fileName') fileName: string) {
     return this.sqlPracticeService.getSeedErd(fileName);
+  }
+
+  @Get('seeds/:fileName/download')
+  downloadSeed(
+    @Param('fileName') fileName: string,
+    @Query('source') source: string | undefined,
+  ) {
+    return this.sqlPracticeService.getSeedContent(source, fileName);
+  }
+
+  @Post('seeds/upload')
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }),
+  )
+  uploadSeed(
+    @UploadedFile() file: UploadedSqlFile | undefined,
+    @Req() req: SessionRequest,
+  ) {
+    if (req.user.role !== 'admin') {
+      throw new ForbiddenException(
+        'SQL 연습 파일 업로드는 관리자만 가능합니다.',
+      );
+    }
+    return this.sqlPracticeService.uploadSeed(file, req.user.id);
+  }
+
+  @Delete('seeds/:fileName')
+  deleteSeed(
+    @Param('fileName') fileName: string,
+    @Query('source') source: string | undefined,
+    @Req() req: SessionRequest,
+  ) {
+    if (req.user.role !== 'admin') {
+      throw new ForbiddenException('SQL 연습 파일 삭제는 관리자만 가능합니다.');
+    }
+    return this.sqlPracticeService.deleteSeed(source, fileName, req.user.id);
   }
 
   @Post('gemini')

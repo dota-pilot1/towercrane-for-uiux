@@ -349,30 +349,43 @@ export function SqlTeamWorkspacePage() {
             </p>
           </div>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="gap-1.5 self-start lg:self-auto shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
-          onClick={handleRefresh}
-          disabled={
-            workspaceQuery.isFetching ||
-            metaQuery.isFetching ||
-            tablesQuery.isFetching ||
-            problemsQuery.isFetching
-          }
-        >
-          <RefreshCw
-            className={`size-3.5 ${
+        <div className="flex flex-wrap items-center gap-2">
+          {canEdit && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => navigate({ to: `/sql/team/workspaces/${workspaceId}/edit` })}
+            >
+              <Settings className="size-3.5" />
+              스터디 편집
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1.5 shrink-0 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+            onClick={handleRefresh}
+            disabled={
               workspaceQuery.isFetching ||
               metaQuery.isFetching ||
               tablesQuery.isFetching ||
               problemsQuery.isFetching
-                ? 'animate-spin'
-                : ''
-            }`}
-          />
-          새로고침
-        </Button>
+            }
+          >
+            <RefreshCw
+              className={`size-3.5 ${
+                workspaceQuery.isFetching ||
+                metaQuery.isFetching ||
+                tablesQuery.isFetching ||
+                problemsQuery.isFetching
+                  ? 'animate-spin'
+                  : ''
+              }`}
+            />
+            새로고침
+          </Button>
+        </div>
       </div>
 
       <div className="grid h-[calc(100dvh-230px)] min-h-0 gap-4 overflow-hidden xl:grid-cols-[300px_minmax(0,1fr)_340px]">
