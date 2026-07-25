@@ -42,7 +42,10 @@ export class TeamDocsService {
     return this.db
       .select()
       .from(teamDocNodesTable)
-      .orderBy(asc(teamDocNodesTable.orderIdx), asc(teamDocNodesTable.createdAt))
+      .orderBy(
+        asc(teamDocNodesTable.orderIdx),
+        asc(teamDocNodesTable.createdAt),
+      )
       .all()
       .map((node) => this.toSummaryDto(node, usersById));
   }
@@ -125,7 +128,11 @@ export class TeamDocsService {
     for (const item of input.items) {
       this.db
         .update(teamDocNodesTable)
-        .set({ orderIdx: item.orderIdx, parentId: input.parentId, updatedAt: now })
+        .set({
+          orderIdx: item.orderIdx,
+          parentId: input.parentId,
+          updatedAt: now,
+        })
         .where(eq(teamDocNodesTable.id, item.id))
         .run();
     }

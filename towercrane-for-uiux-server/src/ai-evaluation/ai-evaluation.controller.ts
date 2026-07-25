@@ -24,7 +24,9 @@ export class AiEvaluationController {
   }
 
   @Post('evaluatees')
-  createEvaluatee(@Body() body: { name: string; role?: string; description?: string }) {
+  createEvaluatee(
+    @Body() body: { name: string; role?: string; description?: string },
+  ) {
     return this.service.createEvaluatee(body);
   }
 

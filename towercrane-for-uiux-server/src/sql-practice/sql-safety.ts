@@ -16,7 +16,10 @@ export type SanitizedSql = {
   type: SqlQueryType;
 };
 
-export function sanitizeSql(rawQuery: string, maxQueryLength: number): SanitizedSql {
+export function sanitizeSql(
+  rawQuery: string,
+  maxQueryLength: number,
+): SanitizedSql {
   const query = removeTrailingSemicolon(rawQuery.trim());
 
   if (!query) {
@@ -24,21 +27,29 @@ export function sanitizeSql(rawQuery: string, maxQueryLength: number): Sanitized
   }
 
   if (query.length > maxQueryLength) {
-    throw new BadRequestException(`SQL query is too long. Max ${maxQueryLength} characters.`);
+    throw new BadRequestException(
+      `SQL query is too long. Max ${maxQueryLength} characters.`,
+    );
   }
 
   if (hasStatementSeparator(query)) {
-    throw new BadRequestException('Only one SQL statement can be executed at a time.');
+    throw new BadRequestException(
+      'Only one SQL statement can be executed at a time.',
+    );
   }
 
   for (const pattern of BLOCKED_PATTERNS) {
     if (pattern.test(query)) {
-      throw new BadRequestException('This SQL statement is not allowed in the practice database.');
+      throw new BadRequestException(
+        'This SQL statement is not allowed in the practice database.',
+      );
     }
   }
 
   if (/\b(DROP|ALTER)\s+TABLE\s+["'`]?__sql_practice_/i.test(query)) {
-    throw new BadRequestException('Internal SQL practice tables cannot be modified.');
+    throw new BadRequestException(
+      'Internal SQL practice tables cannot be modified.',
+    );
   }
 
   const type = detectQueryType(query);
@@ -83,7 +94,10 @@ function hasStatementSeparator(query: string) {
 
     if (!quote && char === '/' && next === '*') {
       index += 2;
-      while (index < query.length && !(query[index] === '*' && query[index + 1] === '/')) {
+      while (
+        index < query.length &&
+        !(query[index] === '*' && query[index + 1] === '/')
+      ) {
         index += 1;
       }
       index += 1;

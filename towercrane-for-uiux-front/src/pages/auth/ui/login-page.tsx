@@ -314,21 +314,21 @@ export function LoginPage() {
   })
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-[1040px] flex-col items-center justify-center gap-4 px-4 py-8">
-      <div className="w-full rounded-md border border-surface-border-soft bg-surface-raised px-5 py-3 shadow-[0_10px_28px_rgba(0,0,0,0.05)]">
-        <div className="mb-2.5 flex items-center gap-1.5">
+    <main className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-[1080px] flex-col items-center justify-center gap-5 px-4 py-10">
+      <div className="w-full rounded-2xl border border-surface-border-soft bg-surface-raised/60 px-6 py-4">
+        <div className="mb-3 flex items-center gap-1.5">
           <Zap className="size-3.5 text-brand-primary" />
           <span className="text-xs font-semibold text-brand-primary">테스트 계정 간편 로그인</span>
           <span className="ml-auto text-[10px] text-text-muted">비밀번호: test1234</span>
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {shuffledTestAccounts.map((account) => (
             <button
               key={account.email}
               type="button"
               disabled={loginMutation.isPending}
               onClick={() => onTestLogin(account)}
-              className="rounded-md border border-surface-border-soft bg-background px-3 py-1 text-xs font-medium text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary disabled:opacity-50"
+              className="rounded-full border border-surface-border-soft bg-background px-3.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary disabled:opacity-50"
             >
               {account.name}
             </button>
@@ -337,7 +337,7 @@ export function LoginPage() {
       </div>
 
       <section
-        className={`relative min-h-[560px] w-full overflow-hidden rounded-md border border-surface-border-soft bg-background shadow-[0_22px_60px_rgba(0,0,0,0.10)] lg:min-h-[580px] ${
+        className={`relative min-h-[560px] w-full overflow-hidden rounded-3xl border border-surface-border-soft bg-background shadow-[0_40px_90px_-30px_rgba(0,0,0,0.22)] lg:min-h-[600px] ${
           isSignup ? 'lg:[&_.signin-panel]:translate-x-full lg:[&_.signup-panel]:translate-x-full lg:[&_.signup-panel]:opacity-100 lg:[&_.signup-panel]:z-20 lg:[&_.switch-overlay]:-translate-x-full lg:[&_.switch-track]:translate-x-1/2' : ''
         }`}
       >
@@ -346,13 +346,13 @@ export function LoginPage() {
             isSignup ? 'z-10 opacity-0' : 'z-20 opacity-100'
           }`}
         >
-          <form className="w-full max-w-[360px] space-y-4" onSubmit={handleLoginSubmit(onLogin)}>
-            <div className="mb-7 text-center">
-              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
-                <KeyRound className="size-5" />
+          <form className="w-full max-w-[360px] space-y-5" onSubmit={handleLoginSubmit(onLogin)}>
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl border border-brand-border bg-brand-glass text-brand-primary">
+                <KeyRound className="size-6" />
               </div>
-              <h1 className="text-3xl font-black text-text-primary">로그인</h1>
-              <p className="mt-2 text-sm text-text-secondary">계정으로 Prototype Registry에 진입합니다.</p>
+              <h1 className="text-[2rem] font-black tracking-tight text-text-primary">로그인</h1>
+              <p className="mt-2.5 text-sm text-text-secondary">계정으로 Prototype Registry에 진입합니다.</p>
             </div>
 
             <AuthField label="이메일" error={loginErrors.email?.message}>
@@ -399,12 +399,12 @@ export function LoginPage() {
           }`}
         >
           <form className="w-full max-w-[380px] space-y-4" onSubmit={handleSignupSubmit(onSignup)}>
-            <div className="mb-6 text-center">
-              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">
-                <UserPlus className="size-5" />
+            <div className="mb-7 text-center">
+              <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl border border-brand-border bg-brand-glass text-brand-primary">
+                <UserPlus className="size-6" />
               </div>
-              <h1 className="text-3xl font-black text-text-primary">회원가입</h1>
-              <p className="mt-2 text-sm text-text-secondary">이메일 인증 후 계정을 만듭니다.</p>
+              <h1 className="text-[2rem] font-black tracking-tight text-text-primary">회원가입</h1>
+              <p className="mt-2.5 text-sm text-text-secondary">이메일 인증 후 계정을 만듭니다.</p>
             </div>
 
             <AuthField label="이메일" error={signupErrors.email?.message}>
@@ -524,8 +524,8 @@ export function LoginPage() {
           </form>
         </div>
 
-        <div className="switch-overlay pointer-events-none absolute left-1/2 top-0 z-30 hidden h-full w-1/2 overflow-hidden bg-[color:color-mix(in_srgb,var(--status-online)_18%,var(--background))] transition-transform duration-300 ease-in-out lg:block">
-          <div className="switch-track relative -left-full flex h-full w-[200%] bg-[color:color-mix(in_srgb,var(--status-online)_18%,var(--background))] transition-transform duration-300 ease-in-out">
+        <div className="switch-overlay pointer-events-none absolute left-1/2 top-0 z-30 hidden h-full w-1/2 overflow-hidden bg-[linear-gradient(150deg,color-mix(in_srgb,var(--primary)_20%,var(--background)),color-mix(in_srgb,var(--primary)_7%,var(--background)))] transition-transform duration-300 ease-in-out lg:block">
+          <div className="switch-track relative -left-full flex h-full w-[200%] bg-[linear-gradient(150deg,color-mix(in_srgb,var(--primary)_20%,var(--background)),color-mix(in_srgb,var(--primary)_7%,var(--background)))] transition-transform duration-300 ease-in-out">
             <SwitchPanel
               title="다시 오셨나요?"
               description="프로토타입 공유 및 개발 커뮤니티에서 저장된 문서, 회의, 피드백으로 바로 돌아갑니다."
@@ -586,7 +586,7 @@ type SwitchPanelProps = {
 function SwitchPanel({ title, description, buttonLabel, onClick }: SwitchPanelProps) {
   return (
     <div className="pointer-events-auto flex h-full w-1/2 flex-col items-center justify-center px-10 text-center text-text-primary">
-      <div className="mb-8 w-full max-w-[340px] rounded-md border border-brand-border bg-background p-5 text-left shadow-[0_14px_34px_rgba(0,0,0,0.08)]">
+      <div className="mb-8 w-full max-w-[340px] rounded-2xl border border-brand-border bg-background/80 p-5 text-left shadow-[0_20px_44px_-16px_rgba(0,0,0,0.14)] backdrop-blur-sm">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex min-w-0 items-center gap-2">
             <div className="flex size-9 items-center justify-center rounded-md border border-brand-border bg-brand-glass text-brand-primary">

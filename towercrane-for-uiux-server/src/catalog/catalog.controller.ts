@@ -115,7 +115,10 @@ export class CatalogController {
   @Get('categories')
   @UseGuards(OptionalAuthGuard)
   listCategories(@CurrentUser() user?: { id: string; role: string }) {
-    return this.catalogService.listCategories(user?.id ?? '', user?.role ?? 'guest');
+    return this.catalogService.listCategories(
+      user?.id ?? '',
+      user?.role ?? 'guest',
+    );
   }
 
   @Post('categories/reorder')
@@ -133,7 +136,11 @@ export class CatalogController {
     @CurrentUser() user: { id: string; role: string },
     @Param('categoryId') categoryId: string,
   ) {
-    return this.catalogService.getCategory(user?.id ?? '', user?.role ?? 'guest', categoryId);
+    return this.catalogService.getCategory(
+      user?.id ?? '',
+      user?.role ?? 'guest',
+      categoryId,
+    );
   }
 
   @Post('categories')
@@ -152,7 +159,12 @@ export class CatalogController {
     @Param('categoryId') categoryId: string,
     @Body() body: unknown,
   ) {
-    return this.catalogService.updateCategory(user.id, user.role, categoryId, body);
+    return this.catalogService.updateCategory(
+      user.id,
+      user.role,
+      categoryId,
+      body,
+    );
   }
 
   @Delete('categories/:categoryId')
@@ -186,7 +198,12 @@ export class CatalogController {
     @Param('categoryId') categoryId: string,
     @Body() body: unknown,
   ) {
-    return this.catalogService.createPrototype(user.id, user.role, categoryId, body);
+    return this.catalogService.createPrototype(
+      user.id,
+      user.role,
+      categoryId,
+      body,
+    );
   }
 
   @Patch('categories/:categoryId/prototypes/:prototypeId')
@@ -213,6 +230,11 @@ export class CatalogController {
     @Param('categoryId') categoryId: string,
     @Param('prototypeId') prototypeId: string,
   ) {
-    return this.catalogService.deletePrototype(user.id, user.role, categoryId, prototypeId);
+    return this.catalogService.deletePrototype(
+      user.id,
+      user.role,
+      categoryId,
+      prototypeId,
+    );
   }
 }

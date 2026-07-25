@@ -16,4 +16,3 @@ import { BoardsService } from './boards.service';
   providers: [BoardsService],
 })
 export class BoardsModule {}
-

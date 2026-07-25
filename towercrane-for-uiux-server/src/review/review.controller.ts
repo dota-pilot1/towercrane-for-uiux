@@ -8,10 +8,10 @@ import {
   Post,
   Query,
   UseGuards,
-} from '@nestjs/common'
-import { AuthGuard } from '../auth/auth.guard'
-import { CurrentUser } from '../auth/current-user.decorator'
-import { ReviewService } from './review.service'
+} from '@nestjs/common';
+import { AuthGuard } from '../auth/auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { ReviewService } from './review.service';
 
 @Controller('prototypes/:prototypeId/reviews')
 @UseGuards(AuthGuard)
@@ -24,7 +24,7 @@ export class ReviewController {
     @Param('prototypeId') prototypeId: string,
     @Query() query: Record<string, unknown>,
   ) {
-    return this.reviewService.listReviews(prototypeId, user.id, query)
+    return this.reviewService.listReviews(prototypeId, user.id, query);
   }
 
   @Get('me')
@@ -32,7 +32,7 @@ export class ReviewController {
     @CurrentUser() user: { id: string },
     @Param('prototypeId') prototypeId: string,
   ) {
-    return this.reviewService.getMyReview(prototypeId, user.id)
+    return this.reviewService.getMyReview(prototypeId, user.id);
   }
 
   @Post()
@@ -41,7 +41,7 @@ export class ReviewController {
     @Param('prototypeId') prototypeId: string,
     @Body() body: unknown,
   ) {
-    return this.reviewService.createReview(prototypeId, user.id, body)
+    return this.reviewService.createReview(prototypeId, user.id, body);
   }
 
   @Patch('me')
@@ -50,7 +50,7 @@ export class ReviewController {
     @Param('prototypeId') prototypeId: string,
     @Body() body: unknown,
   ) {
-    return this.reviewService.updateMyReview(prototypeId, user.id, body)
+    return this.reviewService.updateMyReview(prototypeId, user.id, body);
   }
 
   @Delete('me')
@@ -58,6 +58,6 @@ export class ReviewController {
     @CurrentUser() user: { id: string },
     @Param('prototypeId') prototypeId: string,
   ) {
-    return this.reviewService.deleteMyReview(prototypeId, user.id)
+    return this.reviewService.deleteMyReview(prototypeId, user.id);
   }
 }

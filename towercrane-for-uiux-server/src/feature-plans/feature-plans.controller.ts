@@ -11,7 +11,10 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { FeaturePlansService, type FeaturePlanUser } from './feature-plans.service';
+import {
+  FeaturePlansService,
+  type FeaturePlanUser,
+} from './feature-plans.service';
 
 @Controller('feature-plans')
 @UseGuards(AuthGuard)

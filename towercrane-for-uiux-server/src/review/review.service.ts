@@ -3,39 +3,36 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common'
-import { randomUUID } from 'node:crypto'
-import { and, desc, eq, sql } from 'drizzle-orm'
-import { DatabaseService } from '../database/database.service'
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { DatabaseService } from '../database/database.service';
 import {
   prototypeReviewsTable,
   prototypesTable,
   usersTable,
-} from '../database/schema'
-import {
-  listReviewsQuerySchema,
-  reviewInputSchema,
-} from './review.schemas'
+} from '../database/schema';
+import { listReviewsQuerySchema, reviewInputSchema } from './review.schemas';
 
 export type ReviewStats = {
-  avgRating: number
-  count: number
-  distribution: Record<number, number>
-}
+  avgRating: number;
+  count: number;
+  distribution: Record<number, number>;
+};
 
 @Injectable()
 export class ReviewService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   private get db() {
-    return this.databaseService.db
+    return this.databaseService.db;
   }
 
   listReviews(prototypeId: string, currentUserId: string, rawQuery: unknown) {
-    this.ensurePrototype(prototypeId)
-    const query = listReviewsQuerySchema.parse(rawQuery ?? {})
-    const { page, pageSize } = query
-    const offset = (page - 1) * pageSize
+    this.ensurePrototype(prototypeId);
+    const query = listReviewsQuerySchema.parse(rawQuery ?? {});
+    const { page, pageSize } = query;
+    const offset = (page - 1) * pageSize;
 
     const rows = this.db
       .select({
@@ -55,15 +52,15 @@ export class ReviewService {
       .orderBy(desc(prototypeReviewsTable.createdAt))
       .limit(pageSize)
       .offset(offset)
-      .all()
+      .all();
 
     const totalRow = this.db
       .select({ count: sql<number>`count(*)` })
       .from(prototypeReviewsTable)
       .where(eq(prototypeReviewsTable.prototypeId, prototypeId))
-      .get()
+      .get();
 
-    const total = Number(totalRow?.count ?? 0)
+    const total = Number(totalRow?.count ?? 0);
 
     return {
       items: rows.map((r) => ({
@@ -82,7 +79,7 @@ export class ReviewService {
       pageSize,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
       stats: this.getStats(prototypeId),
-    }
+    };
   }
 
   getMyReview(prototypeId: string, userId: string) {
@@ -95,22 +92,22 @@ export class ReviewService {
           eq(prototypeReviewsTable.userId, userId),
         ),
       )
-      .get()
+      .get();
 
-    return row ?? null
+    return row ?? null;
   }
 
   createReview(prototypeId: string, userId: string, payload: unknown) {
-    this.ensurePrototype(prototypeId)
-    const input = reviewInputSchema.parse(payload)
+    this.ensurePrototype(prototypeId);
+    const input = reviewInputSchema.parse(payload);
 
-    const existing = this.getMyReview(prototypeId, userId)
+    const existing = this.getMyReview(prototypeId, userId);
     if (existing) {
-      throw new ConflictException('이미 작성한 리뷰가 있습니다. 수정해주세요.')
+      throw new ConflictException('이미 작성한 리뷰가 있습니다. 수정해주세요.');
     }
 
-    const now = new Date().toISOString()
-    const id = `review-${randomUUID().slice(0, 10)}`
+    const now = new Date().toISOString();
+    const id = `review-${randomUUID().slice(0, 10)}`;
 
     this.db
       .insert(prototypeReviewsTable)
@@ -123,20 +120,20 @@ export class ReviewService {
         createdAt: now,
         updatedAt: now,
       })
-      .run()
+      .run();
 
-    return this.getMyReview(prototypeId, userId)
+    return this.getMyReview(prototypeId, userId);
   }
 
   updateMyReview(prototypeId: string, userId: string, payload: unknown) {
-    const existing = this.getMyReview(prototypeId, userId)
+    const existing = this.getMyReview(prototypeId, userId);
     if (!existing) {
-      throw new NotFoundException('작성한 리뷰가 없습니다.')
+      throw new NotFoundException('작성한 리뷰가 없습니다.');
     }
 
-    const input = reviewInputSchema.partial().parse(payload)
+    const input = reviewInputSchema.partial().parse(payload);
     if (!input.rating && !input.content) {
-      throw new BadRequestException('수정할 값이 없습니다.')
+      throw new BadRequestException('수정할 값이 없습니다.');
     }
 
     this.db
@@ -152,15 +149,15 @@ export class ReviewService {
           eq(prototypeReviewsTable.userId, userId),
         ),
       )
-      .run()
+      .run();
 
-    return this.getMyReview(prototypeId, userId)
+    return this.getMyReview(prototypeId, userId);
   }
 
   deleteMyReview(prototypeId: string, userId: string) {
-    const existing = this.getMyReview(prototypeId, userId)
+    const existing = this.getMyReview(prototypeId, userId);
     if (!existing) {
-      throw new NotFoundException('작성한 리뷰가 없습니다.')
+      throw new NotFoundException('작성한 리뷰가 없습니다.');
     }
 
     this.db
@@ -171,9 +168,9 @@ export class ReviewService {
           eq(prototypeReviewsTable.userId, userId),
         ),
       )
-      .run()
+      .run();
 
-    return { success: true }
+    return { success: true };
   }
 
   getStats(prototypeId: string): ReviewStats {
@@ -181,23 +178,24 @@ export class ReviewService {
       .select({ rating: prototypeReviewsTable.rating })
       .from(prototypeReviewsTable)
       .where(eq(prototypeReviewsTable.prototypeId, prototypeId))
-      .all()
+      .all();
 
-    const count = rows.length
-    const sum = rows.reduce((acc, r) => acc + r.rating, 0)
-    const avgRating = count > 0 ? Number((sum / count).toFixed(2)) : 0
+    const count = rows.length;
+    const sum = rows.reduce((acc, r) => acc + r.rating, 0);
+    const avgRating = count > 0 ? Number((sum / count).toFixed(2)) : 0;
 
-    const distribution: Record<number, number> = {}
-    for (let i = 1; i <= 10; i += 1) distribution[i] = 0
+    const distribution: Record<number, number> = {};
+    for (let i = 1; i <= 10; i += 1) distribution[i] = 0;
     for (const r of rows) {
-      distribution[r.rating] = (distribution[r.rating] ?? 0) + 1
+      distribution[r.rating] = (distribution[r.rating] ?? 0) + 1;
     }
 
-    return { avgRating, count, distribution }
+    return { avgRating, count, distribution };
   }
 
   getAggregatesForPrototypes(prototypeIds: string[]) {
-    if (prototypeIds.length === 0) return new Map<string, { avgRating: number; count: number }>()
+    if (prototypeIds.length === 0)
+      return new Map<string, { avgRating: number; count: number }>();
 
     const rows = this.db
       .select({
@@ -205,25 +203,25 @@ export class ReviewService {
         rating: prototypeReviewsTable.rating,
       })
       .from(prototypeReviewsTable)
-      .all()
+      .all();
 
-    const map = new Map<string, { sum: number; count: number }>()
+    const map = new Map<string, { sum: number; count: number }>();
     for (const row of rows) {
-      if (!prototypeIds.includes(row.prototypeId)) continue
-      const current = map.get(row.prototypeId) ?? { sum: 0, count: 0 }
-      current.sum += row.rating
-      current.count += 1
-      map.set(row.prototypeId, current)
+      if (!prototypeIds.includes(row.prototypeId)) continue;
+      const current = map.get(row.prototypeId) ?? { sum: 0, count: 0 };
+      current.sum += row.rating;
+      current.count += 1;
+      map.set(row.prototypeId, current);
     }
 
-    const result = new Map<string, { avgRating: number; count: number }>()
+    const result = new Map<string, { avgRating: number; count: number }>();
     for (const [id, { sum, count }] of map) {
       result.set(id, {
         avgRating: count > 0 ? Number((sum / count).toFixed(2)) : 0,
         count,
-      })
+      });
     }
-    return result
+    return result;
   }
 
   private ensurePrototype(prototypeId: string) {
@@ -231,10 +229,10 @@ export class ReviewService {
       .select({ id: prototypesTable.id })
       .from(prototypesTable)
       .where(eq(prototypesTable.id, prototypeId))
-      .get()
+      .get();
 
     if (!row) {
-      throw new NotFoundException(`Prototype not found: ${prototypeId}`)
+      throw new NotFoundException(`Prototype not found: ${prototypeId}`);
     }
   }
 }

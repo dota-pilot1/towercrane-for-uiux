@@ -140,7 +140,12 @@ export class AiEvaluationService {
         .set({ score, note: body.note ?? existing.note, updatedAt: now })
         .where(eq(evalScoresTable.itemId, itemId))
         .run();
-      return { ...existing, score, note: body.note ?? existing.note, updatedAt: now };
+      return {
+        ...existing,
+        score,
+        note: body.note ?? existing.note,
+        updatedAt: now,
+      };
     } else {
       const record = {
         id: `score-${randomUUID().slice(0, 12)}`,

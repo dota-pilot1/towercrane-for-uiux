@@ -64,7 +64,9 @@ export class AxStudyService {
       .from(axStudyNotesTable)
       .groupBy(axStudyNotesTable.workspaceId)
       .all();
-    const countMap = new Map(counts.map((c) => [c.workspaceId, Number(c.count)]));
+    const countMap = new Map(
+      counts.map((c) => [c.workspaceId, Number(c.count)]),
+    );
 
     return rows.map((w) => ({
       ...w,
@@ -97,7 +99,10 @@ export class AxStudyService {
       .select()
       .from(axStudyNotesTable)
       .where(eq(axStudyNotesTable.workspaceId, workspaceId))
-      .orderBy(asc(axStudyNotesTable.orderIdx), desc(axStudyNotesTable.createdAt))
+      .orderBy(
+        asc(axStudyNotesTable.orderIdx),
+        desc(axStudyNotesTable.createdAt),
+      )
       .all();
     return { ...workspace, isMine: workspace.userId === userId, notes };
   }
@@ -143,7 +148,9 @@ export class AxStudyService {
     const now = this.now();
     const id = `axnote-${randomUUID().slice(0, 12)}`;
     const maxOrder = this.db
-      .select({ max: sql<number>`coalesce(max(${axStudyNotesTable.orderIdx}), -1)` })
+      .select({
+        max: sql<number>`coalesce(max(${axStudyNotesTable.orderIdx}), -1)`,
+      })
       .from(axStudyNotesTable)
       .where(eq(axStudyNotesTable.workspaceId, workspaceId))
       .get();

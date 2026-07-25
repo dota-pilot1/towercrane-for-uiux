@@ -46,9 +46,7 @@ export class AxBoardService {
       .innerJoin(usersTable, eq(axBoardPostsTable.userId, usersTable.id));
 
     const rows = (
-      category
-        ? base.where(eq(axBoardPostsTable.category, category))
-        : base
+      category ? base.where(eq(axBoardPostsTable.category, category)) : base
     )
       .orderBy(desc(axBoardPostsTable.createdAt))
       .all();

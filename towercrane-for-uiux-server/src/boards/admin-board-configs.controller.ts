@@ -39,4 +39,3 @@ export class AdminBoardConfigsController {
     return this.boardsService.deactivateConfig(code);
   }
 }
-

@@ -169,7 +169,11 @@ export class DevChallengeController {
 
   @Patch('categories/:id')
   @UseGuards(AdminGuard)
-  updateCategory(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  updateCategory(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = updateCategorySchema.parse(body);
     return this.devChallengeService.updateCategory(id, input, req.user.id);
   }
@@ -216,7 +220,10 @@ export class DevChallengeController {
   @Post('sections/reorder')
   @UseGuards(AdminGuard)
   reorderSections(@Body() body: { categoryId: string; sectionIds: string[] }) {
-    return this.devChallengeService.reorderSections(body.categoryId, body.sectionIds);
+    return this.devChallengeService.reorderSections(
+      body.categoryId,
+      body.sectionIds,
+    );
   }
 
   @Get('sections/:sectionId/assignments')
@@ -238,7 +245,11 @@ export class DevChallengeController {
 
   @Patch('assignments/:id')
   @UseGuards(AdminGuard)
-  updateAssignment(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  updateAssignment(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = updateAssignmentSchema.parse(body);
     return this.devChallengeService.updateAssignment(id, input, req.user.id);
   }
@@ -252,14 +263,25 @@ export class DevChallengeController {
 
   @Post('assignments/reorder')
   @UseGuards(AdminGuard)
-  reorderAssignments(@Body() body: { sectionId: string; assignmentIds: string[] }) {
-    return this.devChallengeService.reorderAssignments(body.sectionId, body.assignmentIds);
+  reorderAssignments(
+    @Body() body: { sectionId: string; assignmentIds: string[] },
+  ) {
+    return this.devChallengeService.reorderAssignments(
+      body.sectionId,
+      body.assignmentIds,
+    );
   }
 
   @Post('assignments/:assignmentId/blocks')
   @UseGuards(AdminGuard)
-  createAssignmentBlock(@Param('assignmentId') assignmentId: string, @Body() body: unknown) {
-    const input = createAssignmentBlockSchema.parse({ ...(body as object), assignmentId });
+  createAssignmentBlock(
+    @Param('assignmentId') assignmentId: string,
+    @Body() body: unknown,
+  ) {
+    const input = createAssignmentBlockSchema.parse({
+      ...(body as object),
+      assignmentId,
+    });
     return this.devChallengeService.createAssignmentBlock(input);
   }
 
@@ -284,8 +306,14 @@ export class DevChallengeController {
   }
 
   @Get('assignments/:assignmentId/submissions/my')
-  getMySubmission(@Param('assignmentId') assignmentId: string, @Req() req: SessionRequest) {
-    return this.devChallengeService.getMySubmission(assignmentId, req.user.id) ?? null;
+  getMySubmission(
+    @Param('assignmentId') assignmentId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return (
+      this.devChallengeService.getMySubmission(assignmentId, req.user.id) ??
+      null
+    );
   }
 
   @Post('submissions')
@@ -295,7 +323,11 @@ export class DevChallengeController {
   }
 
   @Patch('submissions/:id')
-  updateSubmission(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  updateSubmission(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = updateSubmissionSchema.parse(body);
     return this.devChallengeService.updateSubmission(id, input, req.user.id);
   }
@@ -307,7 +339,11 @@ export class DevChallengeController {
 
   @Post('submissions/:id/review')
   @UseGuards(AdminGuard)
-  reviewSubmission(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  reviewSubmission(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = reviewSubmissionSchema.parse(body);
     return this.devChallengeService.reviewSubmission(id, input, req.user.id);
   }

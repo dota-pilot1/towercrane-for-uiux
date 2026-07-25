@@ -48,8 +48,14 @@ export class CatalogService {
       .select()
       .from(prototypeWorkspaceMembersTable)
       .all();
-    const categories = this.databaseService.db.select().from(categoriesTable).all();
-    const prototypes = this.databaseService.db.select().from(prototypesTable).all();
+    const categories = this.databaseService.db
+      .select()
+      .from(categoriesTable)
+      .all();
+    const prototypes = this.databaseService.db
+      .select()
+      .from(prototypesTable)
+      .all();
 
     return workspaces.map((workspace) => {
       const workspaceCategories = categories.filter(
@@ -185,7 +191,11 @@ export class CatalogService {
     return { success: true };
   }
 
-  listWorkspaceCategories(userId: string, userRole: string, workspaceId: string) {
+  listWorkspaceCategories(
+    userId: string,
+    userRole: string,
+    workspaceId: string,
+  ) {
     this.ensureCanReadWorkspace(userId, userRole, workspaceId);
     return this.listCategoriesByWorkspace(workspaceId);
   }
@@ -197,7 +207,12 @@ export class CatalogService {
     payload: unknown,
   ) {
     this.ensureCanEditWorkspace(userId, userRole, workspaceId);
-    return this.createCategoryInWorkspace(userId, userRole, workspaceId, payload);
+    return this.createCategoryInWorkspace(
+      userId,
+      userRole,
+      workspaceId,
+      payload,
+    );
   }
 
   reorderWorkspaceCategories(
@@ -232,9 +247,10 @@ export class CatalogService {
       .from(categoriesTable)
       .orderBy(asc(categoriesTable.orderIdx));
 
-    const categories = (userRole === 'admin' || userRole === 'guest'
-      ? query
-      : query.where(eq(categoriesTable.userId, userId))
+    const categories = (
+      userRole === 'admin' || userRole === 'guest'
+        ? query
+        : query.where(eq(categoriesTable.userId, userId))
     ).all();
 
     const prototypes = this.databaseService.db
@@ -271,14 +287,15 @@ export class CatalogService {
       .all();
 
     const prototypeIds = prototypes.map((p) => p.id);
-    const allImages = prototypeIds.length > 0
-      ? this.databaseService.db
-          .select()
-          .from(prototypeImagesTable)
-          .where(sql`${prototypeImagesTable.prototypeId} IN ${prototypeIds}`)
-          .orderBy(asc(prototypeImagesTable.orderIdx))
-          .all()
-      : [];
+    const allImages =
+      prototypeIds.length > 0
+        ? this.databaseService.db
+            .select()
+            .from(prototypeImagesTable)
+            .where(sql`${prototypeImagesTable.prototypeId} IN ${prototypeIds}`)
+            .orderBy(asc(prototypeImagesTable.orderIdx))
+            .all()
+        : [];
 
     return {
       ...category,
@@ -341,7 +358,12 @@ export class CatalogService {
     return this.getCategory(userId, 'admin', id);
   }
 
-  updateCategory(userId: string, userRole: string, categoryId: string, payload: unknown) {
+  updateCategory(
+    userId: string,
+    userRole: string,
+    categoryId: string,
+    payload: unknown,
+  ) {
     const category = this.ensureCategory(userId, userRole, categoryId);
     if (category.userId !== userId) {
       this.ensureCanEditWorkspace(
@@ -387,7 +409,12 @@ export class CatalogService {
     return { success: true, categoryId };
   }
 
-  createPrototype(userId: string, userRole: string, categoryId: string, payload: unknown) {
+  createPrototype(
+    userId: string,
+    userRole: string,
+    categoryId: string,
+    payload: unknown,
+  ) {
     const category = this.ensureCategory(userId, userRole, categoryId);
     if (category.userId !== userId) {
       this.ensureCanEditWorkspace(
@@ -462,8 +489,10 @@ export class CatalogService {
       .set({
         title: input.title,
         repoUrl: input.repoUrl === undefined ? undefined : input.repoUrl || '',
-        demoUrl: input.demoUrl === undefined ? undefined : input.demoUrl || null,
-        figmaUrl: input.figmaUrl === undefined ? undefined : input.figmaUrl || null,
+        demoUrl:
+          input.demoUrl === undefined ? undefined : input.demoUrl || null,
+        figmaUrl:
+          input.figmaUrl === undefined ? undefined : input.figmaUrl || null,
         summary: input.summary,
         status: input.status,
         visibility: input.visibility,
@@ -501,7 +530,12 @@ export class CatalogService {
     return this.getCategory(userId, userRole, categoryId);
   }
 
-  deletePrototype(userId: string, userRole: string, categoryId: string, prototypeId: string) {
+  deletePrototype(
+    userId: string,
+    userRole: string,
+    categoryId: string,
+    prototypeId: string,
+  ) {
     const category = this.ensureCategory(userId, userRole, categoryId);
     if (category.userId !== userId) {
       this.ensureCanEditWorkspace(
@@ -569,21 +603,25 @@ export class CatalogService {
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
     const prototypeIds = items.map((i) => i.id);
-    const aggregates = this.reviewService.getAggregatesForPrototypes(prototypeIds);
-    
-    const allImages = prototypeIds.length > 0 
-      ? this.databaseService.db
-          .select()
-          .from(prototypeImagesTable)
-          .where(sql`${prototypeImagesTable.prototypeId} IN ${prototypeIds}`)
-          .orderBy(asc(prototypeImagesTable.orderIdx))
-          .all()
-      : [];
+    const aggregates =
+      this.reviewService.getAggregatesForPrototypes(prototypeIds);
+
+    const allImages =
+      prototypeIds.length > 0
+        ? this.databaseService.db
+            .select()
+            .from(prototypeImagesTable)
+            .where(sql`${prototypeImagesTable.prototypeId} IN ${prototypeIds}`)
+            .orderBy(asc(prototypeImagesTable.orderIdx))
+            .all()
+        : [];
 
     return {
       items: items.map((item) => {
         const agg = aggregates.get(item.id);
-        const images = allImages.filter(img => img.prototypeId === item.id).map(img => img.imageUrl);
+        const images = allImages
+          .filter((img) => img.prototypeId === item.id)
+          .map((img) => img.imageUrl);
         return {
           ...item,
           images,
@@ -604,14 +642,19 @@ export class CatalogService {
       categoryIds.forEach((id, idx) => {
         tx.update(categoriesTable)
           .set({ orderIdx: idx })
-          .where(and(eq(categoriesTable.id, id), eq(categoriesTable.userId, userId)))
+          .where(
+            and(eq(categoriesTable.id, id), eq(categoriesTable.userId, userId)),
+          )
           .run();
       });
     });
     return { success: true };
   }
 
-  private getNextCategoryOrderIdx(userId: string, workspaceId?: string): number {
+  private getNextCategoryOrderIdx(
+    userId: string,
+    workspaceId?: string,
+  ): number {
     const baseQuery = this.databaseService.db
       .select({ maxIdx: sql<number>`max(${categoriesTable.orderIdx})` })
       .from(categoriesTable);
@@ -671,7 +714,9 @@ export class CatalogService {
       .get();
 
     if (!workspace) {
-      throw new NotFoundException(`Prototype workspace not found: ${workspaceId}`);
+      throw new NotFoundException(
+        `Prototype workspace not found: ${workspaceId}`,
+      );
     }
 
     return workspace;
@@ -702,7 +747,11 @@ export class CatalogService {
     return first.id;
   }
 
-  private getWorkspaceRole(userId: string, userRole: string, workspaceId: string) {
+  private getWorkspaceRole(
+    userId: string,
+    userRole: string,
+    workspaceId: string,
+  ) {
     if (userRole === 'admin') return 'owner';
     if (userRole === 'guest') return 'viewer';
 

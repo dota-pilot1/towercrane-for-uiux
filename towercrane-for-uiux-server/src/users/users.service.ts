@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
-import { departmentsTable, sessionsTable, usersTable } from '../database/schema';
+import {
+  departmentsTable,
+  sessionsTable,
+  usersTable,
+} from '../database/schema';
 
 @Injectable()
 export class UsersService {

@@ -129,9 +129,7 @@ export class ChatbotRealtimeService {
   }
 
   private buildSafetyIdentifier(userId: string) {
-    return createHash('sha256')
-      .update(`towercrane:${userId}`)
-      .digest('hex');
+    return createHash('sha256').update(`towercrane:${userId}`).digest('hex');
   }
 
   async createRealtimeClientSecret(
@@ -155,9 +153,7 @@ export class ChatbotRealtimeService {
     const turnMode = request.turnMode ?? 'server_vad';
     const tools = this.getRealtimeTools(request.enabledTools);
     const outputModalities =
-      responseMode === 'text_only'
-        ? ['text']
-        : ['audio'];
+      responseMode === 'text_only' ? ['text'] : ['audio'];
 
     const session: Record<string, unknown> = {
       type: 'realtime',
@@ -276,15 +272,17 @@ export class ChatbotRealtimeService {
         throw new BadRequestException('search_knowledge query is required');
       }
 
-      const sources = this.knowledgeService.search(query, user).map((source) => ({
-        documentId: source.documentId,
-        channel: source.channel,
-        title: source.title,
-        headingPath: source.headingPath,
-        snippet: source.snippet,
-        documentUrl: source.documentUrl,
-        score: source.score,
-      }));
+      const sources = this.knowledgeService
+        .search(query, user)
+        .map((source) => ({
+          documentId: source.documentId,
+          channel: source.channel,
+          title: source.title,
+          headingPath: source.headingPath,
+          snippet: source.snippet,
+          documentUrl: source.documentUrl,
+          score: source.score,
+        }));
 
       return {
         callId,

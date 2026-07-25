@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
@@ -46,13 +51,21 @@ export class MeetingService {
     const workspaces = this.db
       .select()
       .from(meetingWorkspacesTable)
-      .orderBy(asc(meetingWorkspacesTable.orderIdx), asc(meetingWorkspacesTable.createdAt))
+      .orderBy(
+        asc(meetingWorkspacesTable.orderIdx),
+        asc(meetingWorkspacesTable.createdAt),
+      )
       .all();
     const members = this.db.select().from(meetingWorkspaceMembersTable).all();
     const rooms = this.db
       .select()
       .from(meetingRoomsTable)
-      .where(and(eq(meetingRoomsTable.archived, false), sql`${meetingRoomsTable.roomType} != 'DM'`))
+      .where(
+        and(
+          eq(meetingRoomsTable.archived, false),
+          sql`${meetingRoomsTable.roomType} != 'DM'`,
+        ),
+      )
       .all();
 
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -60,7 +73,9 @@ export class MeetingService {
     return workspaces.map((workspace) => {
       const wsRooms = rooms.filter((r) => r.workspaceId === workspace.id);
       const wsRoomIds = new Set(wsRooms.map((r) => r.id));
-      const activeCount = wsRooms.filter((r) => r.updatedAt >= oneDayAgo).length;
+      const activeCount = wsRooms.filter(
+        (r) => r.updatedAt >= oneDayAgo,
+      ).length;
       const member = members.find(
         (m) => m.workspaceId === workspace.id && m.userId === user.id,
       );
@@ -74,7 +89,8 @@ export class MeetingService {
   }
 
   createWorkspace(user: MeetingUser, payload: unknown) {
-    if (user.role !== 'admin') throw new ForbiddenException('Only admins can create workspaces');
+    if (user.role !== 'admin')
+      throw new ForbiddenException('Only admins can create workspaces');
     const input = createMeetingWorkspaceSchema.parse(payload);
     const now = new Date().toISOString();
     const maxOrder = this.db
@@ -95,19 +111,27 @@ export class MeetingService {
       updatedAt: now,
     };
     this.db.insert(meetingWorkspacesTable).values(workspace).run();
-    this.db.insert(meetingWorkspaceMembersTable).values({
-      id: `meeting-wm-${randomUUID().slice(0, 12)}`,
-      workspaceId: workspace.id,
-      userId: user.id,
-      role: 'owner',
-      createdAt: now,
-      updatedAt: now,
-    }).run();
-    return this.db.select().from(meetingWorkspacesTable).where(eq(meetingWorkspacesTable.id, workspace.id)).get();
+    this.db
+      .insert(meetingWorkspaceMembersTable)
+      .values({
+        id: `meeting-wm-${randomUUID().slice(0, 12)}`,
+        workspaceId: workspace.id,
+        userId: user.id,
+        role: 'owner',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+    return this.db
+      .select()
+      .from(meetingWorkspacesTable)
+      .where(eq(meetingWorkspacesTable.id, workspace.id))
+      .get();
   }
 
   updateWorkspace(user: MeetingUser, workspaceId: string, payload: unknown) {
-    if (user.role !== 'admin') throw new ForbiddenException('Only admins can update workspaces');
+    if (user.role !== 'admin')
+      throw new ForbiddenException('Only admins can update workspaces');
     const input = updateMeetingWorkspaceSchema.parse(payload);
     const now = new Date().toISOString();
     this.db
@@ -115,28 +139,44 @@ export class MeetingService {
       .set({ ...input, updatedAt: now })
       .where(eq(meetingWorkspacesTable.id, workspaceId))
       .run();
-    return this.db.select().from(meetingWorkspacesTable).where(eq(meetingWorkspacesTable.id, workspaceId)).get();
+    return this.db
+      .select()
+      .from(meetingWorkspacesTable)
+      .where(eq(meetingWorkspacesTable.id, workspaceId))
+      .get();
   }
 
   deleteWorkspace(user: MeetingUser, workspaceId: string) {
-    if (user.role !== 'admin') throw new ForbiddenException('Only admins can delete workspaces');
+    if (user.role !== 'admin')
+      throw new ForbiddenException('Only admins can delete workspaces');
     if (workspaceId === 'meeting-workspace-default') {
       throw new BadRequestException('기본 워크스페이스는 삭제할 수 없습니다');
     }
     const roomCount = this.db
       .select({ count: sql<number>`count(*)` })
       .from(meetingRoomsTable)
-      .where(and(eq(meetingRoomsTable.workspaceId, workspaceId), eq(meetingRoomsTable.archived, false)))
+      .where(
+        and(
+          eq(meetingRoomsTable.workspaceId, workspaceId),
+          eq(meetingRoomsTable.archived, false),
+        ),
+      )
       .get();
     if ((roomCount?.count ?? 0) > 0) {
-      throw new BadRequestException('채널이 있는 워크스페이스는 삭제할 수 없습니다');
+      throw new BadRequestException(
+        '채널이 있는 워크스페이스는 삭제할 수 없습니다',
+      );
     }
-    this.db.delete(meetingWorkspacesTable).where(eq(meetingWorkspacesTable.id, workspaceId)).run();
+    this.db
+      .delete(meetingWorkspacesTable)
+      .where(eq(meetingWorkspacesTable.id, workspaceId))
+      .run();
     return { success: true, workspaceId };
   }
 
   reorderWorkspaces(user: MeetingUser, payload: unknown) {
-    if (user.role !== 'admin') throw new ForbiddenException('Only admins can reorder workspaces');
+    if (user.role !== 'admin')
+      throw new ForbiddenException('Only admins can reorder workspaces');
     const { items } = reorderMeetingWorkspacesSchema.parse(payload);
     const now = new Date().toISOString();
     for (const item of items) {
@@ -160,13 +200,19 @@ export class MeetingService {
           sql`${meetingRoomsTable.roomType} != 'DM'`,
         ),
       )
-      .orderBy(asc(meetingRoomsTable.orderIdx), asc(meetingRoomsTable.createdAt))
+      .orderBy(
+        asc(meetingRoomsTable.orderIdx),
+        asc(meetingRoomsTable.createdAt),
+      )
       .all();
 
     const dmRooms = this.db
       .select({ room: meetingRoomsTable, pair: meetingDmPairsTable })
       .from(meetingDmPairsTable)
-      .innerJoin(meetingRoomsTable, eq(meetingRoomsTable.id, meetingDmPairsTable.roomId))
+      .innerJoin(
+        meetingRoomsTable,
+        eq(meetingRoomsTable.id, meetingDmPairsTable.roomId),
+      )
       .where(
         and(
           eq(meetingRoomsTable.archived, false),
@@ -182,14 +228,24 @@ export class MeetingService {
     ];
   }
 
-  createWorkspaceRoom(user: MeetingUser, workspaceId: string, payload: unknown) {
-    if (user.role !== 'admin') throw new ForbiddenException('Only admins can create channels');
+  createWorkspaceRoom(
+    user: MeetingUser,
+    workspaceId: string,
+    payload: unknown,
+  ) {
+    if (user.role !== 'admin')
+      throw new ForbiddenException('Only admins can create channels');
     const input = createMeetingRoomSchema.parse(payload);
     const now = new Date().toISOString();
     const maxOrder = this.db
       .select({ orderIdx: meetingRoomsTable.orderIdx })
       .from(meetingRoomsTable)
-      .where(and(eq(meetingRoomsTable.workspaceId, workspaceId), sql`${meetingRoomsTable.roomType} != 'DM'`))
+      .where(
+        and(
+          eq(meetingRoomsTable.workspaceId, workspaceId),
+          sql`${meetingRoomsTable.roomType} != 'DM'`,
+        ),
+      )
       .all()
       .reduce((max, r) => Math.max(max, r.orderIdx), -1);
 
@@ -213,8 +269,16 @@ export class MeetingService {
     const publicRooms = this.db
       .select()
       .from(meetingRoomsTable)
-      .where(and(eq(meetingRoomsTable.archived, false), sql`${meetingRoomsTable.roomType} != 'DM'`))
-      .orderBy(asc(meetingRoomsTable.orderIdx), asc(meetingRoomsTable.createdAt))
+      .where(
+        and(
+          eq(meetingRoomsTable.archived, false),
+          sql`${meetingRoomsTable.roomType} != 'DM'`,
+        ),
+      )
+      .orderBy(
+        asc(meetingRoomsTable.orderIdx),
+        asc(meetingRoomsTable.createdAt),
+      )
       .all();
 
     const dmRooms = this.db
@@ -223,7 +287,10 @@ export class MeetingService {
         pair: meetingDmPairsTable,
       })
       .from(meetingDmPairsTable)
-      .innerJoin(meetingRoomsTable, eq(meetingRoomsTable.id, meetingDmPairsTable.roomId))
+      .innerJoin(
+        meetingRoomsTable,
+        eq(meetingRoomsTable.id, meetingDmPairsTable.roomId),
+      )
       .where(
         and(
           eq(meetingRoomsTable.archived, false),
@@ -358,7 +425,12 @@ export class MeetingService {
     const existingPair = this.db
       .select()
       .from(meetingDmPairsTable)
-      .where(and(eq(meetingDmPairsTable.userAId, userAId), eq(meetingDmPairsTable.userBId, userBId)))
+      .where(
+        and(
+          eq(meetingDmPairsTable.userAId, userAId),
+          eq(meetingDmPairsTable.userBId, userBId),
+        ),
+      )
       .get();
 
     if (existingPair) {
@@ -448,9 +520,18 @@ export class MeetingService {
     if (room.roomType !== 'DM') {
       throw new BadRequestException('DM만 나갈 수 있습니다');
     }
-    this.db.delete(meetingMessagesTable).where(eq(meetingMessagesTable.roomId, roomId)).run();
-    this.db.delete(meetingDmPairsTable).where(eq(meetingDmPairsTable.roomId, roomId)).run();
-    this.db.delete(meetingRoomsTable).where(eq(meetingRoomsTable.id, roomId)).run();
+    this.db
+      .delete(meetingMessagesTable)
+      .where(eq(meetingMessagesTable.roomId, roomId))
+      .run();
+    this.db
+      .delete(meetingDmPairsTable)
+      .where(eq(meetingDmPairsTable.roomId, roomId))
+      .run();
+    this.db
+      .delete(meetingRoomsTable)
+      .where(eq(meetingRoomsTable.id, roomId))
+      .run();
     return { success: true, roomId };
   }
 
@@ -463,17 +544,30 @@ export class MeetingService {
     if (user.role !== 'admin') {
       throw new ForbiddenException('관리자만 채널 메시지를 비울 수 있습니다');
     }
-    this.db.delete(meetingMessagesTable).where(eq(meetingMessagesTable.roomId, roomId)).run();
+    this.db
+      .delete(meetingMessagesTable)
+      .where(eq(meetingMessagesTable.roomId, roomId))
+      .run();
     return { success: true, roomId };
   }
 
   // 메시지 고정/해제 — 방 접근 권한 있는 멤버 누구나(슬랙식). 갱신된 메시지 DTO 반환.
-  setMessagePinned(user: MeetingUser, roomId: string, messageId: string, pinned: boolean) {
+  setMessagePinned(
+    user: MeetingUser,
+    roomId: string,
+    messageId: string,
+    pinned: boolean,
+  ) {
     this.findAccessibleRoom(roomId, user);
     const message = this.db
       .select()
       .from(meetingMessagesTable)
-      .where(and(eq(meetingMessagesTable.id, messageId), eq(meetingMessagesTable.roomId, roomId)))
+      .where(
+        and(
+          eq(meetingMessagesTable.id, messageId),
+          eq(meetingMessagesTable.roomId, roomId),
+        ),
+      )
       .get();
     if (!message) {
       throw new NotFoundException(`Message not found: ${messageId}`);
@@ -487,20 +581,32 @@ export class MeetingService {
   }
 
   // 이모지 리액션 토글 — payload.reactions[emoji]에 사용자 id 추가/제거 (별도 테이블 없이 저장)
-  toggleReaction(user: MeetingUser, roomId: string, messageId: string, body: unknown) {
+  toggleReaction(
+    user: MeetingUser,
+    roomId: string,
+    messageId: string,
+    body: unknown,
+  ) {
     this.findAccessibleRoom(roomId, user);
     const { emoji } = toggleReactionSchema.parse(body);
     const message = this.db
       .select()
       .from(meetingMessagesTable)
-      .where(and(eq(meetingMessagesTable.id, messageId), eq(meetingMessagesTable.roomId, roomId)))
+      .where(
+        and(
+          eq(meetingMessagesTable.id, messageId),
+          eq(meetingMessagesTable.roomId, roomId),
+        ),
+      )
       .get();
     if (!message) {
       throw new NotFoundException(`Message not found: ${messageId}`);
     }
 
     const currentPayload =
-      message.payload && typeof message.payload === 'object' ? { ...message.payload } : {};
+      message.payload && typeof message.payload === 'object'
+        ? { ...message.payload }
+        : {};
     const rawReactions = currentPayload.reactions;
     const reactions: Record<string, string[]> =
       rawReactions && typeof rawReactions === 'object'
@@ -533,7 +639,10 @@ export class MeetingService {
   // ── 안읽음 / 검색 ─────────────────────────────────────
 
   // 인박스 브로드캐스트 대상 — 채널은 전체(null), DM은 참여자 2명
-  getRoomAudience(roomId: string): { room: MeetingRoomRow; audience: string[] | null } {
+  getRoomAudience(roomId: string): {
+    room: MeetingRoomRow;
+    audience: string[] | null;
+  } {
     const room = this.findRoom(roomId);
     if (room.roomType !== 'DM') return { room, audience: null };
     const pair = this.findDmPair(roomId);
@@ -610,7 +719,12 @@ export class MeetingService {
   }
 
   // 접근 가능한 방에서 메시지 내용 검색 (LIKE, 최신순)
-  searchMessages(user: MeetingUser, query: string, roomId?: string, limit = 30) {
+  searchMessages(
+    user: MeetingUser,
+    query: string,
+    roomId?: string,
+    limit = 30,
+  ) {
     const q = query.trim();
     if (q.length < 1) return [];
     const normalizedLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
@@ -655,7 +769,12 @@ export class MeetingService {
     const rows = this.db
       .select()
       .from(meetingMessagesTable)
-      .where(and(eq(meetingMessagesTable.roomId, roomId), eq(meetingMessagesTable.pinned, true)))
+      .where(
+        and(
+          eq(meetingMessagesTable.roomId, roomId),
+          eq(meetingMessagesTable.pinned, true),
+        ),
+      )
       .orderBy(desc(meetingMessagesTable.createdAt))
       .all();
     return rows.map((row) => this.toMessageDto(row));
@@ -665,7 +784,12 @@ export class MeetingService {
     const room = this.db
       .select()
       .from(meetingRoomsTable)
-      .where(and(eq(meetingRoomsTable.id, roomId), eq(meetingRoomsTable.archived, false)))
+      .where(
+        and(
+          eq(meetingRoomsTable.id, roomId),
+          eq(meetingRoomsTable.archived, false),
+        ),
+      )
       .get();
 
     if (!room) {
@@ -699,16 +823,22 @@ export class MeetingService {
       .get();
   }
 
-  private toRoomDto(room: MeetingRoomRow, user?: MeetingUser, pair?: MeetingDmPairRow) {
+  private toRoomDto(
+    room: MeetingRoomRow,
+    user?: MeetingUser,
+    pair?: MeetingDmPairRow,
+  ) {
     const countRow = this.db
       .select({ count: sql<number>`count(*)` })
       .from(meetingMessagesTable)
       .where(eq(meetingMessagesTable.roomId, room.id))
       .get();
-    const dmCounterpart = room.roomType === 'DM' && user && pair
-      ? this.getDmCounterpart(pair, user.id)
-      : null;
-    const isSelfDm = room.roomType === 'DM' && !!pair && pair.userAId === pair.userBId;
+    const dmCounterpart =
+      room.roomType === 'DM' && user && pair
+        ? this.getDmCounterpart(pair, user.id)
+        : null;
+    const isSelfDm =
+      room.roomType === 'DM' && !!pair && pair.userAId === pair.userBId;
 
     return {
       id: room.id,
@@ -741,13 +871,16 @@ export class MeetingService {
   private isVisibleMeetingMember(email: string) {
     if (email === 'seed@towercrane.local') return false;
     if (email === 'codex-upload-test@example.com') return false;
-    if (email.startsWith('test-agent-') && email.endsWith('@example.com')) return false;
-    if (email.startsWith('meeting-') && email.endsWith('@towercrane.local')) return false;
+    if (email.startsWith('test-agent-') && email.endsWith('@example.com'))
+      return false;
+    if (email.startsWith('meeting-') && email.endsWith('@towercrane.local'))
+      return false;
     return true;
   }
 
   private getDmCounterpart(pair: MeetingDmPairRow, currentUserId: string) {
-    const otherUserId = pair.userAId === currentUserId ? pair.userBId : pair.userAId;
+    const otherUserId =
+      pair.userAId === currentUserId ? pair.userBId : pair.userAId;
     const other = this.db
       .select({
         id: usersTable.id,

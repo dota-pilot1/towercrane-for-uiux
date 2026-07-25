@@ -45,8 +45,12 @@ export class MenusService {
     };
 
     this.databaseService.db.insert(menusTable).values(newMenu).run();
-    
-    return this.databaseService.db.select().from(menusTable).where(eq(menusTable.id, id)).get();
+
+    return this.databaseService.db
+      .select()
+      .from(menusTable)
+      .where(eq(menusTable.id, id))
+      .get();
   }
 
   update(id: string, dto: UpdateMenuDto) {
@@ -60,11 +64,18 @@ export class MenusService {
       .where(eq(menusTable.id, id))
       .run();
 
-    return this.databaseService.db.select().from(menusTable).where(eq(menusTable.id, id)).get();
+    return this.databaseService.db
+      .select()
+      .from(menusTable)
+      .where(eq(menusTable.id, id))
+      .get();
   }
 
   remove(id: string) {
-    this.databaseService.db.delete(menusTable).where(eq(menusTable.id, id)).run();
+    this.databaseService.db
+      .delete(menusTable)
+      .where(eq(menusTable.id, id))
+      .run();
     return { success: true };
   }
 }

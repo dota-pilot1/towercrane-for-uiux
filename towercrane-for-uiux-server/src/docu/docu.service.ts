@@ -317,7 +317,11 @@ export class DocuService {
     return this.getDocumentDetail(userId, userRole, documentId);
   }
 
-  private ensurePrototype(userId: string, userRole: string, prototypeId: string) {
+  private ensurePrototype(
+    userId: string,
+    userRole: string,
+    prototypeId: string,
+  ) {
     const baseQuery = this.db
       .select({
         id: prototypesTable.id,
@@ -357,11 +361,7 @@ export class DocuService {
     return section;
   }
 
-  private ensureDocument(
-    userId: string,
-    userRole: string,
-    documentId: string,
-  ) {
+  private ensureDocument(userId: string, userRole: string, documentId: string) {
     const document = this.db
       .select()
       .from(documentsTable)

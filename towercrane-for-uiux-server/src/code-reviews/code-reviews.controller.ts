@@ -12,7 +12,10 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { CodeReviewsService, type CodeReviewUser } from './code-reviews.service';
+import {
+  CodeReviewsService,
+  type CodeReviewUser,
+} from './code-reviews.service';
 
 @Controller('code-reviews')
 @UseGuards(AuthGuard)
@@ -42,14 +45,32 @@ export class CodeReviewsController {
     return this.codeReviewsService.analyzeAndSave(user, body);
   }
 
+  @Post('pr/analyze')
+  analyzeGithubPr(@CurrentUser() user: CodeReviewUser, @Body() body: unknown) {
+    return this.codeReviewsService.analyzeGithubPrAndSave(user, body);
+  }
+
   @Post('upload')
   upload(@CurrentUser() user: CodeReviewUser, @Body() body: unknown) {
     return this.codeReviewsService.upload(user, body);
   }
 
   @Post('repository/validate')
-  validateRepository(@CurrentUser() user: CodeReviewUser, @Body() body: unknown) {
+  validateRepository(
+    @CurrentUser() user: CodeReviewUser,
+    @Body() body: unknown,
+  ) {
     return this.codeReviewsService.validateRepository(user, body);
+  }
+
+  @Get('preferences')
+  preferences(@CurrentUser() user: CodeReviewUser) {
+    return this.codeReviewsService.getGithubPrReviewPreferences(user);
+  }
+
+  @Put('preferences')
+  savePreferences(@CurrentUser() user: CodeReviewUser, @Body() body: unknown) {
+    return this.codeReviewsService.saveGithubPrReviewPreferences(user, body);
   }
 
   @Get(':reviewId')

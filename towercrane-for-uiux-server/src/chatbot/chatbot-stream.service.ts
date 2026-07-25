@@ -1,4 +1,8 @@
-import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import type { Response } from 'express';
@@ -189,7 +193,7 @@ export class ChatbotStreamService {
       const text = chunk.choices[0]?.delta?.content ?? '';
       if (text) {
         assistantContent += text; // DB 저장용으로 모으고
-        sse.send({ text }); // 동시에 화면으로 흘려보낸다
+        sse.send({ type: 'text', text }); // 동시에 화면으로 흘려보낸다
       }
     }
 

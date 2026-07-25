@@ -32,10 +32,7 @@ export class DevMeetingMinutesController {
   }
 
   @Post()
-  create(
-    @CurrentUser() user: DevMeetingMinutesUser,
-    @Body() body: unknown,
-  ) {
+  create(@CurrentUser() user: DevMeetingMinutesUser, @Body() body: unknown) {
     return this.devMeetingMinutesService.create(user, body);
   }
 

@@ -19,7 +19,10 @@ export class IssuesController {
   constructor(private readonly issuesService: IssuesService) {}
 
   @Get()
-  list(@CurrentUser() user: IssueUser, @Query() query: Record<string, unknown>) {
+  list(
+    @CurrentUser() user: IssueUser,
+    @Query() query: Record<string, unknown>,
+  ) {
     return this.issuesService.listIssues(user, query);
   }
 

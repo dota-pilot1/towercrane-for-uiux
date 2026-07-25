@@ -441,9 +441,7 @@ export class ApiDocService {
         icon: team.icon,
         emoji: team.emoji,
         collections: categories
-          .filter(
-            (category) => (category.teamId ?? fallbackTeamId) === team.id,
-          )
+          .filter((category) => (category.teamId ?? fallbackTeamId) === team.id)
           .map((category) => ({
             name: category.name,
             icon: category.icon,
@@ -453,8 +451,7 @@ export class ApiDocService {
               .map((endpoint) => {
                 const block = blocks.find(
                   (item) =>
-                    item.endpointId === endpoint.id &&
-                    item.blockType === 'API',
+                    item.endpointId === endpoint.id && item.blockType === 'API',
                 );
                 return {
                   title: endpoint.title,
@@ -616,7 +613,10 @@ export class ApiDocService {
       categoryNamesByTeamId.set(row.teamId, names);
       nextCategoryOrderByTeamId.set(
         row.teamId,
-        Math.max(nextCategoryOrderByTeamId.get(row.teamId) ?? 0, row.orderIdx + 1),
+        Math.max(
+          nextCategoryOrderByTeamId.get(row.teamId) ?? 0,
+          row.orderIdx + 1,
+        ),
       );
     });
 
@@ -629,7 +629,8 @@ export class ApiDocService {
     this.db.transaction((tx) => {
       input.workspaces.forEach((workspace) => {
         const existingTeam = teamsByName.get(workspace.name);
-        const teamId = existingTeam?.id ?? `api-team-${randomUUID().slice(0, 12)}`;
+        const teamId =
+          existingTeam?.id ?? `api-team-${randomUUID().slice(0, 12)}`;
         importedWorkspaceIds.push(teamId);
 
         if (!existingTeam) {
@@ -658,7 +659,10 @@ export class ApiDocService {
 
         workspace.collections.forEach((collection) => {
           const categoryId = `api-cat-${randomUUID().slice(0, 12)}`;
-          const categoryName = this.getUniqueName(collection.name, categoryNames);
+          const categoryName = this.getUniqueName(
+            collection.name,
+            categoryNames,
+          );
           categoryNames.add(categoryName);
           importedCategoryIds.push(categoryId);
 

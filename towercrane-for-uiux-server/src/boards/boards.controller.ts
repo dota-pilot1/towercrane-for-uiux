@@ -80,4 +80,3 @@ export class BoardsController {
     return this.boardsService.createComment(code, boardId, user, body);
   }
 }
-

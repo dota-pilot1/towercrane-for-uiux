@@ -12,6 +12,7 @@ import OpenAI from 'openai';
 import { DatabaseService } from '../database/database.service';
 import {
   codeReviewsTable,
+  githubPrReviewSettingsTable,
   type CodeReviewDocument,
   type CodeReviewChangedFile,
   type CodeReviewFinding,
@@ -19,13 +20,18 @@ import {
   type CodeReviewRiskLevel,
   type CodeReviewRow,
   type CodeReviewSourceType,
+  type GithubPrCriterionFinding,
+  type GithubPrCriterionResult,
+  type GithubPrReviewCriterion,
 } from '../database/schema';
 import {
+  analyzeGithubPrReviewSchema,
   analyzeCodeReviewSchema,
   createCodeReviewSchema,
   createManualCodeReviewSchema,
   listCodeReviewsQuerySchema,
   replaceCodeReviewDocumentsSchema,
+  saveGithubPrReviewPreferencesSchema,
   updateCodeReviewSchema,
   uploadCodeReviewSchema,
   validateCodeReviewRepositorySchema,
@@ -73,6 +79,48 @@ const MAX_LLM_DIFF_CHARS = 30_000;
 const MAX_CONTEXT_FILE_CHARS = 40_000;
 const MAX_RELATED_FILES = 8;
 const MAX_RELATED_FILE_CHARS = 20_000;
+const GITHUB_PR_REVIEW_CONTRACT_VERSION = 'github-pr-review-v1';
+
+const DEFAULT_GITHUB_PR_REVIEW_CRITERIA: Array<
+  Omit<GithubPrReviewCriterion, 'id' | 'orderIdx'>
+> = [
+  {
+    title: '정확성 및 요구사항',
+    instruction:
+      '변경 의도와 실제 동작이 일치하는지, 정상/경계/실패 경로에서 잘못된 상태 전이가 없는지 검토한다.',
+    enabled: true,
+  },
+  {
+    title: '보안 및 데이터 보호',
+    instruction:
+      '인증·인가, 입력 검증, 비밀정보 노출, injection, 민감정보 저장·전송 위험을 검토한다.',
+    enabled: true,
+  },
+  {
+    title: '예외 처리 및 복구',
+    instruction:
+      '외부 API, DB, 비동기 처리 실패가 사용자와 시스템에 일관되게 전달되고 복구 가능한지 검토한다.',
+    enabled: true,
+  },
+  {
+    title: '구조 및 유지보수성',
+    instruction:
+      '책임 분리, 모듈 경계, 중복, 명명, 결합도, 확장성과 기존 프로젝트 규칙 준수를 검토한다.',
+    enabled: true,
+  },
+  {
+    title: '성능 및 동시성',
+    instruction:
+      '불필요한 반복 호출, 큰 데이터 처리, race condition, 중복 실행, 트랜잭션/락 문제를 검토한다.',
+    enabled: true,
+  },
+  {
+    title: '테스트 및 회귀 위험',
+    instruction:
+      '변경된 동작을 보호하는 테스트와 수동 검증 지점, 기존 기능 회귀 가능성을 검토한다.',
+    enabled: true,
+  },
+];
 
 type RelatedFile = {
   path: string;
@@ -95,6 +143,24 @@ export class CodeReviewsService {
     return this.databaseService.db;
   }
 
+  private githubJsonHeaders(): HeadersInit {
+    const token = this.configService.get<string>('GITHUB_TOKEN')?.trim();
+    return {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'towercrane-code-review',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  }
+
+  private githubDiffHeaders(): HeadersInit {
+    const token = this.configService.get<string>('GITHUB_TOKEN')?.trim();
+    return {
+      Accept: 'text/plain',
+      'User-Agent': 'towercrane-code-review',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  }
+
   list(user: CodeReviewUser, rawQuery: unknown) {
     this.ensureSignedIn(user);
     const query = listCodeReviewsQuerySchema.parse(rawQuery ?? {});
@@ -111,10 +177,15 @@ export class CodeReviewsService {
       if (keywordCondition) conditions.push(keywordCondition);
     }
     if (query.repository) {
-      conditions.push(like(codeReviewsTable.repository, `%${query.repository}%`));
+      conditions.push(
+        like(codeReviewsTable.repository, `%${query.repository}%`),
+      );
     }
     if (query.taskId) {
       conditions.push(eq(codeReviewsTable.taskId, query.taskId));
+    }
+    if (query.sourceType) {
+      conditions.push(eq(codeReviewsTable.sourceType, query.sourceType));
     }
     if (query.riskLevel) {
       conditions.push(eq(codeReviewsTable.riskLevel, query.riskLevel));
@@ -147,10 +218,181 @@ export class CodeReviewsService {
     };
   }
 
+  getGithubPrReviewPreferences(user: CodeReviewUser) {
+    this.ensureSignedIn(user);
+    return this.getGithubPrReviewPreferencesInternal(user);
+  }
+
+  saveGithubPrReviewPreferences(user: CodeReviewUser, payload: unknown) {
+    this.ensureSignedIn(user);
+    const input = saveGithubPrReviewPreferencesSchema.parse(payload ?? {});
+    const existing = this.getGithubPrReviewSettingsRow(user.id);
+    const now = new Date().toISOString();
+    const criteria = this.normalizeGithubPrReviewCriteria(input.criteria);
+    const version = (existing?.version ?? 0) + 1;
+
+    this.db
+      .insert(githubPrReviewSettingsTable)
+      .values({
+        userId: user.id,
+        criteria,
+        version,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: githubPrReviewSettingsTable.userId,
+        set: {
+          criteria,
+          version,
+          updatedAt: now,
+        },
+      })
+      .run();
+
+    return { criteria, version, updatedAt: now };
+  }
+
+  async analyzeGithubPrAndSave(user: CodeReviewUser, payload: unknown) {
+    this.ensureSignedIn(user);
+    const input = analyzeGithubPrReviewSchema.parse(payload);
+    const source = this.parseGithubSource(input.sourceUrl);
+    if (source.sourceType !== 'pr') {
+      throw new BadRequestException(
+        'GitHub Pull Request URL만 분석할 수 있습니다.',
+      );
+    }
+
+    const preferences = this.getGithubPrReviewPreferencesInternal(user);
+    const criteriaSnapshot = preferences.criteria
+      .filter((criterion) => criterion.enabled)
+      .sort((a, b) => a.orderIdx - b.orderIdx)
+      .map((criterion, index) => ({ ...criterion, orderIdx: index }));
+    if (criteriaSnapshot.length === 0) {
+      throw new BadRequestException('활성 리뷰 기준이 없습니다.');
+    }
+
+    const pullRequest = await this.fetchGithubPullRequestInfo(source);
+    const diff = await this.fetchDiff(source.diffUrl);
+    const parsed = this.parseDiff(diff);
+    const selectedFiles = parsed.files.slice(0, MAX_FILES);
+    const fileLimitExcluded = parsed.files.slice(MAX_FILES).map((file) => ({
+      ...file,
+      reviewed: false,
+      excludedReason: '파일 수 제한 초과',
+    }));
+    const reviewedFiles = selectedFiles
+      .map((file) => this.applyDiffFileExclusion(file))
+      .filter((file) => file.reviewed);
+    const reviewedFilesWithContext = await this.attachGithubFileContext(
+      source,
+      reviewedFiles,
+    );
+    const relatedFiles = await this.collectRelatedFiles(
+      source,
+      reviewedFilesWithContext,
+    );
+    const excludedFiles = [
+      ...selectedFiles
+        .map((file) => this.applyDiffFileExclusion(file))
+        .filter((file) => !file.reviewed),
+      ...fileLimitExcluded,
+    ];
+    const reviewableDiff = reviewedFilesWithContext
+      .map((file) => file.diff)
+      .join('\n');
+    const reviewNote = input.reviewNote.trim();
+    const repositoryUrl = `https://github.com/${source.repository}`;
+
+    if (!reviewableDiff.trim()) {
+      throw new BadRequestException(
+        '리뷰 가능한 diff가 없습니다. lock/generated 파일만 포함되어 있거나 diff가 비어 있습니다.',
+      );
+    }
+
+    const sections = this.sectionsFromGithubPrCriteria(criteriaSnapshot);
+    const diffHash = createHash('sha256')
+      .update(source.sourceUrl)
+      .update('\n--head-sha--\n')
+      .update(pullRequest?.headSha ?? reviewableDiff)
+      .update('\n--criteria--\n')
+      .update(this.stableJson(criteriaSnapshot))
+      .update('\n--review-note--\n')
+      .update(reviewNote)
+      .update('\n--contract--\n')
+      .update(GITHUB_PR_REVIEW_CONTRACT_VERSION)
+      .digest('hex');
+
+    const duplicate = this.findDuplicate(source.sourceUrl, diffHash);
+    if (duplicate) {
+      return {
+        ...this.toDetailDto(duplicate, user),
+        duplicate: true,
+      };
+    }
+
+    const analysis = await this.reviewDiff(
+      source,
+      reviewedFilesWithContext,
+      excludedFiles,
+      relatedFiles,
+      sections,
+      repositoryUrl,
+      reviewNote,
+    );
+    const criterionResults = this.buildGithubPrCriterionResults(
+      criteriaSnapshot,
+      analysis,
+    );
+    const now = new Date().toISOString();
+    const row: CodeReviewInsert = {
+      id: `code-review-${randomUUID().slice(0, 12)}`,
+      taskId: null,
+      sourceType: 'pr',
+      sourceUrl: source.sourceUrl,
+      repository: source.repository,
+      title: pullRequest?.title ?? analysis.title,
+      summary: analysis.summary,
+      riskLevel: this.riskFromCriterionResults(criterionResults),
+      findings: analysis.findings,
+      testGaps: analysis.testGaps,
+      changedFiles: reviewedFilesWithContext.map(
+        ({ diff: _diff, fullText: _fullText, ...file }) => file,
+      ),
+      excludedFiles: excludedFiles.map(({ diff: _diff, ...file }) => file),
+      diffHash,
+      diffSnapshot: reviewableDiff.slice(0, MAX_DIFF_CHARS),
+      model: analysis.model,
+      prNumber: Number(source.reference.replace(/^#/, '')),
+      prTitle: pullRequest?.title ?? null,
+      prState: pullRequest?.state ?? null,
+      prAuthorLogin: pullRequest?.author ?? null,
+      baseRef: pullRequest?.baseRef ?? null,
+      headRef: pullRequest?.headRef ?? null,
+      headSha: pullRequest?.headSha ?? null,
+      prUpdatedAt: pullRequest?.updatedAt ?? null,
+      reviewNote,
+      criteriaSnapshot,
+      criterionResults,
+      promptContractVersion: GITHUB_PR_REVIEW_CONTRACT_VERSION,
+      createdBy: user.id,
+      createdByName: user.name || user.email,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.db.insert(codeReviewsTable).values(row).run();
+    return {
+      ...this.detail(user, row.id),
+      duplicate: false,
+    };
+  }
+
   async analyzeAndSave(user: CodeReviewUser, payload: unknown) {
     this.ensureSignedIn(user);
     const input = analyzeCodeReviewSchema.parse(payload);
     const source = this.parseGithubSource(input.sourceUrl);
+    const pullRequest = await this.fetchGithubPullRequestInfo(source);
     const diff = await this.fetchDiff(source.diffUrl);
     const parsed = this.parseDiff(diff);
     const selectedFiles = parsed.files.slice(0, MAX_FILES);
@@ -167,7 +409,10 @@ export class CodeReviewsService {
       reviewedFiles,
     );
     // 변경 파일이 import하는 연관 파일(query/mutation/types 등)도 함께 읽어 AI 맥락 보강
-    const relatedFiles = await this.collectRelatedFiles(source, reviewedFilesWithContext);
+    const relatedFiles = await this.collectRelatedFiles(
+      source,
+      reviewedFilesWithContext,
+    );
     const excludedFiles = [
       ...selectedFiles
         .map((file) => this.applyDiffFileExclusion(file))
@@ -216,7 +461,7 @@ export class CodeReviewsService {
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
       repository: source.repository,
-      title: analysis.title,
+      title: pullRequest?.title ?? analysis.title,
       summary: analysis.summary,
       riskLevel: analysis.riskLevel,
       findings: analysis.findings,
@@ -254,7 +499,8 @@ export class CodeReviewsService {
       .digest('hex');
 
     const duplicate = this.findDuplicate(source.sourceUrl, diffHash);
-    if (duplicate) return { ...this.toDetailDto(duplicate, user), duplicate: true };
+    if (duplicate)
+      return { ...this.toDetailDto(duplicate, user), duplicate: true };
 
     const now = new Date().toISOString();
     const row: CodeReviewInsert = {
@@ -397,12 +643,12 @@ export class CodeReviewsService {
     const repositoryUrl = `https://github.com/${repository}`;
 
     try {
-      const response = await fetch(`https://api.github.com/repos/${repository}`, {
-        headers: {
-          Accept: 'application/vnd.github+json',
-          'User-Agent': 'towercrane-code-review',
+      const response = await fetch(
+        `https://api.github.com/repos/${repository}`,
+        {
+          headers: this.githubJsonHeaders(),
         },
-      });
+      );
       if (!response.ok) {
         return {
           valid: false,
@@ -432,6 +678,43 @@ export class CodeReviewsService {
         defaultBranch: null,
         message: 'GitHub 확인에 실패했습니다.',
       };
+    }
+  }
+
+  private async fetchGithubPullRequestInfo(source: ParsedGithubSource) {
+    if (source.sourceType !== 'pr') return null;
+
+    const pullNumber = source.reference.replace(/^#/, '');
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${source.repository}/pulls/${pullNumber}`,
+        {
+          headers: this.githubJsonHeaders(),
+        },
+      );
+      if (!response.ok) return null;
+      const data = (await response.json()) as {
+        title?: string;
+        html_url?: string;
+        state?: string;
+        merged?: boolean;
+        head?: { sha?: string; ref?: string };
+        base?: { ref?: string };
+        user?: { login?: string };
+        updated_at?: string;
+      };
+      return {
+        title: data.title?.trim() || null,
+        htmlUrl: data.html_url ?? source.sourceUrl,
+        state: data.merged ? 'merged' : (data.state ?? null),
+        headSha: data.head?.sha ?? null,
+        headRef: data.head?.ref ?? null,
+        baseRef: data.base?.ref ?? null,
+        author: data.user?.login ?? null,
+        updatedAt: data.updated_at ?? null,
+      };
+    } catch {
+      return null;
     }
   }
 
@@ -518,7 +801,9 @@ export class CodeReviewsService {
   }
 
   private parseGithubSource(rawValue: string): ParsedGithubSource {
-    const matchedUrl = rawValue.match(/https?:\/\/github\.com\/[^\s<>)\]]+/i)?.[0];
+    const matchedUrl = rawValue.match(
+      /https?:\/\/github\.com\/[^\s<>)\]]+/i,
+    )?.[0];
     const cleaned = (matchedUrl ?? rawValue)
       .trim()
       .replace(/[.,;!?]+$/g, '')
@@ -571,7 +856,10 @@ export class CodeReviewsService {
     }
 
     if (typeSegment === 'compare' && segments[3]) {
-      const compareRef = segments.slice(3).join('/').replace(/\.diff$/i, '');
+      const compareRef = segments
+        .slice(3)
+        .join('/')
+        .replace(/\.diff$/i, '');
       const sourceUrl = `${origin}/${repository}/compare/${compareRef}`;
       return {
         sourceType: 'compare',
@@ -600,10 +888,7 @@ export class CodeReviewsService {
 
   private async fetchDiff(diffUrl: string) {
     const response = await fetch(diffUrl, {
-      headers: {
-        Accept: 'text/plain',
-        'User-Agent': 'towercrane-code-review',
-      },
+      headers: this.githubDiffHeaders(),
     });
     if (!response.ok) {
       throw new BadRequestException(
@@ -631,7 +916,11 @@ export class CodeReviewsService {
     return Promise.all(
       files.map(async (file) => ({
         ...file,
-        fullText: await this.fetchGithubFileText(source.repository, file.path, ref),
+        fullText: await this.fetchGithubFileText(
+          source.repository,
+          file.path,
+          ref,
+        ),
       })),
     );
   }
@@ -652,10 +941,7 @@ export class CodeReviewsService {
         const response = await fetch(
           `https://api.github.com/repos/${source.repository}/pulls/${pullNumber}`,
           {
-            headers: {
-              Accept: 'application/vnd.github+json',
-              'User-Agent': 'towercrane-code-review',
-            },
+            headers: this.githubJsonHeaders(),
           },
         );
         if (!response.ok) return null;
@@ -678,10 +964,7 @@ export class CodeReviewsService {
       const response = await fetch(
         `https://api.github.com/repos/${repository}/contents/${encodeURIComponent(path).replace(/%2F/g, '/')}?ref=${encodeURIComponent(ref)}`,
         {
-          headers: {
-            Accept: 'application/vnd.github+json',
-            'User-Agent': 'towercrane-code-review',
-          },
+          headers: this.githubJsonHeaders(),
         },
       );
       if (!response.ok) return null;
@@ -739,8 +1022,15 @@ export class CodeReviewsService {
         let content: string | null = null;
         let resolvedPath = importPath;
         for (const candidate of candidates) {
-          content = await this.fetchGithubFileText(source.repository, candidate, ref);
-          if (content) { resolvedPath = candidate; break; }
+          content = await this.fetchGithubFileText(
+            source.repository,
+            candidate,
+            ref,
+          );
+          if (content) {
+            resolvedPath = candidate;
+            break;
+          }
         }
         if (content) {
           result.push({
@@ -778,7 +1068,10 @@ export class CodeReviewsService {
    * 상대 경로를 레포 루트 기준 절대 경로로 변환한다.
    * 확장자가 없으면 .ts / .tsx / index.ts / index.tsx 순으로 시도한다.
    */
-  private resolveImportPath(fromDir: string, importPath: string): string | null {
+  private resolveImportPath(
+    fromDir: string,
+    importPath: string,
+  ): string | null {
     const parts = `${fromDir}/${importPath}`.split('/');
     const normalized: string[] = [];
     for (const part of parts) {
@@ -822,8 +1115,10 @@ export class CodeReviewsService {
 
       if (!current) continue;
       current.diff += `${line}\n`;
-      if (line.startsWith('+') && !line.startsWith('+++')) current.additions += 1;
-      if (line.startsWith('-') && !line.startsWith('---')) current.deletions += 1;
+      if (line.startsWith('+') && !line.startsWith('+++'))
+        current.additions += 1;
+      if (line.startsWith('-') && !line.startsWith('---'))
+        current.deletions += 1;
       const renameMatch = line.match(/^\+\+\+ b\/(.+)$/);
       if (renameMatch) current.path = renameMatch[1];
     }
@@ -849,11 +1144,16 @@ export class CodeReviewsService {
 
   private exclusionReason(file: ParsedDiffFile) {
     const path = file.path.toLowerCase();
-    if (file.diff.length > MAX_FILE_DIFF_CHARS) return '파일 diff 크기 제한 초과';
+    if (file.diff.length > MAX_FILE_DIFF_CHARS)
+      return '파일 diff 크기 제한 초과';
     if (/(^|\/)(dist|build|coverage|node_modules)\//.test(path)) {
       return '빌드 산출물 또는 외부 의존성';
     }
-    if (/(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb)$/.test(path)) {
+    if (
+      /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb)$/.test(
+        path,
+      )
+    ) {
       return '락 파일';
     }
     if (/\.(min\.js|map|snap)$/i.test(path)) return '생성 파일 패턴';
@@ -926,8 +1226,7 @@ export class CodeReviewsService {
         messages: [
           {
             role: 'system',
-            content:
-              `너는 실무 코드 리뷰어다. 한국어 JSON만 출력한다. selectedSections에 포함된 관점만 작성한다. 테스트 공백은 보조 확인으로만 다루고, 테스트 부재만으로 위험도를 높이지 않는다.\n\nreviewedFiles의 각 항목에는 diff(변경 헝크)와 fullText(파일 전체 내용)가 함께 제공된다. diff로 무엇이 바뀌었는지 파악하고, fullText로 해당 파일의 전체 맥락(주변 함수, 타입, 클래스 구조)을 파악해 더 정확한 리뷰를 작성한다.\n\ncontextFiles는 변경 파일이 import하는 연관 파일(API 함수, mutation/query, 타입, 유틸 등)의 전체 내용이다. reviewGoal과 관련된 실제 구현 로직을 contextFiles에서 찾아 함께 분석한다.\n\n${codeReviewStyleGuide}`,
+            content: `너는 실무 코드 리뷰어다. 한국어 JSON만 출력한다. selectedSections에 포함된 관점만 작성한다. 테스트 공백은 보조 확인으로만 다루고, 테스트 부재만으로 위험도를 높이지 않는다.\n\nreviewedFiles의 각 항목에는 diff(변경 헝크)와 fullText(파일 전체 내용)가 함께 제공된다. diff로 무엇이 바뀌었는지 파악하고, fullText로 해당 파일의 전체 맥락(주변 함수, 타입, 클래스 구조)을 파악해 더 정확한 리뷰를 작성한다.\n\ncontextFiles는 변경 파일이 import하는 연관 파일(API 함수, mutation/query, 타입, 유틸 등)의 전체 내용이다. reviewGoal과 관련된 실제 구현 로직을 contextFiles에서 찾아 함께 분석한다.\n\n${codeReviewStyleGuide}`,
           },
           {
             role: 'user',
@@ -951,7 +1250,9 @@ export class CodeReviewsService {
                   : 'diff에서 변경 의도를 먼저 추론하고, fullText로 파일 전체 구조를 파악한 뒤 contextFiles의 연관 구현까지 참고해 기능 흐름 전체를 작성한다.',
               reviewedFiles: filesWithContext,
               contextFiles: relatedFiles,
-              excludedFiles: excludedFiles.map(({ diff: _diff, ...file }) => file),
+              excludedFiles: excludedFiles.map(
+                ({ diff: _diff, ...file }) => file,
+              ),
               selectedSections: sections,
               requiredShape: {
                 title: 'string',
@@ -963,12 +1264,9 @@ export class CodeReviewsService {
                   'string[] for auxiliary verification only. Do not make missing tests the main review result.',
               },
               bodyFormat: {
-                structure:
-                  'plain text file tree only. No prose in body.',
-                process:
-                  'numbered overview steps only. No code block.',
-                code:
-                  '구현 주제마다 아래 순서로만 작성한다: ① #### 단계 N. 제목 (역할타입: 함수명) ② 코드 블록 바로 시작 — 코드 블록 앞뒤로 어떤 레이블도 쓰지 않는다 ③ 코드 역할을 plain text 한 줄로 설명 (레이블 없이) ④ → 기호로 시작하는 개선 방향(있으면)',
+                structure: 'plain text file tree only. No prose in body.',
+                process: 'numbered overview steps only. No code block.',
+                code: '구현 주제마다 아래 순서로만 작성한다: ① #### 단계 N. 제목 (역할타입: 함수명) ② 코드 블록 바로 시작 — 코드 블록 앞뒤로 어떤 레이블도 쓰지 않는다 ③ 코드 역할을 plain text 한 줄로 설명 (레이블 없이) ④ → 기호로 시작하는 개선 방향(있으면)',
                 syntax:
                   'pick exactly one core syntax/pattern that best explains the commit goal or main logic. Write "핵심 문법 없음." only if there is no useful pattern. Use only: title, fenced related code, supplemental explanation, improvement suggestion. Do not add file path prose.',
                 architecture:
@@ -1032,7 +1330,9 @@ export class CodeReviewsService {
       pattern: RegExp,
       recommendation: string,
     ) => {
-      const lineNumber = file ? this.findAddedLineNumber(file.diff, pattern) : null;
+      const lineNumber = file
+        ? this.findAddedLineNumber(file.diff, pattern)
+        : null;
       findings.push({
         category,
         severity,
@@ -1122,11 +1422,17 @@ export class CodeReviewsService {
     const changedFileCount = reviewedFiles.length + excludedFiles.length;
     const changedPaths = reviewedFiles.map((file) => file.path.toLowerCase());
     findings.push(
-      ...this.buildStructuralReviewFindings(reviewedFiles, sections, reviewGoal),
+      ...this.buildStructuralReviewFindings(
+        reviewedFiles,
+        sections,
+        reviewGoal,
+      ),
     );
 
     const hasTestChange = changedPaths.some((path) =>
-      /(^|\/)(__tests__|test|tests|spec)(\/|\.|-)|\.(test|spec)\.(ts|tsx|js|jsx)$/.test(path),
+      /(^|\/)(__tests__|test|tests|spec)(\/|\.|-)|\.(test|spec)\.(ts|tsx|js|jsx)$/.test(
+        path,
+      ),
     );
     const testGaps = hasTestChange
       ? []
@@ -1139,13 +1445,14 @@ export class CodeReviewsService {
       );
     }
 
-    const riskLevel: CodeReviewRiskLevel =
-      findings.some((finding) => finding.severity === 'high')
-        ? 'high'
-        : findings.some((finding) => finding.severity === 'medium') ||
-            changedFileCount > 8
-          ? 'medium'
-          : 'low';
+    const riskLevel: CodeReviewRiskLevel = findings.some(
+      (finding) => finding.severity === 'high',
+    )
+      ? 'high'
+      : findings.some((finding) => finding.severity === 'medium') ||
+          changedFileCount > 8
+        ? 'medium'
+        : 'low';
 
     return {
       title: `${source.repository} ${source.reference} 코드 리뷰`,
@@ -1165,13 +1472,15 @@ export class CodeReviewsService {
    * "핵심 코드:", "관련 코드:", "예시 코드:", "코드:" 등 코드 블록 앞 레이블 라인 삭제.
    */
   private stripBodyLabels(body: string): string {
-    return body
-      // 줄 위치·볼드·공백 변형 모두 무관하게 해당 레이블 텍스트 자체를 제거
-      .replace(/\*{0,2}핵심\s*코드\s*:\*{0,2}/g, '')
-      .replace(/\*{0,2}관련\s*코드\s*:\*{0,2}/g, '')
-      .replace(/\*{0,2}예시\s*코드\s*:\*{0,2}/g, '')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+    return (
+      body
+        // 줄 위치·볼드·공백 변형 모두 무관하게 해당 레이블 텍스트 자체를 제거
+        .replace(/\*{0,2}핵심\s*코드\s*:\*{0,2}/g, '')
+        .replace(/\*{0,2}관련\s*코드\s*:\*{0,2}/g, '')
+        .replace(/\*{0,2}예시\s*코드\s*:\*{0,2}/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+    );
   }
 
   private normalizeAnalysis(
@@ -1203,11 +1512,15 @@ export class CodeReviewsService {
     ]);
     const selectedSectionSet = new Set(sections);
     const categoryAllowedByRequest = (category: CodeReviewFindingCategory) => {
-      if (category === 'clean_code') return selectedSectionSet.has('architecture');
+      if (category === 'clean_code')
+        return selectedSectionSet.has('architecture');
       if (category === 'risk') {
-        return selectedSectionSet.has('code') || selectedSectionSet.has('architecture');
+        return (
+          selectedSectionSet.has('code') ||
+          selectedSectionSet.has('architecture')
+        );
       }
-      return selectedSectionSet.has(category as CodeReviewSection);
+      return selectedSectionSet.has(category);
     };
     let findings: CodeReviewFinding[] = Array.isArray(input.findings)
       ? input.findings
@@ -1220,19 +1533,22 @@ export class CodeReviewsService {
               ? finding.severity
               : 'low',
             title: String(finding.title ?? '검토 항목').slice(0, 160),
-            body: this.stripBodyLabels(String(finding.body ?? '')).slice(0, 12000),
+            body: this.stripBodyLabels(String(finding.body ?? '')).slice(
+              0,
+              12000,
+            ),
             filePath:
               typeof finding.filePath === 'string' ? finding.filePath : null,
             lineNumber:
               typeof finding.lineNumber === 'number' && finding.lineNumber > 0
                 ? Math.floor(finding.lineNumber)
                 : null,
-            recommendation: String(finding.recommendation ?? '수정 방향을 검토하세요.').slice(0, 4000),
+            recommendation: String(
+              finding.recommendation ?? '수정 방향을 검토하세요.',
+            ).slice(0, 4000),
           }))
           .filter((finding) => finding.body)
-          .filter((finding) =>
-            categoryAllowedByRequest(finding.category as CodeReviewFindingCategory),
-          )
+          .filter((finding) => categoryAllowedByRequest(finding.category))
           .slice(0, 12)
       : [];
     const fallback = this.reviewDiffWithHeuristics(
@@ -1243,11 +1559,36 @@ export class CodeReviewsService {
       reviewGoal,
     );
     findings = this.ensureStructureFinding(findings, reviewedFiles, sections);
-    findings = this.ensureProcessFinding(findings, reviewedFiles, sections, reviewGoal);
-    findings = this.ensureLogicFinding(findings, reviewedFiles, sections, reviewGoal);
-    findings = this.ensureSyntaxFinding(findings, reviewedFiles, sections, reviewGoal);
-    findings = this.ensureArchitectureFinding(findings, reviewedFiles, sections, reviewGoal);
-    findings = this.ensureDiagramFinding(findings, reviewedFiles, sections, reviewGoal);
+    findings = this.ensureProcessFinding(
+      findings,
+      reviewedFiles,
+      sections,
+      reviewGoal,
+    );
+    findings = this.ensureLogicFinding(
+      findings,
+      reviewedFiles,
+      sections,
+      reviewGoal,
+    );
+    findings = this.ensureSyntaxFinding(
+      findings,
+      reviewedFiles,
+      sections,
+      reviewGoal,
+    );
+    findings = this.ensureArchitectureFinding(
+      findings,
+      reviewedFiles,
+      sections,
+      reviewGoal,
+    );
+    findings = this.ensureDiagramFinding(
+      findings,
+      reviewedFiles,
+      sections,
+      reviewGoal,
+    );
 
     return {
       title:
@@ -1264,7 +1605,9 @@ export class CodeReviewsService {
       findings: findings.length > 0 ? findings : fallback.findings,
       testGaps:
         Array.isArray(input.testGaps) && input.testGaps.length > 0
-          ? input.testGaps.map((item) => String(item).slice(0, 1000)).slice(0, 8)
+          ? input.testGaps
+              .map((item) => String(item).slice(0, 1000))
+              .slice(0, 8)
           : fallback.testGaps,
       model,
     };
@@ -1377,7 +1720,9 @@ export class CodeReviewsService {
             ? '카드 권한 분기, 다이얼로그 폼 상태, submit mutation 책임이 과도하게 한곳에 섞이지 않는지 확인하세요.'
             : '실행 흐름의 각 함수가 입력 검증, 외부 호출, 상태 갱신, 저장 책임을 과도하게 함께 갖지 않는지 확인하세요.',
     };
-    const withoutLogic = findings.filter((finding) => finding.category !== 'code');
+    const withoutLogic = findings.filter(
+      (finding) => finding.category !== 'code',
+    );
 
     return [...withoutLogic, logicFinding];
   }
@@ -1428,7 +1773,10 @@ export class CodeReviewsService {
       severity: largeFiles.length > 0 ? 'medium' : 'low',
       title: '5. 아키텍처/클린코드 평가',
       body: this.formatArchitectureAssessment(reviewedFiles, reviewGoal),
-      filePath: largeFiles[0]?.path ?? this.pickTopChangedFiles(reviewedFiles, 1)[0]?.path ?? null,
+      filePath:
+        largeFiles[0]?.path ??
+        this.pickTopChangedFiles(reviewedFiles, 1)[0]?.path ??
+        null,
       lineNumber: null,
       recommendation:
         intent === 'update'
@@ -1439,7 +1787,8 @@ export class CodeReviewsService {
     };
     const withoutArchitecture = findings.filter(
       (finding) =>
-        finding.category !== 'architecture' && finding.category !== 'clean_code',
+        finding.category !== 'architecture' &&
+        finding.category !== 'clean_code',
     );
 
     return [...withoutArchitecture, architectureFinding];
@@ -1469,7 +1818,9 @@ export class CodeReviewsService {
     );
     const hasRouter = changedPaths.some((path) => path.endsWith('/router.tsx'));
     const hasPage = changedPaths.some((path) => path.includes('/pages/'));
-    const hasService = changedPaths.some((path) => path.endsWith('.service.ts'));
+    const hasService = changedPaths.some((path) =>
+      path.endsWith('.service.ts'),
+    );
     const hasSchema = changedPaths.some((path) => path.endsWith('.schemas.ts'));
     const hasReactQuery = changedPaths.some((path) => path.includes('/api/'));
     const shouldIncludeDiagram =
@@ -1594,7 +1945,10 @@ export class CodeReviewsService {
           '핵심 코드:',
           '',
           `\`\`\`${this.languageForPath(file.path)}`,
-          this.withSnippetComment(snippet, this.logicCodeComment(file.path, intent, symbol)),
+          this.withSnippetComment(
+            snippet,
+            this.logicCodeComment(file.path, intent, symbol),
+          ),
           '```',
           '',
           `설명: ${this.logicExplanation(file.path, intent, symbol)}`,
@@ -1608,7 +1962,9 @@ export class CodeReviewsService {
   private formatDeleteLogicWalkthrough(files: ParsedDiffFile[]) {
     const blocks: string[] = [];
     const cardFile = files.find((file) =>
-      /DeleteWorkspaceDialog|Trash2|canManage/.test(this.extractAddedText(file.diff)),
+      /DeleteWorkspaceDialog|Trash2|canManage/.test(
+        this.extractAddedText(file.diff),
+      ),
     );
     if (!cardFile) return null;
 
@@ -1638,7 +1994,9 @@ export class CodeReviewsService {
 
     const dialogSnippet = this.extractReviewSnippet(
       cardFile,
-      [/function\s+DeleteWorkspaceDialog|const\s+onDelete|deleteWorkspace\.mutateAsync|hasCategories/],
+      [
+        /function\s+DeleteWorkspaceDialog|const\s+onDelete|deleteWorkspace\.mutateAsync|hasCategories/,
+      ],
       14,
     );
     if (dialogSnippet && dialogSnippet !== cardSnippet) {
@@ -1709,7 +2067,7 @@ export class CodeReviewsService {
         `\`\`\`${language}`,
         [
           '// 기존 워크스페이스 값을 폼 초기값으로 사용',
-          "const [name, setName] = useState(workspace.name)",
+          'const [name, setName] = useState(workspace.name)',
           "const [description, setDescription] = useState(workspace.description ?? '')",
           'const updateWorkspace = useUpdatePrototypeWorkspace(workspace.id)',
           '// 이름이 유효하고 실제 변경이 있을 때만 저장 허용',
@@ -1791,7 +2149,9 @@ export class CodeReviewsService {
       changedPaths.some((path) => path.includes('/database/'))
         ? '4. 분석 결과는 DB 스키마의 코드 리뷰 저장 구조에 맞춰 보관됩니다.'
         : null,
-      changedPaths.some((path) => path.includes('/router') || path.includes('/app-header/'))
+      changedPaths.some(
+        (path) => path.includes('/router') || path.includes('/app-header/'),
+      )
         ? '5. 라우터/헤더 연결을 통해 저장된 리뷰 목록과 상세 화면으로 진입합니다.'
         : null,
     ].filter(Boolean);
@@ -1903,10 +2263,15 @@ export class CodeReviewsService {
     ].join('\n\n---\n\n');
   }
 
-  private formatArchitectureAssessment(files: ParsedDiffFile[], reviewGoal = '') {
+  private formatArchitectureAssessment(
+    files: ParsedDiffFile[],
+    reviewGoal = '',
+  ) {
     const intent = this.detectReviewIntent(files, reviewGoal);
     const changedPaths = files.map((file) => file.path);
-    const largeFiles = files.filter((file) => file.additions + file.deletions >= 250);
+    const largeFiles = files.filter(
+      (file) => file.additions + file.deletions >= 250,
+    );
 
     if (intent === 'update') {
       return [
@@ -1926,8 +2291,12 @@ export class CodeReviewsService {
     }
 
     return [
-      changedPaths.some((path) => path.includes('towercrane-for-uiux-front/src/')) &&
-      changedPaths.some((path) => path.includes('towercrane-for-uiux-server/src/'))
+      changedPaths.some((path) =>
+        path.includes('towercrane-for-uiux-front/src/'),
+      ) &&
+      changedPaths.some((path) =>
+        path.includes('towercrane-for-uiux-server/src/'),
+      )
         ? '프론트와 서버 변경이 함께 있어 기능 경계와 API 계약을 같이 확인해야 합니다.'
         : '변경 범위가 한 레이어에 가까워 책임 경계는 비교적 단순합니다.',
       largeFiles.length > 0
@@ -1942,7 +2311,8 @@ export class CodeReviewsService {
       return `함수 컴포넌트: ${symbol}`;
     }
     if (path.includes('/api/')) return `API 모듈: ${symbol}`;
-    if (path.includes('/service') || path.includes('.service.')) return `서비스 함수: ${symbol}`;
+    if (path.includes('/service') || path.includes('.service.'))
+      return `서비스 함수: ${symbol}`;
     if (/on[A-Z]|handle[A-Z]/.test(symbol)) return `이벤트 핸들러: ${symbol}`;
 
     return `함수: ${symbol}`;
@@ -1969,15 +2339,23 @@ export class CodeReviewsService {
   }
 
   private logicCodeComment(path: string, intent: ReviewIntent, symbol: string) {
-    if (intent === 'update') return '리뷰 요청과 직접 관련된 수정 흐름의 핵심 코드';
-    if (intent === 'delete') return '리뷰 요청과 직접 관련된 삭제 흐름의 핵심 코드';
-    if (path.includes('/api/')) return '화면과 서버 계약을 연결하는 핵심 호출 코드';
-    if (path.includes('/pages/')) return '사용자 액션과 화면 상태를 연결하는 핵심 코드';
+    if (intent === 'update')
+      return '리뷰 요청과 직접 관련된 수정 흐름의 핵심 코드';
+    if (intent === 'delete')
+      return '리뷰 요청과 직접 관련된 삭제 흐름의 핵심 코드';
+    if (path.includes('/api/'))
+      return '화면과 서버 계약을 연결하는 핵심 호출 코드';
+    if (path.includes('/pages/'))
+      return '사용자 액션과 화면 상태를 연결하는 핵심 코드';
 
     return `${symbol}에서 변경 흐름을 만드는 핵심 코드`;
   }
 
-  private logicImprovementSuggestion(path: string, intent: ReviewIntent, symbol: string) {
+  private logicImprovementSuggestion(
+    path: string,
+    intent: ReviewIntent,
+    symbol: string,
+  ) {
     if (intent === 'update' && /Dialog|Form/.test(symbol)) {
       return '폼 필드나 검증 조건이 늘어나면 react-hook-form과 zod로 폼 상태, 기본값, 검증 메시지를 분리할 수 있습니다.';
     }
@@ -2061,13 +2439,17 @@ export class CodeReviewsService {
       ];
     }
     if (path.includes('/api/')) {
-      return [/apiRequest|use(Query|Mutation)|queryKey|mutationFn|invalidateQueries/];
+      return [
+        /apiRequest|use(Query|Mutation)|queryKey|mutationFn|invalidateQueries/,
+      ];
     }
     if (path.endsWith('.service.ts')) {
       return [/async\s+\w+|this\.db|\.select\(|\.insert\(|\.update\(|fetch\(/];
     }
-    if (path.endsWith('.schemas.ts')) return [/\bz\.(object|enum|array|string)/];
-    if (path.includes('/database/')) return [/sqliteTable|text\(|integer\(|\.\$type</];
+    if (path.endsWith('.schemas.ts'))
+      return [/\bz\.(object|enum|array|string)/];
+    if (path.includes('/database/'))
+      return [/sqliteTable|text\(|integer\(|\.\$type</];
     return [/function\s+\w+|const\s+\w+\s*=|return\s+/];
   }
 
@@ -2088,9 +2470,11 @@ export class CodeReviewsService {
 
     const sourceLines = this.extractDiffContextLines(file.diff).filter(
       (line) =>
-        line.text.trim().length > 0 && !this.isSnippetBoilerplateLine(line.text),
+        line.text.trim().length > 0 &&
+        !this.isSnippetBoilerplateLine(line.text),
     );
-    if (sourceLines.length === 0) return '// diff에서 표시 가능한 코드 스니펫 없음';
+    if (sourceLines.length === 0)
+      return '// diff에서 표시 가능한 코드 스니펫 없음';
 
     const addedAnchor = sourceLines.findIndex(
       (line) =>
@@ -2142,9 +2526,10 @@ export class CodeReviewsService {
     if (lines.length === 0) return null;
 
     const changedLine = this.findFirstSignificantAddedLineNumber(diff);
-    const patternLine = lines.findIndex((line) =>
-      !this.isSnippetBoilerplateLine(line) &&
-      patterns.some((pattern) => pattern.test(line)),
+    const patternLine = lines.findIndex(
+      (line) =>
+        !this.isSnippetBoilerplateLine(line) &&
+        patterns.some((pattern) => pattern.test(line)),
     );
     const anchor =
       patternLine >= 0
@@ -2204,7 +2589,12 @@ export class CodeReviewsService {
   }
 
   private findChangedSymbol(file: ParsedDiffFile) {
-    const lines = (file.fullText ?? this.extractDiffContextLines(file.diff).map((line) => line.text).join('\n'))
+    const lines = (
+      file.fullText ??
+      this.extractDiffContextLines(file.diff)
+        .map((line) => line.text)
+        .join('\n')
+    )
       .split('\n')
       .filter((line) => !this.isSnippetBoilerplateLine(line));
     const changedLine = this.findFirstSignificantAddedLineNumber(file.diff);
@@ -2299,7 +2689,9 @@ export class CodeReviewsService {
       },
       {
         label: 'NestJS',
-        patterns: [/@(Controller|Get|Post|Patch|Delete|Injectable)|constructor\(/],
+        patterns: [
+          /@(Controller|Get|Post|Patch|Delete|Injectable)|constructor\(/,
+        ],
         explanation:
           '데코레이터와 생성자 주입이 HTTP 엔드포인트, 서비스 책임, 의존성 경계를 선언적으로 묶습니다.',
       },
@@ -2382,7 +2774,9 @@ export class CodeReviewsService {
     };
     const root: TreeNode = { children: new Map(), file: null };
 
-    for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
+    for (const file of [...files].sort((a, b) =>
+      a.path.localeCompare(b.path),
+    )) {
       const parts = file.path.split('/').filter(Boolean);
       let current = root;
       for (const [index, part] of parts.entries()) {
@@ -2420,7 +2814,10 @@ export class CodeReviewsService {
     return ['.', ...render(root)].join('\n');
   }
 
-  private buildReviewMermaidFlowchart(files: ParsedDiffFile[], reviewGoal = '') {
+  private buildReviewMermaidFlowchart(
+    files: ParsedDiffFile[],
+    reviewGoal = '',
+  ) {
     const intent = this.detectReviewIntent(files, reviewGoal);
     if (intent === 'delete') {
       return [
@@ -2459,11 +2856,14 @@ export class CodeReviewsService {
     const hasServer = changedPaths.some((path) =>
       path.includes('towercrane-for-uiux-server/src/'),
     );
-    const hasDatabase = changedPaths.some((path) =>
-      path.includes('/database/') || path.includes('/data/'),
+    const hasDatabase = changedPaths.some(
+      (path) => path.includes('/database/') || path.includes('/data/'),
     );
 
-    const lines = ['flowchart TD', '  A["commit URL 입력"] --> B["커밋 diff 수집"]'];
+    const lines = [
+      'flowchart TD',
+      '  A["commit URL 입력"] --> B["커밋 diff 수집"]',
+    ];
 
     if (hasServer) {
       lines.push(
@@ -2493,13 +2893,22 @@ export class CodeReviewsService {
     return lines.join('\n');
   }
 
-  private detectReviewIntent(files: ParsedDiffFile[], reviewGoal = ''): ReviewIntent {
-    const addedText = files.map((file) => this.extractAddedText(file.diff)).join('\n');
+  private detectReviewIntent(
+    files: ParsedDiffFile[],
+    reviewGoal = '',
+  ): ReviewIntent {
+    const addedText = files
+      .map((file) => this.extractAddedText(file.diff))
+      .join('\n');
     const pathText = files.map((file) => file.path).join('\n');
-    if (/useUpdate|update[A-Z]|\bPATCH\b|Pencil|onSubmit|수정/.test(reviewGoal)) {
+    if (
+      /useUpdate|update[A-Z]|\bPATCH\b|Pencil|onSubmit|수정/.test(reviewGoal)
+    ) {
       return 'update';
     }
-    if (/useDelete|delete[A-Z]|\bDELETE\b|Trash2|onDelete|삭제/.test(reviewGoal)) {
+    if (
+      /useDelete|delete[A-Z]|\bDELETE\b|Trash2|onDelete|삭제/.test(reviewGoal)
+    ) {
       return 'delete';
     }
     if (/useCreate|create[A-Z]|\bPOST\b|Plus|생성/.test(reviewGoal)) {
@@ -2561,13 +2970,269 @@ export class CodeReviewsService {
       .get();
   }
 
+  private getGithubPrReviewSettingsRow(userId: string) {
+    return this.db
+      .select()
+      .from(githubPrReviewSettingsTable)
+      .where(eq(githubPrReviewSettingsTable.userId, userId))
+      .get();
+  }
+
+  private getGithubPrReviewPreferencesInternal(user: CodeReviewUser) {
+    const existing = this.getGithubPrReviewSettingsRow(user.id);
+    if (existing) {
+      return {
+        criteria: this.normalizeGithubPrReviewCriteria(existing.criteria),
+        version: existing.version,
+        updatedAt: existing.updatedAt,
+      };
+    }
+
+    const now = new Date().toISOString();
+    const criteria = this.normalizeGithubPrReviewCriteria(
+      DEFAULT_GITHUB_PR_REVIEW_CRITERIA.map((criterion, index) => ({
+        ...criterion,
+        id: `criterion-${randomUUID().slice(0, 12)}`,
+        orderIdx: index,
+      })),
+    );
+
+    this.db
+      .insert(githubPrReviewSettingsTable)
+      .values({
+        userId: user.id,
+        criteria,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return { criteria, version: 1, updatedAt: now };
+  }
+
+  private normalizeGithubPrReviewCriteria(
+    criteria: Array<Partial<GithubPrReviewCriterion>>,
+  ): GithubPrReviewCriterion[] {
+    return criteria
+      .map((criterion, index) => ({
+        id:
+          typeof criterion.id === 'string' && criterion.id.trim()
+            ? criterion.id.trim().slice(0, 120)
+            : `criterion-${randomUUID().slice(0, 12)}`,
+        title: String(criterion.title ?? '')
+          .trim()
+          .slice(0, 60),
+        instruction: String(criterion.instruction ?? '')
+          .trim()
+          .slice(0, 1000),
+        enabled: criterion.enabled !== false,
+        orderIdx: Number.isFinite(criterion.orderIdx)
+          ? Number(criterion.orderIdx)
+          : index,
+      }))
+      .filter((criterion) => criterion.title && criterion.instruction)
+      .sort((a, b) => a.orderIdx - b.orderIdx)
+      .map((criterion, index) => ({ ...criterion, orderIdx: index }));
+  }
+
+  private sectionsFromGithubPrCriteria(
+    criteria: GithubPrReviewCriterion[],
+  ): CodeReviewSection[] {
+    const joined = criteria
+      .map((criterion) => `${criterion.title} ${criterion.instruction}`)
+      .join('\n');
+    const sections = new Set<CodeReviewSection>([
+      'structure',
+      'code',
+      'architecture',
+    ]);
+    if (/프로세스|흐름|요구사항|정확성|동작|상태/.test(joined)) {
+      sections.add('process');
+    }
+    if (/문법|타입|패턴|syntax|typescript/i.test(joined)) {
+      sections.add('syntax');
+    }
+    if (/다이어그램|흐름도|mermaid|mmd/i.test(joined)) {
+      sections.add('diagram');
+    }
+    return [...sections].slice(0, 6);
+  }
+
+  private stableJson(value: unknown) {
+    return JSON.stringify(value, (_key, current) => {
+      if (!current || typeof current !== 'object' || Array.isArray(current)) {
+        return current;
+      }
+      return Object.keys(current)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, key) => {
+          acc[key] = (current as Record<string, unknown>)[key];
+          return acc;
+        }, {});
+    });
+  }
+
+  private buildGithubPrCriterionResults(
+    criteria: GithubPrReviewCriterion[],
+    analysis: CodeReviewAnalysis,
+  ): GithubPrCriterionResult[] {
+    const usedFindingIndexes = new Set<number>();
+    const results = criteria.map((criterion, criterionIndex) => {
+      const matchedFindings = analysis.findings
+        .map((finding, index) => ({ finding, index }))
+        .filter(({ finding, index }) => {
+          if (usedFindingIndexes.has(index)) return false;
+          return this.findingMatchesGithubPrCriterion(
+            finding,
+            criterion,
+            criterionIndex,
+          );
+        });
+
+      for (const { index } of matchedFindings) usedFindingIndexes.add(index);
+
+      const findings: GithubPrCriterionFinding[] = matchedFindings.map(
+        ({ finding }) => ({
+          severity: finding.severity,
+          message: finding.title,
+          filePath: finding.filePath ?? null,
+          lineNumber: finding.lineNumber ?? null,
+          evidence: this.stripBodyLabels(String(finding.body ?? '')).slice(
+            0,
+            2000,
+          ),
+          recommendation: finding.recommendation,
+        }),
+      );
+
+      if (
+        findings.length === 0 &&
+        /테스트|회귀|검증/i.test(
+          `${criterion.title} ${criterion.instruction}`,
+        ) &&
+        analysis.testGaps.length > 0
+      ) {
+        findings.push({
+          severity: 'low',
+          message: '테스트 및 회귀 검증 필요',
+          filePath: null,
+          lineNumber: null,
+          evidence: analysis.testGaps.join('\n').slice(0, 2000),
+          recommendation:
+            '주요 사용자 경로와 변경된 동작을 기준으로 수동 검증 또는 회귀 테스트를 보강하세요.',
+        });
+      }
+
+      const status = this.statusFromCriterionFindings(findings);
+      return {
+        criterionId: criterion.id,
+        criterionTitle: criterion.title,
+        status,
+        summary:
+          findings.length > 0
+            ? `${criterion.title} 기준에서 ${findings.length}개 확인 항목이 있습니다.`
+            : `${criterion.title} 기준에서 제공된 diff 범위 내 명확한 문제는 발견하지 못했습니다.`,
+        findings: status === 'no_finding' ? [] : findings,
+      };
+    });
+
+    const unassigned = analysis.findings
+      .map((finding, index) => ({ finding, index }))
+      .filter(({ index }) => !usedFindingIndexes.has(index));
+    if (unassigned.length > 0 && results[0]) {
+      const extraFindings = unassigned.map(({ finding }) => ({
+        severity: finding.severity,
+        message: finding.title,
+        filePath: finding.filePath ?? null,
+        lineNumber: finding.lineNumber ?? null,
+        evidence: this.stripBodyLabels(String(finding.body ?? '')).slice(
+          0,
+          2000,
+        ),
+        recommendation: finding.recommendation,
+      }));
+      results[0] = {
+        ...results[0],
+        status: this.statusFromCriterionFindings([
+          ...results[0].findings,
+          ...extraFindings,
+        ]),
+        summary: `${results[0].criterionTitle} 기준에서 ${results[0].findings.length + extraFindings.length}개 확인 항목이 있습니다.`,
+        findings: [...results[0].findings, ...extraFindings],
+      };
+    }
+
+    return results;
+  }
+
+  private findingMatchesGithubPrCriterion(
+    finding: CodeReviewFinding,
+    criterion: GithubPrReviewCriterion,
+    criterionIndex: number,
+  ) {
+    const text = `${criterion.title} ${criterion.instruction}`.toLowerCase();
+    const category = finding.category ?? 'code';
+    if (/보안|데이터|인증|인가|secret|token|injection|xss/i.test(text)) {
+      return (
+        category === 'risk' ||
+        /보안|민감|토큰|인증|인가|주입|xss/i.test(finding.title)
+      );
+    }
+    if (/예외|복구|오류|실패|장애|catch|에러/i.test(text)) {
+      return /오류|실패|장애|catch|예외/i.test(
+        `${finding.title} ${finding.body}`,
+      );
+    }
+    if (/구조|유지보수|책임|모듈|중복|명명|클린/i.test(text)) {
+      return ['structure', 'architecture', 'clean_code'].includes(category);
+    }
+    if (/성능|동시성|race|반복|트랜잭션|락|lock/i.test(text)) {
+      return /성능|동시|race|반복|트랜잭션|락|lock/i.test(
+        `${finding.title} ${finding.body}`,
+      );
+    }
+    if (/테스트|회귀|검증/i.test(text)) {
+      return /테스트|회귀|검증/i.test(`${finding.title} ${finding.body}`);
+    }
+    if (/정확|요구사항|동작|상태|기능/i.test(text)) {
+      return ['process', 'code', 'risk'].includes(category);
+    }
+    return (
+      criterionIndex === 0 && ['process', 'code', 'risk'].includes(category)
+    );
+  }
+
+  private statusFromCriterionFindings(
+    findings: GithubPrCriterionFinding[],
+  ): GithubPrCriterionResult['status'] {
+    if (findings.some((finding) => finding.severity === 'high'))
+      return 'problem';
+    if (findings.some((finding) => finding.severity === 'medium'))
+      return 'problem';
+    if (findings.some((finding) => finding.severity === 'low'))
+      return 'warning';
+    return 'no_finding';
+  }
+
+  private riskFromCriterionResults(
+    results: GithubPrCriterionResult[],
+  ): CodeReviewRiskLevel {
+    const findings = results.flatMap((result) => result.findings);
+    if (findings.some((finding) => finding.severity === 'high')) return 'high';
+    if (findings.some((finding) => finding.severity === 'medium'))
+      return 'medium';
+    return 'low';
+  }
+
   private ensureReview(reviewId: string) {
     const row = this.db
       .select()
       .from(codeReviewsTable)
       .where(eq(codeReviewsTable.id, reviewId))
       .get();
-    if (!row) throw new NotFoundException(`코드 리뷰를 찾을 수 없습니다: ${reviewId}`);
+    if (!row)
+      throw new NotFoundException(`코드 리뷰를 찾을 수 없습니다: ${reviewId}`);
     return row;
   }
 
@@ -2580,7 +3245,10 @@ export class CodeReviewsService {
     throw new ForbiddenException('이 코드 리뷰를 수정할 권한이 없습니다.');
   }
 
-  private normalizeDocuments(documents: CodeReviewDocument[], fallbackDate: string) {
+  private normalizeDocuments(
+    documents: CodeReviewDocument[],
+    fallbackDate: string,
+  ) {
     return documents
       .map((document, index) => ({
         ...document,
@@ -2589,7 +3257,10 @@ export class CodeReviewsService {
         createdAt: document.createdAt || fallbackDate,
         updatedAt: document.updatedAt || fallbackDate,
       }))
-      .sort((a, b) => a.orderIdx - b.orderIdx || a.createdAt.localeCompare(b.createdAt));
+      .sort(
+        (a, b) =>
+          a.orderIdx - b.orderIdx || a.createdAt.localeCompare(b.createdAt),
+      );
   }
 
   private toSummaryDto(row: CodeReviewRow) {
@@ -2612,6 +3283,18 @@ export class CodeReviewsService {
       excludedFileCount: row.excludedFiles.length,
       documentCount: row.reviewDocuments.length,
       model: row.model,
+      prNumber: row.prNumber,
+      prTitle: row.prTitle,
+      prState: row.prState,
+      prAuthorLogin: row.prAuthorLogin,
+      baseRef: row.baseRef,
+      headRef: row.headRef,
+      headSha: row.headSha,
+      prUpdatedAt: row.prUpdatedAt,
+      reviewNote: row.reviewNote,
+      criteriaSnapshot: row.criteriaSnapshot,
+      criterionResults: row.criterionResults,
+      promptContractVersion: row.promptContractVersion,
       createdBy: row.createdBy,
       createdByName: row.createdByName,
       createdAt: row.createdAt,

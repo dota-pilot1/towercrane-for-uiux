@@ -22,7 +22,10 @@ export class KnowledgeBaseController {
   constructor(private readonly knowledgeBaseService: KnowledgeBaseService) {}
 
   @Get('documents')
-  listDocuments(@CurrentUser() user: User, @Query() query: Record<string, unknown>) {
+  listDocuments(
+    @CurrentUser() user: User,
+    @Query() query: Record<string, unknown>,
+  ) {
     return this.knowledgeBaseService.listDocuments(query, user);
   }
 

@@ -19,7 +19,15 @@ export const updateSectionSchema = createSectionSchema.partial();
 
 export const createTopicSchema = z.object({
   sectionId: z.string().uuid(),
-  blockType: z.enum(['NOTE', 'MMD', 'CHECKLIST', 'GITHUB', 'FIGMA', 'FILE', 'DBTABLE']),
+  blockType: z.enum([
+    'NOTE',
+    'MMD',
+    'CHECKLIST',
+    'GITHUB',
+    'FIGMA',
+    'FILE',
+    'DBTABLE',
+  ]),
   blockTitle: z.string().max(255).optional(),
   content: z.string(),
   orderIdx: z.number().int().nonnegative().default(0),
@@ -56,29 +64,37 @@ export const sendGptMessageSchema = z.object({
   content: z.string().min(1).max(4000),
 });
 
-export const createNoteSchema = z.object({
-  sectionId: z.string().uuid().optional(),
-  topicId: z.string().uuid().optional(),
-  title: z.string().max(255).optional(),
-  content: z.string(),
-  visibility: z.enum(['private', 'shared', 'public']).default('private'),
-  pinned: z.boolean().default(false),
-}).refine(
-  (data) => data.sectionId || data.topicId,
-  { message: 'sectionId or topicId must be provided' }
-);
+export const createNoteSchema = z
+  .object({
+    sectionId: z.string().uuid().optional(),
+    topicId: z.string().uuid().optional(),
+    title: z.string().max(255).optional(),
+    content: z.string(),
+    visibility: z.enum(['private', 'shared', 'public']).default('private'),
+    pinned: z.boolean().default(false),
+  })
+  .refine((data) => data.sectionId || data.topicId, {
+    message: 'sectionId or topicId must be provided',
+  });
 
-export const updateNoteSchema = z.object({
-  sectionId: z.string().uuid().optional(),
-  topicId: z.string().uuid().optional(),
-  title: z.string().max(255).optional(),
-  content: z.string().optional(),
-  visibility: z.enum(['private', 'shared', 'public']).optional(),
-  pinned: z.boolean().optional(),
-}).refine(
-  (data) => !(data.sectionId === undefined && data.topicId === undefined && data.content === undefined),
-  { message: 'Must update at least one field' }
-);
+export const updateNoteSchema = z
+  .object({
+    sectionId: z.string().uuid().optional(),
+    topicId: z.string().uuid().optional(),
+    title: z.string().max(255).optional(),
+    content: z.string().optional(),
+    visibility: z.enum(['private', 'shared', 'public']).optional(),
+    pinned: z.boolean().optional(),
+  })
+  .refine(
+    (data) =>
+      !(
+        data.sectionId === undefined &&
+        data.topicId === undefined &&
+        data.content === undefined
+      ),
+    { message: 'Must update at least one field' },
+  );
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;

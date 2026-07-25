@@ -7,7 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import OpenAI from 'openai';
 import { DatabaseService } from '../database/database.service';
@@ -400,9 +400,29 @@ export class StudyDiaryService {
       )
       .orderBy(
         desc(challengeUserNotesTable.pinned),
+        asc(challengeUserNotesTable.orderIdx),
         desc(challengeUserNotesTable.updatedAt),
       )
       .all();
+  }
+
+  reorderNotes(userId: string, sectionId: string, noteIds: string[]) {
+    this.assertSectionInMyDiary(sectionId, userId);
+    const notes = this.getMyNotes(userId, sectionId);
+    const ownedIds = new Set(notes.map((note) => note.id));
+
+    if (noteIds.some((id) => !ownedIds.has(id))) {
+      throw new ForbiddenException('Not authorized');
+    }
+
+    const now = new Date().toISOString();
+    for (let i = 0; i < noteIds.length; i++) {
+      this.db.db
+        .update(challengeUserNotesTable)
+        .set({ orderIdx: i, updatedAt: now })
+        .where(eq(challengeUserNotesTable.id, noteIds[i]))
+        .run();
+    }
   }
 
   createNote(userId: string, input: CreateStudyDiaryNoteInput) {

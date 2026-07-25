@@ -26,6 +26,7 @@ function sectionIdToPath(sectionId: string): string {
     dev_management_chat: '/dev-management',
     dev_meeting_minutes: '/dev-meeting-minutes',
     code_reviews: '/code-reviews',
+    github_pr_review: '/github-pr-review',
     feature_plans: '/feature-plans',
     docu: '/docu',
     knowledge_channel: '/chatbot/knowledge',
@@ -62,9 +63,8 @@ function sectionIdToPath(sectionId: string): string {
     ai_usage_stats: '/usage-stats/ai',
     api_doc: '/api-doc',
     sql: '/sql',
-    sql_user: '/sql/team',
+    sql_user: '/sql/personal',
     sql_personal: '/sql/personal',
-    sql_team: '/sql/team',
     sql_examples: '/sql/examples',
     boards: '/boards',
     board_notice: '/boards/notice',
@@ -114,6 +114,7 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/challenge')) return 'study_diary'
   if (pathname.startsWith('/meeting')) return 'meeting'
   if (pathname.startsWith('/dev-meeting-minutes')) return 'dev_meeting_minutes'
+  if (pathname.startsWith('/github-pr-review')) return 'github_pr_review'
   if (pathname.startsWith('/code-reviews')) return 'code_reviews'
   if (pathname.startsWith('/feature-plans')) return 'feature_plans'
   if (pathname.startsWith('/dev-management')) return 'dev_management_chat'
@@ -143,9 +144,8 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/usage-stats')) return 'usage_stats'
   if (pathname.startsWith('/api-doc')) return 'api_doc'
   if (pathname.startsWith('/sql/examples')) return 'sql_examples'
-  if (pathname.startsWith('/sql/team')) return 'sql_team'
   if (pathname.startsWith('/sql/personal')) return 'sql_personal'
-  if (pathname.startsWith('/sql/user')) return 'sql_team'
+  if (pathname.startsWith('/sql/user')) return 'sql_personal'
   if (pathname.startsWith('/sql')) return 'sql'
   if (pathname.startsWith('/boards/notice')) return 'board_notice'
   if (pathname.startsWith('/boards/inquiry')) return 'board_inquiry'

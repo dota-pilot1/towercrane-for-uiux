@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type OpenAI from 'openai';
 import { randomUUID } from 'node:crypto';
 import { asc, desc, eq } from 'drizzle-orm';
@@ -112,8 +116,8 @@ export class ChatbotSessionService {
     const shouldUpdateTitle =
       messageCount === 0 && firstMessageText && session.title === '새 대화';
     const nextTitle = shouldUpdateTitle
-      ? firstMessageText!.slice(0, 20) +
-        (firstMessageText!.length > 20 ? '…' : '')
+      ? firstMessageText.slice(0, 20) +
+        (firstMessageText.length > 20 ? '…' : '')
       : session.title;
 
     this.db

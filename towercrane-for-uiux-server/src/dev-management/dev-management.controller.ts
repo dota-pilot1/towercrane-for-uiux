@@ -70,7 +70,11 @@ export class DevManagementController {
     @Param('roomId') roomId: string,
     @Body() body: unknown,
   ) {
-    const result = await this.devManagementService.sendMessage(roomId, user, body);
+    const result = await this.devManagementService.sendMessage(
+      roomId,
+      user,
+      body,
+    );
     for (const message of result.messages) {
       this.devManagementGateway.broadcastMessage(roomId, message);
     }

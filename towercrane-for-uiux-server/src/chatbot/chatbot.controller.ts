@@ -88,9 +88,15 @@ export class ChatbotController {
     @Res() res: Response,
   ) {
     this.openSseStream(res);
-    await this.streamService.streamPlain(body.sessionId, body.message, user, res, {
-      fileUrls: body.fileUrls,
-    });
+    await this.streamService.streamPlain(
+      body.sessionId,
+      body.message,
+      user,
+      res,
+      {
+        fileUrls: body.fileUrls,
+      },
+    );
   }
 
   /** 지식 검색 — 사내 문서를 검색해 그것만 근거로 답하게 한다 (RAG) */
@@ -118,9 +124,15 @@ export class ChatbotController {
     @Res() res: Response,
   ) {
     this.openSseStream(res);
-    await this.streamService.streamTools(body.sessionId, body.message, user, res, {
-      fileUrls: body.fileUrls,
-    });
+    await this.streamService.streamTools(
+      body.sessionId,
+      body.message,
+      user,
+      res,
+      {
+        fileUrls: body.fileUrls,
+      },
+    );
   }
 
   @Post('realtime/session')

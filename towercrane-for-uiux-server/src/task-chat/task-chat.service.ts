@@ -87,7 +87,11 @@ export class TaskChatService {
               workspaceId,
               { title, content, priority, status: 'TODO' },
             );
-            return { success: true, createdId: created.id, title: created.title };
+            return {
+              success: true,
+              createdId: created.id,
+              title: created.title,
+            };
           },
         }),
 

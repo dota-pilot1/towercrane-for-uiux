@@ -62,7 +62,10 @@ export class ArchNoteController {
     @Req() req: SessionRequest,
     @Body() body: { workspaceIds: string[] },
   ) {
-    return this.archNoteService.reorderWorkspaces(req.user.id, body.workspaceIds);
+    return this.archNoteService.reorderWorkspaces(
+      req.user.id,
+      body.workspaceIds,
+    );
   }
 
   // ── 1차 주제 (카테고리) ───────────────────────────────────
@@ -177,6 +180,19 @@ export class ArchNoteController {
   ) {
     const input = updateArchNoteNoteSchema.parse(body);
     return this.archNoteService.updateNote(req.user.id, id, input);
+  }
+
+  @Post('sections/:sectionId/notes/reorder')
+  reorderNotes(
+    @Req() req: SessionRequest,
+    @Param('sectionId') sectionId: string,
+    @Body() body: { noteIds: string[] },
+  ) {
+    return this.archNoteService.reorderNotes(
+      req.user.id,
+      sectionId,
+      body.noteIds,
+    );
   }
 
   @Delete('notes/:id')

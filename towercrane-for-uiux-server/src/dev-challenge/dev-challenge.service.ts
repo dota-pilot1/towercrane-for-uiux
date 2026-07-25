@@ -123,7 +123,9 @@ export class DevChallengeService {
   deleteWorkspace(user: DevChallengeUser, workspaceId: string) {
     this.ensureCanManageWorkspace(user, workspaceId);
     if (workspaceId === this.db.getDevChallengeDefaultWorkspaceId()) {
-      throw new ForbiddenException('Default challenge workspace cannot be deleted');
+      throw new ForbiddenException(
+        'Default challenge workspace cannot be deleted',
+      );
     }
 
     this.db.db
@@ -232,7 +234,9 @@ export class DevChallengeService {
   }
 
   getCategories() {
-    return this.getCategoriesByWorkspace(this.db.getDevChallengeDefaultWorkspaceId());
+    return this.getCategoriesByWorkspace(
+      this.db.getDevChallengeDefaultWorkspaceId(),
+    );
   }
 
   getCategoriesByWorkspace(workspaceId: string) {
@@ -290,7 +294,8 @@ export class DevChallengeService {
   updateCategory(id: string, input: UpdateCategoryInput, userId: string) {
     const category = this.getCategoryById(id);
     if (!category) throw new NotFoundException('Category not found');
-    if (category.createdBy !== userId) throw new ForbiddenException('Not authorized');
+    if (category.createdBy !== userId)
+      throw new ForbiddenException('Not authorized');
 
     this.db.db
       .update(devChallengeCategoriesTable)
@@ -304,7 +309,8 @@ export class DevChallengeService {
   deleteCategory(id: string, userId: string) {
     const category = this.getCategoryById(id);
     if (!category) return;
-    if (category.createdBy !== userId) throw new ForbiddenException('Not authorized');
+    if (category.createdBy !== userId)
+      throw new ForbiddenException('Not authorized');
 
     this.db.db
       .delete(devChallengeCategoriesTable)
@@ -507,7 +513,8 @@ export class DevChallengeService {
   updateAssignment(id: string, input: UpdateAssignmentInput, userId: string) {
     const assignment = this.getAssignmentById(id);
     if (!assignment) throw new NotFoundException('Assignment not found');
-    if (assignment.createdBy !== userId) throw new ForbiddenException('Not authorized');
+    if (assignment.createdBy !== userId)
+      throw new ForbiddenException('Not authorized');
 
     this.db.db
       .update(devChallengeAssignmentsTable)
@@ -521,7 +528,8 @@ export class DevChallengeService {
   deleteAssignment(id: string, userId: string) {
     const assignment = this.getAssignmentById(id);
     if (!assignment) return;
-    if (assignment.createdBy !== userId) throw new ForbiddenException('Not authorized');
+    if (assignment.createdBy !== userId)
+      throw new ForbiddenException('Not authorized');
 
     this.db.db
       .delete(devChallengeAssignmentsTable)
@@ -547,7 +555,8 @@ export class DevChallengeService {
 
     const id = randomUUID();
     const now = new Date().toISOString();
-    const orderIdx = input.orderIdx ?? this.getBlocksByAssignment(input.assignmentId).length;
+    const orderIdx =
+      input.orderIdx ?? this.getBlocksByAssignment(input.assignmentId).length;
 
     this.db.db
       .insert(devChallengeAssignmentBlocksTable)
@@ -653,8 +662,14 @@ export class DevChallengeService {
 
     const id = randomUUID();
     const now = new Date().toISOString();
-    const checkedItems = this.normalizeCheckedItems(input.assignmentId, input.checkedItems);
-    const score = this.calculateSubmissionScore(input.assignmentId, checkedItems);
+    const checkedItems = this.normalizeCheckedItems(
+      input.assignmentId,
+      input.checkedItems,
+    );
+    const score = this.calculateSubmissionScore(
+      input.assignmentId,
+      checkedItems,
+    );
 
     this.db.db
       .insert(devChallengeSubmissionsTable)
@@ -679,19 +694,29 @@ export class DevChallengeService {
   updateSubmission(id: string, input: UpdateSubmissionInput, userId: string) {
     const submission = this.getSubmissionById(id);
     if (!submission) throw new NotFoundException('Submission not found');
-    if (submission.userId !== userId) throw new ForbiddenException('Not authorized');
+    if (submission.userId !== userId)
+      throw new ForbiddenException('Not authorized');
 
     const checkedItems = this.normalizeCheckedItems(
       submission.assignmentId,
       input.checkedItems ?? submission.checkedItems,
     );
-    const score = this.calculateSubmissionScore(submission.assignmentId, checkedItems);
+    const score = this.calculateSubmissionScore(
+      submission.assignmentId,
+      checkedItems,
+    );
 
     this.db.db
       .update(devChallengeSubmissionsTable)
       .set({
-        comment: input.comment === undefined ? submission.comment : input.comment.trim(),
-        githubUrl: input.githubUrl === undefined ? submission.githubUrl : input.githubUrl,
+        comment:
+          input.comment === undefined
+            ? submission.comment
+            : input.comment.trim(),
+        githubUrl:
+          input.githubUrl === undefined
+            ? submission.githubUrl
+            : input.githubUrl,
         checkedItems,
         score: score.score,
         maxScore: score.maxScore,
@@ -719,7 +744,11 @@ export class DevChallengeService {
     return { success: true, id, assignmentId: submission.assignmentId };
   }
 
-  reviewSubmission(id: string, input: ReviewSubmissionInput, reviewerId: string) {
+  reviewSubmission(
+    id: string,
+    input: ReviewSubmissionInput,
+    reviewerId: string,
+  ) {
     const submission = this.getSubmissionById(id);
     if (!submission) throw new NotFoundException('Submission not found');
 
@@ -744,7 +773,9 @@ export class DevChallengeService {
       .get();
 
     if (!workspace) {
-      throw new NotFoundException(`Challenge workspace not found: ${workspaceId}`);
+      throw new NotFoundException(
+        `Challenge workspace not found: ${workspaceId}`,
+      );
     }
 
     return workspace;
@@ -794,10 +825,7 @@ export class DevChallengeService {
     throw new ForbiddenException('You cannot manage this challenge workspace');
   }
 
-  private ensureCanEditWorkspace(
-    user: DevChallengeUser,
-    workspaceId: string,
-  ) {
+  private ensureCanEditWorkspace(user: DevChallengeUser, workspaceId: string) {
     this.ensureWorkspace(workspaceId);
     const role = this.getWorkspaceRole(user, workspaceId);
     if (role === 'owner' || role === 'editor') return role;
@@ -817,7 +845,10 @@ export class DevChallengeService {
     workspace: DevChallengeWorkspaceRow,
     user: DevChallengeUser,
   ) {
-    const categories = this.db.db.select().from(devChallengeCategoriesTable).all();
+    const categories = this.db.db
+      .select()
+      .from(devChallengeCategoriesTable)
+      .all();
     const sections = this.db.db.select().from(devChallengeSectionsTable).all();
     const assignments = this.db.db
       .select()
@@ -836,9 +867,7 @@ export class DevChallengeService {
     const workspaceSections = sections.filter((section) =>
       categoryIds.has(section.categoryId),
     );
-    const sectionIds = new Set(
-      workspaceSections.map((section) => section.id),
-    );
+    const sectionIds = new Set(workspaceSections.map((section) => section.id));
     const workspaceMembers = members.filter(
       (member) => member.workspaceId === workspace.id,
     );
@@ -855,9 +884,14 @@ export class DevChallengeService {
     };
   }
 
-  private calculateSubmissionScore(assignmentId: string, checkedItems: string[]) {
+  private calculateSubmissionScore(
+    assignmentId: string,
+    checkedItems: string[],
+  ) {
     const validIds = new Set(this.getChecklistItemIds(assignmentId));
-    const checkedValidIds = new Set(checkedItems.filter((itemId) => validIds.has(itemId)));
+    const checkedValidIds = new Set(
+      checkedItems.filter((itemId) => validIds.has(itemId)),
+    );
     return {
       score: checkedValidIds.size * 10,
       maxScore: validIds.size * 10,
@@ -866,7 +900,9 @@ export class DevChallengeService {
 
   private normalizeCheckedItems(assignmentId: string, checkedItems: string[]) {
     const validIds = new Set(this.getChecklistItemIds(assignmentId));
-    return Array.from(new Set(checkedItems.filter((itemId) => validIds.has(itemId))));
+    return Array.from(
+      new Set(checkedItems.filter((itemId) => validIds.has(itemId))),
+    );
   }
 
   private getChecklistItemIds(assignmentId: string) {

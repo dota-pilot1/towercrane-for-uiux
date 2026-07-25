@@ -26,9 +26,7 @@ export const listIssuesQuerySchema = z.object({
   status: issueStatusSchema.optional(),
   priority: issuePrioritySchema.optional(),
   assigneeId: z.string().optional(),
-  sort: z
-    .enum(['order', 'recent', 'oldest', 'priority'])
-    .default('order'),
+  sort: z.enum(['order', 'recent', 'oldest', 'priority']).default('order'),
 });
 
 export const createIssueSchema = z.object({

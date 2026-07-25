@@ -12,4 +12,3 @@ import { MeetingService } from './meeting.service';
   exports: [MeetingGateway, MeetingService],
 })
 export class MeetingModule {}
-

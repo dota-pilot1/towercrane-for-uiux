@@ -45,8 +45,20 @@ export const createSectionSchema = z.object({
 
 export const updateSectionSchema = createSectionSchema.partial();
 
-export const assignmentStatusSchema = z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']);
-export const assignmentBlockTypeSchema = z.enum(['NOTE', 'MMD', 'CHECKLIST', 'GITHUB', 'FIGMA', 'FILE', 'DBTABLE']);
+export const assignmentStatusSchema = z.enum([
+  'DRAFT',
+  'PUBLISHED',
+  'ARCHIVED',
+]);
+export const assignmentBlockTypeSchema = z.enum([
+  'NOTE',
+  'MMD',
+  'CHECKLIST',
+  'GITHUB',
+  'FIGMA',
+  'FILE',
+  'DBTABLE',
+]);
 
 export const checklistItemSchema = z.object({
   id: z.string().min(1).max(100),
@@ -115,7 +127,9 @@ export const updateSubmissionSchema = z
   );
 
 export const reviewSubmissionSchema = z.object({
-  status: z.enum(['SUBMITTED', 'NEEDS_CHANGES', 'APPROVED', 'REJECTED']).optional(),
+  status: z
+    .enum(['SUBMITTED', 'NEEDS_CHANGES', 'APPROVED', 'REJECTED'])
+    .optional(),
   adminRating: z.number().int().min(0).max(5).optional(),
   adminFeedback: z.string().max(2000).optional(),
 });
@@ -131,8 +145,12 @@ export type CreateSectionInput = z.infer<typeof createSectionSchema>;
 export type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
 export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;
 export type UpdateAssignmentInput = z.infer<typeof updateAssignmentSchema>;
-export type CreateAssignmentBlockInput = z.infer<typeof createAssignmentBlockSchema>;
-export type UpdateAssignmentBlockInput = z.infer<typeof updateAssignmentBlockSchema>;
+export type CreateAssignmentBlockInput = z.infer<
+  typeof createAssignmentBlockSchema
+>;
+export type UpdateAssignmentBlockInput = z.infer<
+  typeof updateAssignmentBlockSchema
+>;
 export type CreateSubmissionInput = z.infer<typeof createSubmissionSchema>;
 export type UpdateSubmissionInput = z.infer<typeof updateSubmissionSchema>;
 export type ReviewSubmissionInput = z.infer<typeof reviewSubmissionSchema>;

@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
@@ -156,7 +160,11 @@ export class ArchNoteService {
       .run();
   }
 
-  reorderCategories(userId: string, workspaceId: string, categoryIds: string[]) {
+  reorderCategories(
+    userId: string,
+    workspaceId: string,
+    categoryIds: string[],
+  ) {
     const owned = new Set(
       this.getCategories(userId, workspaceId).map((c) => c.id),
     );
@@ -224,7 +232,9 @@ export class ArchNoteService {
   }
 
   reorderSections(userId: string, categoryId: string, sectionIds: string[]) {
-    const owned = new Set(this.getSections(userId, categoryId).map((s) => s.id));
+    const owned = new Set(
+      this.getSections(userId, categoryId).map((s) => s.id),
+    );
     if (sectionIds.some((id) => !owned.has(id))) {
       throw new ForbiddenException('Not authorized');
     }
@@ -288,6 +298,23 @@ export class ArchNoteService {
       .run();
 
     return this.getNoteById(id, userId);
+  }
+
+  reorderNotes(userId: string, sectionId: string, noteIds: string[]) {
+    const owned = new Set(
+      this.getNotes(userId, sectionId).map((note) => note.id),
+    );
+    if (noteIds.some((id) => !owned.has(id))) {
+      throw new ForbiddenException('Not authorized');
+    }
+    const now = new Date().toISOString();
+    for (let i = 0; i < noteIds.length; i++) {
+      this.db.db
+        .update(archNoteNotesTable)
+        .set({ orderIdx: i, updatedAt: now })
+        .where(eq(archNoteNotesTable.id, noteIds[i]))
+        .run();
+    }
   }
 
   deleteNote(userId: string, id: string) {

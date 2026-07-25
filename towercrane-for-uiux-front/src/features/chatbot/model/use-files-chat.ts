@@ -31,7 +31,7 @@ type StreamDone = {
   knowledgeSources?: KnowledgeSource[]
 }
 
-type StreamChunk = { text: string }
+type StreamChunk = { type: 'text'; text: string }
 type StreamKnowledgeSources = {
   type: 'knowledge_sources'
   items: KnowledgeSource[]
@@ -46,6 +46,14 @@ export type ToolCallLog = {
   result: Record<string, unknown>
 }
 
+/** 서버가 보내는 프레임 5종 — shared/api/sse.ts가 type으로 분기한다 */
+type ChatFrame =
+  | StreamMeta
+  | StreamDone
+  | StreamChunk
+  | StreamKnowledgeSources
+  | ToolCallLog
+
 type UseFilesChatOptions = {
   // STEP 6-B: mode에 'tools' 추가
   mode?: 'general' | 'knowledge' | 'tools'
@@ -54,7 +62,9 @@ type UseFilesChatOptions = {
 }
 
 import { uploadFile } from '../../../shared/api/upload'
+import { readSseStream } from '../../../shared/api/sse'
 import { useToolDialogStore } from './tool-dialog-store'
+import type { GptProfile, TaskItem } from './tool-dialog-store'
 
 async function uploadFiles(files: File[]): Promise<string[]> {
   if (files.length === 0) return []
@@ -158,84 +168,55 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
         }),
       })
 
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
+      const result = await readSseStream<ChatFrame>(res, {
+        text: (f) => updateLocalChunk(currentActiveId, tempAssistantId, f.text),
 
-      while (true) {
-        // STEP 6-E: SSE 이벤트 수신 처리 — tool_call 이벤트 포함
-        // 백엔드에서 전송되는 SSE 이벤트를 읽고 처리
-        // done 의 의미는 스트림이 끝났다는 것, value 는 Uint8Array 형태의 데이터
-        const { done, value } = await reader.read()
-        if (done) break
+        meta: (f) => {
+          replaceLocalMessage(currentActiveId, tempUserId, {
+            id: f.userMessage.id,
+            role: 'user',
+            content: f.userMessage.content,
+            fileUrls,
+            timestamp: new Date(f.userMessage.createdAt),
+          })
+          setSessionTitle(currentActiveId, f.sessionTitle)
+        },
 
-        // 디코딩 후 버퍼에 누적
-        buffer += decoder.decode(value, { stream: true })
+        done: (f) => {
+          replaceLocalMessage(currentActiveId, tempAssistantId, {
+            id: f.assistantMessage.id,
+            role: 'assistant',
+            content: f.assistantMessage.content,
+            sources: f.knowledgeSources,
+            timestamp: new Date(f.assistantMessage.createdAt),
+          })
+        },
 
-        console.log('###### SSE buffer:', buffer) // 디버깅용 로그
+        knowledge_sources: (f) => {
+          setKnowledgeSources(f.items)
+          setMessageSources(currentActiveId, tempAssistantId, f.items)
+        },
 
-        // 버퍼를 줄 단위로 분리, 마지막 줄은 아직 완전하지 않을 수 있으므로 남겨둠
-        const lines = buffer.split('\n')
-        // 마지막 줄은 아직 완전하지 않을 수 있으므로 버퍼에 남겨둠
-        buffer = lines.pop() ?? ''
-
-        // console.log('###### SSE lines:', lines) // 디버깅용 로그
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const payload = line.slice(6).trim()
-          if (payload === '[DONE]') {
-            setIsStreaming(false)
-            return
+        tool_call: (f) => {
+          setToolCalls((prev) => [...prev, f])
+          options.onToolCall?.()
+          // 툴 이름별 다이얼로그 트리거 — 스토어에 직접 쓰므로 콜백 불필요
+          if (f.name === 'self_introduce') {
+            useToolDialogStore.getState().setIntroDialog(f.result as GptProfile)
+          } else if (f.name === 'get_my_tasks') {
+            const { tasks } = f.result as { tasks: TaskItem[] }
+            useToolDialogStore.getState().setTasksDialog(tasks)
           }
-          try {
-            const parsed = JSON.parse(payload) as
-              | StreamMeta
-              | StreamDone
-              | StreamChunk
-              | StreamKnowledgeSources
-              | ToolCallLog // STEP 6-E: tool_call 이벤트 타입 추가
+        },
+      })
 
-            // STEP 6-F: tool_call 이벤트 처리 — 오른쪽 패널 상태에 누적
-            if ('type' in parsed && parsed.type === 'tool_call') {
-              setToolCalls((prev) => [...prev, parsed])
-              options.onToolCall?.()
-              // 툴 이름별 다이얼로그 트리거 — 스토어에 직접 쓰므로 콜백 불필요
-              if (parsed.name === 'self_introduce') {
-                useToolDialogStore.getState().setIntroDialog(
-                  parsed.result as import('./tool-dialog-store').GptProfile
-                )
-              } else if (parsed.name === 'get_my_tasks') {
-                const { tasks } = parsed.result as { tasks: import('./tool-dialog-store').TaskItem[] }
-                useToolDialogStore.getState().setTasksDialog(tasks)
-              }
-            } else if ('type' in parsed && parsed.type === 'meta') {
-              replaceLocalMessage(currentActiveId, tempUserId, {
-                id: parsed.userMessage.id,
-                role: 'user',
-                content: parsed.userMessage.content,
-                fileUrls,
-                timestamp: new Date(parsed.userMessage.createdAt),
-              })
-              setSessionTitle(currentActiveId, parsed.sessionTitle)
-            } else if ('type' in parsed && parsed.type === 'done') {
-              replaceLocalMessage(currentActiveId, tempAssistantId, {
-                id: parsed.assistantMessage.id,
-                role: 'assistant',
-                content: parsed.assistantMessage.content,
-                sources: parsed.knowledgeSources,
-                timestamp: new Date(parsed.assistantMessage.createdAt),
-              })
-            } else if ('type' in parsed && parsed.type === 'knowledge_sources') {
-              setKnowledgeSources(parsed.items)
-              setMessageSources(currentActiveId, tempAssistantId, parsed.items)
-            } else if ('text' in parsed) {
-              updateLocalChunk(currentActiveId, tempAssistantId, parsed.text)
-            }
-          } catch {
-            // 빈 줄 등 파싱 불가 라인 무시
-          }
-        }
+      // [DONE] 없이 끊겼다 — 답변이 중간에 잘렸으니 사용자에게 알린다
+      if (!result.ok) {
+        updateLocalChunk(
+          currentActiveId,
+          tempAssistantId,
+          '\n\n(연결이 끊겨 답변이 중단되었습니다)',
+        )
       }
     } catch (err) {
       console.error('스트리밍 오류:', err)
@@ -282,42 +263,45 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
         }),
       })
 
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
+      const result = await readSseStream<ChatFrame>(res, {
+        text: (f) => updateLocalChunk(currentActiveId, tempAssistantId, f.text),
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const payload = line.slice(6).trim()
-          if (payload === '[DONE]') { setIsStreaming(false); return }
-          try {
-            const parsed = JSON.parse(payload) as
-              | StreamMeta
-              | StreamDone
-              | StreamChunk
-              | StreamKnowledgeSources
-            if ('type' in parsed && parsed.type === 'done') {
-              replaceLocalMessage(currentActiveId, tempAssistantId, {
-                id: parsed.assistantMessage.id,
-                role: 'assistant',
-                content: parsed.assistantMessage.content,
-                sources: parsed.knowledgeSources,
-                timestamp: new Date(parsed.assistantMessage.createdAt),
-              })
-            } else if ('type' in parsed && parsed.type === 'knowledge_sources') {
-              setKnowledgeSources(parsed.items)
-              setMessageSources(currentActiveId, tempAssistantId, parsed.items)
-            } else if ('text' in parsed) {
-              updateLocalChunk(currentActiveId, tempAssistantId, parsed.text)
-            }
-          } catch { /* ignore */ }
-        }
+        done: (f) => {
+          replaceLocalMessage(currentActiveId, tempAssistantId, {
+            id: f.assistantMessage.id,
+            role: 'assistant',
+            content: f.assistantMessage.content,
+            sources: f.knowledgeSources,
+            timestamp: new Date(f.assistantMessage.createdAt),
+          })
+        },
+
+        knowledge_sources: (f) => {
+          setKnowledgeSources(f.items)
+          setMessageSources(currentActiveId, tempAssistantId, f.items)
+        },
+
+        tool_call: (f) => {
+          setToolCalls((prev) => [...prev, f])
+          options.onToolCall?.()
+          if (f.name === 'self_introduce') {
+            useToolDialogStore.getState().setIntroDialog(f.result as GptProfile)
+          } else if (f.name === 'get_my_tasks') {
+            const { tasks } = f.result as { tasks: TaskItem[] }
+            useToolDialogStore.getState().setTasksDialog(tasks)
+          }
+        },
+
+        // meta는 서버가 보내지만 등록하지 않는다 — 재생성은 사용자 메시지를
+        // 새로 그리지 않으므로 쓸 데가 없다. 핸들러가 없으면 조용히 무시된다.
+      })
+
+      if (!result.ok) {
+        updateLocalChunk(
+          currentActiveId,
+          tempAssistantId,
+          '\n\n(연결이 끊겨 답변이 중단되었습니다)',
+        )
       }
     } catch (err) {
       console.error('재생성 오류:', err)

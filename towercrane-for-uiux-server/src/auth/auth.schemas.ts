@@ -25,7 +25,7 @@ export const resetPasswordWithCodeSchema = z.object({
   email: z.email(),
   verifiedToken: z.string().min(16),
   newPassword: z.string().min(8).max(72),
-})
+});
 
 export const verifyPasswordSchema = z.object({
   currentPassword: z.string().min(1).max(72),
@@ -47,6 +47,6 @@ export type EmailInput = z.infer<typeof emailSchema>;
 export type VerifyEmailCodeInput = z.infer<typeof verifyEmailCodeSchema>;
 export type ResetPasswordWithCodeInput = z.infer<
   typeof resetPasswordWithCodeSchema
->
+>;
 export type VerifyPasswordInput = z.infer<typeof verifyPasswordSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

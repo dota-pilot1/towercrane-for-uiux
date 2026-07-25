@@ -83,10 +83,7 @@ export class AiStudyNoteController {
   }
 
   @Get('items/:itemId/notes')
-  listItemNotes(
-    @Req() req: SessionRequest,
-    @Param('itemId') itemId: string,
-  ) {
+  listItemNotes(@Req() req: SessionRequest, @Param('itemId') itemId: string) {
     return this.aiStudyNoteService.listItemNotes(req.user.id, itemId);
   }
 

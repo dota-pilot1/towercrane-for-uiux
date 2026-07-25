@@ -27,6 +27,31 @@ export type CodeReviewFinding = {
   recommendation: string
 }
 
+export type GithubPrReviewCriterion = {
+  id: string
+  title: string
+  instruction: string
+  enabled: boolean
+  orderIdx: number
+}
+
+export type GithubPrCriterionFinding = {
+  severity: CodeReviewFindingSeverity
+  message: string
+  filePath: string | null
+  lineNumber: number | null
+  evidence: string
+  recommendation: string
+}
+
+export type GithubPrCriterionResult = {
+  criterionId: string
+  criterionTitle: string
+  status: 'problem' | 'warning' | 'no_finding' | 'not_applicable'
+  summary: string
+  findings: GithubPrCriterionFinding[]
+}
+
 export type CodeReviewChangedFile = {
   path: string
   additions: number
@@ -50,6 +75,18 @@ export type CodeReviewSummary = {
   changedFileCount: number
   excludedFileCount: number
   model: string | null
+  prNumber: number | null
+  prTitle: string | null
+  prState: string | null
+  prAuthorLogin: string | null
+  baseRef: string | null
+  headRef: string | null
+  headSha: string | null
+  prUpdatedAt: string | null
+  reviewNote: string | null
+  criteriaSnapshot: GithubPrReviewCriterion[]
+  criterionResults: GithubPrCriterionResult[]
+  promptContractVersion: string | null
   createdBy: string | null
   createdByName: string
   createdAt: string
@@ -80,6 +117,7 @@ export type CodeReviewListParams = {
   q?: string
   repository?: string
   taskId?: string
+  sourceType?: CodeReviewSourceType
   riskLevel?: CodeReviewRiskLevel
   page: number
   pageSize: number
@@ -90,6 +128,21 @@ export type AnalyzeCodeReviewPayload = {
   repositoryUrl?: string
   reviewGoal?: string
   sections?: CodeReviewSection[]
+}
+
+export type AnalyzeGithubPrReviewPayload = {
+  sourceUrl: string
+  reviewNote?: string
+}
+
+export type GithubPrReviewPreferences = {
+  criteria: GithubPrReviewCriterion[]
+  version: number
+  updatedAt: string
+}
+
+export type SaveGithubPrReviewPreferencesPayload = {
+  criteria: GithubPrReviewCriterion[]
 }
 
 export type CreateCodeReviewPayload = {

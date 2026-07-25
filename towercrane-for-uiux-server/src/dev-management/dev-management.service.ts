@@ -190,7 +190,9 @@ export class DevManagementService {
   clearMessages(roomId: string, user: DevManagementUser) {
     const { room } = this.findAccessibleRoom(roomId, user);
     if (room.roomType !== 'DM' && user.role !== 'admin') {
-      throw new ForbiddenException('Only admins can clear dev channel messages');
+      throw new ForbiddenException(
+        'Only admins can clear dev channel messages',
+      );
     }
 
     const countRow = this.db
@@ -749,7 +751,7 @@ export class DevManagementService {
             title: duplicate.title,
             summary: duplicate.summary,
             decisionCount: duplicate.decisions.length,
-          actionItemCount: duplicate.actionItems.length,
+            actionItemCount: duplicate.actionItems.length,
           },
           sourceCount: minutes.sourceMessageIds.length,
           selectedSourceMessageIds,
@@ -816,9 +818,7 @@ export class DevManagementService {
         sourceUrl,
       });
       const reviewUrl = `/code-reviews/${review.id}`;
-      const duplicate = Boolean(
-        (review as Record<string, unknown>).duplicate,
-      );
+      const duplicate = Boolean((review as Record<string, unknown>).duplicate);
       const content = [
         duplicate
           ? '이미 같은 diff로 저장된 코드 리뷰가 있습니다.'
@@ -856,7 +856,9 @@ export class DevManagementService {
       };
     } catch (error) {
       const reason =
-        error instanceof Error ? error.message : '코드 리뷰 생성 중 오류가 발생했습니다.';
+        error instanceof Error
+          ? error.message
+          : '코드 리뷰 생성 중 오류가 발생했습니다.';
       return {
         content: `코드 리뷰 저장에 실패했습니다.\n\n사유: ${reason}`,
         messageType: 'TOOL_RESULT' as const,
@@ -954,12 +956,16 @@ export class DevManagementService {
     const value = payload?.sourceMessageIds;
     if (!Array.isArray(value)) return null;
     const ids = value.filter(
-      (item): item is string => typeof item === 'string' && item.trim().length > 0,
+      (item): item is string =>
+        typeof item === 'string' && item.trim().length > 0,
     );
     return ids.length > 0 ? [...new Set(ids)] : null;
   }
 
-  private findDuplicateMeetingMinutes(roomId: string, sourceMessageIds: string[]) {
+  private findDuplicateMeetingMinutes(
+    roomId: string,
+    sourceMessageIds: string[],
+  ) {
     const rows = this.db
       .select()
       .from(devMeetingMinutesTable)
@@ -969,7 +975,9 @@ export class DevManagementService {
       .all();
     const sourceKey = JSON.stringify(sourceMessageIds);
 
-    return rows.find((row) => JSON.stringify(row.sourceMessageIds) === sourceKey);
+    return rows.find(
+      (row) => JSON.stringify(row.sourceMessageIds) === sourceKey,
+    );
   }
 
   private saveDevMeetingMinutes(
@@ -1037,7 +1045,8 @@ export class DevManagementService {
       content: [
         summary,
         '',
-        lines.join('\n') || '검색어를 조금 바꿔 다시 물어보거나 새 프로토타입을 등록해 주세요.',
+        lines.join('\n') ||
+          '검색어를 조금 바꿔 다시 물어보거나 새 프로토타입을 등록해 주세요.',
         '',
         `검색 기준: ${toolResult.phrase || toolResult.terms.join(' ') || '없음'}`,
         `검색어 후보: ${toolResult.terms.join(', ') || '없음'}`,
@@ -1070,7 +1079,9 @@ export class DevManagementService {
       .limit(80)
       .all();
     const terms =
-      input.terms.length > 0 ? input.terms : this.extractSearchTerms(input.query);
+      input.terms.length > 0
+        ? input.terms
+        : this.extractSearchTerms(input.query);
     const phrase = input.phrase ?? this.extractPrimarySearchPhrase(terms);
     const limit = Math.min(Math.max(input.limit, 1), 10);
 
@@ -1098,9 +1109,7 @@ export class DevManagementService {
           ? strictScored
           : scored;
 
-    const ranked = matched
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    const ranked = matched.sort((a, b) => b.score - a.score).slice(0, limit);
 
     const fallback =
       terms.length === 0
@@ -1391,9 +1400,9 @@ export class DevManagementService {
     if (!normalizedPhrase) return false;
     return (
       normalizedText.includes(normalizedPhrase) ||
-      normalizedText.replace(/\s+/g, '').includes(
-        normalizedPhrase.replace(/\s+/g, ''),
-      )
+      normalizedText
+        .replace(/\s+/g, '')
+        .includes(normalizedPhrase.replace(/\s+/g, ''))
     );
   }
 

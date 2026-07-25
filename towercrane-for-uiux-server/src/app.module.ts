@@ -25,6 +25,7 @@ import { SqlPracticeModule } from './sql-practice/sql-practice.module';
 import { DevChallengeModule } from './dev-challenge/dev-challenge.module';
 import { StudyDiaryModule } from './study-diary/study-diary.module';
 import { ArchNoteModule } from './arch-note/arch-note.module';
+import { ProjectCodeReviewModule } from './project-code-review/project-code-review.module';
 import { AxStudyModule } from './ax-study/ax-study.module';
 import { AxBoardModule } from './ax-board/ax-board.module';
 import { AiStudyNoteModule } from './ai-study-note/ai-study-note.module';
@@ -66,6 +67,7 @@ import { ApprovalsModule } from './approval/approval.module';
     ChallengeModule,
     StudyDiaryModule,
     ArchNoteModule,
+    ProjectCodeReviewModule,
     AxStudyModule,
     AxBoardModule,
     AiStudyNoteModule,

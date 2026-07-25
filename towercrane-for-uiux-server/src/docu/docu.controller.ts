@@ -132,11 +132,6 @@ export class DocuController {
     @Param('documentId') documentId: string,
     @Body() body: unknown,
   ) {
-    return this.docuService.replaceBlocks(
-      user.id,
-      user.role,
-      documentId,
-      body,
-    );
+    return this.docuService.replaceBlocks(user.id, user.role, documentId, body);
   }
 }

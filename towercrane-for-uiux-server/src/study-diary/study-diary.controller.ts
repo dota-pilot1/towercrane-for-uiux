@@ -228,6 +228,19 @@ export class StudyDiaryController {
     return this.studyDiaryService.getMyNotes(req.user.id, sectionId);
   }
 
+  @Post('sections/:sectionId/notes/reorder')
+  reorderNotes(
+    @Req() req: SessionRequest,
+    @Param('sectionId') sectionId: string,
+    @Body() body: { noteIds: string[] },
+  ) {
+    return this.studyDiaryService.reorderNotes(
+      req.user.id,
+      sectionId,
+      body.noteIds,
+    );
+  }
+
   @Post('notes/organize')
   organizeNote(@Req() req: SessionRequest, @Body() body: unknown) {
     const input = organizeStudyDiaryNoteSchema.parse(body);

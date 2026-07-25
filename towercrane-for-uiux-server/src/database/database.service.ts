@@ -51,9 +51,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           .get(name),
       );
     const rowCount = (name: string) =>
-      (this.sqlite.prepare(`SELECT count(*) AS c FROM ${name}`).get() as {
-        c: number;
-      }).c;
+      (
+        this.sqlite.prepare(`SELECT count(*) AS c FROM ${name}`).get() as {
+          c: number;
+        }
+      ).c;
 
     if (!renames.some(([oldName]) => exists(oldName))) return;
 
@@ -221,6 +223,65 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_arch_note_notes_section
         ON arch_note_notes(section_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS project_code_review_workspaces (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        icon TEXT NOT NULL DEFAULT 'GitPullRequest',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_project_code_review_workspaces_user
+        ON project_code_review_workspaces(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS project_code_review_categories (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES project_code_review_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_project_code_review_categories_workspace
+        ON project_code_review_categories(workspace_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS project_code_review_sections (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES project_code_review_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_project_code_review_sections_category
+        ON project_code_review_sections(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS project_code_review_notes (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES project_code_review_sections(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_project_code_review_notes_section
+        ON project_code_review_notes(section_id, order_idx);
 
       CREATE TABLE IF NOT EXISTS ax_study_workspaces (
         id TEXT PRIMARY KEY,
@@ -1040,6 +1101,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         diff_hash TEXT NOT NULL,
         diff_snapshot TEXT,
         model TEXT,
+        pr_number INTEGER,
+        pr_title TEXT,
+        pr_state TEXT,
+        pr_author_login TEXT,
+        base_ref TEXT,
+        head_ref TEXT,
+        head_sha TEXT,
+        pr_updated_at TEXT,
+        review_note TEXT,
+        criteria_snapshot TEXT NOT NULL DEFAULT '[]',
+        criterion_results TEXT NOT NULL DEFAULT '[]',
+        prompt_contract_version TEXT,
         created_by TEXT,
         created_by_name TEXT NOT NULL,
         created_at TEXT NOT NULL,
@@ -1053,6 +1126,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_code_reviews_repository_created
         ON code_reviews(repository, created_at);
+
+      CREATE TABLE IF NOT EXISTS github_pr_review_settings (
+        user_id TEXT PRIMARY KEY,
+        criteria TEXT NOT NULL DEFAULT '[]',
+        version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
 
       CREATE TABLE IF NOT EXISTS feature_plans (
         id TEXT PRIMARY KEY,
@@ -1208,6 +1290,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         content TEXT NOT NULL,
         visibility TEXT NOT NULL DEFAULT 'private',
         pinned INTEGER NOT NULL DEFAULT 0,
+        order_idx INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -1488,145 +1571,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_sql_personal_submissions_share_user
         ON sql_personal_practice_submissions(share_id, user_id, created_at);
-
-      CREATE TABLE IF NOT EXISTS sql_team_practice_workspaces (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL DEFAULT '',
-        active_schema_version_id TEXT,
-        created_by TEXT NOT NULL,
-        archived INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_workspaces_updated
-        ON sql_team_practice_workspaces(archived, updated_at);
-
-      CREATE TABLE IF NOT EXISTS sql_team_practice_members (
-        id TEXT PRIMARY KEY,
-        workspace_id TEXT NOT NULL,
-        user_id TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'member',
-        created_by TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
-      );
-
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_sql_team_members_workspace_user
-        ON sql_team_practice_members(workspace_id, user_id);
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_members_user
-        ON sql_team_practice_members(user_id, role);
-
-      CREATE TABLE IF NOT EXISTS sql_team_practice_schema_versions (
-        id TEXT PRIMARY KEY,
-        workspace_id TEXT NOT NULL,
-        version INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL DEFAULT '',
-        schema_sql TEXT NOT NULL,
-        erd_mmd TEXT,
-        db_file_hash TEXT NOT NULL,
-        source_type TEXT NOT NULL DEFAULT 'seed',
-        source_file_name TEXT,
-        replaced_from_schema_version_id TEXT,
-        created_by TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
-      );
-
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_sql_team_schema_versions_workspace_version
-        ON sql_team_practice_schema_versions(workspace_id, version);
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_schema_versions_workspace_created
-        ON sql_team_practice_schema_versions(workspace_id, created_at);
-
-      CREATE TABLE IF NOT EXISTS sql_team_practice_problem_sets (
-        id TEXT PRIMARY KEY,
-        workspace_id TEXT NOT NULL,
-        schema_version_id TEXT,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL DEFAULT '',
-        level INTEGER,
-        status TEXT NOT NULL DEFAULT 'draft',
-        order_idx INTEGER NOT NULL DEFAULT 0,
-        created_by TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
-        FOREIGN KEY(schema_version_id) REFERENCES sql_team_practice_schema_versions(id) ON DELETE SET NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_problem_sets_workspace
-        ON sql_team_practice_problem_sets(workspace_id, order_idx, updated_at);
-
-      CREATE TABLE IF NOT EXISTS sql_team_practice_problems (
-        id TEXT PRIMARY KEY,
-        workspace_id TEXT NOT NULL,
-        schema_version_id TEXT NOT NULL,
-        problem_set_id TEXT,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        level INTEGER NOT NULL DEFAULT 1,
-        target_tables TEXT NOT NULL DEFAULT '[]',
-        starter_sql TEXT,
-        answer_sql TEXT NOT NULL,
-        explanation TEXT,
-        status TEXT NOT NULL DEFAULT 'published',
-        created_by TEXT NOT NULL,
-        updated_by TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
-        FOREIGN KEY(schema_version_id) REFERENCES sql_team_practice_schema_versions(id) ON DELETE RESTRICT,
-        FOREIGN KEY(problem_set_id) REFERENCES sql_team_practice_problem_sets(id) ON DELETE SET NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE SET NULL
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_problems_workspace_level
-        ON sql_team_practice_problems(workspace_id, level, status, updated_at);
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_problems_schema
-        ON sql_team_practice_problems(schema_version_id, updated_at);
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_problems_creator
-        ON sql_team_practice_problems(created_by, updated_at);
-
-      CREATE TABLE IF NOT EXISTS sql_team_practice_submissions (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        problem_id TEXT NOT NULL,
-        workspace_id TEXT NOT NULL,
-        schema_version_id TEXT NOT NULL,
-        submitted_sql TEXT NOT NULL,
-        answer_sql TEXT NOT NULL,
-        is_correct INTEGER NOT NULL,
-        score INTEGER NOT NULL DEFAULT 0,
-        max_score INTEGER NOT NULL DEFAULT 1,
-        feedback TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY(problem_id) REFERENCES sql_team_practice_problems(id) ON DELETE CASCADE,
-        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
-        FOREIGN KEY(schema_version_id) REFERENCES sql_team_practice_schema_versions(id) ON DELETE RESTRICT
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_submissions_user_problem_created
-        ON sql_team_practice_submissions(user_id, problem_id, created_at);
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_submissions_problem_created
-        ON sql_team_practice_submissions(problem_id, created_at);
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_submissions_workspace_score
-        ON sql_team_practice_submissions(workspace_id, user_id, is_correct, created_at);
 
       INSERT OR IGNORE INTO sql_practice_submission_logs (
         id,
@@ -2017,6 +1961,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.migrateChatSchema();
     this.migrateProjectIssueSchema();
     this.migrateAiStudyNoteSchema();
+    this.migrateStudyDiaryNoteOrderSchema();
     this.migrateSqlStudyMetaSchema();
     this.migrateSqlStudyProblemSetSchema();
     this.seedDefaults();
@@ -2147,18 +2092,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           sectionId: 'sql_personal',
           icon: 'UserRound',
           displayOrder: 1,
-          isVisible: true,
-          requiredRole: null,
-          parentId: sqlGroupMenuId,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          id: randomUUID(),
-          name: 'SQL 연습장(팀)',
-          sectionId: 'sql_team',
-          icon: 'UsersRound',
-          displayOrder: 2,
           isVisible: true,
           requiredRole: null,
           parentId: sqlGroupMenuId,
@@ -2640,6 +2573,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       now,
     });
     this.upsertMenuBySectionId({
+      sectionId: 'github_pr_review',
+      name: 'GitHub PR 리뷰',
+      icon: 'GitPullRequest',
+      displayOrder: 5,
+      parentId: existingDevManagement.id,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
       sectionId: 'prototype',
       name: 'Prototype',
       icon: 'GitBranch',
@@ -2739,7 +2681,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     ];
 
     // 기본 세트에서 빠진 과거 시드 채널은 보관 처리(삭제 대신 archived)
-    const retiredMeetingRoomIds = ['meeting-free', 'meeting-resource', 'meeting-decision'];
+    const retiredMeetingRoomIds = [
+      'meeting-free',
+      'meeting-resource',
+      'meeting-decision',
+    ];
 
     const upsertMeetingRoom = this.sqlite.prepare(`
       INSERT INTO meeting_rooms (
@@ -2803,7 +2749,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       {
         id: 'seed-msg-notice-3',
         roomId: 'meeting-notice',
-        content: '운영 서버 정기 점검은 매주 금요일 자정에 진행됩니다. 배포는 점검 전까지 머지 부탁드려요.',
+        content:
+          '운영 서버 정기 점검은 매주 금요일 자정에 진행됩니다. 배포는 점검 전까지 머지 부탁드려요.',
         offsetMin: 60,
       },
       {
@@ -2838,7 +2785,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         senderName: demoUser.name,
         senderRole: demoUser.role,
         content: msg.content,
-        createdAt: new Date(Date.now() - msg.offsetMin * 60 * 1000).toISOString(),
+        createdAt: new Date(
+          Date.now() - msg.offsetMin * 60 * 1000,
+        ).toISOString(),
       });
     }
 
@@ -3379,6 +3328,66 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'code_reviews',
       'review_documents',
       "ALTER TABLE code_reviews ADD COLUMN review_documents TEXT NOT NULL DEFAULT '[]'",
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'pr_number',
+      'ALTER TABLE code_reviews ADD COLUMN pr_number INTEGER',
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'pr_title',
+      'ALTER TABLE code_reviews ADD COLUMN pr_title TEXT',
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'pr_state',
+      'ALTER TABLE code_reviews ADD COLUMN pr_state TEXT',
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'pr_author_login',
+      'ALTER TABLE code_reviews ADD COLUMN pr_author_login TEXT',
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'base_ref',
+      'ALTER TABLE code_reviews ADD COLUMN base_ref TEXT',
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'head_ref',
+      'ALTER TABLE code_reviews ADD COLUMN head_ref TEXT',
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'head_sha',
+      'ALTER TABLE code_reviews ADD COLUMN head_sha TEXT',
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'pr_updated_at',
+      'ALTER TABLE code_reviews ADD COLUMN pr_updated_at TEXT',
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'review_note',
+      'ALTER TABLE code_reviews ADD COLUMN review_note TEXT',
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'criteria_snapshot',
+      "ALTER TABLE code_reviews ADD COLUMN criteria_snapshot TEXT NOT NULL DEFAULT '[]'",
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'criterion_results',
+      "ALTER TABLE code_reviews ADD COLUMN criterion_results TEXT NOT NULL DEFAULT '[]'",
+    );
+    this.ensureColumn(
+      'code_reviews',
+      'prompt_contract_version',
+      'ALTER TABLE code_reviews ADD COLUMN prompt_contract_version TEXT',
     );
     this.sqlite.exec(`
       DROP INDEX IF EXISTS idx_study_diaries_user;
@@ -4030,7 +4039,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     for (const dup of knowledgeRows.slice(1)) {
       this.sqlite
         .prepare(`UPDATE menus SET parent_id = ? WHERE parent_id = ?`)
-        .run(knowledgeGroup!.id, dup.id);
+        .run(knowledgeGroup.id, dup.id);
       this.sqlite.prepare(`DELETE FROM menus WHERE id = ?`).run(dup.id);
     }
 
@@ -4081,7 +4090,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             displayOrder: order,
             isVisible: true,
             requiredRole: null,
-            parentId: knowledgeGroup!.id,
+            parentId: knowledgeGroup.id,
             createdAt: now,
             updatedAt: now,
           })
@@ -4091,7 +4100,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           .prepare(
             `UPDATE menus SET name=?, icon=?, parent_id=?, display_order=?, is_visible=1, updated_at=? WHERE section_id=?`,
           )
-          .run(name, icon, knowledgeGroup!.id, order, now, sectionId);
+          .run(name, icon, knowledgeGroup.id, order, now, sectionId);
       }
     };
 
@@ -4136,7 +4145,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           )
           .run(taskParent.id, now, eval_.id);
       }
-
     }
   }
 
@@ -4481,16 +4489,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       now,
     });
 
-    this.upsertMenuBySectionId({
-      sectionId: 'sql_team',
-      name: 'SQL 연습장(팀)',
-      icon: 'UsersRound',
-      displayOrder: 2,
-      parentId: sqlGroupMenu.id,
-      requiredRole: null,
-      now,
-    });
-
     const existingSqlExamplesMenu = this.sqlite
       .prepare(
         `
@@ -4541,11 +4539,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .prepare(
         `
           DELETE FROM menus
-          WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_personal', 'sql_team', 'sql_examples')
+          WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_personal', 'sql_examples')
             AND rowid NOT IN (
               SELECT MIN(rowid)
               FROM menus
-              WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_personal', 'sql_team', 'sql_examples')
+              WHERE section_id IN ('sql_group', 'sql', 'sql_user', 'sql_personal', 'sql_examples')
               GROUP BY section_id
             )
         `,
@@ -4613,12 +4611,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .run(devStudy.id, now);
     this.sqlite
       .prepare(
-        `UPDATE menus SET parent_id=?, display_order=4, is_visible=1, updated_at=? WHERE section_id='sql_team'`,
+        `UPDATE menus SET is_visible=0, updated_at=? WHERE section_id='sql_team'`,
       )
-      .run(devStudy.id, now);
+      .run(now);
     this.sqlite
       .prepare(
-        `UPDATE menus SET parent_id=?, display_order=5, is_visible=1, updated_at=? WHERE section_id='sql_examples'`,
+        `UPDATE menus SET parent_id=?, display_order=4, is_visible=1, updated_at=? WHERE section_id='sql_examples'`,
       )
       .run(devStudy.id, now);
 
@@ -4774,7 +4772,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private reconcileEnglishMenu(now: string) {
     // ── English 루트 그룹 보장 ──────────────────────────────────────────
     let english = this.sqlite
-      .prepare(`SELECT id FROM menus WHERE section_id = 'english_group' LIMIT 1`)
+      .prepare(
+        `SELECT id FROM menus WHERE section_id = 'english_group' LIMIT 1`,
+      )
       .get() as { id: string } | undefined;
 
     if (!english) {
@@ -4805,11 +4805,23 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     // ── 하위 5개: 영어 학습 코너 ────────────────────────────────────────
     const children = [
-      { sectionId: 'english_chat', name: '영어 챗봇 대화', icon: 'MessagesSquare' },
+      {
+        sectionId: 'english_chat',
+        name: '영어 챗봇 대화',
+        icon: 'MessagesSquare',
+      },
       { sectionId: 'english_diary', name: '영어 개발 일기', icon: 'BookOpen' },
       { sectionId: 'english_news', name: '영어 뉴스 보기', icon: 'Newspaper' },
-      { sectionId: 'english_listening', name: '영어 듣기 연습', icon: 'Headphones' },
-      { sectionId: 'english_character', name: '영어 챗봇 캐릭터 회화', icon: 'Smile' },
+      {
+        sectionId: 'english_listening',
+        name: '영어 듣기 연습',
+        icon: 'Headphones',
+      },
+      {
+        sectionId: 'english_character',
+        name: '영어 챗봇 캐릭터 회화',
+        icon: 'Smile',
+      },
     ];
     children.forEach((child, index) => {
       this.upsertMenuBySectionId({
@@ -4817,7 +4829,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         name: child.name,
         icon: child.icon,
         displayOrder: index,
-        parentId: english!.id,
+        parentId: english.id,
         requiredRole: null,
         now,
       });
@@ -4827,7 +4839,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private reconcileDevMarketMenus(now: string) {
     // ── 개발 마켓 루트 그룹 보장 ────────────────────────────────────────
     let market = this.sqlite
-      .prepare(`SELECT id FROM menus WHERE section_id = 'dev_market_group' LIMIT 1`)
+      .prepare(
+        `SELECT id FROM menus WHERE section_id = 'dev_market_group' LIMIT 1`,
+      )
       .get() as { id: string } | undefined;
 
     if (!market) {
@@ -4858,10 +4872,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     // ── 하위 3개: 유료 콘텐츠 ───────────────────────────────────────────
     const children = [
-      { sectionId: 'market_lectures', name: '유료 강의', icon: 'GraduationCap' },
+      {
+        sectionId: 'market_lectures',
+        name: '유료 강의',
+        icon: 'GraduationCap',
+      },
       { sectionId: 'market_recommend', name: '강의 추천', icon: 'Star' },
       { sectionId: 'market_notes', name: '유료 노트', icon: 'NotebookPen' },
-      { sectionId: 'market_prototypes', name: '유료 프로토타입', icon: 'LayoutTemplate' },
+      {
+        sectionId: 'market_prototypes',
+        name: '유료 프로토타입',
+        icon: 'LayoutTemplate',
+      },
     ];
     children.forEach((child, index) => {
       this.upsertMenuBySectionId({
@@ -4869,7 +4891,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         name: child.name,
         icon: child.icon,
         displayOrder: index,
-        parentId: market!.id,
+        parentId: market.id,
         requiredRole: null,
         now,
       });
@@ -4879,7 +4901,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private reconcileDevAnalysisMenus(now: string) {
     // ── 개발 분석 루트 그룹 보장 ────────────────────────────────────────
     let analysis = this.sqlite
-      .prepare(`SELECT id FROM menus WHERE section_id = 'dev_analysis_group' LIMIT 1`)
+      .prepare(
+        `SELECT id FROM menus WHERE section_id = 'dev_analysis_group' LIMIT 1`,
+      )
       .get() as { id: string } | undefined;
 
     if (!analysis) {
@@ -4910,11 +4934,31 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     // ── 하위 4개: 분석 코너 ─────────────────────────────────────────────
     const children = [
-      { sectionId: 'analysis_tech_debt', name: '기술 부채 분석', icon: 'AlertTriangle' },
-      { sectionId: 'analysis_trends', name: '최신 트렌드 분석', icon: 'TrendingUp' },
-      { sectionId: 'analysis_hiring', name: '채용 트렌드 분석', icon: 'Briefcase' },
-      { sectionId: 'analysis_domain', name: '전문 도메인 분석', icon: 'Target' },
-      { sectionId: 'analysis_concepts', name: '개발 개념 분석', icon: 'Lightbulb' },
+      {
+        sectionId: 'analysis_tech_debt',
+        name: '기술 부채 분석',
+        icon: 'AlertTriangle',
+      },
+      {
+        sectionId: 'analysis_trends',
+        name: '최신 트렌드 분석',
+        icon: 'TrendingUp',
+      },
+      {
+        sectionId: 'analysis_hiring',
+        name: '채용 트렌드 분석',
+        icon: 'Briefcase',
+      },
+      {
+        sectionId: 'analysis_domain',
+        name: '전문 도메인 분석',
+        icon: 'Target',
+      },
+      {
+        sectionId: 'analysis_concepts',
+        name: '개발 개념 분석',
+        icon: 'Lightbulb',
+      },
     ];
     children.forEach((child, index) => {
       this.upsertMenuBySectionId({
@@ -4922,7 +4966,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         name: child.name,
         icon: child.icon,
         displayOrder: index,
-        parentId: analysis!.id,
+        parentId: analysis.id,
         requiredRole: null,
         now,
       });
@@ -5489,12 +5533,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
+  // 스터디 노트에 정렬 순서(order_idx) 컬럼 추가 — 기존 DB 호환
+  private migrateStudyDiaryNoteOrderSchema() {
+    this.ensureColumn(
+      'challenge_user_notes',
+      'order_idx',
+      'ALTER TABLE challenge_user_notes ADD COLUMN order_idx INTEGER NOT NULL DEFAULT 0',
+    );
+  }
+
   // SQL 스터디 리팩토링: 워크스페이스에 학습 정보(주제/목표/난이도/태그/공개범위) 컬럼 추가
   private migrateSqlStudyMetaSchema() {
-    for (const table of [
-      'sql_personal_practice_workspaces',
-      'sql_team_practice_workspaces',
-    ]) {
+    for (const table of ['sql_personal_practice_workspaces']) {
       this.ensureColumn(
         table,
         'learning_goal',
@@ -5540,25 +5590,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_sql_personal_problem_sets_workspace
         ON sql_personal_practice_problem_sets(workspace_id, order_idx, updated_at);
 
-      CREATE TABLE IF NOT EXISTS sql_team_practice_problem_sets (
-        id TEXT PRIMARY KEY,
-        workspace_id TEXT NOT NULL,
-        schema_version_id TEXT,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL DEFAULT '',
-        level INTEGER,
-        status TEXT NOT NULL DEFAULT 'draft',
-        order_idx INTEGER NOT NULL DEFAULT 0,
-        created_by TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(workspace_id) REFERENCES sql_team_practice_workspaces(id) ON DELETE CASCADE,
-        FOREIGN KEY(schema_version_id) REFERENCES sql_team_practice_schema_versions(id) ON DELETE SET NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_sql_team_problem_sets_workspace
-        ON sql_team_practice_problem_sets(workspace_id, order_idx, updated_at);
     `);
 
     this.ensureColumn(
@@ -5567,29 +5598,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'ALTER TABLE sql_personal_practice_problems ADD COLUMN problem_set_id TEXT',
     );
     this.ensureColumn(
-      'sql_team_practice_problems',
-      'problem_set_id',
-      'ALTER TABLE sql_team_practice_problems ADD COLUMN problem_set_id TEXT',
-    );
-    this.ensureColumn(
       'sql_personal_practice_problems',
       'order_idx',
       'ALTER TABLE sql_personal_practice_problems ADD COLUMN order_idx INTEGER NOT NULL DEFAULT 0',
     );
-    this.ensureColumn(
-      'sql_team_practice_problems',
-      'order_idx',
-      'ALTER TABLE sql_team_practice_problems ADD COLUMN order_idx INTEGER NOT NULL DEFAULT 0',
-    );
     this.sqlite.exec(`
       CREATE INDEX IF NOT EXISTS idx_sql_personal_problems_problem_set
         ON sql_personal_practice_problems(problem_set_id, updated_at);
-      CREATE INDEX IF NOT EXISTS idx_sql_team_problems_problem_set
-        ON sql_team_practice_problems(problem_set_id, updated_at);
       CREATE INDEX IF NOT EXISTS idx_sql_personal_problems_problem_set_order
         ON sql_personal_practice_problems(problem_set_id, order_idx, updated_at);
-      CREATE INDEX IF NOT EXISTS idx_sql_team_problems_problem_set_order
-        ON sql_team_practice_problems(problem_set_id, order_idx, updated_at);
     `);
 
     this.backfillSqlStudyProblemSets(
@@ -5598,13 +5615,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'sql_personal_practice_problem_sets',
       'sql_personal_practice_problems',
       'owner_id',
-    );
-    this.backfillSqlStudyProblemSets(
-      'sql_team_practice_workspaces',
-      'sql_team_practice_schema_versions',
-      'sql_team_practice_problem_sets',
-      'sql_team_practice_problems',
-      'created_by',
     );
   }
 
@@ -5947,10 +5957,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     const needsForeignKeyMigration =
       requestForeignKeys.some(
-        (fk) => fk.table === 'users' && fk.on_delete.toUpperCase() === 'CASCADE',
+        (fk) =>
+          fk.table === 'users' && fk.on_delete.toUpperCase() === 'CASCADE',
       ) ||
       stepForeignKeys.some(
-        (fk) => fk.table === 'users' && fk.on_delete.toUpperCase() === 'CASCADE',
+        (fk) =>
+          fk.table === 'users' && fk.on_delete.toUpperCase() === 'CASCADE',
       );
 
     if (needsForeignKeyMigration) {
@@ -6081,7 +6093,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { id: 'dept-hr', name: '인사팀', parentId: 'dept-mgmt', orderIdx: 0 },
       { id: 'dept-fin', name: '재무팀', parentId: 'dept-mgmt', orderIdx: 1 },
       { id: 'dept-dev', name: '개발본부', parentId: null, orderIdx: 2 },
-      { id: 'dept-fe', name: '프론트엔드팀', parentId: 'dept-dev', orderIdx: 0 },
+      {
+        id: 'dept-fe',
+        name: '프론트엔드팀',
+        parentId: 'dept-dev',
+        orderIdx: 0,
+      },
       { id: 'dept-be', name: '백엔드팀', parentId: 'dept-dev', orderIdx: 1 },
       { id: 'dept-qa', name: 'QA팀', parentId: 'dept-dev', orderIdx: 2 },
       { id: 'dept-design', name: '디자인팀', parentId: null, orderIdx: 3 },
@@ -6109,7 +6126,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       position: string;
       role: 'admin' | 'user';
     }> = [
-      { email: 'terecal@daum.net', name: '오현석', departmentId: 'dept-exec', position: '대표이사', role: 'admin' },
+      {
+        email: 'terecal@daum.net',
+        name: '오현석',
+        departmentId: 'dept-exec',
+        position: '대표이사',
+        role: 'admin',
+      },
     ];
 
     // 목록(keepEmails)에 없는 모든 활성 계정은 감사 이력 보존을 위해 비활성화 (도메인 무관 — 데모/테스트 계정 전부 정리)

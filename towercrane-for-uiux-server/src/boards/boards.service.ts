@@ -111,7 +111,8 @@ export class BoardsService {
     if (input.allowUserWrite !== undefined) {
       changes.allowUserWrite = input.allowUserWrite;
     }
-    if (input.allowComment !== undefined) changes.allowComment = input.allowComment;
+    if (input.allowComment !== undefined)
+      changes.allowComment = input.allowComment;
     if (input.isActive !== undefined) changes.isActive = input.isActive;
     if (input.orderIdx !== undefined) changes.orderIdx = input.orderIdx;
 
@@ -163,7 +164,12 @@ export class BoardsService {
     };
   }
 
-  getBoardDetail(code: string, boardId: string, user: BoardUser, admin = false) {
+  getBoardDetail(
+    code: string,
+    boardId: string,
+    user: BoardUser,
+    admin = false,
+  ) {
     const { config, board } = this.ensureBoardByCodeAndId(code, boardId, {
       activeOnly: !admin,
     });
@@ -456,7 +462,9 @@ export class BoardsService {
     const board = this.db
       .select()
       .from(boardsTable)
-      .where(and(eq(boardsTable.id, boardId), sql`${boardsTable.deletedAt} IS NULL`))
+      .where(
+        and(eq(boardsTable.id, boardId), sql`${boardsTable.deletedAt} IS NULL`),
+      )
       .get();
 
     if (!board) throw new NotFoundException('게시글을 찾을 수 없습니다.');
@@ -504,7 +512,7 @@ export class BoardsService {
     return {
       id: config.id,
       code: config.code,
-      kind: config.kind as BoardKind,
+      kind: config.kind,
       name: config.name,
       description: config.description,
       allowUserWrite: config.allowUserWrite,
@@ -524,7 +532,7 @@ export class BoardsService {
       title: board.title,
       authorId: board.authorId,
       authorName: board.authorName,
-      status: board.status as BoardStatus,
+      status: board.status,
       pinned: board.pinned,
       answered: board.answered,
       viewCount: board.viewCount,
@@ -558,4 +566,3 @@ export class BoardsService {
     };
   }
 }
-

@@ -465,7 +465,10 @@ export class KnowledgeBaseService {
     );
   }
 
-  private assertCanEdit(document: KnowledgeDocumentRow, user: KnowledgeBaseUser) {
+  private assertCanEdit(
+    document: KnowledgeDocumentRow,
+    user: KnowledgeBaseUser,
+  ) {
     if (document.ownerId === user.id || user.role === 'admin') return;
     throw new ForbiddenException('지식 문서를 수정할 권한이 없습니다.');
   }
@@ -518,7 +521,9 @@ export class KnowledgeBaseService {
   private parseTags(value: string | null) {
     try {
       const parsed = JSON.parse(value || '[]');
-      return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((item) => typeof item === 'string')
+        : [];
     } catch {
       return [];
     }

@@ -87,18 +87,19 @@ export class ChatbotToolsService {
       tool_choice: 'auto', // 쓸지 말지 GPT가 스스로 판단
     });
 
-    const collected = await this.collect(stream, ctx.sse);
+    const collected = await this.streamAndCollect(stream, ctx.sse);
     this.respond(ctx, collected);
   }
 
   /**
-   * 스트림을 끝까지 읽어 필요한 것만 뽑아낸다.
+   * 스트림을 끝까지 읽어 필요한 것만 뽑아낸다. 반환값이 전부가 아니라
+   * 본문은 읽는 족족 sse로 흘려보낸다 — 이름의 stream이 그 뜻이다.
    *
-   * 텍스트는 읽는 족족 흘려보내고 툴 조각은 모으기만 하는 게 핵심이다 —
+   * 텍스트는 흘려보내고 툴 조각은 모으기만 하는 게 핵심이다 —
    * 텍스트는 이어붙이는 순간 의미가 있지만 툴 인자는 JSON이라 완성 전엔
    * 아무것도 할 수 없다. 어느 쪽인지도 스트림이 끝나야 알 수 있다.
    */
-  private async collect(
+  private async streamAndCollect(
     stream: AsyncIterable<OpenAI.ChatCompletionChunk>,
     sse: StreamContext['sse'],
   ): Promise<CollectedStream> {
@@ -118,7 +119,7 @@ export class ChatbotToolsService {
       const piece = choice.delta?.content ?? '';
       if (piece) {
         text += piece; // DB 저장용으로 모으고
-        sse.send({ text: piece }); // 동시에 화면으로 흘려보낸다
+        sse.send({ type: 'text', text: piece }); // 동시에 화면으로 흘려보낸다
       }
 
       this.mergeToolFragments(drafts, choice.delta?.tool_calls);
@@ -170,7 +171,7 @@ export class ChatbotToolsService {
       // (프론트가 content === '' 인 assistant 메시지를 필터로 숨긴다)
       sse.finish(this.sessionService.insertMessage(sessionId, 'assistant', ''));
     } else {
-      // 툴을 안 썼다 — 본문은 collect에서 이미 전송됐고 저장·종료만 남았다
+      // 툴을 안 썼다 — 본문은 streamAndCollect에서 이미 전송됐고 저장·종료만 남았다
       sse.finish(
         this.sessionService.insertMessage(sessionId, 'assistant', text),
       );

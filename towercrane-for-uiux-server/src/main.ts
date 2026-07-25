@@ -6,7 +6,9 @@ import { DevManagementGateway } from './dev-management/dev-management.gateway';
 import { MeetingGateway } from './meeting/meeting.gateway';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+  });
   app.use(json({ limit: '10mb' }));
   app.use(urlencoded({ limit: '10mb', extended: true }));
   app.setGlobalPrefix('api');
@@ -24,6 +26,10 @@ async function bootstrap() {
       'http://127.0.0.1:1423',
       'http://localhost:1424',
       'http://127.0.0.1:1424',
+      'http://localhost:1425',
+      'http://127.0.0.1:1425',
+      'http://localhost:1426',
+      'http://127.0.0.1:1426',
       'tauri://localhost',
       'http://tauri.localhost',
       'https://hibot-docu.com',

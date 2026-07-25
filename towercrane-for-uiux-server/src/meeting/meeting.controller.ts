@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { MeetingGateway } from './meeting.gateway';
@@ -84,10 +94,7 @@ export class MeetingController {
   }
 
   @Get('rooms/:roomId')
-  getRoom(
-    @CurrentUser() user: MeetingUser,
-    @Param('roomId') roomId: string,
-  ) {
+  getRoom(@CurrentUser() user: MeetingUser, @Param('roomId') roomId: string) {
     return this.meetingService.getRoom(roomId, user);
   }
 
@@ -117,18 +124,12 @@ export class MeetingController {
   }
 
   @Post('dms')
-  startDm(
-    @CurrentUser() user: MeetingUser,
-    @Body() body: unknown,
-  ) {
+  startDm(@CurrentUser() user: MeetingUser, @Body() body: unknown) {
     return this.meetingService.startDm(user, body);
   }
 
   @Post('rooms/:roomId/leave')
-  leaveDm(
-    @CurrentUser() user: MeetingUser,
-    @Param('roomId') roomId: string,
-  ) {
+  leaveDm(@CurrentUser() user: MeetingUser, @Param('roomId') roomId: string) {
     return this.meetingService.leaveDm(user, roomId);
   }
 
@@ -159,10 +160,7 @@ export class MeetingController {
 
   // 방 읽음 처리 (읽음 커서 upsert)
   @Post('rooms/:roomId/read')
-  markRead(
-    @CurrentUser() user: MeetingUser,
-    @Param('roomId') roomId: string,
-  ) {
+  markRead(@CurrentUser() user: MeetingUser, @Param('roomId') roomId: string) {
     return this.meetingService.markRoomRead(user, roomId);
   }
 
@@ -202,7 +200,12 @@ export class MeetingController {
     @Body() body: { pinned?: boolean },
   ) {
     const pinned = body?.pinned !== false;
-    const updated = this.meetingService.setMessagePinned(user, roomId, messageId, pinned);
+    const updated = this.meetingService.setMessagePinned(
+      user,
+      roomId,
+      messageId,
+      pinned,
+    );
     this.meetingGateway.broadcastMeetingMessagePinned(roomId, updated);
     return updated;
   }
@@ -215,17 +218,19 @@ export class MeetingController {
     @Param('messageId') messageId: string,
     @Body() body: unknown,
   ) {
-    const updated = this.meetingService.toggleReaction(user, roomId, messageId, body);
+    const updated = this.meetingService.toggleReaction(
+      user,
+      roomId,
+      messageId,
+      body,
+    );
     this.meetingGateway.broadcastMeetingMessageReaction(roomId, updated);
     return updated;
   }
 
   // 채널 고정 메시지 목록
   @Get('rooms/:roomId/pins')
-  listPins(
-    @CurrentUser() user: MeetingUser,
-    @Param('roomId') roomId: string,
-  ) {
+  listPins(@CurrentUser() user: MeetingUser, @Param('roomId') roomId: string) {
     return this.meetingService.listPinnedMessages(roomId, user);
   }
 }

@@ -55,7 +55,11 @@ export class ChallengeController {
 
   @Patch('categories/:id')
   @UseGuards(AdminGuard)
-  async updateCategory(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  async updateCategory(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = updateCategorySchema.parse(body);
     return this.challengeService.updateCategory(id, input, req.user.id);
   }
@@ -69,8 +73,14 @@ export class ChallengeController {
 
   @Post('categories/reorder')
   @UseGuards(AdminGuard)
-  async reorderCategories(@Body() body: { categoryIds: string[] }, @Req() req: SessionRequest) {
-    return this.challengeService.reorderCategories(body.categoryIds, req.user.id);
+  async reorderCategories(
+    @Body() body: { categoryIds: string[] },
+    @Req() req: SessionRequest,
+  ) {
+    return this.challengeService.reorderCategories(
+      body.categoryIds,
+      req.user.id,
+    );
   }
 
   // ─── Sections ───────────────────────────────────────────────────────────
@@ -94,7 +104,11 @@ export class ChallengeController {
 
   @Patch('sections/:id')
   @UseGuards(AdminGuard)
-  async updateSection(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  async updateSection(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = createSectionSchema.partial().parse(body);
     return this.challengeService.updateSection(id, input, req.user.id);
   }
@@ -108,8 +122,15 @@ export class ChallengeController {
 
   @Post('sections/reorder')
   @UseGuards(AdminGuard)
-  async reorderSections(@Body() body: { categoryId: string; sectionIds: string[] }, @Req() req: SessionRequest) {
-    return this.challengeService.reorderSections(body.categoryId, body.sectionIds, req.user.id);
+  async reorderSections(
+    @Body() body: { categoryId: string; sectionIds: string[] },
+    @Req() req: SessionRequest,
+  ) {
+    return this.challengeService.reorderSections(
+      body.categoryId,
+      body.sectionIds,
+      req.user.id,
+    );
   }
 
   // ─── Topics (Blocks) ────────────────────────────────────────────────────
@@ -133,15 +154,26 @@ export class ChallengeController {
 
   @Patch('topics/:id')
   @UseGuards(AdminGuard)
-  async updateTopic(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  async updateTopic(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = createTopicSchema.partial().parse(body);
     return this.challengeService.updateTopic(id, input, req.user.id);
   }
 
   @Post('topics/reorder')
   @UseGuards(AdminGuard)
-  async reorderTopics(@Body() body: { sectionId: string; topicIds: string[] }, @Req() req: SessionRequest) {
-    return this.challengeService.reorderTopics(body.sectionId, body.topicIds, req.user.id);
+  async reorderTopics(
+    @Body() body: { sectionId: string; topicIds: string[] },
+    @Req() req: SessionRequest,
+  ) {
+    return this.challengeService.reorderTopics(
+      body.sectionId,
+      body.topicIds,
+      req.user.id,
+    );
   }
 
   @Delete('topics/:id')
@@ -158,14 +190,21 @@ export class ChallengeController {
   }
 
   @Get('topics/:topicId/submissions/my')
-  async getMySubmission(@Param('topicId') topicId: string, @Req() req: SessionRequest) {
+  async getMySubmission(
+    @Param('topicId') topicId: string,
+    @Req() req: SessionRequest,
+  ) {
     return this.challengeService.getMySubmission(topicId, req.user.id);
   }
 
   @Get('submissions/:id')
   async getSubmission(@Param('id') id: string, @Req() req: SessionRequest) {
     const submission = await this.challengeService.getSubmissionById(id);
-    if (submission && submission.userId !== req.user.id && req.user.role !== 'admin') {
+    if (
+      submission &&
+      submission.userId !== req.user.id &&
+      req.user.role !== 'admin'
+    ) {
       throw new ForbiddenException('Not authorized');
     }
     return submission;
@@ -178,7 +217,11 @@ export class ChallengeController {
   }
 
   @Patch('submissions/:id')
-  async updateSubmission(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  async updateSubmission(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = createSubmissionSchema.partial().parse(body);
     return this.challengeService.updateSubmission(id, input, req.user.id);
   }
@@ -190,13 +233,21 @@ export class ChallengeController {
     @Body() body: { adminRating: number; adminFeedback?: string },
     @Req() req: SessionRequest,
   ) {
-    return this.challengeService.rateSubmission(id, body.adminRating, body.adminFeedback, req.user.id);
+    return this.challengeService.rateSubmission(
+      id,
+      body.adminRating,
+      body.adminFeedback,
+      req.user.id,
+    );
   }
 
   // ─── GPT Threads ────────────────────────────────────────────────────────
 
   @Get('sections/:sectionId/gpt/threads')
-  async getGptThreads(@Param('sectionId') sectionId: string, @Req() req: SessionRequest) {
+  async getGptThreads(
+    @Param('sectionId') sectionId: string,
+    @Req() req: SessionRequest,
+  ) {
     return this.challengeService.getGptThreads(sectionId, req.user.id);
   }
 
@@ -216,7 +267,11 @@ export class ChallengeController {
   }
 
   @Patch('gpt/threads/:id')
-  async updateGptThread(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  async updateGptThread(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = updateGptThreadSchema.parse(body);
     return this.challengeService.updateGptThread(id, input, req.user.id);
   }
@@ -229,7 +284,10 @@ export class ChallengeController {
   // ─── GPT Messages ───────────────────────────────────────────────────────
 
   @Get('gpt/threads/:threadId/messages')
-  async getGptMessages(@Param('threadId') threadId: string, @Req() req: SessionRequest) {
+  async getGptMessages(
+    @Param('threadId') threadId: string,
+    @Req() req: SessionRequest,
+  ) {
     const thread = await this.challengeService.getGptThreadById(threadId);
     if (!thread) throw new Error('Thread not found');
     if (thread.userId !== req.user.id && !thread.isShared) {
@@ -250,18 +308,28 @@ export class ChallengeController {
     if (thread.userId !== req.user.id) {
       throw new ForbiddenException('Not authorized');
     }
-    return this.challengeService.createGptMessage(threadId, 'user', input.content);
+    return this.challengeService.createGptMessage(
+      threadId,
+      'user',
+      input.content,
+    );
   }
 
   // ─── User Notes ─────────────────────────────────────────────────────────
 
   @Get('sections/:sectionId/notes/mine')
-  async getMyNotes(@Param('sectionId') sectionId: string, @Req() req: SessionRequest) {
+  async getMyNotes(
+    @Param('sectionId') sectionId: string,
+    @Req() req: SessionRequest,
+  ) {
     return this.challengeService.getMyNotes(sectionId, req.user.id);
   }
 
   @Get('sections/:sectionId/notes/shared')
-  async getSharedNotes(@Param('sectionId') sectionId: string, @Req() req: SessionRequest) {
+  async getSharedNotes(
+    @Param('sectionId') sectionId: string,
+    @Req() req: SessionRequest,
+  ) {
     return this.challengeService.getSharedNotes(sectionId, req.user.id);
   }
 
@@ -282,7 +350,11 @@ export class ChallengeController {
   }
 
   @Patch('notes/:id')
-  async updateNote(@Param('id') id: string, @Body() body: unknown, @Req() req: SessionRequest) {
+  async updateNote(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
     const input = updateNoteSchema.parse(body);
     return this.challengeService.updateNote(id, input, req.user.id);
   }

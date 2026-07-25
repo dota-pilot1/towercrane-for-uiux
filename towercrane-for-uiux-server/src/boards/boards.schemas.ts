@@ -20,7 +20,12 @@ export const listBoardsQuerySchema = z.object({
 });
 
 export const createBoardConfigSchema = z.object({
-  code: z.string().trim().regex(/^[a-z0-9_-]+$/).min(2).max(80),
+  code: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_-]+$/)
+    .min(2)
+    .max(80),
   kind: boardKindSchema,
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().max(500).optional().default(''),
@@ -42,12 +47,11 @@ export const createBoardSchema = z.object({
   content: z.string().trim().min(1).max(20000),
 });
 
-export const updateBoardSchema = createBoardSchema.partial().refine(
-  (value) => Object.keys(value).length > 0,
-  {
+export const updateBoardSchema = createBoardSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',
-  },
-);
+  });
 
 export const updateBoardStatusSchema = z.object({
   status: boardStatusSchema,

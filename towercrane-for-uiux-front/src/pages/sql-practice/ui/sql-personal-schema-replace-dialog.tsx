@@ -2,10 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useState, type FormEvent } from 'react'
 import { AlertTriangle, Database, FileUp, Loader2, X } from 'lucide-react'
 
-import type {
-  SqlPersonalPracticeSchemaVersion,
-  SqlTeamPracticeSchemaVersion,
-} from '../../../entities/sql-practice/model/types'
+import type { SqlPersonalPracticeSchemaVersion } from '../../../entities/sql-practice/model/types'
 import { Button } from '../../../shared/ui/button'
 import { Input } from '../../../shared/ui/input'
 import { Textarea } from '../../../shared/ui/textarea'
@@ -13,7 +10,7 @@ import { Textarea } from '../../../shared/ui/textarea'
 type SqlPersonalSchemaReplaceDialogProps = {
   open: boolean
   workspaceTitle: string
-  currentVersion?: SqlPersonalPracticeSchemaVersion | SqlTeamPracticeSchemaVersion
+  currentVersion?: SqlPersonalPracticeSchemaVersion
   isPending: boolean
   errorMessage?: string | null
   onSubmit: (input: { file: File; title?: string; description?: string }) => Promise<void>

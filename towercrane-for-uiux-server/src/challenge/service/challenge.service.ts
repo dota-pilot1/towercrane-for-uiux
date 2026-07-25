@@ -1,4 +1,9 @@
-import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { sql, eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
@@ -30,11 +35,19 @@ export class ChallengeService {
   // ─── Categories ─────────────────────────────────────────────────────────
 
   async getCategories() {
-    return this.db.db.select().from(challengeCategoriesTable).orderBy(challengeCategoriesTable.orderIdx).all();
+    return this.db.db
+      .select()
+      .from(challengeCategoriesTable)
+      .orderBy(challengeCategoriesTable.orderIdx)
+      .all();
   }
 
   async getCategoryById(id: string) {
-    return this.db.db.select().from(challengeCategoriesTable).where(eq(challengeCategoriesTable.id, id)).get();
+    return this.db.db
+      .select()
+      .from(challengeCategoriesTable)
+      .where(eq(challengeCategoriesTable.id, id))
+      .get();
   }
 
   async createCategory(input: CreateCategoryInput, userId: string) {
@@ -58,7 +71,8 @@ export class ChallengeService {
   async updateCategory(id: string, input: UpdateCategoryInput, userId: string) {
     const category = await this.getCategoryById(id);
     if (!category) throw new NotFoundException('Category not found');
-    if (category.createdBy !== userId) throw new ForbiddenException('Not authorized');
+    if (category.createdBy !== userId)
+      throw new ForbiddenException('Not authorized');
 
     const now = new Date().toISOString();
     this.db.db
@@ -73,9 +87,13 @@ export class ChallengeService {
   async deleteCategory(id: string, userId: string) {
     const category = await this.getCategoryById(id);
     if (!category) return;
-    if (category.createdBy !== userId) throw new ForbiddenException('Not authorized');
+    if (category.createdBy !== userId)
+      throw new ForbiddenException('Not authorized');
 
-    this.db.db.delete(challengeCategoriesTable).where(eq(challengeCategoriesTable.id, id)).run();
+    this.db.db
+      .delete(challengeCategoriesTable)
+      .where(eq(challengeCategoriesTable.id, id))
+      .run();
   }
 
   async reorderCategories(categoryIds: string[], userId: string) {
@@ -89,7 +107,11 @@ export class ChallengeService {
     }
   }
 
-  async reorderSections(categoryId: string, sectionIds: string[], userId: string) {
+  async reorderSections(
+    categoryId: string,
+    sectionIds: string[],
+    userId: string,
+  ) {
     const now = new Date().toISOString();
     for (let i = 0; i < sectionIds.length; i++) {
       this.db.db
@@ -112,7 +134,11 @@ export class ChallengeService {
   }
 
   async getSectionById(id: string) {
-    return this.db.db.select().from(challengeSectionsTable).where(eq(challengeSectionsTable.id, id)).get();
+    return this.db.db
+      .select()
+      .from(challengeSectionsTable)
+      .where(eq(challengeSectionsTable.id, id))
+      .get();
   }
 
   async createSection(input: CreateSectionInput, userId: string) {
@@ -135,7 +161,11 @@ export class ChallengeService {
     return this.getSectionById(id);
   }
 
-  async updateSection(id: string, input: Partial<CreateSectionInput>, userId: string) {
+  async updateSection(
+    id: string,
+    input: Partial<CreateSectionInput>,
+    userId: string,
+  ) {
     const section = await this.getSectionById(id);
     if (!section) throw new NotFoundException('Section not found');
 
@@ -153,7 +183,10 @@ export class ChallengeService {
     const section = await this.getSectionById(id);
     if (!section) return;
 
-    this.db.db.delete(challengeSectionsTable).where(eq(challengeSectionsTable.id, id)).run();
+    this.db.db
+      .delete(challengeSectionsTable)
+      .where(eq(challengeSectionsTable.id, id))
+      .run();
   }
 
   // ─── Topics ─────────────────────────────────────────────────────────────
@@ -168,7 +201,11 @@ export class ChallengeService {
   }
 
   async getTopicById(id: string) {
-    return this.db.db.select().from(challengeTopicsTable).where(eq(challengeTopicsTable.id, id)).get();
+    return this.db.db
+      .select()
+      .from(challengeTopicsTable)
+      .where(eq(challengeTopicsTable.id, id))
+      .get();
   }
 
   async createTopic(input: CreateTopicInput, userId: string) {
@@ -191,7 +228,11 @@ export class ChallengeService {
     return this.getTopicById(id);
   }
 
-  async updateTopic(id: string, input: Partial<CreateTopicInput>, userId: string) {
+  async updateTopic(
+    id: string,
+    input: Partial<CreateTopicInput>,
+    userId: string,
+  ) {
     const topic = await this.getTopicById(id);
     if (!topic) throw new NotFoundException('Topic not found');
 
@@ -221,7 +262,10 @@ export class ChallengeService {
     const topic = await this.getTopicById(id);
     if (!topic) throw new NotFoundException('Topic not found');
 
-    this.db.db.delete(challengeTopicsTable).where(eq(challengeTopicsTable.id, id)).run();
+    this.db.db
+      .delete(challengeTopicsTable)
+      .where(eq(challengeTopicsTable.id, id))
+      .run();
   }
 
   // ─── Submissions ────────────────────────────────────────────────────────
@@ -235,14 +279,23 @@ export class ChallengeService {
   }
 
   async getSubmissionById(id: string) {
-    return this.db.db.select().from(challengeSubmissionsTable).where(eq(challengeSubmissionsTable.id, id)).get();
+    return this.db.db
+      .select()
+      .from(challengeSubmissionsTable)
+      .where(eq(challengeSubmissionsTable.id, id))
+      .get();
   }
 
   async getMySubmission(topicId: string, userId: string) {
     return this.db.db
       .select()
       .from(challengeSubmissionsTable)
-      .where(and(eq(challengeSubmissionsTable.topicId, topicId), eq(challengeSubmissionsTable.userId, userId)))
+      .where(
+        and(
+          eq(challengeSubmissionsTable.topicId, topicId),
+          eq(challengeSubmissionsTable.userId, userId),
+        ),
+      )
       .get();
   }
 
@@ -276,10 +329,15 @@ export class ChallengeService {
     return this.getSubmissionById(id);
   }
 
-  async updateSubmission(id: string, input: Partial<CreateSubmissionInput>, userId: string) {
+  async updateSubmission(
+    id: string,
+    input: Partial<CreateSubmissionInput>,
+    userId: string,
+  ) {
     const submission = await this.getSubmissionById(id);
     if (!submission) throw new NotFoundException('Submission not found');
-    if (submission.userId !== userId) throw new ForbiddenException('Not authorized');
+    if (submission.userId !== userId)
+      throw new ForbiddenException('Not authorized');
 
     const now = new Date().toISOString();
     const topic = await this.getTopicById(submission.topicId);
@@ -289,7 +347,10 @@ export class ChallengeService {
       .set({
         content: input.content ?? submission.content,
         checkedItems: input.checkedItems ?? submission.checkedItems,
-        score: this.calculateScore(input.checkedItems ?? submission.checkedItems, topic),
+        score: this.calculateScore(
+          input.checkedItems ?? submission.checkedItems,
+          topic,
+        ),
         updatedAt: now,
       })
       .where(eq(challengeSubmissionsTable.id, id))
@@ -298,7 +359,12 @@ export class ChallengeService {
     return this.getSubmissionById(id);
   }
 
-  async rateSubmission(id: string, rating: number, feedback?: string, userId?: string) {
+  async rateSubmission(
+    id: string,
+    rating: number,
+    feedback?: string,
+    userId?: string,
+  ) {
     const submission = await this.getSubmissionById(id);
     if (!submission) throw new NotFoundException('Submission not found');
 
@@ -343,7 +409,11 @@ export class ChallengeService {
   }
 
   async getGptThreadById(id: string) {
-    return this.db.db.select().from(challengeGptThreadsTable).where(eq(challengeGptThreadsTable.id, id)).get();
+    return this.db.db
+      .select()
+      .from(challengeGptThreadsTable)
+      .where(eq(challengeGptThreadsTable.id, id))
+      .get();
   }
 
   async createGptThread(input: CreateGptThreadInput, userId: string) {
@@ -370,7 +440,8 @@ export class ChallengeService {
   async updateGptThread(id: string, updates: any, userId: string) {
     const thread = await this.getGptThreadById(id);
     if (!thread) throw new NotFoundException('Thread not found');
-    if (thread.userId !== userId) throw new ForbiddenException('Not authorized');
+    if (thread.userId !== userId)
+      throw new ForbiddenException('Not authorized');
 
     const now = new Date().toISOString();
     this.db.db
@@ -385,9 +456,13 @@ export class ChallengeService {
   async deleteGptThread(id: string, userId: string) {
     const thread = await this.getGptThreadById(id);
     if (!thread) throw new NotFoundException('Thread not found');
-    if (thread.userId !== userId) throw new ForbiddenException('Not authorized');
+    if (thread.userId !== userId)
+      throw new ForbiddenException('Not authorized');
 
-    this.db.db.delete(challengeGptThreadsTable).where(eq(challengeGptThreadsTable.id, id)).run();
+    this.db.db
+      .delete(challengeGptThreadsTable)
+      .where(eq(challengeGptThreadsTable.id, id))
+      .run();
   }
 
   // ─── GPT Messages ───────────────────────────────────────────────────────
@@ -401,7 +476,13 @@ export class ChallengeService {
       .all();
   }
 
-  async createGptMessage(threadId: string, role: GptMessageRole, content: string, tokensIn?: number, tokensOut?: number) {
+  async createGptMessage(
+    threadId: string,
+    role: GptMessageRole,
+    content: string,
+    tokensIn?: number,
+    tokensOut?: number,
+  ) {
     const id = randomUUID();
     const now = new Date().toISOString();
 
@@ -418,7 +499,11 @@ export class ChallengeService {
       })
       .run();
 
-    return this.db.db.select().from(challengeGptMessagesTable).where(eq(challengeGptMessagesTable.id, id)).get();
+    return this.db.db
+      .select()
+      .from(challengeGptMessagesTable)
+      .where(eq(challengeGptMessagesTable.id, id))
+      .get();
   }
 
   // ─── User Notes ─────────────────────────────────────────────────────────
@@ -427,8 +512,16 @@ export class ChallengeService {
     return this.db.db
       .select()
       .from(challengeUserNotesTable)
-      .where(and(eq(challengeUserNotesTable.userId, userId), eq(challengeUserNotesTable.sectionId, sectionId)))
-      .orderBy(desc(challengeUserNotesTable.pinned), desc(challengeUserNotesTable.updatedAt))
+      .where(
+        and(
+          eq(challengeUserNotesTable.userId, userId),
+          eq(challengeUserNotesTable.sectionId, sectionId),
+        ),
+      )
+      .orderBy(
+        desc(challengeUserNotesTable.pinned),
+        desc(challengeUserNotesTable.updatedAt),
+      )
       .all();
   }
 
@@ -448,7 +541,11 @@ export class ChallengeService {
   }
 
   async getNoteById(id: string) {
-    return this.db.db.select().from(challengeUserNotesTable).where(eq(challengeUserNotesTable.id, id)).get();
+    return this.db.db
+      .select()
+      .from(challengeUserNotesTable)
+      .where(eq(challengeUserNotesTable.id, id))
+      .get();
   }
 
   async createNote(input: CreateNoteInput, userId: string) {
@@ -473,7 +570,11 @@ export class ChallengeService {
     return this.getNoteById(id);
   }
 
-  async updateNote(id: string, input: Partial<CreateNoteInput>, userId: string) {
+  async updateNote(
+    id: string,
+    input: Partial<CreateNoteInput>,
+    userId: string,
+  ) {
     const note = await this.getNoteById(id);
     if (!note) throw new NotFoundException('Note not found');
     if (note.userId !== userId) throw new ForbiddenException('Not authorized');
@@ -493,6 +594,9 @@ export class ChallengeService {
     if (!note) throw new NotFoundException('Note not found');
     if (note.userId !== userId) throw new ForbiddenException('Not authorized');
 
-    this.db.db.delete(challengeUserNotesTable).where(eq(challengeUserNotesTable.id, id)).run();
+    this.db.db
+      .delete(challengeUserNotesTable)
+      .where(eq(challengeUserNotesTable.id, id))
+      .run();
   }
 }

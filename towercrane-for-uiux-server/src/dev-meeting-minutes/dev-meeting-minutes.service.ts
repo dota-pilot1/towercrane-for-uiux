@@ -120,11 +120,7 @@ export class DevMeetingMinutesService {
     return this.toDetailDto(row, user);
   }
 
-  update(
-    user: DevMeetingMinutesUser,
-    minutesId: string,
-    payload: unknown,
-  ) {
+  update(user: DevMeetingMinutesUser, minutesId: string, payload: unknown) {
     const row = this.ensureMinutes(minutesId);
     this.ensureAccessibleRoom(row.roomId, user);
     this.assertOwnerOrAdmin(row, user);
@@ -243,7 +239,9 @@ export class DevMeetingMinutesService {
     user: DevMeetingMinutesUser,
   ) {
     if (user.role === 'admin' || row.createdBy === user.id) return;
-    throw new ForbiddenException('회의록 작성자 또는 관리자만 수정할 수 있습니다.');
+    throw new ForbiddenException(
+      '회의록 작성자 또는 관리자만 수정할 수 있습니다.',
+    );
   }
 
   private toSummaryDto(row: DevMeetingMinutesRow) {
@@ -264,10 +262,7 @@ export class DevMeetingMinutesService {
     };
   }
 
-  private toDetailDto(
-    row: DevMeetingMinutesRow,
-    user: DevMeetingMinutesUser,
-  ) {
+  private toDetailDto(row: DevMeetingMinutesRow, user: DevMeetingMinutesUser) {
     return {
       ...this.toSummaryDto(row),
       discussionPoints: row.discussionPoints,

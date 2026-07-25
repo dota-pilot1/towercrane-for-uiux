@@ -6,8 +6,11 @@ import type { KnowledgeSource } from '../chatbot.types';
  *
  * res는 요청마다 다르므로 요청 시점에 한 번 묶어 쓴다:
  *   const sse = createSse(res)
- *   sse.send({ text: '안' })      → res.write('data: {"text":"안"}\n\n')
- *   sse.finish(assistantMessage)  → done + [DONE] + res.end()
+ *   sse.send({ type: 'text', text: '안' })  → res.write('data: {"type":"text",…}\n\n')
+ *   sse.finish(assistantMessage)            → done + [DONE] + res.end()
+ *
+ * 모든 프레임은 type을 갖는다 — 프론트가 switch 하나로 분기하게 하려는 것이다.
+ * 하나라도 type이 빠지면 소비자 전원이 'type' in parsed 같은 방어를 달게 된다.
  */
 export function createSse(res: Response) {
   return {

@@ -31,34 +31,19 @@ import type {
 import {
   useCreateSqlPersonalPracticeProblem,
   useCreateSqlPersonalPracticeProblemSet,
-  useCreateSqlTeamPracticeProblem,
-  useCreateSqlTeamPracticeProblemSet,
   useDeleteSqlPersonalPracticeProblem,
-  useDeleteSqlTeamPracticeProblem,
   useGenerateSqlPersonalPracticeAnswer,
   useGenerateSqlPersonalPracticeProblemSetProblems,
-  useGenerateSqlTeamPracticeAnswer,
-  useGenerateSqlTeamPracticeProblemSetProblems,
   useRegenerateSqlPersonalPracticeErd,
-  useRegenerateSqlTeamPracticeErd,
   useReplaceSqlPersonalPracticeSchemaVersion,
-  useReplaceSqlTeamPracticeSchemaVersion,
   useSqlPersonalPracticeErd,
   useSqlPersonalPracticeProblems,
   useSqlPersonalPracticeProblemSets,
   useSqlPersonalPracticeTables,
   useSqlPersonalPracticeWorkspace,
-  useSqlTeamPracticeErd,
-  useSqlTeamPracticeProblems,
-  useSqlTeamPracticeProblemSets,
-  useSqlTeamPracticeTables,
-  useSqlTeamPracticeWorkspace,
   useUpdateSqlPersonalPracticeErd,
   useUpdateSqlPersonalPracticeProblem,
   useUpdateSqlPersonalPracticeWorkspace,
-  useUpdateSqlTeamPracticeErd,
-  useUpdateSqlTeamPracticeProblem,
-  useUpdateSqlTeamPracticeWorkspace,
 } from '../../../features/sql-practice/model/use-sql-practice-queries'
 import { SqlErdView } from '../../../features/sql-practice/ui/sql-erd-view'
 import { Button } from '../../../shared/ui/button'
@@ -68,7 +53,7 @@ import { Select } from '../../../shared/ui/select'
 import { Textarea } from '../../../shared/ui/textarea'
 import { SqlPersonalSchemaReplaceDialog } from './sql-personal-schema-replace-dialog'
 
-type StudyScope = 'personal' | 'team'
+type StudyScope = 'personal'
 type EditorStep = 'meta' | 'dataset' | 'erd' | 'problems'
 
 const STEPS: Array<{
@@ -99,22 +84,10 @@ export function SqlStudyEditorPage({ scope }: { scope: StudyScope }) {
   const { workspaceId } = useParams({ strict: false }) as { workspaceId?: string }
   const navigate = useNavigate()
   const [step, setStep] = useState<EditorStep>('meta')
-  const personalWorkspaceQuery = useSqlPersonalPracticeWorkspace(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamWorkspaceQuery = useSqlTeamPracticeWorkspace(
-    scope === 'team' ? workspaceId : undefined,
-  )
-  const workspace =
-    scope === 'personal' ? personalWorkspaceQuery.data : teamWorkspaceQuery.data
-  const isLoading =
-    scope === 'personal'
-      ? personalWorkspaceQuery.isLoading
-      : teamWorkspaceQuery.isLoading
-  const canEdit =
-    scope === 'personal' ||
-    teamWorkspaceQuery.data?.myRole === 'owner' ||
-    teamWorkspaceQuery.data?.myRole === 'editor'
+  const personalWorkspaceQuery = useSqlPersonalPracticeWorkspace(workspaceId)
+  const workspace = personalWorkspaceQuery.data
+  const isLoading = personalWorkspaceQuery.isLoading
+  const canEdit = true
 
   if (!workspaceId) return null
   if (isLoading) {
@@ -132,11 +105,8 @@ export function SqlStudyEditorPage({ scope }: { scope: StudyScope }) {
     )
   }
 
-  const learningPath =
-    scope === 'personal'
-      ? `/sql/personal/workspaces/${workspaceId}`
-      : `/sql/team/workspaces/${workspaceId}`
-  const listPath = scope === 'personal' ? '/sql/personal' : '/sql/team'
+  const learningPath = `/sql/personal/workspaces/${workspaceId}`
+  const listPath = '/sql/personal'
 
   return (
     <section className="space-y-4 pb-16">
@@ -152,7 +122,7 @@ export function SqlStudyEditorPage({ scope }: { scope: StudyScope }) {
           </button>
           <div className="min-w-0">
             <p className="text-xs font-black text-brand-primary">
-              {scope === 'personal' ? '개인 스터디' : '팀 스터디'} 편집기
+              개인 스터디 편집기
             </p>
             <h1 className="truncate text-lg font-black text-text-primary">{workspace.title}</h1>
           </div>
@@ -234,7 +204,6 @@ export function SqlStudyEditorPage({ scope }: { scope: StudyScope }) {
 }
 
 function StudyMetaPanel({
-  scope,
   workspaceId,
   workspace,
   disabled,
@@ -244,12 +213,7 @@ function StudyMetaPanel({
   workspace: SqlStudyMeta & { title: string; description: string }
   disabled: boolean
 }) {
-  const personalMutation = useUpdateSqlPersonalPracticeWorkspace(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamMutation = useUpdateSqlTeamPracticeWorkspace(
-    scope === 'team' ? workspaceId : undefined,
-  )
+  const personalMutation = useUpdateSqlPersonalPracticeWorkspace(workspaceId)
   const [form, setForm] = useState<SqlStudyWorkspacePayload>(() => ({
     title: workspace.title,
     description: workspace.description,
@@ -267,11 +231,10 @@ function StudyMetaPanel({
       learningGoal: form.learningGoal?.trim() || null,
       topics: topicsText.split(',').map((topic) => topic.trim()).filter(Boolean),
     }
-    if (scope === 'personal') await personalMutation.mutateAsync(payload)
-    else await teamMutation.mutateAsync(payload)
+    await personalMutation.mutateAsync(payload)
   }
 
-  const pending = personalMutation.isPending || teamMutation.isPending
+  const pending = personalMutation.isPending
 
   return (
     <EditorCard
@@ -366,7 +329,6 @@ function StudyMetaPanel({
 }
 
 function StudyDatasetPanel({
-  scope,
   workspaceId,
   disabled,
 }: {
@@ -376,32 +338,18 @@ function StudyDatasetPanel({
 }) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const personalWorkspace = useSqlPersonalPracticeWorkspace(scope === 'personal' ? workspaceId : undefined)
-  const teamWorkspace = useSqlTeamPracticeWorkspace(scope === 'team' ? workspaceId : undefined)
-  const personalTables = useSqlPersonalPracticeTables(scope === 'personal' ? workspaceId : undefined)
-  const teamTables = useSqlTeamPracticeTables(scope === 'team' ? workspaceId : undefined)
-  const personalProblems = useSqlPersonalPracticeProblems(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamProblems = useSqlTeamPracticeProblems(scope === 'team' ? workspaceId : undefined)
-  const personalMutation = useReplaceSqlPersonalPracticeSchemaVersion(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamMutation = useReplaceSqlTeamPracticeSchemaVersion(
-    scope === 'team' ? workspaceId : undefined,
-  )
-  const workspace = scope === 'personal' ? personalWorkspace.data : teamWorkspace.data
-  const tables = scope === 'personal' ? personalTables.data ?? [] : teamTables.data ?? []
-  const schemaVersion =
-    scope === 'personal'
-      ? personalProblems.data?.schemaVersion
-      : teamProblems.data?.schemaVersion
+  const personalWorkspace = useSqlPersonalPracticeWorkspace(workspaceId)
+  const personalTables = useSqlPersonalPracticeTables(workspaceId)
+  const personalProblems = useSqlPersonalPracticeProblems(workspaceId)
+  const personalMutation = useReplaceSqlPersonalPracticeSchemaVersion(workspaceId)
+  const workspace = personalWorkspace.data
+  const tables = personalTables.data ?? []
+  const schemaVersion = personalProblems.data?.schemaVersion
 
   const handleSubmit = async (input: { file: File; title?: string; description?: string }) => {
     setError(null)
     try {
-      if (scope === 'personal') await personalMutation.mutateAsync(input)
-      else await teamMutation.mutateAsync(input)
+      await personalMutation.mutateAsync(input)
       setDialogOpen(false)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '데이터셋 교체에 실패했습니다.')
@@ -451,7 +399,7 @@ function StudyDatasetPanel({
         open={dialogOpen}
         workspaceTitle={workspace?.title ?? 'SQL 스터디'}
         currentVersion={schemaVersion}
-        isPending={personalMutation.isPending || teamMutation.isPending}
+        isPending={personalMutation.isPending}
         errorMessage={error}
         onSubmit={handleSubmit}
         onClose={() => {
@@ -464,7 +412,6 @@ function StudyDatasetPanel({
 }
 
 function StudyErdPanel({
-  scope,
   workspaceId,
   disabled,
 }: {
@@ -472,68 +419,42 @@ function StudyErdPanel({
   workspaceId: string
   disabled: boolean
 }) {
-  const personalQuery = useSqlPersonalPracticeErd(scope === 'personal' ? workspaceId : undefined)
-  const teamQuery = useSqlTeamPracticeErd(scope === 'team' ? workspaceId : undefined)
-  const personalUpdate = useUpdateSqlPersonalPracticeErd(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamUpdate = useUpdateSqlTeamPracticeErd(scope === 'team' ? workspaceId : undefined)
-  const personalRegenerate = useRegenerateSqlPersonalPracticeErd(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamRegenerate = useRegenerateSqlTeamPracticeErd(
-    scope === 'team' ? workspaceId : undefined,
-  )
-  const mmd = scope === 'personal' ? personalQuery.data?.mmd : teamQuery.data?.mmd
+  const personalQuery = useSqlPersonalPracticeErd(workspaceId)
+  const personalUpdate = useUpdateSqlPersonalPracticeErd(workspaceId)
+  const personalRegenerate = useRegenerateSqlPersonalPracticeErd(workspaceId)
+  const mmd = personalQuery.data?.mmd
   return (
     <StudyErdEditor
       key={mmd ?? 'empty'}
-      scope={scope}
       initialMmd={mmd ?? 'erDiagram\n'}
       disabled={disabled}
       personalUpdate={personalUpdate}
-      teamUpdate={teamUpdate}
       personalRegenerate={personalRegenerate}
-      teamRegenerate={teamRegenerate}
     />
   )
 }
 
 function StudyErdEditor({
-  scope,
   initialMmd,
   disabled,
   personalUpdate,
-  teamUpdate,
   personalRegenerate,
-  teamRegenerate,
 }: {
-  scope: StudyScope
   initialMmd: string
   disabled: boolean
   personalUpdate: ReturnType<typeof useUpdateSqlPersonalPracticeErd>
-  teamUpdate: ReturnType<typeof useUpdateSqlTeamPracticeErd>
   personalRegenerate: ReturnType<typeof useRegenerateSqlPersonalPracticeErd>
-  teamRegenerate: ReturnType<typeof useRegenerateSqlTeamPracticeErd>
 }) {
   const [value, setValue] = useState(initialMmd)
 
   const handleSave = async () => {
-    if (scope === 'personal') await personalUpdate.mutateAsync(value)
-    else await teamUpdate.mutateAsync(value)
+    await personalUpdate.mutateAsync(value)
   }
   const handleRegenerate = async () => {
-    const response =
-      scope === 'personal'
-        ? await personalRegenerate.mutateAsync()
-        : await teamRegenerate.mutateAsync()
+    const response = await personalRegenerate.mutateAsync()
     setValue(response.mmd ?? 'erDiagram\n')
   }
-  const pending =
-    personalUpdate.isPending ||
-    teamUpdate.isPending ||
-    personalRegenerate.isPending ||
-    teamRegenerate.isPending
+  const pending = personalUpdate.isPending || personalRegenerate.isPending
 
   return (
     <EditorCard
@@ -587,7 +508,6 @@ function StudyErdEditor({
 }
 
 function StudyProblemsPanel({
-  scope,
   workspaceId,
   disabled,
 }: {
@@ -595,56 +515,24 @@ function StudyProblemsPanel({
   workspaceId: string
   disabled: boolean
 }) {
-  const personalQuery = useSqlPersonalPracticeProblems(scope === 'personal' ? workspaceId : undefined)
-  const teamQuery = useSqlTeamPracticeProblems(scope === 'team' ? workspaceId : undefined)
-  const personalCreate = useCreateSqlPersonalPracticeProblem(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamCreate = useCreateSqlTeamPracticeProblem(scope === 'team' ? workspaceId : undefined)
-  const personalUpdate = useUpdateSqlPersonalPracticeProblem(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamUpdate = useUpdateSqlTeamPracticeProblem(scope === 'team' ? workspaceId : undefined)
-  const personalDelete = useDeleteSqlPersonalPracticeProblem(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamDelete = useDeleteSqlTeamPracticeProblem(scope === 'team' ? workspaceId : undefined)
-  const personalGenerate = useGenerateSqlPersonalPracticeAnswer(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamGenerate = useGenerateSqlTeamPracticeAnswer(scope === 'team' ? workspaceId : undefined)
-  const personalProblemSets = useSqlPersonalPracticeProblemSets(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamProblemSets = useSqlTeamPracticeProblemSets(scope === 'team' ? workspaceId : undefined)
-  const personalCreateSet = useCreateSqlPersonalPracticeProblemSet(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamCreateSet = useCreateSqlTeamPracticeProblemSet(scope === 'team' ? workspaceId : undefined)
-  const personalGenerateSetProblems = useGenerateSqlPersonalPracticeProblemSetProblems(
-    scope === 'personal' ? workspaceId : undefined,
-  )
-  const teamGenerateSetProblems = useGenerateSqlTeamPracticeProblemSetProblems(
-    scope === 'team' ? workspaceId : undefined,
-  )
+  const personalQuery = useSqlPersonalPracticeProblems(workspaceId)
+  const personalCreate = useCreateSqlPersonalPracticeProblem(workspaceId)
+  const personalUpdate = useUpdateSqlPersonalPracticeProblem(workspaceId)
+  const personalDelete = useDeleteSqlPersonalPracticeProblem(workspaceId)
+  const personalGenerate = useGenerateSqlPersonalPracticeAnswer(workspaceId)
+  const personalProblemSets = useSqlPersonalPracticeProblemSets(workspaceId)
+  const personalCreateSet = useCreateSqlPersonalPracticeProblemSet(workspaceId)
+  const personalGenerateSetProblems =
+    useGenerateSqlPersonalPracticeProblemSetProblems(workspaceId)
   const problems = useMemo(
-    () =>
-      scope === 'personal'
-        ? personalQuery.data?.problems ?? []
-        : teamQuery.data?.problems ?? [],
-    [personalQuery.data?.problems, scope, teamQuery.data?.problems],
+    () => personalQuery.data?.problems ?? [],
+    [personalQuery.data?.problems],
   )
   const problemSets = useMemo(
-    () =>
-      scope === 'personal'
-        ? personalProblemSets.data?.problemSets ?? personalQuery.data?.problemSets ?? []
-        : teamProblemSets.data?.problemSets ?? teamQuery.data?.problemSets ?? [],
+    () => personalProblemSets.data?.problemSets ?? personalQuery.data?.problemSets ?? [],
     [
       personalProblemSets.data?.problemSets,
       personalQuery.data?.problemSets,
-      scope,
-      teamProblemSets.data?.problemSets,
-      teamQuery.data?.problemSets,
     ],
   )
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null)
@@ -715,15 +603,9 @@ function StudyProblemsPanel({
     event.preventDefault()
     const next = payload()
     if (editingId) {
-      if (scope === 'personal') {
-        await personalUpdate.mutateAsync({ id: editingId, payload: next })
-      } else {
-        await teamUpdate.mutateAsync({ id: editingId, payload: next })
-      }
-    } else if (scope === 'personal') {
-      await personalCreate.mutateAsync(next)
+      await personalUpdate.mutateAsync({ id: editingId, payload: next })
     } else {
-      await teamCreate.mutateAsync(next)
+      await personalCreate.mutateAsync(next)
     }
     setIsProblemDialogOpen(false)
     reset()
@@ -736,10 +618,7 @@ function StudyProblemsPanel({
       level: problemSetForm.level ? Number(problemSetForm.level) : null,
       status: problemSetForm.status as 'draft' | 'published',
     }
-    const created =
-      scope === 'personal'
-        ? await personalCreateSet.mutateAsync(payload)
-        : await teamCreateSet.mutateAsync(payload)
+    const created = await personalCreateSet.mutateAsync(payload)
     setSelectedSetId(created.id)
     setProblemSetForm({ title: '', description: '', level: '', status: 'draft' })
     setIsSetDialogOpen(false)
@@ -752,11 +631,7 @@ function StudyProblemsPanel({
       count: 10,
       additionalInstructions: generationInstructions.trim() || undefined,
     }
-    if (scope === 'personal') {
-      await personalGenerateSetProblems.mutateAsync(generationPayload)
-    } else {
-      await teamGenerateSetProblems.mutateAsync(generationPayload)
-    }
+    await personalGenerateSetProblems.mutateAsync(generationPayload)
   }
   const handleGenerate = async () => {
     const request = {
@@ -765,10 +640,7 @@ function StudyProblemsPanel({
       level: form.level,
       targetTables: payload().targetTables,
     }
-    const response =
-      scope === 'personal'
-        ? await personalGenerate.mutateAsync(request)
-        : await teamGenerate.mutateAsync(request)
+    const response = await personalGenerate.mutateAsync(request)
     setForm((current) => ({
       ...current,
       answerSql: response.answerSql,
@@ -777,8 +649,7 @@ function StudyProblemsPanel({
   }
   const handleDelete = async (id: string) => {
     if (!window.confirm('이 문제를 삭제할까요?')) return
-    if (scope === 'personal') await personalDelete.mutateAsync(id)
-    else await teamDelete.mutateAsync(id)
+    await personalDelete.mutateAsync(id)
     if (editingId === id) {
       setIsProblemDialogOpen(false)
       reset()
@@ -793,28 +664,15 @@ function StudyProblemsPanel({
     if (!target) return
     const nextProblemOrder = index + direction
     const nextTargetOrder = index
-    if (scope === 'personal') {
-      await Promise.all([
-        personalUpdate.mutateAsync({ id: problem.id, payload: { orderIdx: nextProblemOrder } }),
-        personalUpdate.mutateAsync({ id: target.id, payload: { orderIdx: nextTargetOrder } }),
-      ])
-    } else {
-      await Promise.all([
-        teamUpdate.mutateAsync({ id: problem.id, payload: { orderIdx: nextProblemOrder } }),
-        teamUpdate.mutateAsync({ id: target.id, payload: { orderIdx: nextTargetOrder } }),
-      ])
-    }
+    await Promise.all([
+      personalUpdate.mutateAsync({ id: problem.id, payload: { orderIdx: nextProblemOrder } }),
+      personalUpdate.mutateAsync({ id: target.id, payload: { orderIdx: nextTargetOrder } }),
+    ])
   }
-  const pending =
-    personalCreate.isPending ||
-    teamCreate.isPending ||
-    personalUpdate.isPending ||
-    teamUpdate.isPending
+  const pending = personalCreate.isPending || personalUpdate.isPending
   const setPending =
     personalCreateSet.isPending ||
-    teamCreateSet.isPending ||
-    personalGenerateSetProblems.isPending ||
-    teamGenerateSetProblems.isPending
+    personalGenerateSetProblems.isPending
 
   return (
     <>
@@ -901,14 +759,12 @@ function StudyProblemsPanel({
                 onClick={handleGenerateSetProblems}
                 disabled={disabled || setPending || !selectedSet}
               >
-                {personalGenerateSetProblems.isPending || teamGenerateSetProblems.isPending ? (
+                {personalGenerateSetProblems.isPending ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <WandSparkles className="size-4" />
                 )}
-                {personalGenerateSetProblems.isPending || teamGenerateSetProblems.isPending
-                  ? 'AI 문제 생성 중...'
-                  : 'AI 문제 10개 생성'}
+                {personalGenerateSetProblems.isPending ? 'AI 문제 생성 중...' : 'AI 문제 10개 생성'}
               </Button>
             </div>
           </div>
@@ -1227,11 +1083,10 @@ function StudyProblemsPanel({
                         disabled ||
                         pending ||
                         !form.description.trim() ||
-                        personalGenerate.isPending ||
-                        teamGenerate.isPending
+                        personalGenerate.isPending
                       }
                     >
-                      {personalGenerate.isPending || teamGenerate.isPending ? (
+                      {personalGenerate.isPending ? (
                         <Loader2 className="size-3.5 animate-spin" />
                       ) : (
                         <WandSparkles className="size-3.5" />

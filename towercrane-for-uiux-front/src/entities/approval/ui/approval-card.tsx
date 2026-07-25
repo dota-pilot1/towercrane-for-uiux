@@ -3,7 +3,6 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
-  ChevronUp,
   Clock3,
   Minus,
   Paperclip,
@@ -362,69 +361,79 @@ export function ApprovalCard({
           )}
           <StatusBadge status={req.status} />
           <span className="flex size-8 items-center justify-center rounded-md text-text-muted">
-            {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+            <ChevronDown
+              className={`size-4 transition-transform duration-300 ease-out ${
+                open ? 'rotate-180' : ''
+              }`}
+            />
           </span>
         </span>
       </button>
 
-      {open && (
-        <div className="bg-surface-raised">
-          {req.meta && (
-            <section className="border-t border-surface-border-soft px-5 py-5 sm:px-6">
-              <h3 className="mb-4 text-sm font-semibold text-text-primary">
-                {CATEGORY_LABEL[req.category]} 정보
-              </h3>
-              <div className="rounded-lg border border-surface-border-soft bg-surface-muted/70 p-4 sm:p-5">
-                <MetaView meta={req.meta} />
-              </div>
+      <div
+        className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        }`}
+      >
+        <div className="overflow-hidden" inert={!open}>
+          <div className="bg-surface-raised">
+            {req.meta && (
+              <section className="border-t border-surface-border-soft px-5 py-5 sm:px-6">
+                <h3 className="mb-4 text-sm font-semibold text-text-primary">
+                  {CATEGORY_LABEL[req.category]} 정보
+                </h3>
+                <div className="rounded-lg border border-surface-border-soft bg-surface-muted/70 p-4 sm:p-5">
+                  <MetaView meta={req.meta} />
+                </div>
+              </section>
+            )}
+
+            <section className="border-t border-surface-border-soft bg-surface-muted/25 px-5 py-5 sm:px-6">
+              <h3 className="text-sm font-semibold text-text-primary">신청 내용</h3>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
+                {req.content}
+              </p>
             </section>
-          )}
 
-          <section className="border-t border-surface-border-soft bg-surface-muted/25 px-5 py-5 sm:px-6">
-            <h3 className="text-sm font-semibold text-text-primary">신청 내용</h3>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
-              {req.content}
-            </p>
-          </section>
+            <section className="border-t border-surface-border-soft px-5 py-5 sm:px-6 sm:py-6">
+              <ApprovalFlow request={req} />
+            </section>
 
-          <section className="border-t border-surface-border-soft px-5 py-5 sm:px-6 sm:py-6">
-            <ApprovalFlow request={req} />
-          </section>
-
-          {canAct && req.status === 'PENDING' && (
-            <footer className="border-t border-surface-border-soft bg-brand-glass px-5 py-5 sm:px-6">
-              <label htmlFor={`approval-comment-${req.id}`} className="text-sm font-semibold text-text-primary">
-                결재 의견 <span className="font-normal text-text-muted">(선택)</span>
-              </label>
-              <Textarea
-                id={`approval-comment-${req.id}`}
-                value={comment}
-                onChange={(event) => setComment(event.target.value)}
-                placeholder="승인 또는 반려 의견을 입력하세요"
-                rows={3}
-                className="mt-3 resize-none bg-surface-raised"
-              />
-              <div className="mt-4 flex justify-end gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => onAct?.(req.id, 'REJECTED', comment)}
-                  className="gap-2 rounded-lg border-destructive/30 bg-danger-glass text-destructive hover:bg-danger-glass"
-                >
-                  <XCircle className="size-4" />
-                  반려
-                </Button>
-                <Button
-                  onClick={() => onAct?.(req.id, 'APPROVED', comment)}
-                  className="gap-2 rounded-lg"
-                >
-                  <CheckCircle2 className="size-4" />
-                  승인
-                </Button>
-              </div>
-            </footer>
-          )}
+            {canAct && req.status === 'PENDING' && (
+              <footer className="border-t border-surface-border-soft bg-brand-glass px-5 py-5 sm:px-6">
+                <label htmlFor={`approval-comment-${req.id}`} className="text-sm font-semibold text-text-primary">
+                  결재 의견 <span className="font-normal text-text-muted">(선택)</span>
+                </label>
+                <Textarea
+                  id={`approval-comment-${req.id}`}
+                  value={comment}
+                  onChange={(event) => setComment(event.target.value)}
+                  placeholder="승인 또는 반려 의견을 입력하세요"
+                  rows={3}
+                  className="mt-3 resize-none bg-surface-raised"
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => onAct?.(req.id, 'REJECTED', comment)}
+                    className="gap-2 rounded-lg border-destructive/30 bg-danger-glass text-destructive hover:bg-danger-glass"
+                  >
+                    <XCircle className="size-4" />
+                    반려
+                  </Button>
+                  <Button
+                    onClick={() => onAct?.(req.id, 'APPROVED', comment)}
+                    className="gap-2 rounded-lg"
+                  >
+                    <CheckCircle2 className="size-4" />
+                    승인
+                  </Button>
+                </div>
+              </footer>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </article>
   )
 }

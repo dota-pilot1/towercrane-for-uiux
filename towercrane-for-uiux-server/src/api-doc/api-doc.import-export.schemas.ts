@@ -64,7 +64,9 @@ export const apiDocImportExportFileSchema = z.discriminatedUnion('version', [
   apiDocImportExportV2FileSchema,
 ]);
 
-export type ApiDocImportExportFile = z.infer<typeof apiDocImportExportFileSchema>;
+export type ApiDocImportExportFile = z.infer<
+  typeof apiDocImportExportFileSchema
+>;
 export type ApiDocImportExportV1File = z.infer<
   typeof apiDocImportExportV1FileSchema
 >;
@@ -72,6 +74,8 @@ export type ApiDocImportExportV2File = z.infer<
   typeof apiDocImportExportV2FileSchema
 >;
 export type ApiDocImportWorkspace = z.infer<typeof apiDocImportWorkspaceSchema>;
-export type ApiDocImportCollection = z.infer<typeof apiDocImportCollectionSchema>;
+export type ApiDocImportCollection = z.infer<
+  typeof apiDocImportCollectionSchema
+>;
 export type ApiDocImportEndpoint = z.infer<typeof apiDocImportEndpointSchema>;
 export type ApiBlockContentImport = z.infer<typeof apiBlockContentImportSchema>;

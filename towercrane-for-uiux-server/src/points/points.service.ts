@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { and, desc, eq } from 'drizzle-orm';
@@ -124,7 +120,10 @@ export class PointsService {
 
   // PortOne(카카오페이) 실결제 검증 후 적립.
   // 프론트가 보낸 paymentId를 신뢰하지 않고 서버가 PortOne API로 직접 조회한다.
-  async confirmTopup(userId: string, payload: unknown): Promise<{
+  async confirmTopup(
+    userId: string,
+    payload: unknown,
+  ): Promise<{
     balance: number;
     topupId: string;
     alreadyProcessed: boolean;
@@ -225,7 +224,10 @@ export class PointsService {
   }
 
   // 충전 취소(환불) — 전액 환불만. 미사용분이 남아있어야(잔액 ≥ 충전 포인트) 가능.
-  async refundTopup(userId: string, payload: unknown): Promise<{
+  async refundTopup(
+    userId: string,
+    payload: unknown,
+  ): Promise<{
     balance: number;
     refunded: number;
   }> {
@@ -414,7 +416,9 @@ export class PointsService {
       throw new BadRequestException('충전 금액이 올바르지 않습니다.');
     }
     if (amount > MAX_TOPUP) {
-      throw new BadRequestException('1회 충전 한도(1,000,000P)를 초과했습니다.');
+      throw new BadRequestException(
+        '1회 충전 한도(1,000,000P)를 초과했습니다.',
+      );
     }
     return amount;
   }

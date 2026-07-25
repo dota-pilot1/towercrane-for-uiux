@@ -288,7 +288,11 @@ export class IssuesService {
     if (sort === 'recent') return [desc(issuesTable.updatedAt)];
     if (sort === 'oldest') return [asc(issuesTable.createdAt)];
     if (sort === 'priority') {
-      return [priorityOrder, asc(issuesTable.orderIdx), desc(issuesTable.createdAt)];
+      return [
+        priorityOrder,
+        asc(issuesTable.orderIdx),
+        desc(issuesTable.createdAt),
+      ];
     }
     return [asc(issuesTable.orderIdx), desc(issuesTable.createdAt)];
   }
@@ -317,7 +321,8 @@ export class IssuesService {
       )
       .get();
 
-    if (!row) throw new NotFoundException(`Issue comment not found: ${commentId}`);
+    if (!row)
+      throw new NotFoundException(`Issue comment not found: ${commentId}`);
     return row;
   }
 

@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { OptionalAuthGuard } from '../auth/optional-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -31,10 +24,7 @@ export class AnalyticsController {
   // 수집: 로그인 여부 무관(익명 허용) — 라우트 변경 시 프론트가 호출
   @Post('pageview')
   @UseGuards(OptionalAuthGuard)
-  track(
-    @Body() body: TrackPageViewDto,
-    @CurrentUser() user?: SessionUser,
-  ) {
+  track(@Body() body: TrackPageViewDto, @CurrentUser() user?: SessionUser) {
     if (!body?.path || !body?.visitorId || !body?.sessionId) {
       return { ok: false };
     }

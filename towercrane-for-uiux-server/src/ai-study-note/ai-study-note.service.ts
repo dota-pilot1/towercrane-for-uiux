@@ -142,7 +142,10 @@ export class AiStudyNoteService {
       ...plan,
       isMine: plan.userId === userId,
       ownerName: owner?.name,
-      items: items.map((i) => ({ ...i, noteCount: noteCountMap.get(i.id) ?? 0 })),
+      items: items.map((i) => ({
+        ...i,
+        noteCount: noteCountMap.get(i.id) ?? 0,
+      })),
     };
   }
 
@@ -167,11 +170,18 @@ export class AiStudyNoteService {
 
   deletePlan(userId: string, planId: string) {
     this.ensureOwner(userId, planId);
-    this.db.delete(aiStudyNotesTable).where(eq(aiStudyNotesTable.id, planId)).run();
+    this.db
+      .delete(aiStudyNotesTable)
+      .where(eq(aiStudyNotesTable.id, planId))
+      .run();
     return { success: true };
   }
 
-  createItem(userId: string, planId: string, input: CreateAiStudyNoteItemInput) {
+  createItem(
+    userId: string,
+    planId: string,
+    input: CreateAiStudyNoteItemInput,
+  ) {
     this.ensureOwner(userId, planId);
     const now = this.now();
     const id = `item-${randomUUID().slice(0, 12)}`;
@@ -204,7 +214,11 @@ export class AiStudyNoteService {
       .get();
   }
 
-  updateItem(userId: string, itemId: string, input: UpdateAiStudyNoteItemInput) {
+  updateItem(
+    userId: string,
+    itemId: string,
+    input: UpdateAiStudyNoteItemInput,
+  ) {
     const item = this.ensureItemOwner(userId, itemId);
     this.db
       .update(aiStudyNoteItemsTable)
@@ -255,7 +269,10 @@ export class AiStudyNoteService {
     return this.db
       .select(this.noteSelection())
       .from(aiStudyNoteItemNotesTable)
-      .innerJoin(usersTable, eq(aiStudyNoteItemNotesTable.userId, usersTable.id))
+      .innerJoin(
+        usersTable,
+        eq(aiStudyNoteItemNotesTable.userId, usersTable.id),
+      )
       .where(eq(aiStudyNoteItemNotesTable.id, noteId))
       .get();
   }
@@ -266,7 +283,10 @@ export class AiStudyNoteService {
     return this.db
       .select(this.noteSelection())
       .from(aiStudyNoteItemNotesTable)
-      .innerJoin(usersTable, eq(aiStudyNoteItemNotesTable.userId, usersTable.id))
+      .innerJoin(
+        usersTable,
+        eq(aiStudyNoteItemNotesTable.userId, usersTable.id),
+      )
       .where(eq(aiStudyNoteItemNotesTable.itemId, itemId))
       .orderBy(
         asc(aiStudyNoteItemNotesTable.orderIdx),
