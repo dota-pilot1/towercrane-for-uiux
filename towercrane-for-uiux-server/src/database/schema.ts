@@ -2311,114 +2311,6 @@ export const chatMessagesTable = sqliteTable('chat_messages', {
   createdAt: text('created_at').notNull(),
 });
 
-export type KnowledgeChannel = 'notice' | 'faq' | 'ai' | 'dev';
-export type KnowledgeStatus = 'draft' | 'published' | 'archived';
-export type KnowledgeVisibility = 'all' | 'department' | 'role';
-
-export const knowledgeDocumentsTable = sqliteTable('knowledge_documents', {
-  id: text('id').primaryKey(),
-  channel: text('channel').$type<KnowledgeChannel>().notNull(),
-  title: text('title').notNull(),
-  summary: text('summary'),
-  contentMarkdown: text('content_markdown').notNull().default(''),
-  contentJson: text('content_json'),
-  tagsJson: text('tags_json').notNull().default('[]'),
-  status: text('status').$type<KnowledgeStatus>().notNull().default('draft'),
-  visibility: text('visibility')
-    .$type<KnowledgeVisibility>()
-    .notNull()
-    .default('all'),
-  ownerId: text('owner_id').references(() => usersTable.id, {
-    onDelete: 'set null',
-  }),
-  ownerName: text('owner_name').notNull(),
-  effectiveFrom: text('effective_from'),
-  effectiveTo: text('effective_to'),
-  metadataJson: text('metadata_json').notNull().default('{}'),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-  publishedAt: text('published_at'),
-});
-
-export const knowledgeChunksTable = sqliteTable('knowledge_chunks', {
-  id: text('id').primaryKey(),
-  documentId: text('document_id')
-    .notNull()
-    .references(() => knowledgeDocumentsTable.id, { onDelete: 'cascade' }),
-  channel: text('channel').$type<KnowledgeChannel>().notNull(),
-  chunkIndex: integer('chunk_index').notNull().default(0),
-  headingPath: text('heading_path'),
-  chunkText: text('chunk_text').notNull(),
-  tokenEstimate: integer('token_estimate'),
-  metadataJson: text('metadata_json').notNull().default('{}'),
-  createdAt: text('created_at').notNull(),
-});
-
-// ── 전자결재 (towercrane-approval-system) ────────────────────────────────
-export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-export type ApprovalStepStatus =
-  | 'WAITING'
-  | 'PENDING'
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'SKIPPED';
-export type ApprovalCategory =
-  | 'LEAVE'
-  | 'PURCHASE'
-  | 'TRIP'
-  | 'EXPENSE'
-  | 'PROPOSAL';
-
-export const approvalRequestsTable = sqliteTable('approval_requests', {
-  id: text('id').primaryKey(),
-  title: text('title').notNull(),
-  content: text('content').notNull(),
-  category: text('category').$type<ApprovalCategory>().notNull(),
-  status: text('status').$type<ApprovalStatus>().notNull().default('PENDING'),
-  // 분류별 구조화 데이터(JSON 문자열)
-  meta: text('meta'),
-  submitterId: text('submitter_id')
-    .notNull()
-    .references(() => usersTable.id, { onDelete: 'restrict' }),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-});
-
-export const approvalStepsTable = sqliteTable('approval_steps', {
-  id: text('id').primaryKey(),
-  requestId: text('request_id')
-    .notNull()
-    .references(() => approvalRequestsTable.id, { onDelete: 'cascade' }),
-  order: integer('order').notNull(),
-  approverId: text('approver_id')
-    .notNull()
-    .references(() => usersTable.id, { onDelete: 'restrict' }),
-  status: text('status')
-    .$type<ApprovalStepStatus>()
-    .notNull()
-    .default('WAITING'),
-  comment: text('comment'),
-  actedAt: text('acted_at'),
-  createdAt: text('created_at').notNull(),
-});
-
-export const approvalDraftsTable = sqliteTable('approval_drafts', {
-  userId: text('user_id')
-    .primaryKey()
-    .references(() => usersTable.id, { onDelete: 'cascade' }),
-  // 작성 중인 폼의 원시 입력값(JSON 문자열)
-  payload: text('payload').notNull(),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-});
-
-export type ApprovalRequestRow = typeof approvalRequestsTable.$inferSelect;
-export type ApprovalRequestInsert = typeof approvalRequestsTable.$inferInsert;
-export type ApprovalStepRow = typeof approvalStepsTable.$inferSelect;
-export type ApprovalStepInsert = typeof approvalStepsTable.$inferInsert;
-export type ApprovalDraftRow = typeof approvalDraftsTable.$inferSelect;
-export type ApprovalDraftInsert = typeof approvalDraftsTable.$inferInsert;
-
 export const schema = {
   usersTable,
   sessionsTable,
@@ -2514,22 +2406,12 @@ export const schema = {
   devChallengeSubmissionsTable,
   chatSessionsTable,
   chatMessagesTable,
-  knowledgeDocumentsTable,
-  knowledgeChunksTable,
-  approvalRequestsTable,
-  approvalStepsTable,
-  approvalDraftsTable,
 };
 
 export type ChatSessionRow = typeof chatSessionsTable.$inferSelect;
 export type ChatSessionInsert = typeof chatSessionsTable.$inferInsert;
 export type ChatMessageRow = typeof chatMessagesTable.$inferSelect;
 export type ChatMessageInsert = typeof chatMessagesTable.$inferInsert;
-export type KnowledgeDocumentRow = typeof knowledgeDocumentsTable.$inferSelect;
-export type KnowledgeDocumentInsert =
-  typeof knowledgeDocumentsTable.$inferInsert;
-export type KnowledgeChunkRow = typeof knowledgeChunksTable.$inferSelect;
-export type KnowledgeChunkInsert = typeof knowledgeChunksTable.$inferInsert;
 
 export type UserRow = typeof usersTable.$inferSelect;
 export type UserInsert = typeof usersTable.$inferInsert;
@@ -2780,54 +2662,6 @@ export type DevChallengeSubmissionRow =
   typeof devChallengeSubmissionsTable.$inferSelect;
 export type DevChallengeSubmissionInsert =
   typeof devChallengeSubmissionsTable.$inferInsert;
-
-// ─── AI 활용 능력 평가 ────────────────────────────────────────────────────────
-
-export const evalCategoriesTable = sqliteTable('eval_categories', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  displayOrder: integer('display_order').notNull().default(0),
-});
-
-export const evaluateesTable = sqliteTable('evaluatees', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  role: text('role'),
-  description: text('description'),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-});
-
-export const evalItemsTable = sqliteTable('eval_items', {
-  id: text('id').primaryKey(),
-  categoryId: text('category_id')
-    .notNull()
-    .references(() => evalCategoriesTable.id, { onDelete: 'cascade' }),
-  evaluateeId: text('evaluatee_id')
-    .notNull()
-    .references(() => evaluateesTable.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  description: text('description'),
-  displayOrder: integer('display_order').notNull().default(0),
-  createdAt: text('created_at').notNull(),
-});
-
-export const evalScoresTable = sqliteTable('eval_scores', {
-  id: text('id').primaryKey(),
-  itemId: text('item_id')
-    .notNull()
-    .references(() => evalItemsTable.id, { onDelete: 'cascade' }),
-  score: integer('score').notNull().default(0),
-  note: text('note'),
-  updatedAt: text('updated_at').notNull(),
-});
-
-export type EvaluateeRow = typeof evaluateesTable.$inferSelect;
-export type EvaluateeInsert = typeof evaluateesTable.$inferInsert;
-export type EvalCategoryRow = typeof evalCategoriesTable.$inferSelect;
-export type EvalItemRow = typeof evalItemsTable.$inferSelect;
-export type EvalItemInsert = typeof evalItemsTable.$inferInsert;
-export type EvalScoreRow = typeof evalScoresTable.$inferSelect;
 
 // ─── AI 사용량 로그 ───────────────────────────────────────────────────────────
 

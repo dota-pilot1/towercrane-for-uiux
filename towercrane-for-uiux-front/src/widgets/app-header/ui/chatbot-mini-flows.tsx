@@ -60,19 +60,6 @@ const FLOWS: Record<string, { nodes: Node[]; edges: Edge[] }> = {
     edges: [ae('e1-2','1','2'), ae('e1-3','1','3',true), ae('e3-4','3','4'), ae('e2-4','2','4'), ae('e4-5','4','5',true), ae('e5-6','5','6',true)],
   },
 
-  chatbot_knowledge: {
-    nodes: [
-      { id:'1', position:{ x:0,  y:80 }, data:{ label:'❓ 사용자 질문' },                style:B },
-      { id:'2', position:{ x:160,y:0  }, data:{ label:'🔘 채널 선택\n공지/FAQ/전체' },   style:M },
-      { id:'3', position:{ x:160,y:130}, data:{ label:'🔤 임베딩\ntext-embedding-3-small' }, style:S },
-      { id:'4', position:{ x:340,y:80 }, data:{ label:'🔍 벡터 검색\nTop-K 청크' },      style:S },
-      { id:'5', position:{ x:500,y:0  }, data:{ label:'🤖 GPT\nRAG 답변' },             style:S },
-      { id:'6', position:{ x:500,y:140}, data:{ label:'🔗 검색 근거\n패널 표시' },       style:M },
-      { id:'7', position:{ x:660,y:80 }, data:{ label:'✅ 응답 +\n출처' },               style:B },
-    ],
-    edges: [ae('e1-2','1','2'), ae('e1-3','1','3',true), ae('e2-4','2','4'), ae('e3-4','3','4',true), ae('e4-5','4','5',true), ae('e4-6','4','6'), ae('e5-7','5','7',true), ae('e6-7','6','7')],
-  },
-
   chatbot_basic_guide: {
     nodes: [
       { id:'1', position:{ x:0,  y:60 }, data:{ label:'📖 기본 채팅\n프로세스 가이드' }, style:B },
@@ -109,14 +96,6 @@ const FLOWS: Record<string, { nodes: Node[]; edges: Edge[] }> = {
     edges: [ae('e1-2','1','2',true), ae('e2-3','2','3')],
   },
 
-  chatbot_knowledge_guide: {
-    nodes: [
-      { id:'1', position:{ x:0,  y:60 }, data:{ label:'📖 지식 검색\n프로세스 가이드' }, style:B },
-      { id:'2', position:{ x:200,y:60 }, data:{ label:'⚛️ RAG 파이프라인\n시각화' },    style:S },
-      { id:'3', position:{ x:400,y:60 }, data:{ label:'🔍 임베딩·벡터\n검색 과정' },    style:M },
-    ],
-    edges: [ae('e1-2','1','2',true), ae('e2-3','2','3')],
-  },
 }
 
 const DEFAULT_FLOW = {

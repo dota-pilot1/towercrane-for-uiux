@@ -81,7 +81,7 @@ const defaultOptions: RealtimeChatOptions = {
   difficulty: 'intermediate',
   responseLength: 'default',
   instructions: '',
-  enabledTools: ['get_my_tasks', 'search_knowledge'],
+  enabledTools: ['get_my_tasks'],
 }
 
 function makeId(prefix: string) {

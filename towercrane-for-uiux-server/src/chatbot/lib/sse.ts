@@ -1,5 +1,4 @@
 import type { Response } from 'express';
-import type { KnowledgeSource } from '../chatbot.types';
 
 /**
  * SSE 프레임 쓰기. 'data: …\n\n' 규약을 이 파일 안에만 가둔다.
@@ -25,12 +24,9 @@ export function createSse(res: Response) {
      *   [DONE]     프론트가 수신 루프를 return
      *   res.end()  연결 닫기 — 없으면 브라우저가 영원히 대기
      */
-    finish: (
-      assistantMessage: unknown,
-      knowledgeSources: KnowledgeSource[] = [],
-    ) => {
+    finish: (assistantMessage: unknown) => {
       res.write(
-        `data: ${JSON.stringify({ type: 'done', assistantMessage, knowledgeSources })}\n\n`,
+        `data: ${JSON.stringify({ type: 'done', assistantMessage })}\n\n`,
       );
       res.write('data: [DONE]\n\n');
       res.end();

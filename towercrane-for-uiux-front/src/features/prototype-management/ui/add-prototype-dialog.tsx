@@ -170,7 +170,7 @@ export function AddPrototypeDialog({
                 <div className="space-y-5">
                   <div className="space-y-1.5">
                     <span className="text-[13px] font-medium text-text-secondary ml-1">이름</span>
-                    <Input {...register('title')} placeholder="예: Approval Flow Prototype" className="h-11" />
+                    <Input {...register('title')} placeholder="예: 예약 플로우 프로토타입" className="h-11" />
                     {errors.title ? <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.title.message}</p> : null}
                   </div>
 

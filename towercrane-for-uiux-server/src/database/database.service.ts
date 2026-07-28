@@ -24,7 +24,6 @@ import {
   prototypesTable,
   schema,
   usersTable,
-  evalCategoriesTable,
   type PrototypeInsert,
   type UserInsert,
 } from './schema';
@@ -85,6 +84,54 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.sqlite.exec(
       "UPDATE ai_study_notes SET visibility='public' WHERE visibility='shared'",
     );
+  }
+
+  private removeRetiredFeatures() {
+    this.sqlite.exec(`
+      DELETE FROM menus
+      WHERE section_id IN (
+        'approval',
+        'approval_home',
+        'approval_submit',
+        'approval_inbox',
+        'approval_sent',
+        'approval_documents',
+        'english_group',
+        'english_chat',
+        'english_diary',
+        'english_news',
+        'english_listening',
+        'english_character',
+        'dev_analysis_group',
+        'analysis_tech_debt',
+        'analysis_trends',
+        'analysis_hiring',
+        'analysis_domain',
+        'analysis_concepts',
+        'knowledge_channel',
+        'knowledge_notice',
+        'knowledge_faq',
+        'knowledge_ai',
+        'knowledge_dev',
+        'chatbot_knowledge',
+        'chatbot_knowledge_guide',
+        'market_lectures',
+        'market_recommend',
+        'market_notes',
+        'market_prototypes',
+        'ai_evaluation'
+      );
+
+      DROP TABLE IF EXISTS eval_scores;
+      DROP TABLE IF EXISTS eval_items;
+      DROP TABLE IF EXISTS evaluatees;
+      DROP TABLE IF EXISTS eval_categories;
+      DROP TABLE IF EXISTS knowledge_chunks;
+      DROP TABLE IF EXISTS knowledge_documents;
+      DROP TABLE IF EXISTS approval_steps;
+      DROP TABLE IF EXISTS approval_drafts;
+      DROP TABLE IF EXISTS approval_requests;
+    `);
   }
 
   onModuleInit() {
@@ -1722,39 +1769,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_dev_challenge_submissions_assignment_user
         ON dev_challenge_submissions(assignment_id, user_id);
 
-      CREATE TABLE IF NOT EXISTS eval_categories (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        display_order INTEGER NOT NULL DEFAULT 0
-      );
-
-      CREATE TABLE IF NOT EXISTS evaluatees (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        role TEXT,
-        description TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS eval_items (
-        id TEXT PRIMARY KEY,
-        category_id TEXT NOT NULL REFERENCES eval_categories(id) ON DELETE CASCADE,
-        evaluatee_id TEXT NOT NULL REFERENCES evaluatees(id) ON DELETE CASCADE,
-        title TEXT NOT NULL,
-        description TEXT,
-        display_order INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS eval_scores (
-        id TEXT PRIMARY KEY,
-        item_id TEXT NOT NULL REFERENCES eval_items(id) ON DELETE CASCADE,
-        score INTEGER NOT NULL DEFAULT 0,
-        note TEXT,
-        updated_at TEXT NOT NULL
-      );
-
       CREATE TABLE IF NOT EXISTS chat_sessions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -1770,50 +1784,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         content TEXT NOT NULL,
         created_at TEXT NOT NULL
       );
-
-      CREATE TABLE IF NOT EXISTS knowledge_documents (
-        id TEXT PRIMARY KEY,
-        channel TEXT NOT NULL,
-        title TEXT NOT NULL,
-        summary TEXT,
-        content_markdown TEXT NOT NULL DEFAULT '',
-        content_json TEXT,
-        tags_json TEXT NOT NULL DEFAULT '[]',
-        status TEXT NOT NULL DEFAULT 'draft',
-        visibility TEXT NOT NULL DEFAULT 'all',
-        owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-        owner_name TEXT NOT NULL,
-        effective_from TEXT,
-        effective_to TEXT,
-        metadata_json TEXT NOT NULL DEFAULT '{}',
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        published_at TEXT
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_knowledge_documents_channel_status_updated
-        ON knowledge_documents(channel, status, updated_at);
-
-      CREATE INDEX IF NOT EXISTS idx_knowledge_documents_owner
-        ON knowledge_documents(owner_id, updated_at);
-
-      CREATE TABLE IF NOT EXISTS knowledge_chunks (
-        id TEXT PRIMARY KEY,
-        document_id TEXT NOT NULL REFERENCES knowledge_documents(id) ON DELETE CASCADE,
-        channel TEXT NOT NULL,
-        chunk_index INTEGER NOT NULL DEFAULT 0,
-        heading_path TEXT,
-        chunk_text TEXT NOT NULL,
-        token_estimate INTEGER,
-        metadata_json TEXT NOT NULL DEFAULT '{}',
-        created_at TEXT NOT NULL
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_document
-        ON knowledge_chunks(document_id, chunk_index);
-
-      CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_channel
-        ON knowledge_chunks(channel, created_at);
 
       CREATE TABLE IF NOT EXISTS usage_logs (
         id TEXT PRIMARY KEY,
@@ -1908,56 +1878,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_departments_parent
         ON departments(parent_id, order_idx);
 
-      -- 전자결재 (towercrane-approval-system)
-      CREATE TABLE IF NOT EXISTS approval_requests (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        category TEXT NOT NULL DEFAULT 'GENERAL',
-        status TEXT NOT NULL DEFAULT 'PENDING',
-        meta TEXT,
-        submitter_id TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(submitter_id) REFERENCES users(id) ON DELETE RESTRICT
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_approval_requests_submitter
-        ON approval_requests(submitter_id, created_at);
-
-      CREATE TABLE IF NOT EXISTS approval_steps (
-        id TEXT PRIMARY KEY,
-        request_id TEXT NOT NULL,
-        "order" INTEGER NOT NULL,
-        approver_id TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'WAITING',
-        comment TEXT,
-        acted_at TEXT,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(request_id) REFERENCES approval_requests(id) ON DELETE CASCADE,
-        FOREIGN KEY(approver_id) REFERENCES users(id) ON DELETE RESTRICT
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_approval_steps_request
-        ON approval_steps(request_id, "order");
-
-      CREATE INDEX IF NOT EXISTS idx_approval_steps_approver
-        ON approval_steps(approver_id, status);
-
-      CREATE TABLE IF NOT EXISTS approval_drafts (
-        user_id TEXT PRIMARY KEY,
-        payload TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
     `);
+
+    this.removeRetiredFeatures();
 
     // users 컬럼을 먼저 추가해야 이후 drizzle select(*)가 깨지지 않음
     this.migrateOrgSchema();
     this.migrateUserSoftDeleteSchema();
     this.migrateLegacySchema();
-    this.migrateApprovalWorkflowSchema();
     this.migrateChatSchema();
     this.migrateProjectIssueSchema();
     this.migrateAiStudyNoteSchema();
@@ -1965,7 +1893,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.migrateSqlStudyMetaSchema();
     this.migrateSqlStudyProblemSetSchema();
     this.seedDefaults();
-    this.seedEvalCategories();
     this.seedOrg();
   }
 
@@ -2205,11 +2132,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.reconcileBoardMenus(now);
     this.reconcileSqlPracticeMenus(now);
     this.reconcileDevStudyMenu(now);
-    this.reconcileApprovalMenu(now);
     this.reconcileUsageStatsMenu(now);
-    this.reconcileEnglishMenu(now);
     this.reconcileDevMarketMenus(now);
-    this.reconcileDevAnalysisMenus(now);
 
     const existingTaskMenu = this.sqlite
       .prepare("SELECT id FROM menus WHERE section_id = 'task' LIMIT 1")
@@ -2341,12 +2265,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           icon: 'Paperclip',
           displayOrder: 3,
         },
-        {
-          name: '지식 검색',
-          sectionId: 'chatbot_knowledge',
-          icon: 'Search',
-          displayOrder: 4,
-        },
       ];
 
       // React Flow 메뉴 완전 삭제
@@ -2450,7 +2368,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         this.sqlite.prepare(`DELETE FROM menus WHERE id = ?`).run(duplicate.id);
       }
     };
-    ensureChatbotChild('지식 검색', 'chatbot_knowledge', 'Search', 4);
     ensureChatbotChild('도구 호출', 'chatbot_tools', 'Wrench', 5);
     ensureChatbotChild('실시간 음성', 'chatbot_realtime', 'Mic2', 6);
     ensureChatbotChild(
@@ -2478,12 +2395,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       13,
     );
     ensureChatbotChild(
-      '지식 검색 가이드',
-      'chatbot_knowledge_guide',
-      'BookOpen',
-      14,
-    );
-    ensureChatbotChild(
       '도구 호출 가이드',
       'chatbot_tools_guide',
       'BookOpen',
@@ -2495,15 +2406,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'BookOpen',
       16,
     );
-
-    // 지식 채널을 챗봇 드롭다운의 2차 메뉴로 이동 (하위 4개는 3차 플라이아웃)
-    if (parentId) {
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET name='지식 채널', icon='BookOpen', parent_id=?, display_order=7, is_visible=1, updated_at=? WHERE section_id='knowledge_channel'`,
-        )
-        .run(parentId, now);
-    }
 
     let existingDevManagement = this.sqlite
       .prepare(
@@ -2521,7 +2423,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           sectionId: 'dev_management',
           icon: 'Wrench',
           displayOrder: 2,
-          isVisible: true,
+          isVisible: false,
           requiredRole: null,
           parentId: null,
           createdAt: now,
@@ -2536,7 +2438,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             UPDATE menus
             SET name = '개발 도구',
                 icon = 'Wrench',
-                is_visible = 1,
+                is_visible = 0,
                 required_role = NULL,
                 updated_at = ?
             WHERE id = ?
@@ -2602,8 +2504,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       )
       .run(now);
 
-    // 개발 도구에는 Postman(api_doc)만 남기고 나머지는 헤더에서 숨김
-    // (라우트·데이터는 그대로, is_visible=0 으로 네비에서만 제외)
+    // 개발 도구는 웹 헤더에서 숨기고 라우트·데이터·독립 앱은 그대로 유지한다.
+    // 부모가 비노출이면 하위 Postman/GitHub PR 리뷰도 메뉴 트리에 포함되지 않는다.
     this.sqlite
       .prepare(
         `
@@ -2622,26 +2524,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .run(now);
 
     // 루트 메뉴 표시 순서 고정:
-    // 0:업무관리, 1:개발도구(Postman+Prototype+개발채팅), 2:회의실,
-    // 3:게시판, 4:Dev Study(Challenge+SQL+학습일지), 5:지식채널, 6:챗봇,
-    // 7:AI 서비스 신청, 8:Admin
+    // 업무 관리 → 회의실 → Prototype → 문서 → 게시판
+    // → 개발 강의 → 챗봇 → Admin
     const rootMenuOrder: Array<{
       sectionId: string | string[];
       displayOrder: number;
     }> = [
-      { sectionId: 'prototype', displayOrder: 0 },
-      { sectionId: ['task_group', 'task'], displayOrder: 1 },
-      { sectionId: 'approval', displayOrder: 2 },
+      { sectionId: ['task_group', 'task'], displayOrder: 0 },
+      { sectionId: 'meeting', displayOrder: 1 },
+      { sectionId: 'prototype', displayOrder: 2 },
       { sectionId: 'team_docs', displayOrder: 3 },
       { sectionId: 'dev_management', displayOrder: 4 },
-      { sectionId: 'meeting', displayOrder: 5 },
-      { sectionId: 'boards', displayOrder: 6 },
-      { sectionId: 'dev_study', displayOrder: 7 },
-      { sectionId: 'dev_market_group', displayOrder: 8 },
-      { sectionId: 'dev_analysis_group', displayOrder: 9 },
-      { sectionId: 'chatbot_pilot', displayOrder: 10 },
-      { sectionId: 'english_group', displayOrder: 11 },
-      { sectionId: 'admin_dropdown', displayOrder: 12 },
+      { sectionId: 'boards', displayOrder: 5 },
+      { sectionId: 'dev_study', displayOrder: 6 },
+      { sectionId: 'dev_market_group', displayOrder: 7 },
+      { sectionId: 'chatbot_pilot', displayOrder: 8 },
+      { sectionId: 'admin_dropdown', displayOrder: 9 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
@@ -3315,11 +3213,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'ALTER TABLE dev_challenge_categories ADD COLUMN workspace_id TEXT',
     );
     this.ensureColumn(
-      'knowledge_documents',
-      'content_json',
-      'ALTER TABLE knowledge_documents ADD COLUMN content_json TEXT',
-    );
-    this.ensureColumn(
       'code_reviews',
       'task_id',
       'ALTER TABLE code_reviews ADD COLUMN task_id TEXT',
@@ -3452,11 +3345,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     const now = new Date().toISOString();
     const demoUser = this.ensureDemoUser(now);
-    this.ensureKnowledgeAiSamples(
-      now,
-      demoUser.id,
-      demoUser.name || demoUser.email,
-    );
     this.ensurePrototypeDefaultWorkspace(now, demoUser.id);
     this.ensureTaskDefaultWorkspace(now, demoUser.id);
     this.ensureMeetingDefaultWorkspace(now, demoUser.id);
@@ -3485,210 +3373,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `,
       )
       .run();
-
-    // 전자결재 분류별 구조화 데이터 컬럼(기존 DB 호환)
-    this.ensureColumn(
-      'approval_requests',
-      'meta',
-      'ALTER TABLE approval_requests ADD COLUMN meta TEXT',
-    );
-  }
-
-  private ensureKnowledgeAiSamples(
-    now: string,
-    ownerId: string,
-    ownerName: string,
-  ) {
-    const existing = this.sqlite
-      .prepare(
-        "SELECT COUNT(*) as count FROM knowledge_documents WHERE channel = 'ai'",
-      )
-      .get() as { count: number } | undefined;
-
-    if (Number(existing?.count ?? 0) > 0) {
-      return;
-    }
-
-    const samples = [
-      {
-        id: 'knowledge-ai-sample-meeting-summary',
-        title: 'ChatGPT로 회의록 요약하기',
-        summary:
-          '회의 내용을 핵심 결정사항, 할 일, 리스크로 정리하는 AI 활용 가이드',
-        tags: ['회의록', '요약', '프롬프트'],
-        metadata: {
-          aiDocType: 'usage_guide',
-          aiDocTypeLabel: 'AI 활용 가이드',
-          difficulty: 'basic',
-          difficultyLabel: '기초',
-          targetRole: '기획자, 운영자, 개발 리더',
-          businessDomain: '회의 정리',
-          toolNames: ['ChatGPT', 'Gemini', 'Claude'],
-          hasPromptTemplate: true,
-          hasExample: true,
-          policyLevel: 'recommended',
-          policyLevelLabel: '권장',
-          ownerTeam: 'AX 운영팀',
-        },
-        contentMarkdown: [
-          '# 활용 목적',
-          '회의록 원문을 그대로 저장하기보다 핵심 결정사항, 담당자별 할 일, 일정 리스크를 빠르게 정리할 때 사용한다.',
-          '',
-          '# 추천 프롬프트',
-          '아래 회의 내용을 결정사항, 할 일, 이슈, 다음 회의 안건으로 나눠 요약해줘. 할 일은 담당자와 마감일이 보이면 함께 적어줘.',
-          '',
-          '# 주의사항',
-          '고객 개인정보, 계약 금액, 내부 보안 정보가 포함된 회의록은 사내 정책에 맞게 비식별 처리한 뒤 사용한다.',
-        ].join('\n'),
-      },
-      {
-        id: 'knowledge-ai-sample-code-review-prompt',
-        title: '코드 리뷰 요청 프롬프트 템플릿',
-        summary:
-          'PR 리뷰 전에 변경 의도, 위험 지점, 테스트 관점을 정리하는 프롬프트 템플릿',
-        tags: ['코드리뷰', '프롬프트', '개발'],
-        metadata: {
-          aiDocType: 'prompt_template',
-          aiDocTypeLabel: '프롬프트 템플릿',
-          difficulty: 'normal',
-          difficultyLabel: '일반',
-          targetRole: '개발자',
-          businessDomain: '코드 리뷰',
-          toolNames: ['ChatGPT', 'Claude', 'Copilot'],
-          hasPromptTemplate: true,
-          hasExample: true,
-          policyLevel: 'recommended',
-          policyLevelLabel: '권장',
-          ownerTeam: '개발팀',
-        },
-        contentMarkdown: [
-          '# 템플릿',
-          '다음 변경사항을 코드 리뷰 관점에서 봐줘. 특히 런타임 오류 가능성, 권한/데이터 검증 누락, 기존 UX 회귀, 테스트 누락을 우선순위로 지적해줘.',
-          '',
-          '# 함께 넣을 정보',
-          '- 변경 목적',
-          '- 주요 파일',
-          '- 재현 또는 검증 방법',
-          '- 걱정되는 부분',
-          '',
-          '# 답변 형식',
-          '중요도 순서로 문제를 먼저 정리하고, 파일과 라인 기준으로 설명하게 한다.',
-        ].join('\n'),
-      },
-      {
-        id: 'knowledge-ai-sample-privacy-policy',
-        title: '개인정보를 AI에 입력하면 안 되는 이유',
-        summary:
-          'AI 도구 사용 시 개인정보와 민감정보를 입력하지 않아야 하는 기준',
-        tags: ['보안', '개인정보', '정책'],
-        metadata: {
-          aiDocType: 'policy',
-          aiDocTypeLabel: '보안/정책',
-          difficulty: 'basic',
-          difficultyLabel: '기초',
-          targetRole: '전 직원',
-          businessDomain: 'AI 보안',
-          toolNames: ['ChatGPT', 'Gemini', 'Claude', 'Copilot'],
-          hasPromptTemplate: false,
-          hasExample: true,
-          policyLevel: 'required',
-          policyLevelLabel: '필수 준수',
-          ownerTeam: '보안/AX 운영팀',
-        },
-        contentMarkdown: [
-          '# 원칙',
-          '이름, 전화번호, 이메일, 고객 식별자, 계정 정보, 계약 정보 같은 개인정보와 민감정보는 외부 AI 도구에 입력하지 않는다.',
-          '',
-          '# 허용되는 방식',
-          '필요한 경우 홍길동, user@example.com, 고객 A처럼 예시 값으로 치환하거나 식별 가능한 정보를 제거한 뒤 질문한다.',
-          '',
-          '# 챗봇 답변 기준',
-          '사용자가 개인정보 입력 가능 여부를 묻는 경우 가능하다고 답하지 말고, 비식별 처리 후 사용하라고 안내한다.',
-        ].join('\n'),
-      },
-    ];
-
-    const insertDocument = this.sqlite.prepare(`
-      INSERT OR IGNORE INTO knowledge_documents (
-        id,
-        channel,
-        title,
-        summary,
-        content_markdown,
-        content_json,
-        tags_json,
-        status,
-        visibility,
-        owner_id,
-        owner_name,
-        effective_from,
-        effective_to,
-        metadata_json,
-        created_at,
-        updated_at,
-        published_at
-      )
-      VALUES (?, 'ai', ?, ?, ?, NULL, ?, 'published', 'all', ?, ?, NULL, NULL, ?, ?, ?, ?)
-    `);
-    const insertChunk = this.sqlite.prepare(`
-      INSERT OR IGNORE INTO knowledge_chunks (
-        id,
-        document_id,
-        channel,
-        chunk_index,
-        heading_path,
-        chunk_text,
-        token_estimate,
-        metadata_json,
-        created_at
-      )
-      VALUES (?, ?, 'ai', 0, 'AI 자료', ?, ?, ?, ?)
-    `);
-
-    for (const sample of samples) {
-      const tagsJson = JSON.stringify(sample.tags);
-      const metadataJson = JSON.stringify(sample.metadata);
-      const chunkText = [
-        '[AI 자료]',
-        `제목: ${sample.title}`,
-        `요약: ${sample.summary}`,
-        `자료 유형: ${sample.metadata.aiDocTypeLabel}`,
-        `난이도: ${sample.metadata.difficultyLabel}`,
-        `대상 역할: ${sample.metadata.targetRole}`,
-        `업무 영역: ${sample.metadata.businessDomain}`,
-        `사용 도구: ${sample.metadata.toolNames.join(', ')}`,
-        `프롬프트 템플릿 포함: ${sample.metadata.hasPromptTemplate ? '예' : '아니오'}`,
-        `예시 포함: ${sample.metadata.hasExample ? '예' : '아니오'}`,
-        `정책 중요도: ${sample.metadata.policyLevelLabel}`,
-        `담당: ${sample.metadata.ownerTeam}`,
-        `태그: ${sample.tags.join(', ')}`,
-        '',
-        '내용:',
-        sample.contentMarkdown,
-      ].join('\n');
-
-      insertDocument.run(
-        sample.id,
-        sample.title,
-        sample.summary,
-        sample.contentMarkdown,
-        tagsJson,
-        ownerId,
-        ownerName,
-        metadataJson,
-        now,
-        now,
-        now,
-      );
-      insertChunk.run(
-        `${sample.id}-chunk-0`,
-        sample.id,
-        chunkText,
-        Math.ceil(chunkText.length / 4),
-        metadataJson,
-        now,
-      );
-    }
   }
 
   private ensureApiDocDefaultTeam(now: string, userId: string) {
@@ -4021,147 +3705,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     // ── AI Native 그룹 + 구 하위 항목 숨김 (ai_service_request는 별도 루트 메뉴로 관리)
     this.sqlite
       .prepare(
-        `UPDATE menus SET is_visible = 0, updated_at = ? WHERE section_id IN ('ai_native_group','ai_methodology','ai_evaluation','ai_service_group','ai_service_request','ai_service_my','ai_service_admin','ai_service_monitor')`,
+        `UPDATE menus SET is_visible = 0, updated_at = ? WHERE section_id IN ('ai_native_group','ai_methodology','ai_service_group','ai_service_request','ai_service_my','ai_service_admin','ai_service_monitor')`,
       )
       .run(now);
-
-    // ── 지식 채널: 중복 정리 후 단일 보장 (parent_id는 챗봇 블록에서 설정) ──
-    // parent_id 조건 없이 전부 조회 — 챗봇 하위로 옮겨진 경우에도 중복 재생성 방지
-    const knowledgeRows = this.sqlite
-      .prepare(
-        `SELECT id FROM menus WHERE section_id = 'knowledge_channel' ORDER BY created_at`,
-      )
-      .all() as Array<{ id: string }>;
-
-    let knowledgeGroup: { id: string } | undefined = knowledgeRows[0];
-
-    // 과거 버그로 누적된 중복 제거 — 자식은 남길 1개로 재연결 후 삭제
-    for (const dup of knowledgeRows.slice(1)) {
-      this.sqlite
-        .prepare(`UPDATE menus SET parent_id = ? WHERE parent_id = ?`)
-        .run(knowledgeGroup.id, dup.id);
-      this.sqlite.prepare(`DELETE FROM menus WHERE id = ?`).run(dup.id);
-    }
-
-    if (!knowledgeGroup) {
-      const id = randomUUID();
-      this.db
-        .insert(menusTable)
-        .values({
-          id,
-          name: '지식 채널',
-          sectionId: 'knowledge_channel',
-          icon: 'BookOpen',
-          displayOrder: 7,
-          isVisible: true,
-          requiredRole: null,
-          parentId: null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-      knowledgeGroup = { id };
-    } else {
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET name = '지식 채널', icon = 'BookOpen', is_visible = 1, updated_at = ? WHERE id = ?`,
-        )
-        .run(now, knowledgeGroup.id);
-    }
-
-    // ── 지식채널 하위 항목 보장 ──────────────────────────────────────────
-    const ensureChild = (
-      name: string,
-      sectionId: string,
-      icon: string,
-      order: number,
-    ) => {
-      const exists = this.sqlite
-        .prepare(`SELECT id FROM menus WHERE section_id = ?`)
-        .get(sectionId) as { id: string } | undefined;
-      if (!exists) {
-        this.db
-          .insert(menusTable)
-          .values({
-            id: randomUUID(),
-            name,
-            sectionId,
-            icon,
-            displayOrder: order,
-            isVisible: true,
-            requiredRole: null,
-            parentId: knowledgeGroup.id,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .run();
-      } else {
-        this.sqlite
-          .prepare(
-            `UPDATE menus SET name=?, icon=?, parent_id=?, display_order=?, is_visible=1, updated_at=? WHERE section_id=?`,
-          )
-          .run(name, icon, knowledgeGroup.id, order, now, sectionId);
-      }
-    };
-
-    ensureChild('공지사항', 'knowledge_notice', 'Bell', 0);
-    ensureChild('FAQ', 'knowledge_faq', 'HelpCircle', 1);
-    ensureChild('개발 자료', 'knowledge_dev', 'Code2', 2);
-    ensureChild('AI 자료', 'knowledge_ai', 'Sparkles', 3);
-
-    // ── AI 활용 능력 평가 → 업무 관리 하위 ──────────────────────────────
-    const taskParent = this.sqlite
-      .prepare(
-        `SELECT id FROM menus WHERE section_id = 'task_group' AND parent_id IS NULL LIMIT 1`,
-      )
-      .get() as { id: string } | undefined;
-
-    if (taskParent) {
-      const eval_ = this.sqlite
-        .prepare(
-          `SELECT id FROM menus WHERE section_id = 'ai_evaluation' LIMIT 1`,
-        )
-        .get() as { id: string } | undefined;
-      if (!eval_) {
-        this.db
-          .insert(menusTable)
-          .values({
-            id: randomUUID(),
-            name: 'AI 활용 능력 평가',
-            sectionId: 'ai_evaluation',
-            icon: 'ClipboardCheck',
-            displayOrder: 99,
-            isVisible: true,
-            requiredRole: null,
-            parentId: taskParent.id,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .run();
-      } else {
-        this.sqlite
-          .prepare(
-            `UPDATE menus SET name='AI 활용 능력 평가', icon='ClipboardCheck', parent_id=?, display_order=99, is_visible=1, updated_at=? WHERE id=?`,
-          )
-          .run(taskParent.id, now, eval_.id);
-      }
-    }
-  }
-
-  private seedEvalCategories() {
-    const categories = [
-      { id: 'cat_tech', name: '기술 역량', displayOrder: 0 },
-      { id: 'cat_collab', name: '협업 역량', displayOrder: 1 },
-      { id: 'cat_prod', name: '업무 생산성', displayOrder: 2 },
-    ];
-    for (const cat of categories) {
-      const existing = this.sqlite
-        .prepare(`SELECT id FROM eval_categories WHERE id = ?`)
-        .get(cat.id);
-      if (!existing) {
-        this.db.insert(evalCategoriesTable).values(cat).run();
-      }
-    }
   }
 
   private reconcileStudyDiaryAndDevChallengeMenus(now: string) {
@@ -4567,7 +4113,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           sectionId: 'dev_study',
           icon: 'GraduationCap',
           displayOrder: 5,
-          isVisible: true,
+          isVisible: false,
           requiredRole: null,
           parentId: null,
           createdAt: now,
@@ -4578,7 +4124,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     } else {
       this.sqlite
         .prepare(
-          `UPDATE menus SET name='Dev Study', icon='GraduationCap', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
+          `UPDATE menus SET name='Dev Study', icon='GraduationCap', parent_id=NULL, is_visible=0, updated_at=? WHERE id=?`,
         )
         .run(now, devStudy.id);
     }
@@ -4626,84 +4172,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `UPDATE menus SET is_visible=0, parent_id=NULL, updated_at=? WHERE section_id='sql_group'`,
       )
       .run(now);
-  }
-
-  private reconcileApprovalMenu(now: string) {
-    let approval = this.sqlite
-      .prepare(`SELECT id FROM menus WHERE section_id = 'approval' LIMIT 1`)
-      .get() as { id: string } | undefined;
-
-    if (!approval) {
-      const id = randomUUID();
-      this.db
-        .insert(menusTable)
-        .values({
-          id,
-          name: '전자결재',
-          sectionId: 'approval',
-          icon: 'ClipboardCheck',
-          displayOrder: 2,
-          isVisible: true,
-          requiredRole: null,
-          parentId: null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-      approval = { id };
-    } else {
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET name='전자결재', icon='ClipboardCheck', parent_id=NULL, display_order=2, is_visible=1, required_role=NULL, updated_at=? WHERE id=?`,
-        )
-        .run(now, approval.id);
-    }
-
-    this.upsertMenuBySectionId({
-      sectionId: 'approval_home',
-      name: '결재 홈',
-      icon: 'LayoutDashboard',
-      displayOrder: 0,
-      parentId: approval.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
-      sectionId: 'approval_submit',
-      name: '문서 작성',
-      icon: 'FilePlus2',
-      displayOrder: 1,
-      parentId: approval.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
-      sectionId: 'approval_inbox',
-      name: '결재할 문서',
-      icon: 'Inbox',
-      displayOrder: 2,
-      parentId: approval.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
-      sectionId: 'approval_sent',
-      name: '기안 문서',
-      icon: 'Send',
-      displayOrder: 3,
-      parentId: approval.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
-      sectionId: 'approval_documents',
-      name: '문서함',
-      icon: 'FolderOpen',
-      displayOrder: 4,
-      parentId: approval.id,
-      requiredRole: null,
-      now,
-    });
   }
 
   private reconcileUsageStatsMenu(now: string) {
@@ -4769,75 +4237,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .run(now);
   }
 
-  private reconcileEnglishMenu(now: string) {
-    // ── English 루트 그룹 보장 ──────────────────────────────────────────
-    let english = this.sqlite
-      .prepare(
-        `SELECT id FROM menus WHERE section_id = 'english_group' LIMIT 1`,
-      )
-      .get() as { id: string } | undefined;
-
-    if (!english) {
-      const id = randomUUID();
-      this.db
-        .insert(menusTable)
-        .values({
-          id,
-          name: 'English',
-          sectionId: 'english_group',
-          icon: 'Languages',
-          displayOrder: 10,
-          isVisible: true,
-          requiredRole: null,
-          parentId: null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-      english = { id };
-    } else {
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET name='English', icon='Languages', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
-        )
-        .run(now, english.id);
-    }
-
-    // ── 하위 5개: 영어 학습 코너 ────────────────────────────────────────
-    const children = [
-      {
-        sectionId: 'english_chat',
-        name: '영어 챗봇 대화',
-        icon: 'MessagesSquare',
-      },
-      { sectionId: 'english_diary', name: '영어 개발 일기', icon: 'BookOpen' },
-      { sectionId: 'english_news', name: '영어 뉴스 보기', icon: 'Newspaper' },
-      {
-        sectionId: 'english_listening',
-        name: '영어 듣기 연습',
-        icon: 'Headphones',
-      },
-      {
-        sectionId: 'english_character',
-        name: '영어 챗봇 캐릭터 회화',
-        icon: 'Smile',
-      },
-    ];
-    children.forEach((child, index) => {
-      this.upsertMenuBySectionId({
-        sectionId: child.sectionId,
-        name: child.name,
-        icon: child.icon,
-        displayOrder: index,
-        parentId: english.id,
-        requiredRole: null,
-        now,
-      });
-    });
-  }
-
   private reconcileDevMarketMenus(now: string) {
-    // ── 개발 마켓 루트 그룹 보장 ────────────────────────────────────────
+    // ── 개발 강의 루트 그룹 보장 ────────────────────────────────────────
     let market = this.sqlite
       .prepare(
         `SELECT id FROM menus WHERE section_id = 'dev_market_group' LIMIT 1`,
@@ -4850,7 +4251,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .insert(menusTable)
         .values({
           id,
-          name: '개발 마켓',
+          name: '개발 강의',
           sectionId: 'dev_market_group',
           icon: 'Store',
           displayOrder: 7,
@@ -4865,25 +4266,24 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     } else {
       this.sqlite
         .prepare(
-          `UPDATE menus SET name='개발 마켓', icon='Store', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
+          `UPDATE menus SET name='개발 강의', icon='Store', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
         )
         .run(now, market.id);
     }
 
-    // ── 하위 3개: 유료 콘텐츠 ───────────────────────────────────────────
+    // ── 하위 3개: 필수 강의 · 강의 공유 · 강의 노트 ────────────────────
     const children = [
       {
-        sectionId: 'market_lectures',
-        name: '유료 강의',
-        icon: 'GraduationCap',
+        sectionId: 'lecture_required',
+        name: '필수 강의',
+        icon: 'BookOpenCheck',
       },
-      { sectionId: 'market_recommend', name: '강의 추천', icon: 'Star' },
-      { sectionId: 'market_notes', name: '유료 노트', icon: 'NotebookPen' },
       {
-        sectionId: 'market_prototypes',
-        name: '유료 프로토타입',
-        icon: 'LayoutTemplate',
+        sectionId: 'lecture_share',
+        name: '강의 공유',
+        icon: 'Share2',
       },
+      { sectionId: 'lecture_notes', name: '강의 노트', icon: 'NotebookPen' },
     ];
     children.forEach((child, index) => {
       this.upsertMenuBySectionId({
@@ -4892,81 +4292,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         icon: child.icon,
         displayOrder: index,
         parentId: market.id,
-        requiredRole: null,
-        now,
-      });
-    });
-  }
-
-  private reconcileDevAnalysisMenus(now: string) {
-    // ── 개발 분석 루트 그룹 보장 ────────────────────────────────────────
-    let analysis = this.sqlite
-      .prepare(
-        `SELECT id FROM menus WHERE section_id = 'dev_analysis_group' LIMIT 1`,
-      )
-      .get() as { id: string } | undefined;
-
-    if (!analysis) {
-      const id = randomUUID();
-      this.db
-        .insert(menusTable)
-        .values({
-          id,
-          name: '개발 분석',
-          sectionId: 'dev_analysis_group',
-          icon: 'LineChart',
-          displayOrder: 7,
-          isVisible: true,
-          requiredRole: null,
-          parentId: null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-      analysis = { id };
-    } else {
-      this.sqlite
-        .prepare(
-          `UPDATE menus SET name='개발 분석', icon='LineChart', parent_id=NULL, is_visible=1, updated_at=? WHERE id=?`,
-        )
-        .run(now, analysis.id);
-    }
-
-    // ── 하위 4개: 분석 코너 ─────────────────────────────────────────────
-    const children = [
-      {
-        sectionId: 'analysis_tech_debt',
-        name: '기술 부채 분석',
-        icon: 'AlertTriangle',
-      },
-      {
-        sectionId: 'analysis_trends',
-        name: '최신 트렌드 분석',
-        icon: 'TrendingUp',
-      },
-      {
-        sectionId: 'analysis_hiring',
-        name: '채용 트렌드 분석',
-        icon: 'Briefcase',
-      },
-      {
-        sectionId: 'analysis_domain',
-        name: '전문 도메인 분석',
-        icon: 'Target',
-      },
-      {
-        sectionId: 'analysis_concepts',
-        name: '개발 개념 분석',
-        icon: 'Lightbulb',
-      },
-    ];
-    children.forEach((child, index) => {
-      this.upsertMenuBySectionId({
-        sectionId: child.sectionId,
-        name: child.name,
-        icon: child.icon,
-        displayOrder: index,
-        parentId: analysis.id,
         requiredRole: null,
         now,
       });
@@ -5941,136 +5266,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'deleted_at',
       `ALTER TABLE users ADD COLUMN deleted_at TEXT`,
     );
-  }
-
-  /**
-   * 기존 결재 FK의 사용자 CASCADE를 RESTRICT로 교체하고 단계 상태를 명시화한다.
-   * SQLite는 FK 옵션만 ALTER할 수 없으므로 해당 테이블을 한 번 재구성한다.
-   */
-  private migrateApprovalWorkflowSchema() {
-    const requestForeignKeys = this.sqlite
-      .prepare(`PRAGMA foreign_key_list('approval_requests')`)
-      .all() as Array<{ table: string; on_delete: string }>;
-    const stepForeignKeys = this.sqlite
-      .prepare(`PRAGMA foreign_key_list('approval_steps')`)
-      .all() as Array<{ table: string; on_delete: string }>;
-
-    const needsForeignKeyMigration =
-      requestForeignKeys.some(
-        (fk) =>
-          fk.table === 'users' && fk.on_delete.toUpperCase() === 'CASCADE',
-      ) ||
-      stepForeignKeys.some(
-        (fk) =>
-          fk.table === 'users' && fk.on_delete.toUpperCase() === 'CASCADE',
-      );
-
-    if (needsForeignKeyMigration) {
-      this.sqlite.pragma('foreign_keys = OFF');
-      try {
-        this.sqlite.transaction(() => {
-          this.sqlite.exec(`
-            CREATE TEMP TABLE approval_requests_backup AS
-              SELECT * FROM approval_requests;
-            CREATE TEMP TABLE approval_steps_backup AS
-              SELECT * FROM approval_steps;
-
-            DROP TABLE approval_steps;
-            DROP TABLE approval_requests;
-
-            CREATE TABLE approval_requests (
-              id TEXT PRIMARY KEY,
-              title TEXT NOT NULL,
-              content TEXT NOT NULL,
-              category TEXT NOT NULL DEFAULT 'GENERAL',
-              status TEXT NOT NULL DEFAULT 'PENDING',
-              meta TEXT,
-              submitter_id TEXT NOT NULL,
-              created_at TEXT NOT NULL,
-              updated_at TEXT NOT NULL,
-              FOREIGN KEY(submitter_id) REFERENCES users(id) ON DELETE RESTRICT
-            );
-
-            CREATE TABLE approval_steps (
-              id TEXT PRIMARY KEY,
-              request_id TEXT NOT NULL,
-              "order" INTEGER NOT NULL,
-              approver_id TEXT NOT NULL,
-              status TEXT NOT NULL DEFAULT 'WAITING',
-              comment TEXT,
-              acted_at TEXT,
-              created_at TEXT NOT NULL,
-              FOREIGN KEY(request_id) REFERENCES approval_requests(id) ON DELETE CASCADE,
-              FOREIGN KEY(approver_id) REFERENCES users(id) ON DELETE RESTRICT
-            );
-
-            INSERT INTO approval_requests
-              (id, title, content, category, status, meta, submitter_id, created_at, updated_at)
-            SELECT id, title, content, category, status, meta, submitter_id, created_at, updated_at
-            FROM approval_requests_backup;
-
-            INSERT INTO approval_steps
-              (id, request_id, "order", approver_id, status, comment, acted_at, created_at)
-            SELECT id, request_id, "order", approver_id, status, comment, acted_at, created_at
-            FROM approval_steps_backup;
-
-            DROP TABLE approval_steps_backup;
-            DROP TABLE approval_requests_backup;
-
-            CREATE INDEX idx_approval_requests_submitter
-              ON approval_requests(submitter_id, created_at);
-            CREATE INDEX idx_approval_steps_request
-              ON approval_steps(request_id, "order");
-            CREATE INDEX idx_approval_steps_approver
-              ON approval_steps(approver_id, status);
-          `);
-        })();
-      } finally {
-        this.sqlite.pragma('foreign_keys = ON');
-      }
-    }
-
-    const requests = this.sqlite
-      .prepare(`SELECT id, status FROM approval_requests`)
-      .all() as Array<{ id: string; status: string }>;
-    const selectSteps = this.sqlite.prepare(
-      `SELECT id, status FROM approval_steps WHERE request_id = ? ORDER BY "order"`,
-    );
-    const updateStepStatus = this.sqlite.prepare(
-      `UPDATE approval_steps SET status = ? WHERE id = ?`,
-    );
-
-    this.sqlite.transaction(() => {
-      for (const request of requests) {
-        const steps = selectSteps.all(request.id) as Array<{
-          id: string;
-          status: string;
-        }>;
-
-        if (request.status === 'PENDING') {
-          let currentAssigned = false;
-          for (const step of steps) {
-            if (step.status === 'APPROVED') continue;
-            if (step.status === 'REJECTED') {
-              currentAssigned = true;
-              continue;
-            }
-            const nextStatus = currentAssigned ? 'WAITING' : 'PENDING';
-            updateStepStatus.run(nextStatus, step.id);
-            currentAssigned = true;
-          }
-          continue;
-        }
-
-        if (request.status === 'REJECTED') {
-          for (const step of steps) {
-            if (step.status === 'PENDING' || step.status === 'WAITING') {
-              updateStepStatus.run('SKIPPED', step.id);
-            }
-          }
-        }
-      }
-    })();
   }
 
   /**

@@ -68,7 +68,6 @@ if (parsed.type === 'tool_call') {
 const useCases = [
   { icon: '📋', title: '내 업무 조회', desc: 'DB에서 담당자 기준 업무 목록을 가져와 표시' },
   { icon: '📅', title: '일정 검색', desc: '오늘 / 이번 주 일정을 캘린더 API에서 조회' },
-  { icon: '🔍', title: '사내 문서 검색', desc: '지식베이스에서 관련 문서 Top-K 반환' },
   { icon: '📊', title: '통계 조회', desc: 'SQL 쿼리 실행 후 차트 데이터 반환' },
   { icon: '🔔', title: '알림 발송', desc: '특정 조건 충족 시 Slack·메일 전송' },
   { icon: '🤖', title: '외부 API 호출', desc: '날씨, 환율 등 외부 서비스 데이터 수집' },

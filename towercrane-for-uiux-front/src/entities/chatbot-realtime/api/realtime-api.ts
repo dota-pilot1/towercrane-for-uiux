@@ -22,9 +22,7 @@ export type RealtimeSessionResponse = {
   tools: string[]
 }
 
-export type RealtimeToolName =
-  | 'get_my_tasks'
-  | 'search_knowledge'
+export type RealtimeToolName = 'get_my_tasks'
 
 export type RealtimeToolExecuteRequest = {
   callId?: string

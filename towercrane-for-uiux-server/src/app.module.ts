@@ -12,7 +12,6 @@ import { UsersModule } from './users/users.module';
 import { OrgModule } from './org/org.module';
 import { MenusModule } from './menus/menus.module';
 import { AnalyticsModule } from './analytics/analytics.module';
-import { EnglishChatModule } from './english-chat/english-chat.module';
 import { DevInterviewModule } from './dev-interview/dev-interview.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { TasksModule } from './tasks/tasks.module';
@@ -30,10 +29,8 @@ import { AxStudyModule } from './ax-study/ax-study.module';
 import { AxBoardModule } from './ax-board/ax-board.module';
 import { AiStudyNoteModule } from './ai-study-note/ai-study-note.module';
 import { BoardsModule } from './boards/boards.module';
-import { AiEvaluationModule } from './ai-evaluation/ai-evaluation.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { ChatbotMonitoringModule } from './chatbot-monitoring/chatbot-monitoring.module';
-import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
 import { DevManagementModule } from './dev-management/dev-management.module';
 import { DevMeetingMinutesModule } from './dev-meeting-minutes/dev-meeting-minutes.module';
 import { CodeReviewsModule } from './code-reviews/code-reviews.module';
@@ -41,7 +38,6 @@ import { FeaturePlansModule } from './feature-plans/feature-plans.module';
 import { TaskIngestModule } from './task-ingest/task-ingest.module';
 import { TaskChatModule } from './task-chat/task-chat.module';
 import { PointsModule } from './points/points.module';
-import { ApprovalsModule } from './approval/approval.module';
 
 @Module({
   imports: [
@@ -56,7 +52,6 @@ import { ApprovalsModule } from './approval/approval.module';
     OrgModule,
     MenusModule,
     AnalyticsModule,
-    EnglishChatModule,
     DevInterviewModule,
     MeetingModule,
     TasksModule,
@@ -74,10 +69,8 @@ import { ApprovalsModule } from './approval/approval.module';
     DevChallengeModule,
     SqlPracticeModule,
     BoardsModule,
-    AiEvaluationModule,
     ChatbotModule,
     ChatbotMonitoringModule,
-    KnowledgeBaseModule,
     DevManagementModule,
     DevMeetingMinutesModule,
     CodeReviewsModule,
@@ -85,7 +78,6 @@ import { ApprovalsModule } from './approval/approval.module';
     TaskIngestModule,
     TaskChatModule,
     PointsModule,
-    ApprovalsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

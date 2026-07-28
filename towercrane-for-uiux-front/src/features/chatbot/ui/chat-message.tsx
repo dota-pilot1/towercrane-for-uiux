@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, User, FileText, Copy, Check, RefreshCw, ExternalLink } from "lucide-react";
+import { Bot, User, FileText, Copy, Check, RefreshCw } from "lucide-react";
 import type { Message } from "../model/use-chat-messages";
 import { ChatMessageMarkdown } from "./chat-message-markdown";
 
@@ -100,27 +100,6 @@ export function ChatMessage({ message, isStreaming, isLast, onRegenerate }: Prop
         </div>
 
         {/* 액션 버튼 — 스트리밍 완료 후에만 노출 */}
-        {isAssistant && message.sources && message.sources.length > 0 && (
-          <div className="rounded-lg border border-surface-border-soft bg-surface-muted px-3 py-2">
-            <p className="mb-2 text-xs font-semibold ui-text-secondary">참고 문서</p>
-            <div className="grid gap-1.5">
-              {message.sources.slice(0, 3).map((source) => (
-                <a
-                  key={source.chunkId}
-                  href={source.documentUrl}
-                  className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-xs ui-text-secondary hover:bg-surface-raised hover:text-brand-primary"
-                >
-                  <span className="shrink-0 rounded-sm border border-brand-border bg-brand-glass px-1.5 py-0.5 text-[10px] font-semibold text-brand-primary">
-                    {source.channelLabel}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{source.title}</span>
-                  <ExternalLink className="size-3 shrink-0" />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
         {showActions && (
           <div className="flex items-center gap-1 px-1">
             <button

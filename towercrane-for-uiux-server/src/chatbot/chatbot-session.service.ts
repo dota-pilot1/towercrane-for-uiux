@@ -11,7 +11,7 @@ import { chatMessagesTable, chatSessionsTable } from '../database/schema';
 
 /**
  * 대화방(세션)과 메시지의 DB 접근을 담당한다.
- * 모드(기본/지식/도구)와 무관하게 셋 다 이 서비스를 쓴다.
+ * 기본·도구 호출 모드가 이 서비스를 공유한다.
  */
 @Injectable()
 export class ChatbotSessionService {

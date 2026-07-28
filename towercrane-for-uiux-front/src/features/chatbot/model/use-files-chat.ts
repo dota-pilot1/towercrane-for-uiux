@@ -2,8 +2,6 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { useChatSessionStore } from './chat-session-store'
 import { API_BASE_URL } from '../../../shared/api/http'
 import { useSessionStore } from '../../../shared/store/session-store'
-import type { KnowledgeChannel } from '../../../entities/knowledge-base/model/types'
-import type { KnowledgeSource } from './use-chat-messages'
 
 export type { Session } from './chat-session-store'
 
@@ -28,14 +26,9 @@ type StreamDone = {
     content: string
     createdAt: string
   }
-  knowledgeSources?: KnowledgeSource[]
 }
 
 type StreamChunk = { type: 'text'; text: string }
-type StreamKnowledgeSources = {
-  type: 'knowledge_sources'
-  items: KnowledgeSource[]
-}
 
 // STEP 6-A: tool_call SSE 이벤트 타입 추가
 // 백엔드 STEP 3-D에서 전송하는 이벤트를 여기서 수신
@@ -51,13 +44,10 @@ type ChatFrame =
   | StreamMeta
   | StreamDone
   | StreamChunk
-  | StreamKnowledgeSources
   | ToolCallLog
 
 type UseFilesChatOptions = {
-  // STEP 6-B: mode에 'tools' 추가
-  mode?: 'general' | 'knowledge' | 'tools'
-  channels?: KnowledgeChannel[]
+  mode?: 'general' | 'tools'
   onToolCall?: () => void
 }
 
@@ -74,7 +64,6 @@ async function uploadFiles(files: File[]): Promise<string[]> {
 // 모드마다 엔드포인트가 다르다 — DevTools Network 탭에서 URL 만 보고 구분된다
 function streamUrl(mode: UseFilesChatOptions['mode']) {
   if (mode === 'tools') return `${API_BASE_URL}/chatbot/stream/tools`
-  if (mode === 'knowledge') return `${API_BASE_URL}/chatbot/stream/knowledge`
   return `${API_BASE_URL}/chatbot/stream`
 }
 
@@ -92,7 +81,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
     appendLocalMessage,
     updateLocalChunk,
     replaceLocalMessage,
-    setMessageSources,
     removeLastAssistantMessage,
     setSessionTitle,
   } = useChatSessionStore()
@@ -100,7 +88,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
   const [input, setInput] = useState('')
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
-  const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>([])
   // STEP 6-C: 도구 호출 로그 상태 — 오른쪽 패널에 전달
   const [toolCalls, setToolCalls] = useState<ToolCallLog[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -127,7 +114,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
     const currentActiveId = activeId
     const tempUserId = `temp-user-${Date.now()}`
     const tempAssistantId = `temp-assistant-${Date.now()}`
-    const isKnowledgeMode = options.mode === 'knowledge'
     // STEP 6-D: tools 모드 시작 시 이전 로그 초기화
     if (options.mode === 'tools') setToolCalls([])
 
@@ -149,7 +135,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
     })
     setInput('')
     setAttachedFiles([])
-    if (isKnowledgeMode) setKnowledgeSources([])
     setIsStreaming(true)
 
     try {
@@ -164,7 +149,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
           sessionId: currentActiveId,
           message: text,
           fileUrls,
-          channels: options.channels,
         }),
       })
 
@@ -187,14 +171,8 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
             id: f.assistantMessage.id,
             role: 'assistant',
             content: f.assistantMessage.content,
-            sources: f.knowledgeSources,
             timestamp: new Date(f.assistantMessage.createdAt),
           })
-        },
-
-        knowledge_sources: (f) => {
-          setKnowledgeSources(f.items)
-          setMessageSources(currentActiveId, tempAssistantId, f.items)
         },
 
         tool_call: (f) => {
@@ -236,7 +214,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
     const currentActiveId = activeId
     const tempAssistantId = `temp-assistant-${Date.now()}`
     const fileUrls = lastUserMsg.fileUrls ?? []
-    const isKnowledgeMode = options.mode === 'knowledge'
 
     appendLocalMessage(currentActiveId, {
       id: tempAssistantId,
@@ -244,7 +221,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
       content: '',
       timestamp: new Date(),
     })
-    if (isKnowledgeMode) setKnowledgeSources([])
     setIsStreaming(true)
 
     try {
@@ -259,7 +235,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
           sessionId: currentActiveId,
           message: lastUserMsg.content,
           fileUrls,
-          channels: options.channels,
         }),
       })
 
@@ -271,14 +246,8 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
             id: f.assistantMessage.id,
             role: 'assistant',
             content: f.assistantMessage.content,
-            sources: f.knowledgeSources,
             timestamp: new Date(f.assistantMessage.createdAt),
           })
-        },
-
-        knowledge_sources: (f) => {
-          setKnowledgeSources(f.items)
-          setMessageSources(currentActiveId, tempAssistantId, f.items)
         },
 
         tool_call: (f) => {
@@ -327,7 +296,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
     attachedFiles,
     setAttachedFiles,
     isStreaming,
-    knowledgeSources,
     // STEP 6-G: toolCalls 반환 — 페이지의 오른쪽 패널에 전달
     toolCalls,
     bottomRef,
@@ -337,7 +305,6 @@ export function useFilesChat(options: UseFilesChatOptions = {}) {
       switchSession(id)
       setInput('')
       setAttachedFiles([])
-      setKnowledgeSources([])
     },
     renameSession: (id: string, title: string) => void renameSession(id, title),
     handleSend: () => void handleSend(),

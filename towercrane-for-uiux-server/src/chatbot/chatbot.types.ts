@@ -1,5 +1,4 @@
 import type OpenAI from 'openai';
-import type { KnowledgeChannel } from '../database/schema';
 import type { createSse } from './lib/sse';
 
 export type ChatbotUser = {
@@ -9,26 +8,8 @@ export type ChatbotUser = {
   role: 'admin' | 'user';
 };
 
-export type KnowledgeSource = {
-  chunkId: string;
-  documentId: string;
-  channel: KnowledgeChannel;
-  channelLabel: string;
-  chunkIndex: number;
-  headingPath: string | null;
-  chunkText: string;
-  title: string;
-  summary: string | null;
-  tags: string[];
-  updatedAt: string;
-  score: number;
-  snippet: string;
-  documentUrl: string;
-};
-
 export type StreamOptions = {
   fileUrls?: string[];
-  channels?: KnowledgeChannel[]; // 지식 검색 전용 — 검색할 채널 범위
 };
 
 /**
@@ -46,7 +27,6 @@ export type StreamBase = {
 /** 시스템 프롬프트까지 붙어 OpenAI를 부를 준비가 끝난 상태 */
 export type StreamContext = StreamBase & {
   messages: OpenAI.ChatCompletionMessageParam[];
-  knowledgeSources: KnowledgeSource[];
 };
 
 /** 스트림으로 조각조각 오는 tool_call을 조립하는 중간 상태 */

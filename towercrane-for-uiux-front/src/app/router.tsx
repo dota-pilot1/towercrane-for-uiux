@@ -22,16 +22,10 @@ import { ChatbotStreamingPage } from '../pages/chatbot/ui/chatbot-streaming-page
 import { ChatbotHistoryPage } from '../pages/chatbot/ui/chatbot-history-page'
 import { ChatbotFlowPage } from '../pages/chatbot/ui/chatbot-flow-page'
 import { ChatbotFilesPage } from '../pages/chatbot/ui/chatbot-files-page'
-import { ChatbotKnowledgePage } from '../pages/chatbot/ui/chatbot-knowledge-page'
-import { ChatbotKnowledgeNoticePage } from '../pages/chatbot/ui/chatbot-knowledge-notice-page'
-import { ChatbotKnowledgeFaqPage } from '../pages/chatbot/ui/chatbot-knowledge-faq-page'
-import { ChatbotKnowledgeAiPage } from '../pages/chatbot/ui/chatbot-knowledge-ai-page'
-import { ChatbotKnowledgeDevPage } from '../pages/chatbot/ui/chatbot-knowledge-dev-page'
 import { ChatbotBasicGuidePage } from '../pages/chatbot/ui/chatbot-basic-guide-page'
 import { ChatbotStreamingGuidePage } from '../pages/chatbot/ui/chatbot-streaming-guide-page'
 import { ChatbotHistoryGuidePage } from '../pages/chatbot/ui/chatbot-history-guide-page'
 import { ChatbotFilesGuidePage } from '../pages/chatbot/ui/chatbot-files-guide-page'
-import { ChatbotKnowledgeGuidePage } from '../pages/chatbot/ui/chatbot-knowledge-guide-page'
 import { ChatbotToolsPage } from '../pages/chatbot/ui/chatbot-tools-page'
 import { ChatbotToolsGuidePage } from '../pages/chatbot/ui/chatbot-tools-guide-page'
 import { ChatbotRealtimePage } from '../pages/chatbot/ui/chatbot-realtime-page'
@@ -47,34 +41,13 @@ import { GithubPrReviewPage } from '../pages/github-pr-review/ui/github-pr-revie
 import { FeaturePlansPage } from '../pages/feature-plans/ui/feature-plans-page'
 import { HomePage } from '../pages/home/ui/home-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
-import { AiEvaluationPage } from '../pages/ai-evaluation/ui/ai-evaluation-page'
-import { ApprovalDocumentsPage } from '../pages/approval/ui/approval-documents-page'
-import { ApprovalHomePage } from '../pages/approval/ui/approval-home-page'
-import { ApprovalInboxPage } from '../pages/approval/ui/approval-inbox-page'
-import { ApprovalSentPage } from '../pages/approval/ui/approval-sent-page'
-import { ApprovalWritePage } from '../pages/approval/ui/approval-write-page'
 import {
-  MarketLecturesPage,
-  MarketNotesPage,
-  MarketPrototypesPage,
-  MarketRecommendPage,
+  LectureNotesPage,
+  LectureSharePage,
+  RequiredLecturesPage,
 } from '../pages/dev-market/ui/dev-market-pages'
-import {
-  AnalysisConceptsPage,
-  AnalysisDomainPage,
-  AnalysisHiringPage,
-  AnalysisTechDebtPage,
-  AnalysisTrendsPage,
-} from '../pages/dev-analysis/ui/dev-analysis-pages'
 import { UsageStatsPage } from '../pages/usage-stats/ui/usage-stats-page'
 import { AiUsageStatsPage } from '../pages/usage-stats/ui/ai-usage-stats-page'
-import {
-  EnglishDiaryPage,
-  EnglishNewsPage,
-  EnglishListeningPage,
-  EnglishCharacterPage,
-} from '../pages/english/ui/english-pages'
-import { EnglishChatPage } from '../pages/english/ui/english-chat-page'
 import { ApiDocPage } from '../pages/api-doc/ui/api-doc-page'
 import { TaskPage } from '../pages/task/ui/task-page'
 import { TaskDetailPage } from '../pages/task/ui/task-detail-page'
@@ -443,12 +416,6 @@ const chatbotFilesRoute = createRoute({
   component: ChatbotFilesPage,
 })
 
-const chatbotKnowledgeRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/chatbot/knowledge',
-  component: ChatbotKnowledgePage,
-})
-
 const chatbotBasicGuideRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot/guide',
@@ -473,12 +440,6 @@ const chatbotFilesGuideRoute = createRoute({
   component: ChatbotFilesGuidePage,
 })
 
-const chatbotKnowledgeGuideRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/chatbot/knowledge/guide',
-  component: ChatbotKnowledgeGuidePage,
-})
-
 const chatbotToolsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot/tools',
@@ -501,30 +462,6 @@ const chatbotRealtimeGuideRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/chatbot/realtime/guide',
   component: ChatbotRealtimeGuidePage,
-})
-
-const chatbotKnowledgeNoticeRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/chatbot/knowledge/notice',
-  component: ChatbotKnowledgeNoticePage,
-})
-
-const chatbotKnowledgeFaqRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/chatbot/knowledge/faq',
-  component: ChatbotKnowledgeFaqPage,
-})
-
-const chatbotKnowledgeAiRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/chatbot/knowledge/ai',
-  component: ChatbotKnowledgeAiPage,
-})
-
-const chatbotKnowledgeDevRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/chatbot/knowledge/dev',
-  component: ChatbotKnowledgeDevPage,
 })
 
 function StudyDiaryRedirect() {
@@ -660,45 +597,6 @@ const aiMethodologyRoute = createRoute({
   component: AiMethodologyPage,
 })
 
-// ─── /ai-evaluation ──────────────────────────────────────────────────────────
-
-const aiEvaluationRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/ai-evaluation',
-  component: AiEvaluationPage,
-})
-
-// ─── /approval (전자결재) ──────────────────────────────────────────────────────
-const approvalRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/approval',
-  component: ApprovalHomePage,
-})
-
-const approvalWriteRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/approval/write',
-  component: ApprovalWritePage,
-})
-
-const approvalInboxRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/approval/inbox',
-  component: ApprovalInboxPage,
-})
-
-const approvalSentRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/approval/sent',
-  component: ApprovalSentPage,
-})
-
-const approvalDocumentsRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/approval/documents',
-  component: ApprovalDocumentsPage,
-})
-
 // ─── /usage-stats (이용 통계) ──────────────────────────────────────────────────
 
 const usageStatsRoute = createRoute({
@@ -713,90 +611,24 @@ const aiUsageStatsRoute = createRoute({
   component: AiUsageStatsPage,
 })
 
-// ─── /english (영어 학습 코너) ─────────────────────────────────────────────────
+// ─── /dev-market ─────────────────────────────────────────────────────────────
 
-const marketLecturesRoute = createRoute({
+const requiredLecturesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
-  path: '/dev-market/lectures',
-  component: MarketLecturesPage,
+  path: '/dev-market/required',
+  component: RequiredLecturesPage,
 })
 
-const marketRecommendRoute = createRoute({
+const lectureShareRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
-  path: '/dev-market/recommend',
-  component: MarketRecommendPage,
+  path: '/dev-market/share',
+  component: LectureSharePage,
 })
 
-const marketNotesRoute = createRoute({
+const lectureNotesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/dev-market/notes',
-  component: MarketNotesPage,
-})
-
-const marketPrototypesRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/dev-market/prototypes',
-  component: MarketPrototypesPage,
-})
-
-const analysisTechDebtRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/dev-analysis/tech-debt',
-  component: AnalysisTechDebtPage,
-})
-
-const analysisTrendsRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/dev-analysis/trends',
-  component: AnalysisTrendsPage,
-})
-
-const analysisHiringRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/dev-analysis/hiring',
-  component: AnalysisHiringPage,
-})
-
-const analysisDomainRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/dev-analysis/domain',
-  component: AnalysisDomainPage,
-})
-
-const analysisConceptsRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/dev-analysis/concepts',
-  component: AnalysisConceptsPage,
-})
-
-const englishChatRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/english/chat',
-  component: EnglishChatPage,
-})
-
-const englishDiaryRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/english/diary',
-  component: EnglishDiaryPage,
-})
-
-const englishNewsRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/english/news',
-  component: EnglishNewsPage,
-})
-
-const englishListeningRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/english/listening',
-  component: EnglishListeningPage,
-})
-
-const englishCharacterRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/english/character',
-  component: EnglishCharacterPage,
+  component: LectureNotesPage,
 })
 
 // ─── /api-doc ────────────────────────────────────────────────────────────────
@@ -1248,16 +1080,10 @@ export const router = createRouter({
       chatbotHistoryRoute,
       chatbotFlowRoute,
       chatbotFilesRoute,
-      chatbotKnowledgeRoute,
-      chatbotKnowledgeNoticeRoute,
-      chatbotKnowledgeFaqRoute,
-      chatbotKnowledgeAiRoute,
-      chatbotKnowledgeDevRoute,
       chatbotBasicGuideRoute,
       chatbotStreamingGuideRoute,
       chatbotHistoryGuideRoute,
       chatbotFilesGuideRoute,
-      chatbotKnowledgeGuideRoute,
       chatbotToolsRoute,
       chatbotToolsGuideRoute,
       chatbotRealtimeRoute,
@@ -1276,28 +1102,11 @@ export const router = createRouter({
       docuRoute,
       readmeRoute,
       aiMethodologyRoute,
-      aiEvaluationRoute,
-      approvalRoute,
-      approvalWriteRoute,
-      approvalInboxRoute,
-      approvalSentRoute,
-      approvalDocumentsRoute,
       usageStatsRoute,
       aiUsageStatsRoute,
-      marketLecturesRoute,
-      marketRecommendRoute,
-      marketNotesRoute,
-      marketPrototypesRoute,
-      analysisTechDebtRoute,
-      analysisTrendsRoute,
-      analysisHiringRoute,
-      analysisDomainRoute,
-      analysisConceptsRoute,
-      englishChatRoute,
-      englishDiaryRoute,
-      englishNewsRoute,
-      englishListeningRoute,
-      englishCharacterRoute,
+      requiredLecturesRoute,
+      lectureShareRoute,
+      lectureNotesRoute,
       apiDocRoute,
       sqlPracticeRoute,
       sqlUserPracticeRoute,

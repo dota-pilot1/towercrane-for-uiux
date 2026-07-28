@@ -1,7 +1,7 @@
-import { GraduationCap, LayoutTemplate, NotebookPen, Star, Store } from 'lucide-react'
+import { BookOpenCheck, NotebookPen, Share2, Store } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-// 개발 마켓 — 유료 콘텐츠 판매 코너 (준비 중 stub)
+// 개발 강의 — 강의 학습·공유·노트 코너 (준비 중 stub)
 function MarketPlaceholder({
   icon: Icon,
   title,
@@ -29,49 +29,39 @@ function MarketPlaceholder({
         </div>
         <div>
           <p className="text-sm font-bold text-text-primary">준비 중입니다</p>
-          <p className="mt-1 text-xs text-text-muted">개발 마켓 콘텐츠는 곧 오픈됩니다.</p>
+          <p className="mt-1 text-xs text-text-muted">개발 강의 기능은 곧 제공됩니다.</p>
         </div>
       </div>
     </div>
   )
 }
 
-export function MarketLecturesPage() {
+export function RequiredLecturesPage() {
   return (
     <MarketPlaceholder
-      icon={GraduationCap}
-      title="유료 강의"
-      description="개발 실무 강의를 구매하고 수강합니다."
+      icon={BookOpenCheck}
+      title="필수 강의"
+      description="업무에 필요한 필수 개발 강의를 확인하고 수강합니다."
     />
   )
 }
 
-export function MarketRecommendPage() {
+export function LectureSharePage() {
   return (
     <MarketPlaceholder
-      icon={Star}
-      title="강의 추천"
-      description="엄선한 추천 강의를 큐레이션합니다."
+      icon={Share2}
+      title="강의 공유"
+      description="유용한 개발 강의를 팀원들과 공유합니다."
     />
   )
 }
 
-export function MarketNotesPage() {
+export function LectureNotesPage() {
   return (
     <MarketPlaceholder
       icon={NotebookPen}
-      title="유료 노트"
-      description="정리된 개발 노트·자료를 구매합니다."
-    />
-  )
-}
-
-export function MarketPrototypesPage() {
-  return (
-    <MarketPlaceholder
-      icon={LayoutTemplate}
-      title="유료 프로토타입"
-      description="바로 쓰는 프로토타입 템플릿을 구매합니다."
+      title="강의 노트"
+      description="수강한 강의의 핵심 내용과 학습 기록을 정리합니다."
     />
   )
 }

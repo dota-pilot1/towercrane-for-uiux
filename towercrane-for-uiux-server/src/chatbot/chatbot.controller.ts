@@ -16,16 +16,14 @@ import type { AuthService } from '../auth/auth.service';
 import { ChatbotSessionService } from './chatbot-session.service';
 import { ChatbotStreamService } from './chatbot-stream.service';
 import { ChatbotRealtimeService } from './chatbot-realtime.service';
-import type { KnowledgeChannel } from '../database/schema';
 
 type User = ReturnType<AuthService['getSessionUser']>;
 
-/** 스트리밍 3개 라우트가 공유하는 body. 어느 모드인지는 이제 URL이 말해준다 */
+/** 스트리밍 라우트가 공유하는 body. 어느 모드인지는 URL이 말해준다 */
 type StreamBody = {
   sessionId: string;
   message: string;
   fileUrls?: string[];
-  channels?: KnowledgeChannel[]; // 지식 검색 전용 — 검색할 채널 범위
 };
 
 @UseGuards(AuthGuard)
@@ -96,23 +94,6 @@ export class ChatbotController {
       {
         fileUrls: body.fileUrls,
       },
-    );
-  }
-
-  /** 지식 검색 — 사내 문서를 검색해 그것만 근거로 답하게 한다 (RAG) */
-  @Post('stream/knowledge')
-  async streamKnowledge(
-    @CurrentUser() user: User,
-    @Body() body: StreamBody,
-    @Res() res: Response,
-  ) {
-    this.openSseStream(res);
-    await this.streamService.streamKnowledge(
-      body.sessionId,
-      body.message,
-      user,
-      res,
-      { fileUrls: body.fileUrls, channels: body.channels },
     );
   }
 

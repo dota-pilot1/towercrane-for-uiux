@@ -9,7 +9,6 @@ import type { Response } from 'express';
 import { OPENAI_CLIENT } from './lib/openai.provider';
 import { createSse } from './lib/sse';
 import { ChatbotSessionService } from './chatbot-session.service';
-import { ChatbotKnowledgeService } from './chatbot-knowledge.service';
 import { ChatbotToolsService } from './chatbot-tools.service';
 import { ChatbotUsageService } from './chatbot-usage.service';
 import type {
@@ -35,7 +34,6 @@ const CHATBOT_SYSTEM_PROMPT = `당신은 친절하고 실용적인 AI 어시스�
  *
  * URL → 메서드 → 처리:
  *   POST /chatbot/stream            streamPlain      기본 채팅 · 스트리밍 · 파일 첨부
- *   POST /chatbot/stream/knowledge  streamKnowledge  지식 검색 — 프롬프트만 다르고 runPlain 공유
  *   POST /chatbot/stream/tools      streamTools      도구 호출 → ChatbotToolsService
  *
  * 권한 검사·질문 저장·히스토리 조립은 셋이 100% 같아서 prepareStream이 한 번만
@@ -47,7 +45,6 @@ export class ChatbotStreamService {
     @Inject(OPENAI_CLIENT) private readonly openai: OpenAI | null,
     private readonly configService: ConfigService,
     private readonly sessionService: ChatbotSessionService,
-    private readonly knowledgeService: ChatbotKnowledgeService,
     private readonly toolsService: ChatbotToolsService,
     private readonly usageService: ChatbotUsageService,
   ) {}
@@ -65,34 +62,6 @@ export class ChatbotStreamService {
     return this.runPlain(this.withSystemPrompt(base));
   }
 
-  /** POST /chatbot/stream/knowledge — 지식 검색(RAG). 사내 문서를 프롬프트에 얹는다 */
-  async streamKnowledge(
-    sessionId: string,
-    message: string,
-    user: ChatbotUser,
-    res: Response,
-    options: StreamOptions = {},
-  ) {
-    this.assertOpenAi();
-    const base = this.prepareStream(sessionId, message, user, res, options);
-
-    // 사내 문서를 찾아 프론트에 알리고("참고 문서" 패널), 그것만 근거로 답하도록 지시한다
-    const knowledge = this.knowledgeService.prepare(
-      message,
-      user,
-      options.channels,
-      base.sse,
-      CHATBOT_SYSTEM_PROMPT,
-    );
-
-    // 프롬프트만 다를 뿐 토큰을 흘려보내는 방식은 기본 채팅과 같다
-    return this.runPlain({
-      ...base,
-      knowledgeSources: knowledge.sources,
-      messages: [...knowledge.systemPrompts, ...base.conversation],
-    });
-  }
-
   /** POST /chatbot/stream/tools — 도구 호출(Function Calling) */
   async streamTools(
     sessionId: string,
@@ -106,11 +75,9 @@ export class ChatbotStreamService {
     return this.toolsService.stream(this.withSystemPrompt(base));
   }
 
-  /** 지식 모드가 아니면 기본 시스템 프롬프트 하나만 앞에 붙인다 */
   private withSystemPrompt(base: StreamBase): StreamContext {
     return {
       ...base,
-      knowledgeSources: [],
       messages: [
         { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
         ...base.conversation,
@@ -127,7 +94,7 @@ export class ChatbotStreamService {
   }
 
   /**
-   * 세 모드의 공통 준비 — 권한 검사 → 질문 저장 → meta 전송 → 대화 내역 조립.
+   * 스트리밍 모드의 공통 준비 — 권한 검사 → 질문 저장 → meta 전송 → 대화 내역 조립.
    * 모드를 모른다. 시스템 프롬프트는 호출한 쪽이 알아서 앞에 붙인다.
    */
   private prepareStream(
@@ -175,9 +142,9 @@ export class ChatbotStreamService {
     };
   }
 
-  /** 기본 채팅 / 지식 검색 공용 — 토큰을 도착하는 즉시 흘려보낸다 */
+  /** 기본 채팅 — 토큰을 도착하는 즉시 흘려보낸다 */
   private async runPlain(ctx: StreamContext) {
-    const { sessionId, user, sse, messages, model, knowledgeSources } = ctx;
+    const { sessionId, user, sse, messages, model } = ctx;
 
     const stream = await this.openai!.chat.completions.create({
       model,
@@ -202,7 +169,7 @@ export class ChatbotStreamService {
       'assistant',
       assistantContent,
     );
-    sse.finish(assistantMessage, knowledgeSources);
+    sse.finish(assistantMessage);
     this.usageService.record(user, sessionId, model, usage);
   }
 

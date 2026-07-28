@@ -29,35 +29,10 @@ function sectionIdToPath(sectionId: string): string {
     github_pr_review: '/github-pr-review',
     feature_plans: '/feature-plans',
     docu: '/docu',
-    knowledge_channel: '/chatbot/knowledge',
-    knowledge_notice: '/chatbot/knowledge/notice',
-    knowledge_faq: '/chatbot/knowledge/faq',
-    knowledge_ai: '/chatbot/knowledge/ai',
-    knowledge_dev: '/chatbot/knowledge/dev',
-    dev_market_group: '/dev-market/lectures',
-    market_lectures: '/dev-market/lectures',
-    market_recommend: '/dev-market/recommend',
-    market_notes: '/dev-market/notes',
-    market_prototypes: '/dev-market/prototypes',
-    dev_analysis_group: '/dev-analysis/tech-debt',
-    analysis_tech_debt: '/dev-analysis/tech-debt',
-    analysis_trends: '/dev-analysis/trends',
-    analysis_hiring: '/dev-analysis/hiring',
-    analysis_domain: '/dev-analysis/domain',
-    analysis_concepts: '/dev-analysis/concepts',
-    ai_evaluation: '/ai-evaluation',
-    approval: '/approval',
-    approval_home: '/approval',
-    approval_submit: '/approval/write',
-    approval_inbox: '/approval/inbox',
-    approval_sent: '/approval/sent',
-    approval_documents: '/approval/documents',
-    english_group: '/english/chat',
-    english_chat: '/english/chat',
-    english_diary: '/english/diary',
-    english_news: '/english/news',
-    english_listening: '/english/listening',
-    english_character: '/english/character',
+    dev_market_group: '/dev-market/required',
+    lecture_required: '/dev-market/required',
+    lecture_share: '/dev-market/share',
+    lecture_notes: '/dev-market/notes',
     usage_stats_group: '/usage-stats',
     usage_stats: '/usage-stats',
     ai_usage_stats: '/usage-stats/ai',
@@ -92,14 +67,12 @@ function sectionIdToPath(sectionId: string): string {
     chatbot_history: '/chatbot/history',
     chatbot_flow: '/chatbot/flow',
     chatbot_files: '/chatbot/files',
-    chatbot_knowledge: '/chatbot/knowledge',
     chatbot_tools: '/chatbot/tools',
     chatbot_realtime: '/chatbot/realtime',
     chatbot_basic_guide: '/chatbot/guide',
     chatbot_streaming_guide: '/chatbot/streaming/guide',
     chatbot_history_guide: '/chatbot/history/guide',
     chatbot_files_guide: '/chatbot/files/guide',
-    chatbot_knowledge_guide: '/chatbot/knowledge/guide',
     chatbot_tools_guide: '/chatbot/tools/guide',
     chatbot_realtime_guide: '/chatbot/realtime/guide',
   }
@@ -119,27 +92,9 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/feature-plans')) return 'feature_plans'
   if (pathname.startsWith('/dev-management')) return 'dev_management_chat'
   if (pathname.startsWith('/docu')) return 'docu'
-  if (pathname.startsWith('/dev-market/lectures')) return 'market_lectures'
-  if (pathname.startsWith('/dev-market/recommend')) return 'market_recommend'
-  if (pathname.startsWith('/dev-market/notes')) return 'market_notes'
-  if (pathname.startsWith('/dev-market/prototypes')) return 'market_prototypes'
-  if (pathname.startsWith('/dev-analysis/tech-debt')) return 'analysis_tech_debt'
-  if (pathname.startsWith('/dev-analysis/trends')) return 'analysis_trends'
-  if (pathname.startsWith('/dev-analysis/hiring')) return 'analysis_hiring'
-  if (pathname.startsWith('/dev-analysis/domain')) return 'analysis_domain'
-  if (pathname.startsWith('/dev-analysis/concepts')) return 'analysis_concepts'
-  if (pathname.startsWith('/ai-evaluation')) return 'ai_evaluation'
-  if (pathname.startsWith('/approval/inbox')) return 'approval_inbox'
-  if (pathname.startsWith('/approval/sent')) return 'approval_sent'
-  if (pathname.startsWith('/approval/write')) return 'approval_submit'
-  if (pathname.startsWith('/approval/documents')) return 'approval_documents'
-  if (pathname.startsWith('/approval')) return 'approval_home'
-  if (pathname.startsWith('/english/chat')) return 'english_chat'
-  if (pathname.startsWith('/english/diary')) return 'english_diary'
-  if (pathname.startsWith('/english/news')) return 'english_news'
-  if (pathname.startsWith('/english/listening')) return 'english_listening'
-  if (pathname.startsWith('/english/character')) return 'english_character'
-  if (pathname.startsWith('/english')) return 'english_chat'
+  if (pathname.startsWith('/dev-market/required')) return 'lecture_required'
+  if (pathname.startsWith('/dev-market/share')) return 'lecture_share'
+  if (pathname.startsWith('/dev-market/notes')) return 'lecture_notes'
   if (pathname.startsWith('/usage-stats/ai')) return 'ai_usage_stats'
   if (pathname.startsWith('/usage-stats')) return 'usage_stats'
   if (pathname.startsWith('/api-doc')) return 'api_doc'
@@ -170,11 +125,6 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/chatbot/history')) return 'chatbot_history'
   if (pathname.startsWith('/chatbot/flow')) return 'chatbot_flow'
   if (pathname.startsWith('/chatbot/files')) return 'chatbot_files'
-  if (pathname.startsWith('/chatbot/knowledge/notice')) return 'knowledge_notice'
-  if (pathname.startsWith('/chatbot/knowledge/faq')) return 'knowledge_faq'
-  if (pathname.startsWith('/chatbot/knowledge/ai')) return 'knowledge_ai'
-  if (pathname.startsWith('/chatbot/knowledge/dev')) return 'knowledge_dev'
-  if (pathname.startsWith('/chatbot/knowledge')) return 'chatbot_knowledge'
   if (pathname.startsWith('/chatbot/tools')) return 'chatbot_tools'
   if (pathname.startsWith('/chatbot/realtime/guide')) return 'chatbot_realtime_guide'
   if (pathname.startsWith('/chatbot/realtime')) return 'chatbot_realtime'
@@ -185,13 +135,6 @@ function getSectionIdFromPath(pathname: string): string {
 function normalizeSectionId(sectionId: string | null | undefined): string {
   if (sectionId === 'challenge' || sectionId === 'study_diary') return 'study_diary'
   if (sectionId === 'task') return 'task_all'
-  if (
-    sectionId === 'knowledge_notice' ||
-    sectionId === 'knowledge_faq' ||
-    sectionId === 'knowledge_ai' ||
-    sectionId === 'knowledge_dev'
-  )
-    return sectionId
   return sectionId ?? ''
 }
 
@@ -489,6 +432,8 @@ export function AppHeader() {
   const menuTree = useMemo(() => {
     return buildTree(flatMenus, userRole).filter((item) => {
       if (item.sectionId === 'readme') return false
+      if (item.sectionId === 'dev_management') return false
+      if (item.sectionId === 'dev_study') return false
       if (!item.sectionId && item.children.length === 0) return false
       return true
     })

@@ -8,7 +8,6 @@ import { createHash, randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { tasksTable } from '../database/schema';
-import { ChatbotKnowledgeService } from './chatbot-knowledge.service';
 import type {
   ChatbotUser,
   RealtimeSessionRequest,
@@ -55,22 +54,6 @@ const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
       required: [],
     },
   },
-  {
-    type: 'function',
-    name: 'search_knowledge',
-    description:
-      '사내 지식 문서에서 사용자의 질문과 관련된 문서를 검색한다. 정책, FAQ, 공지, 개발 지식 확인 요청에 사용한다.',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description: '검색할 질문 또는 키워드',
-        },
-      },
-      required: ['query'],
-    },
-  },
 ];
 
 /**
@@ -85,7 +68,6 @@ export class ChatbotRealtimeService {
   constructor(
     private readonly configService: ConfigService,
     private readonly databaseService: DatabaseService,
-    private readonly knowledgeService: ChatbotKnowledgeService,
   ) {}
 
   private get db() {
@@ -263,35 +245,6 @@ export class ChatbotRealtimeService {
           items: tasks.slice(0, 10),
         },
         summary: `담당 업무 ${tasks.length}건을 조회했습니다.`,
-      };
-    }
-
-    if (name === 'search_knowledge') {
-      const query = typeof args.query === 'string' ? args.query.trim() : '';
-      if (!query) {
-        throw new BadRequestException('search_knowledge query is required');
-      }
-
-      const sources = this.knowledgeService
-        .search(query, user)
-        .map((source) => ({
-          documentId: source.documentId,
-          channel: source.channel,
-          title: source.title,
-          headingPath: source.headingPath,
-          snippet: source.snippet,
-          documentUrl: source.documentUrl,
-          score: source.score,
-        }));
-
-      return {
-        callId,
-        name,
-        result: {
-          count: sources.length,
-          items: sources,
-        },
-        summary: `사내 지식 문서 ${sources.length}건을 검색했습니다.`,
       };
     }
 

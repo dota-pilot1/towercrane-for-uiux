@@ -15,7 +15,7 @@ const COST_PER_1K: Record<string, { prompt: number; completion: number }> = {
 
 const FALLBACK_RATE = COST_PER_1K['gpt-4o-mini'];
 
-/** 누가 토큰을 얼마나 썼는지 기록한다 — 개발 분석 화면의 근거 데이터 */
+/** 누가 토큰을 얼마나 썼는지 기록한다. */
 @Injectable()
 export class ChatbotUsageService {
   constructor(private readonly databaseService: DatabaseService) {}
