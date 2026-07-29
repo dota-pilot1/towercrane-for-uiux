@@ -27,7 +27,7 @@ export type CodeReviewFinding = {
   recommendation: string
 }
 
-export type GithubPrReviewCriterion = {
+export type CodeReviewCriterion = {
   id: string
   title: string
   instruction: string
@@ -35,7 +35,7 @@ export type GithubPrReviewCriterion = {
   orderIdx: number
 }
 
-export type GithubPrCriterionFinding = {
+export type CodeReviewCriterionFinding = {
   severity: CodeReviewFindingSeverity
   message: string
   filePath: string | null
@@ -44,12 +44,12 @@ export type GithubPrCriterionFinding = {
   recommendation: string
 }
 
-export type GithubPrCriterionResult = {
+export type CodeReviewCriterionResult = {
   criterionId: string
   criterionTitle: string
   status: 'problem' | 'warning' | 'no_finding' | 'not_applicable'
   summary: string
-  findings: GithubPrCriterionFinding[]
+  findings: CodeReviewCriterionFinding[]
 }
 
 export type CodeReviewChangedFile = {
@@ -84,8 +84,8 @@ export type CodeReviewSummary = {
   headSha: string | null
   prUpdatedAt: string | null
   reviewNote: string | null
-  criteriaSnapshot: GithubPrReviewCriterion[]
-  criterionResults: GithubPrCriterionResult[]
+  criteriaSnapshot: CodeReviewCriterion[]
+  criterionResults: CodeReviewCriterionResult[]
   promptContractVersion: string | null
   createdBy: string | null
   createdByName: string
@@ -128,21 +128,6 @@ export type AnalyzeCodeReviewPayload = {
   repositoryUrl?: string
   reviewGoal?: string
   sections?: CodeReviewSection[]
-}
-
-export type AnalyzeGithubPrReviewPayload = {
-  sourceUrl: string
-  reviewNote?: string
-}
-
-export type GithubPrReviewPreferences = {
-  criteria: GithubPrReviewCriterion[]
-  version: number
-  updatedAt: string
-}
-
-export type SaveGithubPrReviewPreferencesPayload = {
-  criteria: GithubPrReviewCriterion[]
 }
 
 export type CreateCodeReviewPayload = {

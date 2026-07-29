@@ -437,7 +437,7 @@ export function AiMethodologyPage() {
                   </h3>
                   <div className="space-y-3">
                     {[
-                      { t: '팀 표준', d: '폴더 구조, 네이밍, 에러 코드, PR 리뷰' },
+                      { t: '팀 표준', d: '폴더 구조, 네이밍, 에러 코드, 리뷰 규칙' },
                       { t: '팀 자산', d: '공통 UI, 훅, API 클라이언트, 테스트 유틸' },
                       { t: '팀 자동화', d: 'AI 코드 리뷰, 문서 생성, PR 요약' }
                     ].map(i => (

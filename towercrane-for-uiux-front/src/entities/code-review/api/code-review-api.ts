@@ -8,14 +8,11 @@ import { apiRequest } from '../../../shared/api/http'
 import { useSessionStore } from '../../../shared/store/session-store'
 import type {
   AnalyzeCodeReviewPayload,
-  AnalyzeGithubPrReviewPayload,
   CodeReviewDetail,
   CodeReviewListParams,
   CodeReviewListResponse,
-  GithubPrReviewPreferences,
   CodeReviewRepositoryValidation,
   CreateCodeReviewPayload,
-  SaveGithubPrReviewPreferencesPayload,
   UpdateCodeReviewPayload,
 } from '../model/types'
 
@@ -25,7 +22,6 @@ export const codeReviewKeys = {
   list: (params: CodeReviewListParams) => [...codeReviewKeys.lists(), params] as const,
   taskList: (taskId: string | null) => [...codeReviewKeys.all, 'task', taskId] as const,
   detail: (reviewId: string) => [...codeReviewKeys.all, 'detail', reviewId] as const,
-  githubPrPreferences: () => [...codeReviewKeys.all, 'github-pr-preferences'] as const,
 }
 
 function buildListQuery(params: CodeReviewListParams) {
@@ -95,48 +91,6 @@ export function useAnalyzeCodeReview() {
       queryClient.setQueryData(codeReviewKeys.detail(detail.id), detail)
       void queryClient.invalidateQueries({ queryKey: codeReviewKeys.lists() })
       void queryClient.invalidateQueries({ queryKey: codeReviewKeys.taskList(detail.taskId) })
-    },
-  })
-}
-
-export function useAnalyzeGithubPrReview() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (payload: AnalyzeGithubPrReviewPayload) =>
-      apiRequest<CodeReviewDetail>('/code-reviews/pr/analyze', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }),
-    onSuccess: (detail) => {
-      queryClient.setQueryData(codeReviewKeys.detail(detail.id), detail)
-      void queryClient.invalidateQueries({ queryKey: codeReviewKeys.lists() })
-      void queryClient.invalidateQueries({ queryKey: codeReviewKeys.taskList(detail.taskId) })
-    },
-  })
-}
-
-export function useGithubPrReviewPreferences() {
-  const isAuthenticated = useSessionStore((state) => state.isAuthenticated)
-
-  return useQuery({
-    queryKey: codeReviewKeys.githubPrPreferences(),
-    queryFn: () => apiRequest<GithubPrReviewPreferences>('/code-reviews/preferences'),
-    enabled: isAuthenticated,
-  })
-}
-
-export function useSaveGithubPrReviewPreferences() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (payload: SaveGithubPrReviewPreferencesPayload) =>
-      apiRequest<GithubPrReviewPreferences>('/code-reviews/preferences', {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      }),
-    onSuccess: (preferences) => {
-      queryClient.setQueryData(codeReviewKeys.githubPrPreferences(), preferences)
     },
   })
 }

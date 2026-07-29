@@ -37,7 +37,6 @@ import { MeetingWorkspaceHomePage } from '../pages/meeting-workspace/ui/meeting-
 import { DevManagementPage } from '../pages/dev-management/ui/dev-management-page'
 import { DevMeetingMinutesPage } from '../pages/dev-meeting-minutes/ui/dev-meeting-minutes-page'
 import { CodeReviewsPage } from '../pages/code-reviews/ui/code-reviews-page'
-import { GithubPrReviewPage } from '../pages/github-pr-review/ui/github-pr-review-page'
 import { FeaturePlansPage } from '../pages/feature-plans/ui/feature-plans-page'
 import { HomePage } from '../pages/home/ui/home-page'
 import { AiMethodologyPage } from '../pages/ai-methodology/ui/ai-methodology-page'
@@ -533,23 +532,6 @@ const codeReviewDetailRoute = createRoute({
 function CodeReviewDetailRoute() {
   const { reviewId } = codeReviewDetailRoute.useParams()
   return <CodeReviewsPage reviewId={reviewId} />
-}
-
-const githubPrReviewRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/github-pr-review',
-  component: GithubPrReviewPage,
-})
-
-const githubPrReviewDetailRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/github-pr-review/$reviewId',
-  component: GithubPrReviewDetailRoute,
-})
-
-function GithubPrReviewDetailRoute() {
-  const { reviewId } = githubPrReviewDetailRoute.useParams()
-  return <GithubPrReviewPage reviewId={reviewId} />
 }
 
 const featurePlansRoute = createRoute({
@@ -1095,8 +1077,6 @@ export const router = createRouter({
       devMeetingMinutesDetailRoute,
       codeReviewsRoute,
       codeReviewDetailRoute,
-      githubPrReviewRoute,
-      githubPrReviewDetailRoute,
       featurePlansRoute,
       featurePlanDetailRoute,
       docuRoute,

@@ -37,6 +37,11 @@ export class ProjectCodeReviewController {
     return this.projectCodeReviewService.listWorkspaces(req.user.id);
   }
 
+  @Get('workspaces/:id/summary')
+  getWorkspaceSummary(@Req() req: SessionRequest, @Param('id') id: string) {
+    return this.projectCodeReviewService.getWorkspaceSummary(req.user.id, id);
+  }
+
   @Post('workspaces')
   createWorkspace(@Req() req: SessionRequest, @Body() body: unknown) {
     const input = createProjectCodeReviewWorkspaceSchema.parse(body);

@@ -25,6 +25,8 @@ import { DevChallengeModule } from './dev-challenge/dev-challenge.module';
 import { StudyDiaryModule } from './study-diary/study-diary.module';
 import { ArchNoteModule } from './arch-note/arch-note.module';
 import { PlanningDesignModule } from './planning-design/planning-design.module';
+import { DevHistoryModule } from './dev-history/dev-history.module';
+import { IdeaNoteModule } from './idea-note/idea-note.module';
 import { ProjectCodeReviewModule } from './project-code-review/project-code-review.module';
 import { AxStudyModule } from './ax-study/ax-study.module';
 import { AxBoardModule } from './ax-board/ax-board.module';
@@ -64,6 +66,8 @@ import { PointsModule } from './points/points.module';
     StudyDiaryModule,
     ArchNoteModule,
     PlanningDesignModule,
+    DevHistoryModule,
+    IdeaNoteModule,
     ProjectCodeReviewModule,
     AxStudyModule,
     AxBoardModule,

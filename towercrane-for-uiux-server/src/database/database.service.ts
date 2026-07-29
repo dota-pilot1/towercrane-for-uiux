@@ -330,6 +330,124 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_planning_design_documents_section
         ON planning_design_documents(section_id, order_idx);
 
+      CREATE TABLE IF NOT EXISTS dev_history_workspaces (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        icon TEXT NOT NULL DEFAULT 'NotebookPen',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_history_workspaces_user
+        ON dev_history_workspaces(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS dev_history_categories (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES dev_history_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_history_categories_workspace
+        ON dev_history_categories(workspace_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS dev_history_sections (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES dev_history_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_history_sections_category
+        ON dev_history_sections(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS dev_history_documents (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES dev_history_sections(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_history_documents_section
+        ON dev_history_documents(section_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS idea_note_workspaces (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        icon TEXT NOT NULL DEFAULT 'Lightbulb',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_idea_note_workspaces_user
+        ON idea_note_workspaces(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS idea_note_categories (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES idea_note_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_idea_note_categories_workspace
+        ON idea_note_categories(workspace_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS idea_note_sections (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES idea_note_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_idea_note_sections_category
+        ON idea_note_sections(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS idea_note_documents (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES idea_note_sections(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_idea_note_documents_section
+        ON idea_note_documents(section_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS project_code_review_workspaces (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -1232,15 +1350,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_code_reviews_repository_created
         ON code_reviews(repository, created_at);
-
-      CREATE TABLE IF NOT EXISTS github_pr_review_settings (
-        user_id TEXT PRIMARY KEY,
-        criteria TEXT NOT NULL DEFAULT '[]',
-        version INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-      );
 
       CREATE TABLE IF NOT EXISTS feature_plans (
         id TEXT PRIMARY KEY,
@@ -2534,15 +2643,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       now,
     });
     this.upsertMenuBySectionId({
-      sectionId: 'github_pr_review',
-      name: 'GitHub PR 리뷰',
-      icon: 'GitPullRequest',
-      displayOrder: 5,
-      parentId: existingDevManagement.id,
-      requiredRole: null,
-      now,
-    });
-    this.upsertMenuBySectionId({
       sectionId: 'prototype',
       name: 'Prototype',
       icon: 'GitBranch',
@@ -2564,7 +2664,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       .run(now);
 
     // 개발 도구는 웹 헤더에서 숨기고 라우트·데이터·독립 앱은 그대로 유지한다.
-    // 부모가 비노출이면 하위 Postman/GitHub PR 리뷰도 메뉴 트리에 포함되지 않는다.
     this.sqlite
       .prepare(
         `
@@ -2576,7 +2675,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             'dev_management_chat',
             'dev_meeting_minutes',
             'code_reviews',
-            'feature_plans'
+            'feature_plans',
+            'github_pr_review'
           )
         `,
       )

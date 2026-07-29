@@ -26,7 +26,6 @@ function sectionIdToPath(sectionId: string): string {
     dev_management_chat: '/dev-management',
     dev_meeting_minutes: '/dev-meeting-minutes',
     code_reviews: '/code-reviews',
-    github_pr_review: '/github-pr-review',
     feature_plans: '/feature-plans',
     docu: '/docu',
     dev_market_group: '/dev-market/required',
@@ -87,7 +86,6 @@ function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/challenge')) return 'study_diary'
   if (pathname.startsWith('/meeting')) return 'meeting'
   if (pathname.startsWith('/dev-meeting-minutes')) return 'dev_meeting_minutes'
-  if (pathname.startsWith('/github-pr-review')) return 'github_pr_review'
   if (pathname.startsWith('/code-reviews')) return 'code_reviews'
   if (pathname.startsWith('/feature-plans')) return 'feature_plans'
   if (pathname.startsWith('/dev-management')) return 'dev_management_chat'

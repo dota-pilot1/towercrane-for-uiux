@@ -13,41 +13,41 @@ import {
 import { SessionGuard } from '../auth/guard/session.guard';
 import type { SessionRequest } from '../auth/types';
 import {
-  createPlanningDesignCategorySchema,
-  createPlanningDesignDocumentSchema,
-  createPlanningDesignSectionSchema,
-  createPlanningDesignWorkspaceSchema,
-  reorderPlanningDesignCategoriesSchema,
-  reorderPlanningDesignDocumentsSchema,
-  reorderPlanningDesignSectionsSchema,
-  reorderPlanningDesignWorkspacesSchema,
-  updatePlanningDesignCategorySchema,
-  updatePlanningDesignDocumentSchema,
-  updatePlanningDesignSectionSchema,
-  updatePlanningDesignWorkspaceSchema,
-} from './dto/planning-design.schema';
-import { PlanningDesignService } from './planning-design.service';
+  createDevHistoryCategorySchema,
+  createDevHistoryDocumentSchema,
+  createDevHistorySectionSchema,
+  createDevHistoryWorkspaceSchema,
+  reorderDevHistoryCategoriesSchema,
+  reorderDevHistoryDocumentsSchema,
+  reorderDevHistorySectionsSchema,
+  reorderDevHistoryWorkspacesSchema,
+  updateDevHistoryCategorySchema,
+  updateDevHistoryDocumentSchema,
+  updateDevHistorySectionSchema,
+  updateDevHistoryWorkspaceSchema,
+} from './dto/dev-history.schema';
+import { DevHistoryService } from './dev-history.service';
 
-@Controller('planning-design')
+@Controller('dev-history')
 @UseGuards(SessionGuard)
-export class PlanningDesignController {
-  constructor(private readonly planningDesignService: PlanningDesignService) {}
+export class DevHistoryController {
+  constructor(private readonly devHistoryService: DevHistoryService) {}
 
   @Get('workspaces')
   listWorkspaces(@Req() req: SessionRequest) {
-    return this.planningDesignService.listWorkspaces(req.user.id);
+    return this.devHistoryService.listWorkspaces(req.user.id);
   }
 
   @Get('workspaces/:id/summary')
   getWorkspaceSummary(@Req() req: SessionRequest, @Param('id') id: string) {
-    return this.planningDesignService.getWorkspaceSummary(req.user.id, id);
+    return this.devHistoryService.getWorkspaceSummary(req.user.id, id);
   }
 
   @Post('workspaces')
   createWorkspace(@Req() req: SessionRequest, @Body() body: unknown) {
-    return this.planningDesignService.createWorkspace(
+    return this.devHistoryService.createWorkspace(
       req.user.id,
-      createPlanningDesignWorkspaceSchema.parse(body),
+      createDevHistoryWorkspaceSchema.parse(body),
     );
   }
 
@@ -57,23 +57,23 @@ export class PlanningDesignController {
     @Param('id') id: string,
     @Body() body: unknown,
   ) {
-    return this.planningDesignService.updateWorkspace(
+    return this.devHistoryService.updateWorkspace(
       req.user.id,
       id,
-      updatePlanningDesignWorkspaceSchema.parse(body),
+      updateDevHistoryWorkspaceSchema.parse(body),
     );
   }
 
   @Delete('workspaces/:id')
   @HttpCode(204)
   deleteWorkspace(@Req() req: SessionRequest, @Param('id') id: string) {
-    this.planningDesignService.deleteWorkspace(req.user.id, id);
+    this.devHistoryService.deleteWorkspace(req.user.id, id);
   }
 
   @Post('workspaces/reorder')
   reorderWorkspaces(@Req() req: SessionRequest, @Body() body: unknown) {
-    const { workspaceIds } = reorderPlanningDesignWorkspacesSchema.parse(body);
-    return this.planningDesignService.reorderWorkspaces(
+    const { workspaceIds } = reorderDevHistoryWorkspacesSchema.parse(body);
+    return this.devHistoryService.reorderWorkspaces(
       req.user.id,
       workspaceIds,
     );
@@ -84,7 +84,7 @@ export class PlanningDesignController {
     @Req() req: SessionRequest,
     @Param('workspaceId') workspaceId: string,
   ) {
-    return this.planningDesignService.getCategories(req.user.id, workspaceId);
+    return this.devHistoryService.getCategories(req.user.id, workspaceId);
   }
 
   @Post('workspaces/:workspaceId/categories')
@@ -93,10 +93,10 @@ export class PlanningDesignController {
     @Param('workspaceId') workspaceId: string,
     @Body() body: unknown,
   ) {
-    return this.planningDesignService.createCategory(
+    return this.devHistoryService.createCategory(
       req.user.id,
       workspaceId,
-      createPlanningDesignCategorySchema.parse(body),
+      createDevHistoryCategorySchema.parse(body),
     );
   }
 
@@ -106,17 +106,17 @@ export class PlanningDesignController {
     @Param('id') id: string,
     @Body() body: unknown,
   ) {
-    return this.planningDesignService.updateCategory(
+    return this.devHistoryService.updateCategory(
       req.user.id,
       id,
-      updatePlanningDesignCategorySchema.parse(body),
+      updateDevHistoryCategorySchema.parse(body),
     );
   }
 
   @Delete('categories/:id')
   @HttpCode(204)
   deleteCategory(@Req() req: SessionRequest, @Param('id') id: string) {
-    this.planningDesignService.deleteCategory(req.user.id, id);
+    this.devHistoryService.deleteCategory(req.user.id, id);
   }
 
   @Post('workspaces/:workspaceId/categories/reorder')
@@ -125,8 +125,8 @@ export class PlanningDesignController {
     @Param('workspaceId') workspaceId: string,
     @Body() body: unknown,
   ) {
-    const { categoryIds } = reorderPlanningDesignCategoriesSchema.parse(body);
-    return this.planningDesignService.reorderCategories(
+    const { categoryIds } = reorderDevHistoryCategoriesSchema.parse(body);
+    return this.devHistoryService.reorderCategories(
       req.user.id,
       workspaceId,
       categoryIds,
@@ -138,14 +138,14 @@ export class PlanningDesignController {
     @Req() req: SessionRequest,
     @Param('categoryId') categoryId: string,
   ) {
-    return this.planningDesignService.getSections(req.user.id, categoryId);
+    return this.devHistoryService.getSections(req.user.id, categoryId);
   }
 
   @Post('sections')
   createSection(@Req() req: SessionRequest, @Body() body: unknown) {
-    return this.planningDesignService.createSection(
+    return this.devHistoryService.createSection(
       req.user.id,
-      createPlanningDesignSectionSchema.parse(body),
+      createDevHistorySectionSchema.parse(body),
     );
   }
 
@@ -155,17 +155,17 @@ export class PlanningDesignController {
     @Param('id') id: string,
     @Body() body: unknown,
   ) {
-    return this.planningDesignService.updateSection(
+    return this.devHistoryService.updateSection(
       req.user.id,
       id,
-      updatePlanningDesignSectionSchema.parse(body),
+      updateDevHistorySectionSchema.parse(body),
     );
   }
 
   @Delete('sections/:id')
   @HttpCode(204)
   deleteSection(@Req() req: SessionRequest, @Param('id') id: string) {
-    this.planningDesignService.deleteSection(req.user.id, id);
+    this.devHistoryService.deleteSection(req.user.id, id);
   }
 
   @Post('categories/:categoryId/sections/reorder')
@@ -174,8 +174,8 @@ export class PlanningDesignController {
     @Param('categoryId') categoryId: string,
     @Body() body: unknown,
   ) {
-    const { sectionIds } = reorderPlanningDesignSectionsSchema.parse(body);
-    return this.planningDesignService.reorderSections(
+    const { sectionIds } = reorderDevHistorySectionsSchema.parse(body);
+    return this.devHistoryService.reorderSections(
       req.user.id,
       categoryId,
       sectionIds,
@@ -187,14 +187,14 @@ export class PlanningDesignController {
     @Req() req: SessionRequest,
     @Param('sectionId') sectionId: string,
   ) {
-    return this.planningDesignService.getDocuments(req.user.id, sectionId);
+    return this.devHistoryService.getDocuments(req.user.id, sectionId);
   }
 
   @Post('documents')
   createDocument(@Req() req: SessionRequest, @Body() body: unknown) {
-    return this.planningDesignService.createDocument(
+    return this.devHistoryService.createDocument(
       req.user.id,
-      createPlanningDesignDocumentSchema.parse(body),
+      createDevHistoryDocumentSchema.parse(body),
     );
   }
 
@@ -204,17 +204,17 @@ export class PlanningDesignController {
     @Param('id') id: string,
     @Body() body: unknown,
   ) {
-    return this.planningDesignService.updateDocument(
+    return this.devHistoryService.updateDocument(
       req.user.id,
       id,
-      updatePlanningDesignDocumentSchema.parse(body),
+      updateDevHistoryDocumentSchema.parse(body),
     );
   }
 
   @Delete('documents/:id')
   @HttpCode(204)
   deleteDocument(@Req() req: SessionRequest, @Param('id') id: string) {
-    this.planningDesignService.deleteDocument(req.user.id, id);
+    this.devHistoryService.deleteDocument(req.user.id, id);
   }
 
   @Post('sections/:sectionId/documents/reorder')
@@ -223,8 +223,8 @@ export class PlanningDesignController {
     @Param('sectionId') sectionId: string,
     @Body() body: unknown,
   ) {
-    const { documentIds } = reorderPlanningDesignDocumentsSchema.parse(body);
-    return this.planningDesignService.reorderDocuments(
+    const { documentIds } = reorderDevHistoryDocumentsSchema.parse(body);
+    return this.devHistoryService.reorderDocuments(
       req.user.id,
       sectionId,
       documentIds,

@@ -35,6 +35,11 @@ export class ArchNoteController {
     return this.archNoteService.listWorkspaces(req.user.id);
   }
 
+  @Get('workspaces/:id/summary')
+  getWorkspaceSummary(@Req() req: SessionRequest, @Param('id') id: string) {
+    return this.archNoteService.getWorkspaceSummary(req.user.id, id);
+  }
+
   @Post('workspaces')
   createWorkspace(@Req() req: SessionRequest, @Body() body: unknown) {
     const input = createArchNoteWorkspaceSchema.parse(body);

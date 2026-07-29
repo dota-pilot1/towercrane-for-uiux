@@ -210,6 +210,166 @@ export type PlanningDesignSectionRow =
 export type PlanningDesignDocumentRow =
   typeof planningDesignDocumentsTable.$inferSelect;
 
+// ── Dev History (개발 일지) ─────────────────────────────────────────────
+// 기획·설계와 같은 4단 구조를 사용하되 개발 진행 기록은 독립 도메인으로 관리한다.
+export const devHistoryWorkspacesTable = sqliteTable(
+  'dev_history_workspaces',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description'),
+    icon: text('icon').notNull().default('NotebookPen'),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const devHistoryCategoriesTable = sqliteTable(
+  'dev_history_categories',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => devHistoryWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    name: text('name').notNull(),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const devHistorySectionsTable = sqliteTable(
+  'dev_history_sections',
+  {
+    id: text('id').primaryKey(),
+    categoryId: text('category_id')
+      .notNull()
+      .references(() => devHistoryCategoriesTable.id, {
+        onDelete: 'cascade',
+      }),
+    title: text('title').notNull(),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const devHistoryDocumentsTable = sqliteTable(
+  'dev_history_documents',
+  {
+    id: text('id').primaryKey(),
+    sectionId: text('section_id')
+      .notNull()
+      .references(() => devHistorySectionsTable.id, {
+        onDelete: 'cascade',
+      }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    title: text('title').notNull().default(''),
+    content: text('content').notNull().default(''),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export type DevHistoryWorkspaceRow =
+  typeof devHistoryWorkspacesTable.$inferSelect;
+export type DevHistoryCategoryRow =
+  typeof devHistoryCategoriesTable.$inferSelect;
+export type DevHistorySectionRow =
+  typeof devHistorySectionsTable.$inferSelect;
+export type DevHistoryDocumentRow =
+  typeof devHistoryDocumentsTable.$inferSelect;
+
+// ── Idea Note (아이디어 노트) ───────────────────────────────────────────
+// 기획 전 단계의 아이디어, 가설, 레퍼런스를 독립 도메인으로 관리한다.
+export const ideaNoteWorkspacesTable = sqliteTable(
+  'idea_note_workspaces',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description'),
+    icon: text('icon').notNull().default('Lightbulb'),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const ideaNoteCategoriesTable = sqliteTable(
+  'idea_note_categories',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => ideaNoteWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    name: text('name').notNull(),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const ideaNoteSectionsTable = sqliteTable(
+  'idea_note_sections',
+  {
+    id: text('id').primaryKey(),
+    categoryId: text('category_id')
+      .notNull()
+      .references(() => ideaNoteCategoriesTable.id, {
+        onDelete: 'cascade',
+      }),
+    title: text('title').notNull(),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const ideaNoteDocumentsTable = sqliteTable(
+  'idea_note_documents',
+  {
+    id: text('id').primaryKey(),
+    sectionId: text('section_id')
+      .notNull()
+      .references(() => ideaNoteSectionsTable.id, {
+        onDelete: 'cascade',
+      }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    title: text('title').notNull().default(''),
+    content: text('content').notNull().default(''),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export type IdeaNoteWorkspaceRow = typeof ideaNoteWorkspacesTable.$inferSelect;
+export type IdeaNoteCategoryRow = typeof ideaNoteCategoriesTable.$inferSelect;
+export type IdeaNoteSectionRow = typeof ideaNoteSectionsTable.$inferSelect;
+export type IdeaNoteDocumentRow = typeof ideaNoteDocumentsTable.$inferSelect;
+
 // ── Project Code Review (프로젝트 코드리뷰 — 워크스페이스=프로젝트) ──
 // arch-note와 동일한 4단 구조(워크스페이스→1차 주제→2차 주제→노트)의 독립 도메인.
 export const projectCodeReviewWorkspacesTable = sqliteTable(
@@ -1352,7 +1512,7 @@ export type CodeReviewDocument = {
   updatedAt: string;
 };
 
-export type GithubPrReviewCriterion = {
+export type CodeReviewCriterion = {
   id: string;
   title: string;
   instruction: string;
@@ -1360,7 +1520,7 @@ export type GithubPrReviewCriterion = {
   orderIdx: number;
 };
 
-export type GithubPrCriterionFinding = {
+export type CodeReviewCriterionFinding = {
   severity: CodeReviewFindingSeverity;
   message: string;
   filePath: string | null;
@@ -1369,29 +1529,13 @@ export type GithubPrCriterionFinding = {
   recommendation: string;
 };
 
-export type GithubPrCriterionResult = {
+export type CodeReviewCriterionResult = {
   criterionId: string;
   criterionTitle: string;
   status: 'problem' | 'warning' | 'no_finding' | 'not_applicable';
   summary: string;
-  findings: GithubPrCriterionFinding[];
+  findings: CodeReviewCriterionFinding[];
 };
-
-export const githubPrReviewSettingsTable = sqliteTable(
-  'github_pr_review_settings',
-  {
-    userId: text('user_id')
-      .primaryKey()
-      .references(() => usersTable.id, { onDelete: 'cascade' }),
-    criteria: text('criteria', { mode: 'json' })
-      .$type<GithubPrReviewCriterion[]>()
-      .notNull()
-      .default([]),
-    version: integer('version').notNull().default(1),
-    createdAt: text('created_at').notNull(),
-    updatedAt: text('updated_at').notNull(),
-  },
-);
 
 export const codeReviewsTable = sqliteTable('code_reviews', {
   id: text('id').primaryKey(),
@@ -1437,11 +1581,11 @@ export const codeReviewsTable = sqliteTable('code_reviews', {
   prUpdatedAt: text('pr_updated_at'),
   reviewNote: text('review_note'),
   criteriaSnapshot: text('criteria_snapshot', { mode: 'json' })
-    .$type<GithubPrReviewCriterion[]>()
+    .$type<CodeReviewCriterion[]>()
     .notNull()
     .default([]),
   criterionResults: text('criterion_results', { mode: 'json' })
-    .$type<GithubPrCriterionResult[]>()
+    .$type<CodeReviewCriterionResult[]>()
     .notNull()
     .default([]),
   promptContractVersion: text('prompt_contract_version'),
@@ -2405,6 +2549,14 @@ export const schema = {
   planningDesignCategoriesTable,
   planningDesignSectionsTable,
   planningDesignDocumentsTable,
+  devHistoryWorkspacesTable,
+  devHistoryCategoriesTable,
+  devHistorySectionsTable,
+  devHistoryDocumentsTable,
+  ideaNoteWorkspacesTable,
+  ideaNoteCategoriesTable,
+  ideaNoteSectionsTable,
+  ideaNoteDocumentsTable,
   projectCodeReviewWorkspacesTable,
   projectCodeReviewCategoriesTable,
   projectCodeReviewSectionsTable,
@@ -2452,7 +2604,6 @@ export const schema = {
   devManagementRoomsTable,
   devManagementMessagesTable,
   devMeetingMinutesTable,
-  githubPrReviewSettingsTable,
   codeReviewsTable,
   featurePlansTable,
   devManagementBotSettingsTable,
@@ -2612,10 +2763,6 @@ export type DevManagementMessageInsert =
 export type DevMeetingMinutesRow = typeof devMeetingMinutesTable.$inferSelect;
 export type DevMeetingMinutesInsert =
   typeof devMeetingMinutesTable.$inferInsert;
-export type GithubPrReviewSettingsRow =
-  typeof githubPrReviewSettingsTable.$inferSelect;
-export type GithubPrReviewSettingsInsert =
-  typeof githubPrReviewSettingsTable.$inferInsert;
 export type CodeReviewRow = typeof codeReviewsTable.$inferSelect;
 export type CodeReviewInsert = typeof codeReviewsTable.$inferInsert;
 export type FeaturePlanRow = typeof featurePlansTable.$inferSelect;

@@ -7,35 +7,35 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
 import {
-  planningDesignCategoriesTable,
-  planningDesignDocumentsTable,
-  planningDesignSectionsTable,
-  planningDesignWorkspacesTable,
-  type PlanningDesignCategoryRow,
-  type PlanningDesignSectionRow,
-  type PlanningDesignWorkspaceRow,
+  ideaNoteCategoriesTable,
+  ideaNoteDocumentsTable,
+  ideaNoteSectionsTable,
+  ideaNoteWorkspacesTable,
+  type IdeaNoteCategoryRow,
+  type IdeaNoteSectionRow,
+  type IdeaNoteWorkspaceRow,
 } from '../database/schema';
 import type {
-  CreatePlanningDesignCategoryInput,
-  CreatePlanningDesignDocumentInput,
-  CreatePlanningDesignSectionInput,
-  CreatePlanningDesignWorkspaceInput,
-  UpdatePlanningDesignCategoryInput,
-  UpdatePlanningDesignDocumentInput,
-  UpdatePlanningDesignSectionInput,
-  UpdatePlanningDesignWorkspaceInput,
-} from './dto/planning-design.schema';
+  CreateIdeaNoteCategoryInput,
+  CreateIdeaNoteDocumentInput,
+  CreateIdeaNoteSectionInput,
+  CreateIdeaNoteWorkspaceInput,
+  UpdateIdeaNoteCategoryInput,
+  UpdateIdeaNoteDocumentInput,
+  UpdateIdeaNoteSectionInput,
+  UpdateIdeaNoteWorkspaceInput,
+} from './dto/idea-note.schema';
 
 @Injectable()
-export class PlanningDesignService {
+export class IdeaNoteService {
   constructor(private readonly db: DatabaseService) {}
 
   listWorkspaces(userId: string) {
     return this.db.db
       .select()
-      .from(planningDesignWorkspacesTable)
-      .where(eq(planningDesignWorkspacesTable.userId, userId))
-      .orderBy(asc(planningDesignWorkspacesTable.orderIdx))
+      .from(ideaNoteWorkspacesTable)
+      .where(eq(ideaNoteWorkspacesTable.userId, userId))
+      .orderBy(asc(ideaNoteWorkspacesTable.orderIdx))
       .all();
   }
 
@@ -43,39 +43,39 @@ export class PlanningDesignService {
     this.assertWorkspaceOwner(workspaceId, userId);
     const result = this.db.db
       .select({
-        categoryCount: sql<number>`COUNT(DISTINCT ${planningDesignCategoriesTable.id})`,
-        sectionCount: sql<number>`COUNT(DISTINCT ${planningDesignSectionsTable.id})`,
-        itemCount: sql<number>`COUNT(DISTINCT ${planningDesignDocumentsTable.id})`,
+        categoryCount: sql<number>`COUNT(DISTINCT ${ideaNoteCategoriesTable.id})`,
+        sectionCount: sql<number>`COUNT(DISTINCT ${ideaNoteSectionsTable.id})`,
+        itemCount: sql<number>`COUNT(DISTINCT ${ideaNoteDocumentsTable.id})`,
       })
-      .from(planningDesignWorkspacesTable)
+      .from(ideaNoteWorkspacesTable)
       .leftJoin(
-        planningDesignCategoriesTable,
+        ideaNoteCategoriesTable,
         eq(
-          planningDesignCategoriesTable.workspaceId,
-          planningDesignWorkspacesTable.id,
+          ideaNoteCategoriesTable.workspaceId,
+          ideaNoteWorkspacesTable.id,
         ),
       )
       .leftJoin(
-        planningDesignSectionsTable,
+        ideaNoteSectionsTable,
         eq(
-          planningDesignSectionsTable.categoryId,
-          planningDesignCategoriesTable.id,
+          ideaNoteSectionsTable.categoryId,
+          ideaNoteCategoriesTable.id,
         ),
       )
       .leftJoin(
-        planningDesignDocumentsTable,
+        ideaNoteDocumentsTable,
         and(
           eq(
-            planningDesignDocumentsTable.sectionId,
-            planningDesignSectionsTable.id,
+            ideaNoteDocumentsTable.sectionId,
+            ideaNoteSectionsTable.id,
           ),
-          eq(planningDesignDocumentsTable.userId, userId),
+          eq(ideaNoteDocumentsTable.userId, userId),
         ),
       )
       .where(
         and(
-          eq(planningDesignWorkspacesTable.id, workspaceId),
-          eq(planningDesignWorkspacesTable.userId, userId),
+          eq(ideaNoteWorkspacesTable.id, workspaceId),
+          eq(ideaNoteWorkspacesTable.userId, userId),
         ),
       )
       .get();
@@ -87,17 +87,17 @@ export class PlanningDesignService {
     };
   }
 
-  createWorkspace(userId: string, input: CreatePlanningDesignWorkspaceInput) {
+  createWorkspace(userId: string, input: CreateIdeaNoteWorkspaceInput) {
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db.db
-      .insert(planningDesignWorkspacesTable)
+      .insert(ideaNoteWorkspacesTable)
       .values({
         id,
         userId,
         title: input.title,
         description: input.description ?? null,
-        icon: input.icon ?? 'DraftingCompass',
+        icon: input.icon ?? 'Lightbulb',
         orderIdx: this.nextWorkspaceOrderIdx(userId),
         createdAt: now,
         updatedAt: now,
@@ -109,13 +109,13 @@ export class PlanningDesignService {
   updateWorkspace(
     userId: string,
     workspaceId: string,
-    input: UpdatePlanningDesignWorkspaceInput,
+    input: UpdateIdeaNoteWorkspaceInput,
   ) {
     this.assertWorkspaceOwner(workspaceId, userId);
     this.db.db
-      .update(planningDesignWorkspacesTable)
+      .update(ideaNoteWorkspacesTable)
       .set({ ...input, updatedAt: new Date().toISOString() })
-      .where(eq(planningDesignWorkspacesTable.id, workspaceId))
+      .where(eq(ideaNoteWorkspacesTable.id, workspaceId))
       .run();
     return this.assertWorkspaceOwner(workspaceId, userId);
   }
@@ -123,8 +123,8 @@ export class PlanningDesignService {
   deleteWorkspace(userId: string, workspaceId: string) {
     this.assertWorkspaceOwner(workspaceId, userId);
     this.db.db
-      .delete(planningDesignWorkspacesTable)
-      .where(eq(planningDesignWorkspacesTable.id, workspaceId))
+      .delete(ideaNoteWorkspacesTable)
+      .where(eq(ideaNoteWorkspacesTable.id, workspaceId))
       .run();
   }
 
@@ -134,9 +134,9 @@ export class PlanningDesignService {
     const now = new Date().toISOString();
     workspaceIds.forEach((id, orderIdx) => {
       this.db.db
-        .update(planningDesignWorkspacesTable)
+        .update(ideaNoteWorkspacesTable)
         .set({ orderIdx, updatedAt: now })
-        .where(eq(planningDesignWorkspacesTable.id, id))
+        .where(eq(ideaNoteWorkspacesTable.id, id))
         .run();
     });
   }
@@ -145,22 +145,22 @@ export class PlanningDesignService {
     this.assertWorkspaceOwner(workspaceId, userId);
     return this.db.db
       .select()
-      .from(planningDesignCategoriesTable)
-      .where(eq(planningDesignCategoriesTable.workspaceId, workspaceId))
-      .orderBy(asc(planningDesignCategoriesTable.orderIdx))
+      .from(ideaNoteCategoriesTable)
+      .where(eq(ideaNoteCategoriesTable.workspaceId, workspaceId))
+      .orderBy(asc(ideaNoteCategoriesTable.orderIdx))
       .all();
   }
 
   createCategory(
     userId: string,
     workspaceId: string,
-    input: CreatePlanningDesignCategoryInput,
+    input: CreateIdeaNoteCategoryInput,
   ) {
     this.assertWorkspaceOwner(workspaceId, userId);
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db.db
-      .insert(planningDesignCategoriesTable)
+      .insert(ideaNoteCategoriesTable)
       .values({
         id,
         workspaceId,
@@ -177,13 +177,13 @@ export class PlanningDesignService {
   updateCategory(
     userId: string,
     id: string,
-    input: UpdatePlanningDesignCategoryInput,
+    input: UpdateIdeaNoteCategoryInput,
   ) {
     this.assertCategoryOwner(id, userId);
     this.db.db
-      .update(planningDesignCategoriesTable)
+      .update(ideaNoteCategoriesTable)
       .set({ ...input, updatedAt: new Date().toISOString() })
-      .where(eq(planningDesignCategoriesTable.id, id))
+      .where(eq(ideaNoteCategoriesTable.id, id))
       .run();
     return this.assertCategoryOwner(id, userId);
   }
@@ -191,8 +191,8 @@ export class PlanningDesignService {
   deleteCategory(userId: string, id: string) {
     this.assertCategoryOwner(id, userId);
     this.db.db
-      .delete(planningDesignCategoriesTable)
-      .where(eq(planningDesignCategoriesTable.id, id))
+      .delete(ideaNoteCategoriesTable)
+      .where(eq(ideaNoteCategoriesTable.id, id))
       .run();
   }
 
@@ -208,9 +208,9 @@ export class PlanningDesignService {
     const now = new Date().toISOString();
     categoryIds.forEach((id, orderIdx) => {
       this.db.db
-        .update(planningDesignCategoriesTable)
+        .update(ideaNoteCategoriesTable)
         .set({ orderIdx, updatedAt: now })
-        .where(eq(planningDesignCategoriesTable.id, id))
+        .where(eq(ideaNoteCategoriesTable.id, id))
         .run();
     });
   }
@@ -219,18 +219,18 @@ export class PlanningDesignService {
     this.assertCategoryOwner(categoryId, userId);
     return this.db.db
       .select()
-      .from(planningDesignSectionsTable)
-      .where(eq(planningDesignSectionsTable.categoryId, categoryId))
-      .orderBy(asc(planningDesignSectionsTable.orderIdx))
+      .from(ideaNoteSectionsTable)
+      .where(eq(ideaNoteSectionsTable.categoryId, categoryId))
+      .orderBy(asc(ideaNoteSectionsTable.orderIdx))
       .all();
   }
 
-  createSection(userId: string, input: CreatePlanningDesignSectionInput) {
+  createSection(userId: string, input: CreateIdeaNoteSectionInput) {
     this.assertCategoryOwner(input.categoryId, userId);
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db.db
-      .insert(planningDesignSectionsTable)
+      .insert(ideaNoteSectionsTable)
       .values({
         id,
         categoryId: input.categoryId,
@@ -246,13 +246,13 @@ export class PlanningDesignService {
   updateSection(
     userId: string,
     id: string,
-    input: UpdatePlanningDesignSectionInput,
+    input: UpdateIdeaNoteSectionInput,
   ) {
     this.assertSectionOwner(id, userId);
     this.db.db
-      .update(planningDesignSectionsTable)
+      .update(ideaNoteSectionsTable)
       .set({ ...input, updatedAt: new Date().toISOString() })
-      .where(eq(planningDesignSectionsTable.id, id))
+      .where(eq(ideaNoteSectionsTable.id, id))
       .run();
     return this.assertSectionOwner(id, userId);
   }
@@ -260,8 +260,8 @@ export class PlanningDesignService {
   deleteSection(userId: string, id: string) {
     this.assertSectionOwner(id, userId);
     this.db.db
-      .delete(planningDesignSectionsTable)
-      .where(eq(planningDesignSectionsTable.id, id))
+      .delete(ideaNoteSectionsTable)
+      .where(eq(ideaNoteSectionsTable.id, id))
       .run();
   }
 
@@ -273,9 +273,9 @@ export class PlanningDesignService {
     const now = new Date().toISOString();
     sectionIds.forEach((id, orderIdx) => {
       this.db.db
-        .update(planningDesignSectionsTable)
+        .update(ideaNoteSectionsTable)
         .set({ orderIdx, updatedAt: now })
-        .where(eq(planningDesignSectionsTable.id, id))
+        .where(eq(ideaNoteSectionsTable.id, id))
         .run();
     });
   }
@@ -284,23 +284,23 @@ export class PlanningDesignService {
     this.assertSectionOwner(sectionId, userId);
     return this.db.db
       .select()
-      .from(planningDesignDocumentsTable)
+      .from(ideaNoteDocumentsTable)
       .where(
         and(
-          eq(planningDesignDocumentsTable.sectionId, sectionId),
-          eq(planningDesignDocumentsTable.userId, userId),
+          eq(ideaNoteDocumentsTable.sectionId, sectionId),
+          eq(ideaNoteDocumentsTable.userId, userId),
         ),
       )
-      .orderBy(asc(planningDesignDocumentsTable.orderIdx))
+      .orderBy(asc(ideaNoteDocumentsTable.orderIdx))
       .all();
   }
 
-  createDocument(userId: string, input: CreatePlanningDesignDocumentInput) {
+  createDocument(userId: string, input: CreateIdeaNoteDocumentInput) {
     this.assertSectionOwner(input.sectionId, userId);
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db.db
-      .insert(planningDesignDocumentsTable)
+      .insert(ideaNoteDocumentsTable)
       .values({
         id,
         sectionId: input.sectionId,
@@ -318,13 +318,13 @@ export class PlanningDesignService {
   updateDocument(
     userId: string,
     id: string,
-    input: UpdatePlanningDesignDocumentInput,
+    input: UpdateIdeaNoteDocumentInput,
   ) {
     this.assertDocumentOwner(id, userId);
     this.db.db
-      .update(planningDesignDocumentsTable)
+      .update(ideaNoteDocumentsTable)
       .set({ ...input, updatedAt: new Date().toISOString() })
-      .where(eq(planningDesignDocumentsTable.id, id))
+      .where(eq(ideaNoteDocumentsTable.id, id))
       .run();
     return this.getDocumentById(id, userId);
   }
@@ -332,8 +332,8 @@ export class PlanningDesignService {
   deleteDocument(userId: string, id: string) {
     this.assertDocumentOwner(id, userId);
     this.db.db
-      .delete(planningDesignDocumentsTable)
-      .where(eq(planningDesignDocumentsTable.id, id))
+      .delete(ideaNoteDocumentsTable)
+      .where(eq(ideaNoteDocumentsTable.id, id))
       .run();
   }
 
@@ -345,9 +345,9 @@ export class PlanningDesignService {
     const now = new Date().toISOString();
     documentIds.forEach((id, orderIdx) => {
       this.db.db
-        .update(planningDesignDocumentsTable)
+        .update(ideaNoteDocumentsTable)
         .set({ orderIdx, updatedAt: now })
-        .where(eq(planningDesignDocumentsTable.id, id))
+        .where(eq(ideaNoteDocumentsTable.id, id))
         .run();
     });
   }
@@ -355,14 +355,14 @@ export class PlanningDesignService {
   private assertWorkspaceOwner(
     workspaceId: string,
     userId: string,
-  ): PlanningDesignWorkspaceRow {
+  ): IdeaNoteWorkspaceRow {
     const row = this.db.db
       .select()
-      .from(planningDesignWorkspacesTable)
+      .from(ideaNoteWorkspacesTable)
       .where(
         and(
-          eq(planningDesignWorkspacesTable.id, workspaceId),
-          eq(planningDesignWorkspacesTable.userId, userId),
+          eq(ideaNoteWorkspacesTable.id, workspaceId),
+          eq(ideaNoteWorkspacesTable.userId, userId),
         ),
       )
       .get();
@@ -373,21 +373,21 @@ export class PlanningDesignService {
   private assertCategoryOwner(
     categoryId: string,
     userId: string,
-  ): PlanningDesignCategoryRow {
+  ): IdeaNoteCategoryRow {
     const row = this.db.db
-      .select({ category: planningDesignCategoriesTable })
-      .from(planningDesignCategoriesTable)
+      .select({ category: ideaNoteCategoriesTable })
+      .from(ideaNoteCategoriesTable)
       .innerJoin(
-        planningDesignWorkspacesTable,
+        ideaNoteWorkspacesTable,
         eq(
-          planningDesignCategoriesTable.workspaceId,
-          planningDesignWorkspacesTable.id,
+          ideaNoteCategoriesTable.workspaceId,
+          ideaNoteWorkspacesTable.id,
         ),
       )
       .where(
         and(
-          eq(planningDesignCategoriesTable.id, categoryId),
-          eq(planningDesignWorkspacesTable.userId, userId),
+          eq(ideaNoteCategoriesTable.id, categoryId),
+          eq(ideaNoteWorkspacesTable.userId, userId),
         ),
       )
       .get();
@@ -398,28 +398,28 @@ export class PlanningDesignService {
   private assertSectionOwner(
     sectionId: string,
     userId: string,
-  ): PlanningDesignSectionRow {
+  ): IdeaNoteSectionRow {
     const row = this.db.db
-      .select({ section: planningDesignSectionsTable })
-      .from(planningDesignSectionsTable)
+      .select({ section: ideaNoteSectionsTable })
+      .from(ideaNoteSectionsTable)
       .innerJoin(
-        planningDesignCategoriesTable,
+        ideaNoteCategoriesTable,
         eq(
-          planningDesignSectionsTable.categoryId,
-          planningDesignCategoriesTable.id,
+          ideaNoteSectionsTable.categoryId,
+          ideaNoteCategoriesTable.id,
         ),
       )
       .innerJoin(
-        planningDesignWorkspacesTable,
+        ideaNoteWorkspacesTable,
         eq(
-          planningDesignCategoriesTable.workspaceId,
-          planningDesignWorkspacesTable.id,
+          ideaNoteCategoriesTable.workspaceId,
+          ideaNoteWorkspacesTable.id,
         ),
       )
       .where(
         and(
-          eq(planningDesignSectionsTable.id, sectionId),
-          eq(planningDesignWorkspacesTable.userId, userId),
+          eq(ideaNoteSectionsTable.id, sectionId),
+          eq(ideaNoteWorkspacesTable.userId, userId),
         ),
       )
       .get();
@@ -437,11 +437,11 @@ export class PlanningDesignService {
   private getDocumentById(id: string, userId: string) {
     return this.db.db
       .select()
-      .from(planningDesignDocumentsTable)
+      .from(ideaNoteDocumentsTable)
       .where(
         and(
-          eq(planningDesignDocumentsTable.id, id),
-          eq(planningDesignDocumentsTable.userId, userId),
+          eq(ideaNoteDocumentsTable.id, id),
+          eq(ideaNoteDocumentsTable.userId, userId),
         ),
       )
       .get();
@@ -461,10 +461,10 @@ export class PlanningDesignService {
   private nextWorkspaceOrderIdx(userId: string) {
     const result = this.db.db
       .select({
-        max: sql<number>`COALESCE(MAX(${planningDesignWorkspacesTable.orderIdx}), -1)`,
+        max: sql<number>`COALESCE(MAX(${ideaNoteWorkspacesTable.orderIdx}), -1)`,
       })
-      .from(planningDesignWorkspacesTable)
-      .where(eq(planningDesignWorkspacesTable.userId, userId))
+      .from(ideaNoteWorkspacesTable)
+      .where(eq(ideaNoteWorkspacesTable.userId, userId))
       .get();
     return (result?.max ?? -1) + 1;
   }
@@ -472,10 +472,10 @@ export class PlanningDesignService {
   private nextCategoryOrderIdx(workspaceId: string) {
     const result = this.db.db
       .select({
-        max: sql<number>`COALESCE(MAX(${planningDesignCategoriesTable.orderIdx}), -1)`,
+        max: sql<number>`COALESCE(MAX(${ideaNoteCategoriesTable.orderIdx}), -1)`,
       })
-      .from(planningDesignCategoriesTable)
-      .where(eq(planningDesignCategoriesTable.workspaceId, workspaceId))
+      .from(ideaNoteCategoriesTable)
+      .where(eq(ideaNoteCategoriesTable.workspaceId, workspaceId))
       .get();
     return (result?.max ?? -1) + 1;
   }
@@ -483,10 +483,10 @@ export class PlanningDesignService {
   private nextSectionOrderIdx(categoryId: string) {
     const result = this.db.db
       .select({
-        max: sql<number>`COALESCE(MAX(${planningDesignSectionsTable.orderIdx}), -1)`,
+        max: sql<number>`COALESCE(MAX(${ideaNoteSectionsTable.orderIdx}), -1)`,
       })
-      .from(planningDesignSectionsTable)
-      .where(eq(planningDesignSectionsTable.categoryId, categoryId))
+      .from(ideaNoteSectionsTable)
+      .where(eq(ideaNoteSectionsTable.categoryId, categoryId))
       .get();
     return (result?.max ?? -1) + 1;
   }
@@ -494,13 +494,13 @@ export class PlanningDesignService {
   private nextDocumentOrderIdx(sectionId: string, userId: string) {
     const result = this.db.db
       .select({
-        max: sql<number>`COALESCE(MAX(${planningDesignDocumentsTable.orderIdx}), -1)`,
+        max: sql<number>`COALESCE(MAX(${ideaNoteDocumentsTable.orderIdx}), -1)`,
       })
-      .from(planningDesignDocumentsTable)
+      .from(ideaNoteDocumentsTable)
       .where(
         and(
-          eq(planningDesignDocumentsTable.sectionId, sectionId),
-          eq(planningDesignDocumentsTable.userId, userId),
+          eq(ideaNoteDocumentsTable.sectionId, sectionId),
+          eq(ideaNoteDocumentsTable.userId, userId),
         ),
       )
       .get();

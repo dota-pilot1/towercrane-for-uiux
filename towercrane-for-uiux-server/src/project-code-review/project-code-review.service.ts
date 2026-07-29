@@ -40,6 +40,54 @@ export class ProjectCodeReviewService {
       .all();
   }
 
+  getWorkspaceSummary(userId: string, workspaceId: string) {
+    this.assertWorkspaceOwner(workspaceId, userId);
+    const result = this.db.db
+      .select({
+        categoryCount: sql<number>`COUNT(DISTINCT ${projectCodeReviewCategoriesTable.id})`,
+        sectionCount: sql<number>`COUNT(DISTINCT ${projectCodeReviewSectionsTable.id})`,
+        itemCount: sql<number>`COUNT(DISTINCT ${projectCodeReviewNotesTable.id})`,
+      })
+      .from(projectCodeReviewWorkspacesTable)
+      .leftJoin(
+        projectCodeReviewCategoriesTable,
+        eq(
+          projectCodeReviewCategoriesTable.workspaceId,
+          projectCodeReviewWorkspacesTable.id,
+        ),
+      )
+      .leftJoin(
+        projectCodeReviewSectionsTable,
+        eq(
+          projectCodeReviewSectionsTable.categoryId,
+          projectCodeReviewCategoriesTable.id,
+        ),
+      )
+      .leftJoin(
+        projectCodeReviewNotesTable,
+        and(
+          eq(
+            projectCodeReviewNotesTable.sectionId,
+            projectCodeReviewSectionsTable.id,
+          ),
+          eq(projectCodeReviewNotesTable.userId, userId),
+        ),
+      )
+      .where(
+        and(
+          eq(projectCodeReviewWorkspacesTable.id, workspaceId),
+          eq(projectCodeReviewWorkspacesTable.userId, userId),
+        ),
+      )
+      .get();
+
+    return {
+      categoryCount: Number(result?.categoryCount ?? 0),
+      sectionCount: Number(result?.sectionCount ?? 0),
+      itemCount: Number(result?.itemCount ?? 0),
+    };
+  }
+
   createWorkspace(
     userId: string,
     input: CreateProjectCodeReviewWorkspaceInput,

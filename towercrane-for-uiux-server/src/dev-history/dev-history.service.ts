@@ -7,35 +7,35 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
 import {
-  planningDesignCategoriesTable,
-  planningDesignDocumentsTable,
-  planningDesignSectionsTable,
-  planningDesignWorkspacesTable,
-  type PlanningDesignCategoryRow,
-  type PlanningDesignSectionRow,
-  type PlanningDesignWorkspaceRow,
+  devHistoryCategoriesTable,
+  devHistoryDocumentsTable,
+  devHistorySectionsTable,
+  devHistoryWorkspacesTable,
+  type DevHistoryCategoryRow,
+  type DevHistorySectionRow,
+  type DevHistoryWorkspaceRow,
 } from '../database/schema';
 import type {
-  CreatePlanningDesignCategoryInput,
-  CreatePlanningDesignDocumentInput,
-  CreatePlanningDesignSectionInput,
-  CreatePlanningDesignWorkspaceInput,
-  UpdatePlanningDesignCategoryInput,
-  UpdatePlanningDesignDocumentInput,
-  UpdatePlanningDesignSectionInput,
-  UpdatePlanningDesignWorkspaceInput,
-} from './dto/planning-design.schema';
+  CreateDevHistoryCategoryInput,
+  CreateDevHistoryDocumentInput,
+  CreateDevHistorySectionInput,
+  CreateDevHistoryWorkspaceInput,
+  UpdateDevHistoryCategoryInput,
+  UpdateDevHistoryDocumentInput,
+  UpdateDevHistorySectionInput,
+  UpdateDevHistoryWorkspaceInput,
+} from './dto/dev-history.schema';
 
 @Injectable()
-export class PlanningDesignService {
+export class DevHistoryService {
   constructor(private readonly db: DatabaseService) {}
 
   listWorkspaces(userId: string) {
     return this.db.db
       .select()
-      .from(planningDesignWorkspacesTable)
-      .where(eq(planningDesignWorkspacesTable.userId, userId))
-      .orderBy(asc(planningDesignWorkspacesTable.orderIdx))
+      .from(devHistoryWorkspacesTable)
+      .where(eq(devHistoryWorkspacesTable.userId, userId))
+      .orderBy(asc(devHistoryWorkspacesTable.orderIdx))
       .all();
   }
 
@@ -43,39 +43,39 @@ export class PlanningDesignService {
     this.assertWorkspaceOwner(workspaceId, userId);
     const result = this.db.db
       .select({
-        categoryCount: sql<number>`COUNT(DISTINCT ${planningDesignCategoriesTable.id})`,
-        sectionCount: sql<number>`COUNT(DISTINCT ${planningDesignSectionsTable.id})`,
-        itemCount: sql<number>`COUNT(DISTINCT ${planningDesignDocumentsTable.id})`,
+        categoryCount: sql<number>`COUNT(DISTINCT ${devHistoryCategoriesTable.id})`,
+        sectionCount: sql<number>`COUNT(DISTINCT ${devHistorySectionsTable.id})`,
+        itemCount: sql<number>`COUNT(DISTINCT ${devHistoryDocumentsTable.id})`,
       })
-      .from(planningDesignWorkspacesTable)
+      .from(devHistoryWorkspacesTable)
       .leftJoin(
-        planningDesignCategoriesTable,
+        devHistoryCategoriesTable,
         eq(
-          planningDesignCategoriesTable.workspaceId,
-          planningDesignWorkspacesTable.id,
+          devHistoryCategoriesTable.workspaceId,
+          devHistoryWorkspacesTable.id,
         ),
       )
       .leftJoin(
-        planningDesignSectionsTable,
+        devHistorySectionsTable,
         eq(
-          planningDesignSectionsTable.categoryId,
-          planningDesignCategoriesTable.id,
+          devHistorySectionsTable.categoryId,
+          devHistoryCategoriesTable.id,
         ),
       )
       .leftJoin(
-        planningDesignDocumentsTable,
+        devHistoryDocumentsTable,
         and(
           eq(
-            planningDesignDocumentsTable.sectionId,
-            planningDesignSectionsTable.id,
+            devHistoryDocumentsTable.sectionId,
+            devHistorySectionsTable.id,
           ),
-          eq(planningDesignDocumentsTable.userId, userId),
+          eq(devHistoryDocumentsTable.userId, userId),
         ),
       )
       .where(
         and(
-          eq(planningDesignWorkspacesTable.id, workspaceId),
-          eq(planningDesignWorkspacesTable.userId, userId),
+          eq(devHistoryWorkspacesTable.id, workspaceId),
+          eq(devHistoryWorkspacesTable.userId, userId),
         ),
       )
       .get();
@@ -87,17 +87,17 @@ export class PlanningDesignService {
     };
   }
 
-  createWorkspace(userId: string, input: CreatePlanningDesignWorkspaceInput) {
+  createWorkspace(userId: string, input: CreateDevHistoryWorkspaceInput) {
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db.db
-      .insert(planningDesignWorkspacesTable)
+      .insert(devHistoryWorkspacesTable)
       .values({
         id,
         userId,
         title: input.title,
         description: input.description ?? null,
-        icon: input.icon ?? 'DraftingCompass',
+        icon: input.icon ?? 'NotebookPen',
         orderIdx: this.nextWorkspaceOrderIdx(userId),
         createdAt: now,
         updatedAt: now,
@@ -109,13 +109,13 @@ export class PlanningDesignService {
   updateWorkspace(
     userId: string,
     workspaceId: string,
-    input: UpdatePlanningDesignWorkspaceInput,
+    input: UpdateDevHistoryWorkspaceInput,
   ) {
     this.assertWorkspaceOwner(workspaceId, userId);
     this.db.db
-      .update(planningDesignWorkspacesTable)
+      .update(devHistoryWorkspacesTable)
       .set({ ...input, updatedAt: new Date().toISOString() })
-      .where(eq(planningDesignWorkspacesTable.id, workspaceId))
+      .where(eq(devHistoryWorkspacesTable.id, workspaceId))
       .run();
     return this.assertWorkspaceOwner(workspaceId, userId);
   }
@@ -123,8 +123,8 @@ export class PlanningDesignService {
   deleteWorkspace(userId: string, workspaceId: string) {
     this.assertWorkspaceOwner(workspaceId, userId);
     this.db.db
-      .delete(planningDesignWorkspacesTable)
-      .where(eq(planningDesignWorkspacesTable.id, workspaceId))
+      .delete(devHistoryWorkspacesTable)
+      .where(eq(devHistoryWorkspacesTable.id, workspaceId))
       .run();
   }
 
@@ -134,9 +134,9 @@ export class PlanningDesignService {
     const now = new Date().toISOString();
     workspaceIds.forEach((id, orderIdx) => {
       this.db.db
-        .update(planningDesignWorkspacesTable)
+        .update(devHistoryWorkspacesTable)
         .set({ orderIdx, updatedAt: now })
-        .where(eq(planningDesignWorkspacesTable.id, id))
+        .where(eq(devHistoryWorkspacesTable.id, id))
         .run();
     });
   }
@@ -145,22 +145,22 @@ export class PlanningDesignService {
     this.assertWorkspaceOwner(workspaceId, userId);
     return this.db.db
       .select()
-      .from(planningDesignCategoriesTable)
-      .where(eq(planningDesignCategoriesTable.workspaceId, workspaceId))
-      .orderBy(asc(planningDesignCategoriesTable.orderIdx))
+      .from(devHistoryCategoriesTable)
+      .where(eq(devHistoryCategoriesTable.workspaceId, workspaceId))
+      .orderBy(asc(devHistoryCategoriesTable.orderIdx))
       .all();
   }
 
   createCategory(
     userId: string,
     workspaceId: string,
-    input: CreatePlanningDesignCategoryInput,
+    input: CreateDevHistoryCategoryInput,
   ) {
     this.assertWorkspaceOwner(workspaceId, userId);
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db.db
-      .insert(planningDesignCategoriesTable)
+      .insert(devHistoryCategoriesTable)
       .values({
         id,
         workspaceId,
@@ -177,13 +177,13 @@ export class PlanningDesignService {
   updateCategory(
     userId: string,
     id: string,
-    input: UpdatePlanningDesignCategoryInput,
+    input: UpdateDevHistoryCategoryInput,
   ) {
     this.assertCategoryOwner(id, userId);
     this.db.db
-      .update(planningDesignCategoriesTable)
+      .update(devHistoryCategoriesTable)
       .set({ ...input, updatedAt: new Date().toISOString() })
-      .where(eq(planningDesignCategoriesTable.id, id))
+      .where(eq(devHistoryCategoriesTable.id, id))
       .run();
     return this.assertCategoryOwner(id, userId);
   }
@@ -191,8 +191,8 @@ export class PlanningDesignService {
   deleteCategory(userId: string, id: string) {
     this.assertCategoryOwner(id, userId);
     this.db.db
-      .delete(planningDesignCategoriesTable)
-      .where(eq(planningDesignCategoriesTable.id, id))
+      .delete(devHistoryCategoriesTable)
+      .where(eq(devHistoryCategoriesTable.id, id))
       .run();
   }
 
@@ -208,9 +208,9 @@ export class PlanningDesignService {
     const now = new Date().toISOString();
     categoryIds.forEach((id, orderIdx) => {
       this.db.db
-        .update(planningDesignCategoriesTable)
+        .update(devHistoryCategoriesTable)
         .set({ orderIdx, updatedAt: now })
-        .where(eq(planningDesignCategoriesTable.id, id))
+        .where(eq(devHistoryCategoriesTable.id, id))
         .run();
     });
   }
@@ -219,18 +219,18 @@ export class PlanningDesignService {
     this.assertCategoryOwner(categoryId, userId);
     return this.db.db
       .select()
-      .from(planningDesignSectionsTable)
-      .where(eq(planningDesignSectionsTable.categoryId, categoryId))
-      .orderBy(asc(planningDesignSectionsTable.orderIdx))
+      .from(devHistorySectionsTable)
+      .where(eq(devHistorySectionsTable.categoryId, categoryId))
+      .orderBy(asc(devHistorySectionsTable.orderIdx))
       .all();
   }
 
-  createSection(userId: string, input: CreatePlanningDesignSectionInput) {
+  createSection(userId: string, input: CreateDevHistorySectionInput) {
     this.assertCategoryOwner(input.categoryId, userId);
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db.db
-      .insert(planningDesignSectionsTable)
+      .insert(devHistorySectionsTable)
       .values({
         id,
         categoryId: input.categoryId,
@@ -246,13 +246,13 @@ export class PlanningDesignService {
   updateSection(
     userId: string,
     id: string,
-    input: UpdatePlanningDesignSectionInput,
+    input: UpdateDevHistorySectionInput,
   ) {
     this.assertSectionOwner(id, userId);
     this.db.db
-      .update(planningDesignSectionsTable)
+      .update(devHistorySectionsTable)
       .set({ ...input, updatedAt: new Date().toISOString() })
-      .where(eq(planningDesignSectionsTable.id, id))
+      .where(eq(devHistorySectionsTable.id, id))
       .run();
     return this.assertSectionOwner(id, userId);
   }
@@ -260,8 +260,8 @@ export class PlanningDesignService {
   deleteSection(userId: string, id: string) {
     this.assertSectionOwner(id, userId);
     this.db.db
-      .delete(planningDesignSectionsTable)
-      .where(eq(planningDesignSectionsTable.id, id))
+      .delete(devHistorySectionsTable)
+      .where(eq(devHistorySectionsTable.id, id))
       .run();
   }
 
@@ -273,9 +273,9 @@ export class PlanningDesignService {
     const now = new Date().toISOString();
     sectionIds.forEach((id, orderIdx) => {
       this.db.db
-        .update(planningDesignSectionsTable)
+        .update(devHistorySectionsTable)
         .set({ orderIdx, updatedAt: now })
-        .where(eq(planningDesignSectionsTable.id, id))
+        .where(eq(devHistorySectionsTable.id, id))
         .run();
     });
   }
@@ -284,23 +284,23 @@ export class PlanningDesignService {
     this.assertSectionOwner(sectionId, userId);
     return this.db.db
       .select()
-      .from(planningDesignDocumentsTable)
+      .from(devHistoryDocumentsTable)
       .where(
         and(
-          eq(planningDesignDocumentsTable.sectionId, sectionId),
-          eq(planningDesignDocumentsTable.userId, userId),
+          eq(devHistoryDocumentsTable.sectionId, sectionId),
+          eq(devHistoryDocumentsTable.userId, userId),
         ),
       )
-      .orderBy(asc(planningDesignDocumentsTable.orderIdx))
+      .orderBy(asc(devHistoryDocumentsTable.orderIdx))
       .all();
   }
 
-  createDocument(userId: string, input: CreatePlanningDesignDocumentInput) {
+  createDocument(userId: string, input: CreateDevHistoryDocumentInput) {
     this.assertSectionOwner(input.sectionId, userId);
     const id = randomUUID();
     const now = new Date().toISOString();
     this.db.db
-      .insert(planningDesignDocumentsTable)
+      .insert(devHistoryDocumentsTable)
       .values({
         id,
         sectionId: input.sectionId,
@@ -318,13 +318,13 @@ export class PlanningDesignService {
   updateDocument(
     userId: string,
     id: string,
-    input: UpdatePlanningDesignDocumentInput,
+    input: UpdateDevHistoryDocumentInput,
   ) {
     this.assertDocumentOwner(id, userId);
     this.db.db
-      .update(planningDesignDocumentsTable)
+      .update(devHistoryDocumentsTable)
       .set({ ...input, updatedAt: new Date().toISOString() })
-      .where(eq(planningDesignDocumentsTable.id, id))
+      .where(eq(devHistoryDocumentsTable.id, id))
       .run();
     return this.getDocumentById(id, userId);
   }
@@ -332,8 +332,8 @@ export class PlanningDesignService {
   deleteDocument(userId: string, id: string) {
     this.assertDocumentOwner(id, userId);
     this.db.db
-      .delete(planningDesignDocumentsTable)
-      .where(eq(planningDesignDocumentsTable.id, id))
+      .delete(devHistoryDocumentsTable)
+      .where(eq(devHistoryDocumentsTable.id, id))
       .run();
   }
 
@@ -345,9 +345,9 @@ export class PlanningDesignService {
     const now = new Date().toISOString();
     documentIds.forEach((id, orderIdx) => {
       this.db.db
-        .update(planningDesignDocumentsTable)
+        .update(devHistoryDocumentsTable)
         .set({ orderIdx, updatedAt: now })
-        .where(eq(planningDesignDocumentsTable.id, id))
+        .where(eq(devHistoryDocumentsTable.id, id))
         .run();
     });
   }
@@ -355,14 +355,14 @@ export class PlanningDesignService {
   private assertWorkspaceOwner(
     workspaceId: string,
     userId: string,
-  ): PlanningDesignWorkspaceRow {
+  ): DevHistoryWorkspaceRow {
     const row = this.db.db
       .select()
-      .from(planningDesignWorkspacesTable)
+      .from(devHistoryWorkspacesTable)
       .where(
         and(
-          eq(planningDesignWorkspacesTable.id, workspaceId),
-          eq(planningDesignWorkspacesTable.userId, userId),
+          eq(devHistoryWorkspacesTable.id, workspaceId),
+          eq(devHistoryWorkspacesTable.userId, userId),
         ),
       )
       .get();
@@ -373,21 +373,21 @@ export class PlanningDesignService {
   private assertCategoryOwner(
     categoryId: string,
     userId: string,
-  ): PlanningDesignCategoryRow {
+  ): DevHistoryCategoryRow {
     const row = this.db.db
-      .select({ category: planningDesignCategoriesTable })
-      .from(planningDesignCategoriesTable)
+      .select({ category: devHistoryCategoriesTable })
+      .from(devHistoryCategoriesTable)
       .innerJoin(
-        planningDesignWorkspacesTable,
+        devHistoryWorkspacesTable,
         eq(
-          planningDesignCategoriesTable.workspaceId,
-          planningDesignWorkspacesTable.id,
+          devHistoryCategoriesTable.workspaceId,
+          devHistoryWorkspacesTable.id,
         ),
       )
       .where(
         and(
-          eq(planningDesignCategoriesTable.id, categoryId),
-          eq(planningDesignWorkspacesTable.userId, userId),
+          eq(devHistoryCategoriesTable.id, categoryId),
+          eq(devHistoryWorkspacesTable.userId, userId),
         ),
       )
       .get();
@@ -398,28 +398,28 @@ export class PlanningDesignService {
   private assertSectionOwner(
     sectionId: string,
     userId: string,
-  ): PlanningDesignSectionRow {
+  ): DevHistorySectionRow {
     const row = this.db.db
-      .select({ section: planningDesignSectionsTable })
-      .from(planningDesignSectionsTable)
+      .select({ section: devHistorySectionsTable })
+      .from(devHistorySectionsTable)
       .innerJoin(
-        planningDesignCategoriesTable,
+        devHistoryCategoriesTable,
         eq(
-          planningDesignSectionsTable.categoryId,
-          planningDesignCategoriesTable.id,
+          devHistorySectionsTable.categoryId,
+          devHistoryCategoriesTable.id,
         ),
       )
       .innerJoin(
-        planningDesignWorkspacesTable,
+        devHistoryWorkspacesTable,
         eq(
-          planningDesignCategoriesTable.workspaceId,
-          planningDesignWorkspacesTable.id,
+          devHistoryCategoriesTable.workspaceId,
+          devHistoryWorkspacesTable.id,
         ),
       )
       .where(
         and(
-          eq(planningDesignSectionsTable.id, sectionId),
-          eq(planningDesignWorkspacesTable.userId, userId),
+          eq(devHistorySectionsTable.id, sectionId),
+          eq(devHistoryWorkspacesTable.userId, userId),
         ),
       )
       .get();
@@ -437,11 +437,11 @@ export class PlanningDesignService {
   private getDocumentById(id: string, userId: string) {
     return this.db.db
       .select()
-      .from(planningDesignDocumentsTable)
+      .from(devHistoryDocumentsTable)
       .where(
         and(
-          eq(planningDesignDocumentsTable.id, id),
-          eq(planningDesignDocumentsTable.userId, userId),
+          eq(devHistoryDocumentsTable.id, id),
+          eq(devHistoryDocumentsTable.userId, userId),
         ),
       )
       .get();
@@ -461,10 +461,10 @@ export class PlanningDesignService {
   private nextWorkspaceOrderIdx(userId: string) {
     const result = this.db.db
       .select({
-        max: sql<number>`COALESCE(MAX(${planningDesignWorkspacesTable.orderIdx}), -1)`,
+        max: sql<number>`COALESCE(MAX(${devHistoryWorkspacesTable.orderIdx}), -1)`,
       })
-      .from(planningDesignWorkspacesTable)
-      .where(eq(planningDesignWorkspacesTable.userId, userId))
+      .from(devHistoryWorkspacesTable)
+      .where(eq(devHistoryWorkspacesTable.userId, userId))
       .get();
     return (result?.max ?? -1) + 1;
   }
@@ -472,10 +472,10 @@ export class PlanningDesignService {
   private nextCategoryOrderIdx(workspaceId: string) {
     const result = this.db.db
       .select({
-        max: sql<number>`COALESCE(MAX(${planningDesignCategoriesTable.orderIdx}), -1)`,
+        max: sql<number>`COALESCE(MAX(${devHistoryCategoriesTable.orderIdx}), -1)`,
       })
-      .from(planningDesignCategoriesTable)
-      .where(eq(planningDesignCategoriesTable.workspaceId, workspaceId))
+      .from(devHistoryCategoriesTable)
+      .where(eq(devHistoryCategoriesTable.workspaceId, workspaceId))
       .get();
     return (result?.max ?? -1) + 1;
   }
@@ -483,10 +483,10 @@ export class PlanningDesignService {
   private nextSectionOrderIdx(categoryId: string) {
     const result = this.db.db
       .select({
-        max: sql<number>`COALESCE(MAX(${planningDesignSectionsTable.orderIdx}), -1)`,
+        max: sql<number>`COALESCE(MAX(${devHistorySectionsTable.orderIdx}), -1)`,
       })
-      .from(planningDesignSectionsTable)
-      .where(eq(planningDesignSectionsTable.categoryId, categoryId))
+      .from(devHistorySectionsTable)
+      .where(eq(devHistorySectionsTable.categoryId, categoryId))
       .get();
     return (result?.max ?? -1) + 1;
   }
@@ -494,13 +494,13 @@ export class PlanningDesignService {
   private nextDocumentOrderIdx(sectionId: string, userId: string) {
     const result = this.db.db
       .select({
-        max: sql<number>`COALESCE(MAX(${planningDesignDocumentsTable.orderIdx}), -1)`,
+        max: sql<number>`COALESCE(MAX(${devHistoryDocumentsTable.orderIdx}), -1)`,
       })
-      .from(planningDesignDocumentsTable)
+      .from(devHistoryDocumentsTable)
       .where(
         and(
-          eq(planningDesignDocumentsTable.sectionId, sectionId),
-          eq(planningDesignDocumentsTable.userId, userId),
+          eq(devHistoryDocumentsTable.sectionId, sectionId),
+          eq(devHistoryDocumentsTable.userId, userId),
         ),
       )
       .get();

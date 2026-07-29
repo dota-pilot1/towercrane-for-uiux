@@ -40,6 +40,45 @@ export class ArchNoteService {
       .all();
   }
 
+  getWorkspaceSummary(userId: string, workspaceId: string) {
+    this.assertWorkspaceOwner(workspaceId, userId);
+    const result = this.db.db
+      .select({
+        categoryCount: sql<number>`COUNT(DISTINCT ${archNoteCategoriesTable.id})`,
+        sectionCount: sql<number>`COUNT(DISTINCT ${archNoteSectionsTable.id})`,
+        itemCount: sql<number>`COUNT(DISTINCT ${archNoteNotesTable.id})`,
+      })
+      .from(archNoteWorkspacesTable)
+      .leftJoin(
+        archNoteCategoriesTable,
+        eq(archNoteCategoriesTable.workspaceId, archNoteWorkspacesTable.id),
+      )
+      .leftJoin(
+        archNoteSectionsTable,
+        eq(archNoteSectionsTable.categoryId, archNoteCategoriesTable.id),
+      )
+      .leftJoin(
+        archNoteNotesTable,
+        and(
+          eq(archNoteNotesTable.sectionId, archNoteSectionsTable.id),
+          eq(archNoteNotesTable.userId, userId),
+        ),
+      )
+      .where(
+        and(
+          eq(archNoteWorkspacesTable.id, workspaceId),
+          eq(archNoteWorkspacesTable.userId, userId),
+        ),
+      )
+      .get();
+
+    return {
+      categoryCount: Number(result?.categoryCount ?? 0),
+      sectionCount: Number(result?.sectionCount ?? 0),
+      itemCount: Number(result?.itemCount ?? 0),
+    };
+  }
+
   createWorkspace(userId: string, input: CreateArchNoteWorkspaceInput) {
     const id = randomUUID();
     const now = new Date().toISOString();
