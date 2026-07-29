@@ -271,6 +271,65 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_arch_note_notes_section
         ON arch_note_notes(section_id, order_idx);
 
+      CREATE TABLE IF NOT EXISTS planning_design_workspaces (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        icon TEXT NOT NULL DEFAULT 'DraftingCompass',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_planning_design_workspaces_user
+        ON planning_design_workspaces(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS planning_design_categories (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(workspace_id) REFERENCES planning_design_workspaces(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_planning_design_categories_workspace
+        ON planning_design_categories(workspace_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS planning_design_sections (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES planning_design_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_planning_design_sections_category
+        ON planning_design_sections(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS planning_design_documents (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES planning_design_sections(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_planning_design_documents_section
+        ON planning_design_documents(section_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS project_code_review_workspaces (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,

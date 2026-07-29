@@ -128,6 +128,88 @@ export type ArchNoteCategoryRow = typeof archNoteCategoriesTable.$inferSelect;
 export type ArchNoteSectionRow = typeof archNoteSectionsTable.$inferSelect;
 export type ArchNoteNoteRow = typeof archNoteNotesTable.$inferSelect;
 
+// ── Planning Design (기획·설계 — Lexical 문서 안에서 MMD 포함) ─────────────
+// arch-note와 동일한 4단 구조를 사용하되 데이터 수명주기는 독립적으로 관리한다.
+export const planningDesignWorkspacesTable = sqliteTable(
+  'planning_design_workspaces',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description'),
+    icon: text('icon').notNull().default('DraftingCompass'),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const planningDesignCategoriesTable = sqliteTable(
+  'planning_design_categories',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => planningDesignWorkspacesTable.id, {
+        onDelete: 'cascade',
+      }),
+    name: text('name').notNull(),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const planningDesignSectionsTable = sqliteTable(
+  'planning_design_sections',
+  {
+    id: text('id').primaryKey(),
+    categoryId: text('category_id')
+      .notNull()
+      .references(() => planningDesignCategoriesTable.id, {
+        onDelete: 'cascade',
+      }),
+    title: text('title').notNull(),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const planningDesignDocumentsTable = sqliteTable(
+  'planning_design_documents',
+  {
+    id: text('id').primaryKey(),
+    sectionId: text('section_id')
+      .notNull()
+      .references(() => planningDesignSectionsTable.id, {
+        onDelete: 'cascade',
+      }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    title: text('title').notNull().default(''),
+    content: text('content').notNull().default(''),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export type PlanningDesignWorkspaceRow =
+  typeof planningDesignWorkspacesTable.$inferSelect;
+export type PlanningDesignCategoryRow =
+  typeof planningDesignCategoriesTable.$inferSelect;
+export type PlanningDesignSectionRow =
+  typeof planningDesignSectionsTable.$inferSelect;
+export type PlanningDesignDocumentRow =
+  typeof planningDesignDocumentsTable.$inferSelect;
+
 // ── Project Code Review (프로젝트 코드리뷰 — 워크스페이스=프로젝트) ──
 // arch-note와 동일한 4단 구조(워크스페이스→1차 주제→2차 주제→노트)의 독립 도메인.
 export const projectCodeReviewWorkspacesTable = sqliteTable(
@@ -2319,6 +2401,10 @@ export const schema = {
   archNoteCategoriesTable,
   archNoteSectionsTable,
   archNoteNotesTable,
+  planningDesignWorkspacesTable,
+  planningDesignCategoriesTable,
+  planningDesignSectionsTable,
+  planningDesignDocumentsTable,
   projectCodeReviewWorkspacesTable,
   projectCodeReviewCategoriesTable,
   projectCodeReviewSectionsTable,
