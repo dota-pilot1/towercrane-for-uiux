@@ -1,0 +1,322 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment target
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - backend
+          - frontend
+      wait_for_invalidation:
+        description: Wait until CloudFront invalidation is completed
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+env:
+  API_HEALTH_URL: https://api.hibot-docu.com/api/menus
+  FRONTEND_URL: https://hibot-docu.com
+
+jobs:
+  backend:
+    name: deploy backend
+    if: >-
+      ${{
+        (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main') ||
+        (github.event_name == 'workflow_dispatch' &&
+          (inputs.target == 'all' || inputs.target == 'backend'))
+      }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: towercrane-for-uiux-server
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST || '54.180.215.129' }}
+      EC2_USER: ${{ secrets.EC2_USER || 'ubuntu' }}
+      REMOTE_REPO_DIR: ${{ vars.REMOTE_REPO_DIR || '/home/ubuntu/towercrane' }}
+      PM2_APP_NAME: ${{ vars.PM2_APP_NAME || 'towercrane-back' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build backend artifact
+        run: pnpm build
+
+      - name: Package backend artifact
+        run: |
+          tar -czf ../towercrane-backend-artifact.tgz \
+            dist \
+            package.json \
+            pnpm-lock.yaml
+
+      - name: Prepare SSH key
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          test -n "$EC2_SSH_KEY"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Upload backend artifact
+        working-directory: .
+        run: |
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            towercrane-backend-artifact.tgz \
+            "$EC2_USER@$EC2_HOST:/tmp/towercrane-backend-${GITHUB_SHA}.tgz"
+
+      - name: Deploy backend on EC2
+        working-directory: .
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$EC2_USER@$EC2_HOST" \
+            "REMOTE_REPO_DIR='$REMOTE_REPO_DIR' PM2_APP_NAME='$PM2_APP_NAME' GITHUB_SHA='$GITHUB_SHA' bash -s" <<'EOF'
+          set -euo pipefail
+
+          REMOTE_REPO_DIR="${REMOTE_REPO_DIR}"
+          REMOTE_SERVER_DIR="$REMOTE_REPO_DIR/towercrane-for-uiux-server"
+          PM2_APP_NAME="${PM2_APP_NAME}"
+          ARTIFACT="/tmp/towercrane-backend-${GITHUB_SHA}.tgz"
+          BACKUP_DIR="$HOME/towercrane-deploy-backups/github-${GITHUB_SHA}"
+          LOCK_FILE="/tmp/towercrane-backend-deploy.lock"
+
+          exec 9>"$LOCK_FILE"
+          if ! flock -n 9; then
+            echo "Another backend deploy is already running." >&2
+            exit 1
+          fi
+
+          if [[ ! -d "$REMOTE_SERVER_DIR" ]]; then
+            echo "Missing remote server dir: $REMOTE_SERVER_DIR" >&2
+            exit 1
+          fi
+
+          mkdir -p "$BACKUP_DIR"
+          cd "$REMOTE_SERVER_DIR"
+
+          if [[ -f data/towercrane-catalog.sqlite ]]; then
+            mkdir -p data/backups
+            cp data/towercrane-catalog.sqlite "data/backups/towercrane-catalog.$(date +%Y%m%d-%H%M%S).sqlite"
+          fi
+
+          [[ -d dist ]] && cp -a dist "$BACKUP_DIR/dist"
+          [[ -f package.json ]] && cp package.json "$BACKUP_DIR/package.json"
+          [[ -f pnpm-lock.yaml ]] && cp pnpm-lock.yaml "$BACKUP_DIR/pnpm-lock.yaml"
+
+          rm -rf dist
+          tar -xzf "$ARTIFACT" -C "$REMOTE_SERVER_DIR"
+
+          if command -v pnpm >/dev/null 2>&1; then
+            CI=true pnpm install --prod --frozen-lockfile
+          elif command -v corepack >/dev/null 2>&1; then
+            corepack enable
+            CI=true corepack pnpm install --prod --frozen-lockfile
+          elif command -v npm >/dev/null 2>&1; then
+            npm install --omit=dev --no-package-lock
+          else
+            echo "No supported package manager is available on remote server" >&2
+            exit 1
+          fi
+
+          ENTRYPOINT="dist/src/main.js"
+          if [[ ! -f "$ENTRYPOINT" ]]; then
+            ENTRYPOINT="dist/main.js"
+          fi
+
+          load_env_file() {
+            if [[ ! -f .env ]]; then
+              return
+            fi
+            while IFS='=' read -r key value; do
+              if [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]]; then
+                continue
+              fi
+              if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+                export "$key=$value"
+              fi
+            done < .env
+          }
+
+          load_env_file
+
+          if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
+            pm2 restart "$PM2_APP_NAME" --update-env
+          else
+            pm2 start "$ENTRYPOINT" --name "$PM2_APP_NAME"
+          fi
+
+          pm2 save
+          pm2 status "$PM2_APP_NAME"
+          EOF
+
+      - name: Smoke check backend
+        working-directory: .
+        run: |
+          for i in {1..12}; do
+            if curl --fail --silent --show-error --max-time 20 "$API_HEALTH_URL" >/dev/null; then
+              exit 0
+            fi
+            echo "Backend smoke check failed. retry=$i"
+            sleep 5
+          done
+          exit 1
+
+      - name: Rollback backend on failure
+        if: failure()
+        working-directory: .
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$EC2_USER@$EC2_HOST" \
+            "REMOTE_REPO_DIR='$REMOTE_REPO_DIR' PM2_APP_NAME='$PM2_APP_NAME' GITHUB_SHA='$GITHUB_SHA' bash -s" <<'EOF'
+          set -euo pipefail
+
+          REMOTE_REPO_DIR="${REMOTE_REPO_DIR}"
+          REMOTE_SERVER_DIR="$REMOTE_REPO_DIR/towercrane-for-uiux-server"
+          PM2_APP_NAME="${PM2_APP_NAME}"
+          BACKUP_DIR="$HOME/towercrane-deploy-backups/github-${GITHUB_SHA}"
+
+          cd "$REMOTE_SERVER_DIR"
+          if [[ ! -d "$BACKUP_DIR/dist" ]]; then
+            echo "No backend rollback artifact found at $BACKUP_DIR" >&2
+            exit 0
+          fi
+
+          rm -rf dist
+          cp -a "$BACKUP_DIR/dist" dist
+          [[ -f "$BACKUP_DIR/package.json" ]] && cp "$BACKUP_DIR/package.json" package.json
+          [[ -f "$BACKUP_DIR/pnpm-lock.yaml" ]] && cp "$BACKUP_DIR/pnpm-lock.yaml" pnpm-lock.yaml
+
+          if command -v pnpm >/dev/null 2>&1; then
+            CI=true pnpm install --prod --frozen-lockfile
+          elif command -v corepack >/dev/null 2>&1; then
+            corepack enable
+            CI=true corepack pnpm install --prod --frozen-lockfile
+          elif command -v npm >/dev/null 2>&1; then
+            npm install --omit=dev --no-package-lock
+          fi
+
+          pm2 restart "$PM2_APP_NAME" --update-env
+          pm2 save
+          EOF
+
+  frontend:
+    name: deploy frontend
+    if: >-
+      ${{
+        (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main') ||
+        (github.event_name == 'workflow_dispatch' &&
+          (inputs.target == 'all' || inputs.target == 'frontend'))
+      }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: towercrane-for-uiux-front
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION || 'ap-northeast-2' }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET || vars.S3_BUCKET || 'hibot-docu-front-hyun0316' }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID || vars.CLOUDFRONT_DISTRIBUTION_ID || 'E1L7QZR4LQV4LE' }}
+      VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://api.hibot-docu.com/api' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload immutable assets
+        run: |
+          aws s3 sync dist/ "s3://$S3_BUCKET" \
+            --exclude "index.html" \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Upload index.html
+        run: |
+          aws s3 cp dist/index.html "s3://$S3_BUCKET/index.html" \
+            --cache-control "no-cache,no-store,must-revalidate" \
+            --content-type "text/html"
+
+      - name: Invalidate CloudFront
+        id: invalidate
+        run: |
+          INVALIDATION_ID="$(
+            aws cloudfront create-invalidation \
+              --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+              --paths "/*" \
+              --query 'Invalidation.Id' \
+              --output text
+          )"
+          echo "id=$INVALIDATION_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for invalidation
+        if: ${{ github.event_name == 'workflow_run' || inputs.wait_for_invalidation }}
+        run: |
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+            --id "${{ steps.invalidate.outputs.id }}"
+
+      - name: Smoke check frontend
+        run: |
+          for i in {1..6}; do
+            if curl --fail --silent --show-error --max-time 20 "$FRONTEND_URL" >/dev/null; then
+              exit 0
+            fi
+            echo "Frontend smoke check failed. retry=$i"
+            sleep 5
+          done
+          exit 1
