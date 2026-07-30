@@ -10,6 +10,8 @@ export const discussionNoteStatusSchema = z.enum([
 
 export const discussionNotePrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH']);
 
+export const discussionNoteCommentKindSchema = z.enum(['OPINION', 'COUNTER']);
+
 export const listDiscussionNotesQuerySchema = z.object({
   q: z.string().trim().max(120).optional().default(''),
   status: discussionNoteStatusSchema.optional(),
@@ -30,16 +32,16 @@ export const updateDiscussionNoteSchema = createDiscussionNoteSchema
   });
 
 export const createDiscussionNoteCommentSchema = z.object({
+  kind: discussionNoteCommentKindSchema.optional().default('OPINION'),
   content: z.string().trim().min(1).max(8000),
 });
 
 export const updateDiscussionNoteCommentSchema =
-  createDiscussionNoteCommentSchema.partial().refine(
-    (value) => Object.keys(value).length > 0,
-    {
+  createDiscussionNoteCommentSchema
+    .partial()
+    .refine((value) => Object.keys(value).length > 0, {
       message: 'At least one field is required',
-    },
-  );
+    });
 
 export type ListDiscussionNotesQuery = z.infer<
   typeof listDiscussionNotesQuerySchema

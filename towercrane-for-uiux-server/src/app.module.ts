@@ -28,6 +28,7 @@ import { PlanningDesignModule } from './planning-design/planning-design.module';
 import { DevHistoryModule } from './dev-history/dev-history.module';
 import { IdeaNoteModule } from './idea-note/idea-note.module';
 import { DiscussionNoteModule } from './discussion-note/discussion-note.module';
+import { ProjectBoardModule } from './project-board/project-board.module';
 import { ProjectScheduleModule } from './project-schedule/project-schedule.module';
 import { ProjectCodeReviewModule } from './project-code-review/project-code-review.module';
 import { AxStudyModule } from './ax-study/ax-study.module';
@@ -71,6 +72,7 @@ import { PointsModule } from './points/points.module';
     DevHistoryModule,
     IdeaNoteModule,
     DiscussionNoteModule,
+    ProjectBoardModule,
     ProjectScheduleModule,
     ProjectCodeReviewModule,
     AxStudyModule,

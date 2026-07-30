@@ -63,7 +63,9 @@ export class DiscussionNoteService {
         note: discussionNotesTable,
         createdByName: usersTable.name,
         commentCount: sql<number>`COUNT(${discussionNoteCommentsTable.id})`,
-        lastCommentAt: sql<string | null>`MAX(${discussionNoteCommentsTable.createdAt})`,
+        lastCommentAt: sql<
+          string | null
+        >`MAX(${discussionNoteCommentsTable.createdAt})`,
       })
       .from(discussionNotesTable)
       .leftJoin(usersTable, eq(usersTable.id, discussionNotesTable.createdBy))
@@ -85,6 +87,7 @@ export class DiscussionNoteService {
     return rows.map((row) =>
       this.toSummaryDto(
         row.note,
+        user,
         row.createdByName ?? '알 수 없음',
         Number(row.commentCount ?? 0),
         row.lastCommentAt,
@@ -146,6 +149,7 @@ export class DiscussionNoteService {
     const row: DiscussionNoteCommentInsert = {
       id: `discussion-comment-${randomUUID().slice(0, 12)}`,
       discussionNoteId: noteId,
+      kind: input.kind,
       content: input.content,
       createdBy: user.id,
       createdAt: now,
@@ -162,11 +166,7 @@ export class DiscussionNoteService {
     );
   }
 
-  updateComment(
-    user: DiscussionNoteUser,
-    commentId: string,
-    payload: unknown,
-  ) {
+  updateComment(user: DiscussionNoteUser, commentId: string, payload: unknown) {
     const comment = this.ensureComment(commentId);
     this.ensureCanWriteComment(user, comment);
     const input = updateDiscussionNoteCommentSchema.parse(payload);
@@ -178,7 +178,11 @@ export class DiscussionNoteService {
       .run();
     this.touchNote(comment.discussionNoteId, now);
     const updated = this.ensureComment(commentId);
-    return this.toCommentDto(updated, this.getUserName(updated.createdBy), user);
+    return this.toCommentDto(
+      updated,
+      this.getUserName(updated.createdBy),
+      user,
+    );
   }
 
   deleteComment(user: DiscussionNoteUser, commentId: string) {
@@ -201,7 +205,9 @@ export class DiscussionNoteService {
       .where(eq(discussionNotesTable.id, noteId))
       .get();
     if (!row) {
-      throw new NotFoundException(`의사결정 노트를 찾을 수 없습니다: ${noteId}`);
+      throw new NotFoundException(
+        `의사결정 노트를 찾을 수 없습니다: ${noteId}`,
+      );
     }
     return row;
   }
@@ -230,7 +236,10 @@ export class DiscussionNoteService {
         createdByName: usersTable.name,
       })
       .from(discussionNoteCommentsTable)
-      .leftJoin(usersTable, eq(usersTable.id, discussionNoteCommentsTable.createdBy))
+      .leftJoin(
+        usersTable,
+        eq(usersTable.id, discussionNoteCommentsTable.createdBy),
+      )
       .where(
         and(
           eq(discussionNoteCommentsTable.discussionNoteId, noteId),
@@ -279,6 +288,7 @@ export class DiscussionNoteService {
 
   private toSummaryDto(
     row: DiscussionNoteRow,
+    user: DiscussionNoteUser,
     createdByName: string,
     commentCount: number,
     lastCommentAt: string | null,
@@ -296,6 +306,8 @@ export class DiscussionNoteService {
       lastCommentAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+      canEdit: user.role === 'admin' || row.createdBy === user.id,
+      canDelete: user.role === 'admin' || row.createdBy === user.id,
     };
   }
 
@@ -311,6 +323,7 @@ export class DiscussionNoteService {
     return {
       ...this.toSummaryDto(
         row,
+        user,
         createdByName,
         comments.length,
         comments.at(-1)?.comment.createdAt ?? null,
@@ -331,6 +344,7 @@ export class DiscussionNoteService {
     return {
       id: row.id,
       discussionNoteId: row.discussionNoteId,
+      kind: row.kind,
       content: row.content,
       createdBy: row.createdBy,
       createdByName,

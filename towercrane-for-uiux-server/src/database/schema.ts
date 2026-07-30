@@ -212,158 +212,133 @@ export type PlanningDesignDocumentRow =
 
 // ── Dev History (개발 일지) ─────────────────────────────────────────────
 // 기획·설계와 같은 4단 구조를 사용하되 개발 진행 기록은 독립 도메인으로 관리한다.
-export const devHistoryWorkspacesTable = sqliteTable(
-  'dev_history_workspaces',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => usersTable.id, { onDelete: 'cascade' }),
-    title: text('title').notNull(),
-    description: text('description'),
-    icon: text('icon').notNull().default('NotebookPen'),
-    orderIdx: integer('order_idx').notNull().default(0),
-    createdAt: text('created_at').notNull(),
-    updatedAt: text('updated_at').notNull(),
-  },
-);
+export const devHistoryWorkspacesTable = sqliteTable('dev_history_workspaces', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  icon: text('icon').notNull().default('NotebookPen'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
 
-export const devHistoryCategoriesTable = sqliteTable(
-  'dev_history_categories',
-  {
-    id: text('id').primaryKey(),
-    workspaceId: text('workspace_id')
-      .notNull()
-      .references(() => devHistoryWorkspacesTable.id, {
-        onDelete: 'cascade',
-      }),
-    name: text('name').notNull(),
-    orderIdx: integer('order_idx').notNull().default(0),
-    createdBy: text('created_by')
-      .notNull()
-      .references(() => usersTable.id, { onDelete: 'cascade' }),
-    createdAt: text('created_at').notNull(),
-    updatedAt: text('updated_at').notNull(),
-  },
-);
+export const devHistoryCategoriesTable = sqliteTable('dev_history_categories', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id')
+    .notNull()
+    .references(() => devHistoryWorkspacesTable.id, {
+      onDelete: 'cascade',
+    }),
+  name: text('name').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
 
-export const devHistorySectionsTable = sqliteTable(
-  'dev_history_sections',
-  {
-    id: text('id').primaryKey(),
-    categoryId: text('category_id')
-      .notNull()
-      .references(() => devHistoryCategoriesTable.id, {
-        onDelete: 'cascade',
-      }),
-    title: text('title').notNull(),
-    orderIdx: integer('order_idx').notNull().default(0),
-    createdAt: text('created_at').notNull(),
-    updatedAt: text('updated_at').notNull(),
-  },
-);
+export const devHistorySectionsTable = sqliteTable('dev_history_sections', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id')
+    .notNull()
+    .references(() => devHistoryCategoriesTable.id, {
+      onDelete: 'cascade',
+    }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
 
-export const devHistoryDocumentsTable = sqliteTable(
-  'dev_history_documents',
-  {
-    id: text('id').primaryKey(),
-    sectionId: text('section_id')
-      .notNull()
-      .references(() => devHistorySectionsTable.id, {
-        onDelete: 'cascade',
-      }),
-    userId: text('user_id')
-      .notNull()
-      .references(() => usersTable.id, { onDelete: 'cascade' }),
-    title: text('title').notNull().default(''),
-    content: text('content').notNull().default(''),
-    orderIdx: integer('order_idx').notNull().default(0),
-    createdAt: text('created_at').notNull(),
-    updatedAt: text('updated_at').notNull(),
-  },
-);
+export const devHistoryDocumentsTable = sqliteTable('dev_history_documents', {
+  id: text('id').primaryKey(),
+  sectionId: text('section_id')
+    .notNull()
+    .references(() => devHistorySectionsTable.id, {
+      onDelete: 'cascade',
+    }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull().default(''),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
 
 export type DevHistoryWorkspaceRow =
   typeof devHistoryWorkspacesTable.$inferSelect;
 export type DevHistoryCategoryRow =
   typeof devHistoryCategoriesTable.$inferSelect;
-export type DevHistorySectionRow =
-  typeof devHistorySectionsTable.$inferSelect;
+export type DevHistorySectionRow = typeof devHistorySectionsTable.$inferSelect;
 export type DevHistoryDocumentRow =
   typeof devHistoryDocumentsTable.$inferSelect;
 
 // ── Idea Note (아이디어 노트) ───────────────────────────────────────────
 // 기획 전 단계의 아이디어, 가설, 레퍼런스를 독립 도메인으로 관리한다.
-export const ideaNoteWorkspacesTable = sqliteTable(
-  'idea_note_workspaces',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => usersTable.id, { onDelete: 'cascade' }),
-    title: text('title').notNull(),
-    description: text('description'),
-    icon: text('icon').notNull().default('Lightbulb'),
-    orderIdx: integer('order_idx').notNull().default(0),
-    createdAt: text('created_at').notNull(),
-    updatedAt: text('updated_at').notNull(),
-  },
-);
+export const ideaNoteWorkspacesTable = sqliteTable('idea_note_workspaces', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  icon: text('icon').notNull().default('Lightbulb'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
 
-export const ideaNoteCategoriesTable = sqliteTable(
-  'idea_note_categories',
-  {
-    id: text('id').primaryKey(),
-    workspaceId: text('workspace_id')
-      .notNull()
-      .references(() => ideaNoteWorkspacesTable.id, {
-        onDelete: 'cascade',
-      }),
-    name: text('name').notNull(),
-    orderIdx: integer('order_idx').notNull().default(0),
-    createdBy: text('created_by')
-      .notNull()
-      .references(() => usersTable.id, { onDelete: 'cascade' }),
-    createdAt: text('created_at').notNull(),
-    updatedAt: text('updated_at').notNull(),
-  },
-);
+export const ideaNoteCategoriesTable = sqliteTable('idea_note_categories', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id')
+    .notNull()
+    .references(() => ideaNoteWorkspacesTable.id, {
+      onDelete: 'cascade',
+    }),
+  name: text('name').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
 
-export const ideaNoteSectionsTable = sqliteTable(
-  'idea_note_sections',
-  {
-    id: text('id').primaryKey(),
-    categoryId: text('category_id')
-      .notNull()
-      .references(() => ideaNoteCategoriesTable.id, {
-        onDelete: 'cascade',
-      }),
-    title: text('title').notNull(),
-    orderIdx: integer('order_idx').notNull().default(0),
-    createdAt: text('created_at').notNull(),
-    updatedAt: text('updated_at').notNull(),
-  },
-);
+export const ideaNoteSectionsTable = sqliteTable('idea_note_sections', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id')
+    .notNull()
+    .references(() => ideaNoteCategoriesTable.id, {
+      onDelete: 'cascade',
+    }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
 
-export const ideaNoteDocumentsTable = sqliteTable(
-  'idea_note_documents',
-  {
-    id: text('id').primaryKey(),
-    sectionId: text('section_id')
-      .notNull()
-      .references(() => ideaNoteSectionsTable.id, {
-        onDelete: 'cascade',
-      }),
-    userId: text('user_id')
-      .notNull()
-      .references(() => usersTable.id, { onDelete: 'cascade' }),
-    title: text('title').notNull().default(''),
-    content: text('content').notNull().default(''),
-    orderIdx: integer('order_idx').notNull().default(0),
-    createdAt: text('created_at').notNull(),
-    updatedAt: text('updated_at').notNull(),
-  },
-);
+export const ideaNoteDocumentsTable = sqliteTable('idea_note_documents', {
+  id: text('id').primaryKey(),
+  sectionId: text('section_id')
+    .notNull()
+    .references(() => ideaNoteSectionsTable.id, {
+      onDelete: 'cascade',
+    }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull().default(''),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
 
 export type IdeaNoteWorkspaceRow = typeof ideaNoteWorkspacesTable.$inferSelect;
 export type IdeaNoteCategoryRow = typeof ideaNoteCategoriesTable.$inferSelect;
@@ -400,6 +375,10 @@ export const discussionNoteCommentsTable = sqliteTable(
     discussionNoteId: text('discussion_note_id')
       .notNull()
       .references(() => discussionNotesTable.id, { onDelete: 'cascade' }),
+    kind: text('kind')
+      .$type<'OPINION' | 'COUNTER'>()
+      .notNull()
+      .default('OPINION'),
     content: text('content').notNull(),
     createdBy: text('created_by')
       .notNull()
@@ -416,6 +395,51 @@ export type DiscussionNoteCommentRow =
   typeof discussionNoteCommentsTable.$inferSelect;
 export type DiscussionNoteCommentInsert =
   typeof discussionNoteCommentsTable.$inferInsert;
+
+// ── Project Board (프로젝트 논의 게시판) ───────────────────────────────
+// 2차 사이드바에서 관리하는 게시판과 각 게시판의 게시글을 저장한다.
+export const projectDiscussionBoardsTable = sqliteTable(
+  'project_discussion_boards',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    orderIdx: integer('order_idx').notNull().default(0),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export const projectDiscussionPostsTable = sqliteTable(
+  'project_discussion_posts',
+  {
+    id: text('id').primaryKey(),
+    boardId: text('board_id')
+      .notNull()
+      .references(() => projectDiscussionBoardsTable.id, {
+        onDelete: 'cascade',
+      }),
+    title: text('title').notNull(),
+    content: text('content').notNull().default(''),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
+export type ProjectDiscussionBoardRow =
+  typeof projectDiscussionBoardsTable.$inferSelect;
+export type ProjectDiscussionBoardInsert =
+  typeof projectDiscussionBoardsTable.$inferInsert;
+export type ProjectDiscussionPostRow =
+  typeof projectDiscussionPostsTable.$inferSelect;
+export type ProjectDiscussionPostInsert =
+  typeof projectDiscussionPostsTable.$inferInsert;
 
 // ── Project Schedule (개발 일정 관리) ───────────────────────────────────
 // 개발 일정의 제목, 상세 내용과 시작·종료 기간을 달력에서 관리한다.
@@ -672,7 +696,7 @@ export const prototypeWorkspacesTable = sqliteTable('prototype_workspaces', {
   color: text('color'),
   orderIdx: integer('order_idx').notNull().default(0),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -858,7 +882,7 @@ export const boardsTable = sqliteTable('boards', {
     .notNull()
     .references(() => boardConfigsTable.id, { onDelete: 'cascade' }),
   authorId: text('author_id').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   authorName: text('author_name').notNull(),
   title: text('title').notNull(),
@@ -879,7 +903,7 @@ export const boardCommentsTable = sqliteTable('board_comments', {
     .notNull()
     .references(() => boardsTable.id, { onDelete: 'cascade' }),
   authorId: text('author_id').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   authorName: text('author_name').notNull(),
   content: text('content').notNull(),
@@ -902,7 +926,7 @@ export const apiDocTeamsTable = sqliteTable('api_doc_teams', {
   emoji: text('emoji'),
   orderIdx: integer('order_idx').notNull().default(0),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -918,7 +942,7 @@ export const apiDocCategoriesTable = sqliteTable('api_doc_categories', {
   emoji: text('emoji'),
   orderIdx: integer('order_idx').notNull().default(0),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -934,7 +958,7 @@ export const apiDocEndpointsTable = sqliteTable('api_doc_endpoints', {
   path: text('path').notNull().default(''),
   orderIdx: integer('order_idx').notNull().default(0),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -965,7 +989,7 @@ export const taskWorkspacesTable = sqliteTable('task_workspaces', {
   color: text('color'),
   orderIdx: integer('order_idx').notNull().default(0),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -1046,11 +1070,11 @@ export const tasksTable = sqliteTable('tasks', {
     .notNull()
     .references(() => usersTable.id, { onDelete: 'cascade' }),
   assigneeId: text('assignee_id').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   scope: text('scope').$type<TaskScope>().notNull().default('TEAM'),
   ownerId: text('owner_id').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   visibility: text('visibility')
     .$type<TaskVisibility>()
@@ -1129,7 +1153,7 @@ export const taskActivityLogsTable = sqliteTable('task_activity_logs', {
     .notNull()
     .references(() => tasksTable.id, { onDelete: 'cascade' }),
   actorId: text('actor_id').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   activityType: text('activity_type').$type<TaskActivityType>().notNull(),
   fromValue: text('from_value'),
@@ -1163,7 +1187,7 @@ export const projectIssueCategoriesTable = sqliteTable(
     orderIdx: integer('order_idx').notNull().default(0),
     archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
     createdBy: text('created_by').references(() => usersTable.id, {
-      onDelete: 'set null',
+      onDelete: 'cascade',
     }),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
@@ -1190,7 +1214,7 @@ export const projectIssuesTable = sqliteTable('project_issues', {
     .notNull()
     .references(() => usersTable.id, { onDelete: 'cascade' }),
   assigneeId: text('assignee_id').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   dueDate: text('due_date'),
   orderIdx: integer('order_idx').notNull().default(0),
@@ -1256,7 +1280,7 @@ export const projectIssueActivityLogsTable = sqliteTable(
       .notNull()
       .references(() => projectIssuesTable.id, { onDelete: 'cascade' }),
     actorId: text('actor_id').references(() => usersTable.id, {
-      onDelete: 'set null',
+      onDelete: 'cascade',
     }),
     activityType: text('activity_type')
       .$type<ProjectIssueActivityType>()
@@ -1286,10 +1310,10 @@ export const teamDocNodesTable = sqliteTable('team_doc_nodes', {
   contentType: text('content_type'),
   fileSize: integer('file_size'),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   updatedBy: text('updated_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -1308,7 +1332,7 @@ export const meetingWorkspacesTable = sqliteTable('meeting_workspaces', {
   color: text('color'),
   orderIdx: integer('order_idx').notNull().default(0),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -1364,7 +1388,7 @@ export const meetingRoomsTable = sqliteTable('meeting_rooms', {
     },
   ),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -1452,7 +1476,7 @@ export const devManagementRoomsTable = sqliteTable('dev_management_rooms', {
   orderIdx: integer('order_idx').notNull().default(0),
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -1466,7 +1490,7 @@ export const devManagementMessagesTable = sqliteTable(
       .notNull()
       .references(() => devManagementRoomsTable.id, { onDelete: 'cascade' }),
     senderId: text('sender_id').references(() => usersTable.id, {
-      onDelete: 'set null',
+      onDelete: 'cascade',
     }),
     senderType: text('sender_type').$type<DevManagementSenderType>().notNull(),
     senderName: text('sender_name').notNull(),
@@ -1524,7 +1548,7 @@ export const devMeetingMinutesTable = sqliteTable('dev_meeting_minutes', {
     .notNull()
     .default([]),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdByName: text('created_by_name').notNull(),
   createdAt: text('created_at').notNull(),
@@ -1656,7 +1680,7 @@ export const codeReviewsTable = sqliteTable('code_reviews', {
     .default([]),
   promptContractVersion: text('prompt_contract_version'),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdByName: text('created_by_name').notNull(),
   createdAt: text('created_at').notNull(),
@@ -1681,7 +1705,7 @@ export const featurePlansTable = sqliteTable('feature_plans', {
   mmdContent: text('mmd_content').notNull().default(''),
   sourceFileName: text('source_file_name'),
   createdBy: text('created_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdByName: text('created_by_name').notNull(),
   createdAt: text('created_at').notNull(),
@@ -1700,7 +1724,7 @@ export const devManagementBotSettingsTable = sqliteTable(
       .notNull()
       .default('MENTION_ONLY'),
     updatedBy: text('updated_by').references(() => usersTable.id, {
-      onDelete: 'set null',
+      onDelete: 'cascade',
     }),
     updatedAt: text('updated_at').notNull(),
   },
@@ -1746,7 +1770,7 @@ export const issuesTable = sqliteTable('issues', {
     .notNull()
     .references(() => usersTable.id, { onDelete: 'cascade' }),
   assigneeId: text('assignee_id').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   dueDate: text('due_date'),
   orderIdx: integer('order_idx').notNull().default(0),
@@ -1838,7 +1862,7 @@ export const challengeSubmissionsTable = sqliteTable('challenge_submissions', {
   adminRating: integer('admin_rating'),
   adminFeedback: text('admin_feedback'),
   ratedBy: text('rated_by').references(() => usersTable.id, {
-    onDelete: 'set null',
+    onDelete: 'cascade',
   }),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -1988,7 +2012,7 @@ export const sqlUserPracticeSchemasTable = sqliteTable(
     replacedFromSchemaId: text('replaced_from_schema_id'),
     version: integer('version').notNull().default(1),
     createdBy: text('created_by').references(() => usersTable.id, {
-      onDelete: 'set null',
+      onDelete: 'cascade',
     }),
     isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
     createdAt: text('created_at').notNull(),
@@ -2378,7 +2402,7 @@ export const sqlTeamPracticeProblemsTable = sqliteTable(
       .notNull()
       .references(() => usersTable.id, { onDelete: 'cascade' }),
     updatedBy: text('updated_by').references(() => usersTable.id, {
-      onDelete: 'set null',
+      onDelete: 'cascade',
     }),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
@@ -2575,7 +2599,7 @@ export const devChallengeSubmissionsTable = sqliteTable(
     adminRating: integer('admin_rating'),
     adminFeedback: text('admin_feedback'),
     reviewedBy: text('reviewed_by').references(() => usersTable.id, {
-      onDelete: 'set null',
+      onDelete: 'cascade',
     }),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
@@ -2625,6 +2649,8 @@ export const schema = {
   ideaNoteDocumentsTable,
   discussionNotesTable,
   discussionNoteCommentsTable,
+  projectDiscussionBoardsTable,
+  projectDiscussionPostsTable,
   projectSchedulesTable,
   projectCodeReviewWorkspacesTable,
   projectCodeReviewCategoriesTable,
@@ -2971,7 +2997,7 @@ export const usageLogsTable = sqliteTable('usage_logs', {
   id: text('id').primaryKey(),
   userId: text('user_id')
     .notNull()
-    .references(() => usersTable.id),
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
   userName: text('user_name').notNull(),
   sessionId: text('session_id').notNull(),
   model: text('model').notNull(),
@@ -2992,7 +3018,7 @@ export const aiServiceRequestsTable = sqliteTable('ai_service_requests', {
   id: text('id').primaryKey(),
   userId: text('user_id')
     .notNull()
-    .references(() => usersTable.id),
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
   userName: text('user_name').notNull(),
   serviceType: text('service_type').notNull(),
   purpose: text('purpose').notNull(),
@@ -3026,7 +3052,7 @@ export type PageViewInsert = typeof pageViewsTable.$inferInsert;
 export const pointAccountsTable = sqliteTable('point_accounts', {
   userId: text('user_id')
     .primaryKey()
-    .references(() => usersTable.id),
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
   balance: integer('balance').notNull().default(0),
   updatedAt: text('updated_at').notNull(),
 });
@@ -3035,7 +3061,7 @@ export const pointTransactionsTable = sqliteTable('point_transactions', {
   id: text('id').primaryKey(),
   userId: text('user_id')
     .notNull()
-    .references(() => usersTable.id),
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
   type: text('type').notNull(), // topup | spend | refund | adjust
   amount: integer('amount').notNull(), // 부호 있는 변화량 (+충전 / -차감)
   balanceAfter: integer('balance_after').notNull(),
@@ -3049,7 +3075,7 @@ export const pointTopupsTable = sqliteTable('point_topups', {
   id: text('id').primaryKey(),
   userId: text('user_id')
     .notNull()
-    .references(() => usersTable.id),
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
   amountKrw: integer('amount_krw').notNull(),
   points: integer('points').notNull(),
   status: text('status').notNull().default('paid'), // pending | paid | failed

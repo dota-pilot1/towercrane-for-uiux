@@ -72,7 +72,6 @@ export class MeetingService {
 
     return workspaces.map((workspace) => {
       const wsRooms = rooms.filter((r) => r.workspaceId === workspace.id);
-      const wsRoomIds = new Set(wsRooms.map((r) => r.id));
       const activeCount = wsRooms.filter(
         (r) => r.updatedAt >= oneDayAgo,
       ).length;
@@ -372,7 +371,12 @@ export class MeetingService {
           role: usersTable.role,
         })
         .from(usersTable)
-        .where(sql`${usersTable.id} IN (${pair.userAId}, ${pair.userBId})`)
+        .where(
+          and(
+            eq(usersTable.isActive, true),
+            sql`${usersTable.id} IN (${pair.userAId}, ${pair.userBId})`,
+          ),
+        )
         .orderBy(asc(usersTable.name))
         .all();
 
@@ -393,6 +397,7 @@ export class MeetingService {
         role: usersTable.role,
       })
       .from(usersTable)
+      .where(eq(usersTable.isActive, true))
       .orderBy(asc(usersTable.name))
       .all();
 
@@ -414,7 +419,12 @@ export class MeetingService {
     const otherUser = this.db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.id, input.otherUserId))
+      .where(
+        and(
+          eq(usersTable.id, input.otherUserId),
+          eq(usersTable.isActive, true),
+        ),
+      )
       .get();
 
     if (!otherUser || !this.isVisibleMeetingMember(otherUser.email)) {
@@ -889,7 +899,7 @@ export class MeetingService {
         role: usersTable.role,
       })
       .from(usersTable)
-      .where(eq(usersTable.id, otherUserId))
+      .where(and(eq(usersTable.id, otherUserId), eq(usersTable.isActive, true)))
       .get();
 
     if (!other) return null;

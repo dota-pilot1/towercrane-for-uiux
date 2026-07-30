@@ -472,6 +472,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE TABLE IF NOT EXISTS discussion_note_comments (
         id TEXT PRIMARY KEY,
         discussion_note_id TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'OPINION',
         content TEXT NOT NULL,
         created_by TEXT NOT NULL,
         created_at TEXT NOT NULL,
@@ -483,6 +484,35 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_discussion_note_comments_note
         ON discussion_note_comments(discussion_note_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS project_discussion_boards (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_project_discussion_boards_order
+        ON project_discussion_boards(order_idx, created_at);
+
+      CREATE TABLE IF NOT EXISTS project_discussion_posts (
+        id TEXT PRIMARY KEY,
+        board_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(board_id) REFERENCES project_discussion_boards(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_project_discussion_posts_board
+        ON project_discussion_posts(board_id, updated_at);
 
       CREATE TABLE IF NOT EXISTS project_schedules (
         id TEXT PRIMARY KEY,
@@ -676,7 +706,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE TABLE IF NOT EXISTS prototype_workspace_members (
@@ -844,7 +874,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(board_config_id) REFERENCES board_configs(id) ON DELETE CASCADE,
-        FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_boards_config_status_deleted
@@ -864,7 +894,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(board_id) REFERENCES boards(id) ON DELETE CASCADE,
-        FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_board_comments_board_deleted
@@ -880,7 +910,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_api_doc_teams_order
@@ -897,7 +927,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(team_id) REFERENCES api_doc_teams(id) ON DELETE CASCADE,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_api_doc_categories_order
@@ -914,7 +944,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(category_id) REFERENCES api_doc_categories(id) ON DELETE CASCADE,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_api_doc_endpoints_category_order
@@ -944,7 +974,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE TABLE IF NOT EXISTS meeting_workspace_members (
@@ -969,7 +999,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE TABLE IF NOT EXISTS task_workspace_members (
@@ -1008,8 +1038,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_at TEXT NOT NULL,
         FOREIGN KEY(workspace_id) REFERENCES task_workspaces(id) ON DELETE SET NULL,
         FOREIGN KEY(reporter_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL,
-        FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_tasks_status_order
@@ -1093,7 +1123,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         message TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-        FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_task_activity_logs_task_created
@@ -1123,7 +1153,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_project_issue_categories_order
@@ -1146,7 +1176,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_at TEXT NOT NULL,
         FOREIGN KEY(project_id) REFERENCES project_issue_categories(id) ON DELETE CASCADE,
         FOREIGN KEY(reporter_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_project_issues_project_order
@@ -1213,7 +1243,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         message TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY(project_issue_id) REFERENCES project_issues(id) ON DELETE CASCADE,
-        FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_project_issue_activity_logs_issue_created
@@ -1235,8 +1265,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(parent_id) REFERENCES team_doc_nodes(id) ON DELETE CASCADE,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL,
-        FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_team_doc_nodes_parent_order
@@ -1252,7 +1282,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE TABLE IF NOT EXISTS meeting_messages (
@@ -1312,7 +1342,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_by TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_dev_management_rooms_order
@@ -1330,7 +1360,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         payload TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY(room_id) REFERENCES dev_management_rooms(id) ON DELETE CASCADE,
-        FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_dev_management_messages_room_created
@@ -1351,7 +1381,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(room_id) REFERENCES dev_management_rooms(id) ON DELETE CASCADE,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_dev_meeting_minutes_room_created
@@ -1394,7 +1424,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE SET NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_code_reviews_source_hash
@@ -1420,7 +1450,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(linked_task_id) REFERENCES tasks(id) ON DELETE SET NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_feature_plans_created
@@ -1436,7 +1466,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_by TEXT,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(room_id) REFERENCES dev_management_rooms(id) ON DELETE CASCADE,
-        FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE TABLE IF NOT EXISTS dev_management_dm_pairs (
@@ -1512,7 +1542,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_at TEXT NOT NULL,
         FOREIGN KEY(topic_id) REFERENCES challenge_topics(id) ON DELETE CASCADE,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY(rated_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(rated_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_challenge_submissions_topic_user
@@ -1669,7 +1699,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_sql_user_practice_schemas_active
@@ -1983,7 +2013,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         updated_at TEXT NOT NULL,
         FOREIGN KEY(assignment_id) REFERENCES dev_challenge_assignments(id) ON DELETE CASCADE,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY(reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY(reviewed_by) REFERENCES users(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_dev_challenge_submissions_assignment_user
@@ -2007,7 +2037,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE TABLE IF NOT EXISTS usage_logs (
         id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES users(id),
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         user_name TEXT NOT NULL,
         session_id TEXT NOT NULL,
         model TEXT NOT NULL,
@@ -2027,7 +2057,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE TABLE IF NOT EXISTS ai_service_requests (
         id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES users(id),
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         user_name TEXT NOT NULL,
         service_type TEXT NOT NULL,
         purpose TEXT NOT NULL,
@@ -2046,14 +2076,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         ON ai_service_requests(status, created_at DESC);
 
       CREATE TABLE IF NOT EXISTS point_accounts (
-        user_id TEXT PRIMARY KEY REFERENCES users(id),
+        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
         balance INTEGER NOT NULL DEFAULT 0,
         updated_at TEXT NOT NULL
       );
 
       CREATE TABLE IF NOT EXISTS point_transactions (
         id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES users(id),
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         type TEXT NOT NULL,
         amount INTEGER NOT NULL,
         balance_after INTEGER NOT NULL,
@@ -2068,7 +2098,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE TABLE IF NOT EXISTS point_topups (
         id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES users(id),
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         amount_krw INTEGER NOT NULL,
         points INTEGER NOT NULL,
         status TEXT NOT NULL DEFAULT 'paid',
@@ -3503,6 +3533,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'code_reviews',
       'prompt_contract_version',
       'ALTER TABLE code_reviews ADD COLUMN prompt_contract_version TEXT',
+    );
+    this.ensureColumn(
+      'discussion_note_comments',
+      'kind',
+      "ALTER TABLE discussion_note_comments ADD COLUMN kind TEXT NOT NULL DEFAULT 'OPINION'",
     );
     this.sqlite.exec(`
       DROP INDEX IF EXISTS idx_study_diaries_user;
@@ -5341,7 +5376,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           updated_at TEXT NOT NULL,
           FOREIGN KEY(project_id) REFERENCES project_issue_categories(id) ON DELETE CASCADE,
           FOREIGN KEY(reporter_id) REFERENCES users(id) ON DELETE CASCADE,
-          FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE SET NULL
+          FOREIGN KEY(assignee_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
         INSERT INTO project_issues_next (
@@ -5525,7 +5560,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * 조직도 시드: 부서 계층 + 실제 구성원(members)만 유지.
-   * members에 없는 계정은 도메인 무관하게 전부 비활성화(soft-delete)한다.
+   * members에 없는 테스트 계정은 참조 테스트 데이터까지 물리 삭제한다.
    * 멱등 — 부서는 고정 id로 upsert, 사용자는 email 기준 upsert.
    */
   private seedOrg() {
@@ -5585,23 +5620,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       },
     ];
 
-    // 목록(keepEmails)에 없는 모든 활성 계정은 감사 이력 보존을 위해 비활성화 (도메인 무관 — 데모/테스트 계정 전부 정리)
     const keepEmails = members.map((m) => m.email);
-    const stale = this.sqlite
-      .prepare(`SELECT id, email FROM users WHERE is_active = 1`)
-      .all() as { id: string; email: string }[];
-    for (const u of stale) {
-      if (keepEmails.includes(u.email)) continue;
-      this.sqlite
-        .prepare(
-          `UPDATE users
-           SET is_active = 0, deleted_at = COALESCE(deleted_at, ?),
-               department_id = NULL, position = NULL, updated_at = ?
-           WHERE id = ?`,
-        )
-        .run(now, now, u.id);
-    }
-
     for (const m of members) {
       const existing = this.db
         .select({ id: usersTable.id })
@@ -5613,7 +5632,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         // 기존 계정: 부서/직급/이름만 보강 (비번·role은 건드리지 않음)
         this.sqlite
           .prepare(
-            `UPDATE users SET name = ?, department_id = ?, position = ?, updated_at = ? WHERE id = ?`,
+            `UPDATE users
+             SET name = ?, department_id = ?, position = ?,
+                 is_active = 1, deleted_at = NULL, updated_at = ?
+             WHERE id = ?`,
           )
           .run(m.name, m.departmentId, m.position, now, existing.id);
       } else {
@@ -5632,6 +5654,66 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           })
           .run();
       }
+    }
+
+    this.deleteUsersExcept(keepEmails);
+  }
+
+  private deleteUsersExcept(keepEmails: string[]) {
+    if (keepEmails.length === 0) return;
+
+    const keepPlaceholders = keepEmails.map(() => '?').join(', ');
+    const staleUsers = this.sqlite
+      .prepare(`SELECT id FROM users WHERE email NOT IN (${keepPlaceholders})`)
+      .all(...keepEmails) as { id: string }[];
+    if (staleUsers.length === 0) return;
+
+    const staleIds = staleUsers.map((user) => user.id);
+    const stalePlaceholders = staleIds.map(() => '?').join(', ');
+    const tables = this.sqlite
+      .prepare(
+        `SELECT name FROM sqlite_master
+         WHERE type = 'table'
+           AND name NOT LIKE 'sqlite_%'
+           AND name != 'users'`,
+      )
+      .all() as { name: string }[];
+
+    const quoteIdentifier = (value: string) =>
+      `"${value.replaceAll('"', '""')}"`;
+
+    const transaction = this.sqlite.transaction(() => {
+      for (const table of tables) {
+        const foreignKeys = this.sqlite
+          .prepare(`PRAGMA foreign_key_list(${quoteIdentifier(table.name)})`)
+          .all() as Array<{ table: string; from: string }>;
+        const userColumns = [
+          ...new Set(
+            foreignKeys
+              .filter((foreignKey) => foreignKey.table === 'users')
+              .map((foreignKey) => foreignKey.from),
+          ),
+        ];
+        for (const column of userColumns) {
+          this.sqlite
+            .prepare(
+              `DELETE FROM ${quoteIdentifier(table.name)}
+               WHERE ${quoteIdentifier(column)} IN (${stalePlaceholders})`,
+            )
+            .run(...staleIds);
+        }
+      }
+
+      this.sqlite
+        .prepare(`DELETE FROM users WHERE id IN (${stalePlaceholders})`)
+        .run(...staleIds);
+    });
+
+    this.sqlite.pragma('foreign_keys = OFF');
+    try {
+      transaction();
+    } finally {
+      this.sqlite.pragma('foreign_keys = ON');
     }
   }
 
