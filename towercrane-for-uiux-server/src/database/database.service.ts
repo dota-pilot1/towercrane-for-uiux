@@ -448,6 +448,58 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_idea_note_documents_section
         ON idea_note_documents(section_id, order_idx);
 
+      CREATE TABLE IF NOT EXISTS discussion_notes (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        decision_summary TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'OPEN',
+        priority TEXT NOT NULL DEFAULT 'MEDIUM',
+        linked_task_id TEXT,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_discussion_notes_updated
+        ON discussion_notes(updated_at);
+      CREATE INDEX IF NOT EXISTS idx_discussion_notes_status
+        ON discussion_notes(status, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_discussion_notes_linked_task
+        ON discussion_notes(linked_task_id);
+
+      CREATE TABLE IF NOT EXISTS discussion_note_comments (
+        id TEXT PRIMARY KEY,
+        discussion_note_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        FOREIGN KEY(discussion_note_id) REFERENCES discussion_notes(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_discussion_note_comments_note
+        ON discussion_note_comments(discussion_note_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS project_schedules (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        start_at TEXT NOT NULL,
+        end_at TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_project_schedules_range
+        ON project_schedules(start_at, end_at);
+
       CREATE TABLE IF NOT EXISTS project_code_review_workspaces (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -2054,6 +2106,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.migrateOrgSchema();
     this.migrateUserSoftDeleteSchema();
     this.migrateLegacySchema();
+    this.migrateProjectScheduleOrderSchema();
     this.migrateChatSchema();
     this.migrateProjectIssueSchema();
     this.migrateAiStudyNoteSchema();
@@ -2634,6 +2687,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       now,
     });
     this.upsertMenuBySectionId({
+      sectionId: 'discussion_note',
+      name: '의사결정 노트',
+      icon: 'NotebookPen',
+      displayOrder: 9,
+      parentId: null,
+      requiredRole: null,
+      now,
+    });
+    this.upsertMenuBySectionId({
       sectionId: 'api_doc',
       name: 'Postman',
       icon: 'Send',
@@ -2684,7 +2746,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
     // 루트 메뉴 표시 순서 고정:
     // 업무 관리 → 회의실 → Prototype → 문서 → 게시판
-    // → 개발 강의 → 챗봇 → Admin
+    // → 개발 강의 → 챗봇 → 의사결정 노트 → Admin
     const rootMenuOrder: Array<{
       sectionId: string | string[];
       displayOrder: number;
@@ -2698,7 +2760,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       { sectionId: 'dev_study', displayOrder: 6 },
       { sectionId: 'dev_market_group', displayOrder: 7 },
       { sectionId: 'chatbot_pilot', displayOrder: 8 },
-      { sectionId: 'admin_dropdown', displayOrder: 9 },
+      { sectionId: 'discussion_note', displayOrder: 9 },
+      { sectionId: 'admin_dropdown', displayOrder: 10 },
     ];
     for (const { sectionId, displayOrder } of rootMenuOrder) {
       const ids = Array.isArray(sectionId) ? sectionId : [sectionId];
@@ -3532,6 +3595,39 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         `,
       )
       .run();
+  }
+
+  private migrateProjectScheduleOrderSchema() {
+    const columns = this.sqlite
+      .prepare('PRAGMA table_info(project_schedules)')
+      .all() as Array<{ name: string }>;
+    const hasOrderIdx = columns.some((column) => column.name === 'order_idx');
+
+    if (!hasOrderIdx) {
+      this.sqlite.exec(
+        'ALTER TABLE project_schedules ADD COLUMN order_idx INTEGER NOT NULL DEFAULT 0',
+      );
+      const rows = this.sqlite
+        .prepare(
+          `
+            SELECT id
+            FROM project_schedules
+            ORDER BY start_at ASC, created_at ASC
+          `,
+        )
+        .all() as Array<{ id: string }>;
+      const updateOrder = this.sqlite.prepare(
+        'UPDATE project_schedules SET order_idx = ? WHERE id = ?',
+      );
+      this.sqlite.transaction(() => {
+        rows.forEach((row, index) => updateOrder.run(index, row.id));
+      })();
+    }
+
+    this.sqlite.exec(`
+      CREATE INDEX IF NOT EXISTS idx_project_schedules_order
+        ON project_schedules(order_idx, start_at);
+    `);
   }
 
   private ensureApiDocDefaultTeam(now: string, userId: string) {

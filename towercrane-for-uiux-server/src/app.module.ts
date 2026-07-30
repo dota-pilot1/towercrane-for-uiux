@@ -27,6 +27,8 @@ import { ArchNoteModule } from './arch-note/arch-note.module';
 import { PlanningDesignModule } from './planning-design/planning-design.module';
 import { DevHistoryModule } from './dev-history/dev-history.module';
 import { IdeaNoteModule } from './idea-note/idea-note.module';
+import { DiscussionNoteModule } from './discussion-note/discussion-note.module';
+import { ProjectScheduleModule } from './project-schedule/project-schedule.module';
 import { ProjectCodeReviewModule } from './project-code-review/project-code-review.module';
 import { AxStudyModule } from './ax-study/ax-study.module';
 import { AxBoardModule } from './ax-board/ax-board.module';
@@ -68,6 +70,8 @@ import { PointsModule } from './points/points.module';
     PlanningDesignModule,
     DevHistoryModule,
     IdeaNoteModule,
+    DiscussionNoteModule,
+    ProjectScheduleModule,
     ProjectCodeReviewModule,
     AxStudyModule,
     AxBoardModule,

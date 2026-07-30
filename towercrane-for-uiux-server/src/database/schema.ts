@@ -370,6 +370,72 @@ export type IdeaNoteCategoryRow = typeof ideaNoteCategoriesTable.$inferSelect;
 export type IdeaNoteSectionRow = typeof ideaNoteSectionsTable.$inferSelect;
 export type IdeaNoteDocumentRow = typeof ideaNoteDocumentsTable.$inferSelect;
 
+// ── Discussion Note (의사결정 노트) ─────────────────────────────────────
+// 논의가 필요한 주제를 저장하고 댓글·결정 요약을 함께 추적한다.
+export const discussionNotesTable = sqliteTable('discussion_notes', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  decisionSummary: text('decision_summary').notNull().default(''),
+  status: text('status')
+    .$type<'OPEN' | 'DISCUSSING' | 'DECIDED' | 'ON_HOLD' | 'CLOSED'>()
+    .notNull()
+    .default('OPEN'),
+  priority: text('priority')
+    .$type<'LOW' | 'MEDIUM' | 'HIGH'>()
+    .notNull()
+    .default('MEDIUM'),
+  linkedTaskId: text('linked_task_id'),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const discussionNoteCommentsTable = sqliteTable(
+  'discussion_note_comments',
+  {
+    id: text('id').primaryKey(),
+    discussionNoteId: text('discussion_note_id')
+      .notNull()
+      .references(() => discussionNotesTable.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    createdBy: text('created_by')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+    deletedAt: text('deleted_at'),
+  },
+);
+
+export type DiscussionNoteRow = typeof discussionNotesTable.$inferSelect;
+export type DiscussionNoteInsert = typeof discussionNotesTable.$inferInsert;
+export type DiscussionNoteCommentRow =
+  typeof discussionNoteCommentsTable.$inferSelect;
+export type DiscussionNoteCommentInsert =
+  typeof discussionNoteCommentsTable.$inferInsert;
+
+// ── Project Schedule (개발 일정 관리) ───────────────────────────────────
+// 개발 일정의 제목, 상세 내용과 시작·종료 기간을 달력에서 관리한다.
+export const projectSchedulesTable = sqliteTable('project_schedules', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  description: text('description').notNull().default(''),
+  startAt: text('start_at').notNull(),
+  endAt: text('end_at'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type ProjectScheduleRow = typeof projectSchedulesTable.$inferSelect;
+export type ProjectScheduleInsert = typeof projectSchedulesTable.$inferInsert;
+
 // ── Project Code Review (프로젝트 코드리뷰 — 워크스페이스=프로젝트) ──
 // arch-note와 동일한 4단 구조(워크스페이스→1차 주제→2차 주제→노트)의 독립 도메인.
 export const projectCodeReviewWorkspacesTable = sqliteTable(
@@ -2557,6 +2623,9 @@ export const schema = {
   ideaNoteCategoriesTable,
   ideaNoteSectionsTable,
   ideaNoteDocumentsTable,
+  discussionNotesTable,
+  discussionNoteCommentsTable,
+  projectSchedulesTable,
   projectCodeReviewWorkspacesTable,
   projectCodeReviewCategoriesTable,
   projectCodeReviewSectionsTable,
