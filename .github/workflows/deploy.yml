@@ -142,7 +142,6 @@ jobs:
           if command -v pnpm >/dev/null 2>&1; then
             CI=true pnpm install --prod --frozen-lockfile
           elif command -v corepack >/dev/null 2>&1; then
-            corepack enable
             CI=true corepack pnpm install --prod --frozen-lockfile
           elif command -v npm >/dev/null 2>&1; then
             npm install --omit=dev --no-package-lock
@@ -221,7 +220,6 @@ jobs:
           if command -v pnpm >/dev/null 2>&1; then
             CI=true pnpm install --prod --frozen-lockfile
           elif command -v corepack >/dev/null 2>&1; then
-            corepack enable
             CI=true corepack pnpm install --prod --frozen-lockfile
           elif command -v npm >/dev/null 2>&1; then
             npm install --omit=dev --no-package-lock
