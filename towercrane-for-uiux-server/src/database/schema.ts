@@ -765,6 +765,31 @@ export const prototypesTable = sqliteTable('prototypes', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export const prototypeNoteTopicsTable = sqliteTable('prototype_note_topics', {
+  id: text('id').primaryKey(),
+  prototypeId: text('prototype_id')
+    .notNull()
+    .references(() => prototypesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const prototypeNoteSectionsTable = sqliteTable('prototype_note_sections', {
+  id: text('id').primaryKey(),
+  topicId: text('topic_id')
+    .notNull()
+    .references(() => prototypeNoteTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary').notNull().default(''),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const docSectionsTable = sqliteTable('doc_sections', {
   id: text('id').primaryKey(),
   prototypeId: text('prototype_id')
@@ -2766,6 +2791,13 @@ export type CategoryRow = typeof categoriesTable.$inferSelect;
 export type CategoryInsert = typeof categoriesTable.$inferInsert;
 export type PrototypeRow = typeof prototypesTable.$inferSelect;
 export type PrototypeInsert = typeof prototypesTable.$inferInsert;
+export type PrototypeNoteTopicRow = typeof prototypeNoteTopicsTable.$inferSelect;
+export type PrototypeNoteTopicInsert =
+  typeof prototypeNoteTopicsTable.$inferInsert;
+export type PrototypeNoteSectionRow =
+  typeof prototypeNoteSectionsTable.$inferSelect;
+export type PrototypeNoteSectionInsert =
+  typeof prototypeNoteSectionsTable.$inferInsert;
 export type PrototypeImageRow = typeof prototypeImagesTable.$inferSelect;
 export type PrototypeImageInsert = typeof prototypeImagesTable.$inferInsert;
 export type DocSectionRow = typeof docSectionsTable.$inferSelect;

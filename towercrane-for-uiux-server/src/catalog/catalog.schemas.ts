@@ -49,6 +49,20 @@ export const updatePrototypeSchema = createPrototypeSchema
     message: 'At least one field is required',
   });
 
+export const createPrototypeNoteSectionSchema = z.object({
+  title: z.string().trim().min(1).max(80),
+  summary: z.string().trim().max(240).optional().or(z.literal('')),
+  content: z.string().max(20000).optional().or(z.literal('')),
+});
+
+export const updatePrototypeNoteSectionSchema =
+  createPrototypeNoteSectionSchema.partial().refine(
+    (value) => Object.keys(value).length > 0,
+    {
+      message: 'At least one field is required',
+    },
+  );
+
 export const listPrototypesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
@@ -73,5 +87,11 @@ export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;
 export type CreatePrototypeInput = z.infer<typeof createPrototypeSchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type UpdatePrototypeInput = z.infer<typeof updatePrototypeSchema>;
+export type CreatePrototypeNoteSectionInput = z.infer<
+  typeof createPrototypeNoteSectionSchema
+>;
+export type UpdatePrototypeNoteSectionInput = z.infer<
+  typeof updatePrototypeNoteSectionSchema
+>;
 export type ListPrototypesQuery = z.infer<typeof listPrototypesQuerySchema>;
 export type ReorderInput = z.infer<typeof reorderSchema>;

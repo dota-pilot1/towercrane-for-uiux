@@ -9,6 +9,8 @@ import { and, asc, desc, eq, like, or, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import {
   categoriesTable,
+  prototypeNoteSectionsTable,
+  prototypeNoteTopicsTable,
   prototypeImagesTable,
   prototypesTable,
   prototypeWorkspaceMembersTable,
@@ -19,14 +21,38 @@ import {
 import { ReviewService } from '../review/review.service';
 import {
   createCategorySchema,
+  createPrototypeNoteSectionSchema,
   createPrototypeSchema,
   createWorkspaceSchema,
   listPrototypesQuerySchema,
   reorderSchema,
   updateCategorySchema,
+  updatePrototypeNoteSectionSchema,
   updatePrototypeSchema,
   updateWorkspaceSchema,
 } from './catalog.schemas';
+
+type PrototypeNoteSectionDto = {
+  id: string;
+  topicId: string;
+  title: string;
+  summary: string;
+  content: string;
+  orderIdx: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type PrototypeNoteTopicDto = {
+  id: string;
+  prototypeId: string;
+  title: string;
+  summary: string;
+  orderIdx: number;
+  createdAt: string;
+  updatedAt: string;
+  sections: PrototypeNoteSectionDto[];
+};
 
 @Injectable()
 export class CatalogService {
@@ -79,6 +105,7 @@ export class CatalogService {
           member?.role,
         ),
         categoryCount: workspaceCategories.length,
+        topicCount: workspaceCategories.length,
         prototypeCount: prototypes.filter((prototype) =>
           categoryIds.has(prototype.categoryId),
         ).length,
@@ -162,7 +189,7 @@ export class CatalogService {
 
     if (Number(categoryCount?.count ?? 0) > 0) {
       throw new BadRequestException(
-        '카테고리가 있는 워크스페이스는 먼저 비워야 삭제할 수 있습니다.',
+        '주제가 있는 워크스페이스는 먼저 비워야 삭제할 수 있습니다.',
       );
     }
 
@@ -428,40 +455,49 @@ export class CatalogService {
     const now = new Date().toISOString();
     const id = `prototype-${Date.now().toString().slice(-6)}`;
 
-    this.databaseService.db
-      .insert(prototypesTable)
-      .values({
-        id,
-        categoryId,
-        title: input.title,
-        repoUrl: input.repoUrl || '',
-        demoUrl: input.demoUrl || null,
-        figmaUrl: input.figmaUrl || null,
-        summary: input.summary || '',
-        status: input.status,
-        visibility: input.visibility,
-        tags: input.tags,
-        checklist: input.checklist,
-        notes: input.notes || null,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .run();
-
-    if (input.images && input.images.length > 0) {
-      this.databaseService.db
-        .insert(prototypeImagesTable)
-        .values(
-          input.images.map((url, idx) => ({
-            id: `img-${Date.now().toString().slice(-4)}-${idx}`,
-            prototypeId: id,
-            imageUrl: url,
-            orderIdx: idx,
-            createdAt: now,
-          })),
-        )
+    this.databaseService.db.transaction((tx) => {
+      tx.insert(prototypesTable)
+        .values({
+          id,
+          categoryId,
+          title: input.title,
+          repoUrl: input.repoUrl || '',
+          demoUrl: input.demoUrl || null,
+          figmaUrl: input.figmaUrl || null,
+          summary: input.summary || '',
+          status: input.status,
+          visibility: input.visibility,
+          tags: input.tags,
+          checklist: input.checklist,
+          notes: input.notes || null,
+          createdAt: now,
+          updatedAt: now,
+        })
         .run();
-    }
+
+      this.ensurePrototypeNoteStructure(
+        id,
+        input.title,
+        input.summary || '',
+        input.notes || '',
+        now,
+        tx,
+      );
+
+      if (input.images && input.images.length > 0) {
+        tx.insert(prototypeImagesTable)
+          .values(
+            input.images.map((url, idx) => ({
+              id: `img-${Date.now().toString().slice(-4)}-${idx}`,
+              prototypeId: id,
+              imageUrl: url,
+              orderIdx: idx,
+              createdAt: now,
+            })),
+          )
+          .run();
+      }
+    });
 
     return this.getCategory(userId, userRole, categoryId);
   }
@@ -503,6 +539,20 @@ export class CatalogService {
       })
       .where(eq(prototypesTable.id, prototypeId))
       .run();
+
+    const updated = this.databaseService.db
+      .select()
+      .from(prototypesTable)
+      .where(eq(prototypesTable.id, prototypeId))
+      .get();
+    if (updated) {
+      this.ensurePrototypeNoteStructure(
+        prototypeId,
+        updated.title,
+        updated.summary,
+        updated.notes ?? '',
+      );
+    }
 
     if (input.images !== undefined) {
       // Simple sync: delete all and re-insert
@@ -603,6 +653,7 @@ export class CatalogService {
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
     const prototypeIds = items.map((i) => i.id);
+    this.ensurePrototypeNotesForRows(items);
     const aggregates =
       this.reviewService.getAggregatesForPrototypes(prototypeIds);
 
@@ -615,6 +666,7 @@ export class CatalogService {
             .orderBy(asc(prototypeImagesTable.orderIdx))
             .all()
         : [];
+    const noteMap = this.getPrototypeNoteMap(prototypeIds);
 
     return {
       items: items.map((item) => {
@@ -625,6 +677,7 @@ export class CatalogService {
         return {
           ...item,
           images,
+          noteTopic: noteMap.get(item.id) ?? null,
           avgRating: agg?.avgRating ?? 0,
           reviewCount: agg?.count ?? 0,
         };
@@ -649,6 +702,127 @@ export class CatalogService {
       });
     });
     return { success: true };
+  }
+
+  getPrototypeNote(userId: string, userRole: string, prototypeId: string) {
+    const { prototype } = this.ensurePrototypeById(
+      userId,
+      userRole,
+      prototypeId,
+    );
+    this.ensurePrototypeNoteStructure(
+      prototype.id,
+      prototype.title,
+      prototype.summary,
+      prototype.notes ?? '',
+    );
+    return this.getPrototypeNoteMap([prototypeId]).get(prototypeId) ?? null;
+  }
+
+  createPrototypeNoteSection(
+    userId: string,
+    userRole: string,
+    prototypeId: string,
+    payload: unknown,
+  ) {
+    const { prototype, category } = this.ensurePrototypeById(
+      userId,
+      userRole,
+      prototypeId,
+    );
+    this.ensureCanEditCategoryPrototype(userId, userRole, category);
+    const input = createPrototypeNoteSectionSchema.parse(payload);
+    const now = new Date().toISOString();
+    this.ensurePrototypeNoteStructure(
+      prototype.id,
+      prototype.title,
+      prototype.summary,
+      prototype.notes ?? '',
+      now,
+    );
+    const topic = this.databaseService.db
+      .select()
+      .from(prototypeNoteTopicsTable)
+      .where(eq(prototypeNoteTopicsTable.prototypeId, prototypeId))
+      .get();
+    if (!topic) {
+      throw new NotFoundException(`Prototype note topic not found: ${prototypeId}`);
+    }
+    const maxOrderRow = this.databaseService.db
+      .select({
+        maxIdx: sql<number>`max(${prototypeNoteSectionsTable.orderIdx})`,
+      })
+      .from(prototypeNoteSectionsTable)
+      .where(eq(prototypeNoteSectionsTable.topicId, topic.id))
+      .get();
+
+    this.databaseService.db
+      .insert(prototypeNoteSectionsTable)
+      .values({
+        id: `prototype-note-section-${randomUUID().slice(0, 12)}`,
+        topicId: topic.id,
+        title: input.title,
+        summary: input.summary || '',
+        content: input.content || '',
+        orderIdx: Number(maxOrderRow?.maxIdx ?? 0) + 1,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.getPrototypeNote(userId, userRole, prototypeId);
+  }
+
+  updatePrototypeNoteSection(
+    userId: string,
+    userRole: string,
+    sectionId: string,
+    payload: unknown,
+  ) {
+    const section = this.ensurePrototypeNoteSection(sectionId);
+    const topic = this.ensurePrototypeNoteTopic(section.topicId);
+    const { category } = this.ensurePrototypeById(
+      userId,
+      userRole,
+      topic.prototypeId,
+    );
+    this.ensureCanEditCategoryPrototype(userId, userRole, category);
+    const input = updatePrototypeNoteSectionSchema.parse(payload);
+
+    this.databaseService.db
+      .update(prototypeNoteSectionsTable)
+      .set({
+        title: input.title,
+        summary: input.summary === undefined ? undefined : input.summary || '',
+        content: input.content === undefined ? undefined : input.content || '',
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(prototypeNoteSectionsTable.id, sectionId))
+      .run();
+
+    return this.getPrototypeNote(userId, userRole, topic.prototypeId);
+  }
+
+  deletePrototypeNoteSection(
+    userId: string,
+    userRole: string,
+    sectionId: string,
+  ) {
+    const section = this.ensurePrototypeNoteSection(sectionId);
+    const topic = this.ensurePrototypeNoteTopic(section.topicId);
+    const { category } = this.ensurePrototypeById(
+      userId,
+      userRole,
+      topic.prototypeId,
+    );
+    this.ensureCanEditCategoryPrototype(userId, userRole, category);
+
+    this.databaseService.db
+      .delete(prototypeNoteSectionsTable)
+      .where(eq(prototypeNoteSectionsTable.id, sectionId))
+      .run();
+
+    return this.getPrototypeNote(userId, userRole, topic.prototypeId);
   }
 
   private getNextCategoryOrderIdx(
@@ -683,6 +857,7 @@ export class CatalogService {
             .all()
         : [];
     const prototypeIds = prototypes.map((prototype) => prototype.id);
+    this.ensurePrototypeNotesForRows(prototypes);
     const allImages =
       prototypeIds.length > 0
         ? this.databaseService.db
@@ -692,6 +867,7 @@ export class CatalogService {
             .orderBy(asc(prototypeImagesTable.orderIdx))
             .all()
         : [];
+    const noteMap = this.getPrototypeNoteMap(prototypeIds);
 
     return categories.map((category) => ({
       ...category,
@@ -702,8 +878,129 @@ export class CatalogService {
           images: allImages
             .filter((img) => img.prototypeId === p.id)
             .map((img) => img.imageUrl),
+          noteTopic: noteMap.get(p.id) ?? null,
         })),
     }));
+  }
+
+  private ensurePrototypeNotesForRows(
+    prototypes: Array<{
+      id: string;
+      title: string;
+      summary: string;
+      notes: string | null;
+    }>,
+  ) {
+    for (const prototype of prototypes) {
+      this.ensurePrototypeNoteStructure(
+        prototype.id,
+        prototype.title,
+        prototype.summary,
+        prototype.notes ?? '',
+      );
+    }
+  }
+
+  private ensurePrototypeNoteStructure(
+    prototypeId: string,
+    title: string,
+    summary: string,
+    content = '',
+    now = new Date().toISOString(),
+    executor: any = this.databaseService.db,
+  ) {
+    const topicId = `prototype-note-topic-${prototypeId}`;
+    const overviewSectionId = `prototype-note-section-${prototypeId}-overview`;
+    const existingTopic = executor
+      .select()
+      .from(prototypeNoteTopicsTable)
+      .where(eq(prototypeNoteTopicsTable.prototypeId, prototypeId))
+      .get();
+
+    if (!existingTopic) {
+      executor
+        .insert(prototypeNoteTopicsTable)
+        .values({
+          id: topicId,
+          prototypeId,
+          title,
+          summary,
+          orderIdx: 0,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    } else if (existingTopic.title !== title || existingTopic.summary !== summary) {
+      executor
+        .update(prototypeNoteTopicsTable)
+        .set({ title, summary, updatedAt: now })
+        .where(eq(prototypeNoteTopicsTable.id, existingTopic.id))
+        .run();
+    }
+
+    const resolvedTopicId = existingTopic?.id ?? topicId;
+    const existingOverview = executor
+      .select()
+      .from(prototypeNoteSectionsTable)
+      .where(eq(prototypeNoteSectionsTable.id, overviewSectionId))
+      .get();
+
+    if (!existingOverview) {
+      executor
+        .insert(prototypeNoteSectionsTable)
+        .values({
+          id: overviewSectionId,
+          topicId: resolvedTopicId,
+          title: '개요',
+          summary,
+          content,
+          orderIdx: 0,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    } else {
+      executor
+        .update(prototypeNoteSectionsTable)
+        .set({
+          summary,
+          content,
+          updatedAt: now,
+        })
+        .where(eq(prototypeNoteSectionsTable.id, overviewSectionId))
+        .run();
+    }
+  }
+
+  private getPrototypeNoteMap(prototypeIds: string[]) {
+    const map = new Map<string, PrototypeNoteTopicDto>();
+    if (prototypeIds.length === 0) return map;
+
+    const topics = this.databaseService.db
+      .select()
+      .from(prototypeNoteTopicsTable)
+      .where(sql`${prototypeNoteTopicsTable.prototypeId} IN ${prototypeIds}`)
+      .orderBy(asc(prototypeNoteTopicsTable.orderIdx))
+      .all();
+    const topicIds = topics.map((topic) => topic.id);
+    const sections =
+      topicIds.length > 0
+        ? this.databaseService.db
+            .select()
+            .from(prototypeNoteSectionsTable)
+            .where(sql`${prototypeNoteSectionsTable.topicId} IN ${topicIds}`)
+            .orderBy(asc(prototypeNoteSectionsTable.orderIdx))
+            .all()
+        : [];
+
+    for (const topic of topics) {
+      map.set(topic.prototypeId, {
+        ...topic,
+        sections: sections.filter((section) => section.topicId === topic.id),
+      });
+    }
+
+    return map;
   }
 
   private ensureWorkspace(workspaceId: string) {
@@ -859,7 +1156,7 @@ export class CatalogService {
       .get();
 
     if (!category) {
-      throw new NotFoundException(`Category not found: ${categoryId}`);
+      throw new NotFoundException(`Prototype topic not found: ${categoryId}`);
     }
 
     if (
@@ -879,7 +1176,75 @@ export class CatalogService {
       return category;
     }
 
-    throw new NotFoundException(`Category not found: ${categoryId}`);
+    throw new NotFoundException(`Prototype topic not found: ${categoryId}`);
+  }
+
+  private ensureCanEditCategoryPrototype(
+    userId: string,
+    userRole: string,
+    category: { userId: string; workspaceId: string | null },
+  ) {
+    if (userRole === 'admin' || category.userId === userId) return;
+
+    this.ensureCanEditWorkspace(
+      userId,
+      userRole,
+      category.workspaceId ?? this.getDefaultWorkspaceId(),
+    );
+  }
+
+  private ensurePrototypeById(
+    userId: string,
+    userRole: string,
+    prototypeId: string,
+  ) {
+    const prototype = this.databaseService.db
+      .select()
+      .from(prototypesTable)
+      .where(eq(prototypesTable.id, prototypeId))
+      .get();
+
+    if (!prototype) {
+      throw new NotFoundException(`Prototype not found: ${prototypeId}`);
+    }
+
+    const category = this.ensureCategory(
+      userId,
+      userRole,
+      prototype.categoryId,
+    );
+
+    return { prototype, category };
+  }
+
+  private ensurePrototypeNoteTopic(topicId: string) {
+    const topic = this.databaseService.db
+      .select()
+      .from(prototypeNoteTopicsTable)
+      .where(eq(prototypeNoteTopicsTable.id, topicId))
+      .get();
+
+    if (!topic) {
+      throw new NotFoundException(`Prototype note topic not found: ${topicId}`);
+    }
+
+    return topic;
+  }
+
+  private ensurePrototypeNoteSection(sectionId: string) {
+    const section = this.databaseService.db
+      .select()
+      .from(prototypeNoteSectionsTable)
+      .where(eq(prototypeNoteSectionsTable.id, sectionId))
+      .get();
+
+    if (!section) {
+      throw new NotFoundException(
+        `Prototype note section not found: ${sectionId}`,
+      );
+    }
+
+    return section;
   }
 
   private ensurePrototype(

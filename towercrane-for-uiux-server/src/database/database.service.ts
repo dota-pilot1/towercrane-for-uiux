@@ -755,6 +755,35 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE CASCADE
       );
 
+      CREATE TABLE IF NOT EXISTS prototype_note_topics (
+        id TEXT PRIMARY KEY,
+        prototype_id TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(prototype_id) REFERENCES prototypes(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_prototype_note_topics_prototype
+        ON prototype_note_topics(prototype_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS prototype_note_sections (
+        id TEXT PRIMARY KEY,
+        topic_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(topic_id) REFERENCES prototype_note_topics(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_prototype_note_sections_topic
+        ON prototype_note_sections(topic_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS doc_sections (
         id TEXT PRIMARY KEY,
         prototype_id TEXT NOT NULL,

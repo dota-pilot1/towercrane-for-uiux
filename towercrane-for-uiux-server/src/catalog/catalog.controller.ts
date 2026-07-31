@@ -112,6 +112,61 @@ export class CatalogController {
     );
   }
 
+  @Get('workspaces/:workspaceId/topics')
+  @UseGuards(OptionalAuthGuard)
+  listWorkspaceTopics(
+    @CurrentUser() user: { id: string; role: string } | undefined,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.catalogService.listWorkspaceCategories(
+      user?.id ?? '',
+      user?.role ?? 'guest',
+      workspaceId,
+    );
+  }
+
+  @Post('workspaces/:workspaceId/topics')
+  @UseGuards(AuthGuard)
+  createWorkspaceTopic(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('workspaceId') workspaceId: string,
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.createWorkspaceCategory(
+      user.id,
+      user.role,
+      workspaceId,
+      body,
+    );
+  }
+
+  @Post('workspaces/:workspaceId/topics/reorder')
+  @UseGuards(AuthGuard)
+  reorderWorkspaceTopics(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('workspaceId') workspaceId: string,
+    @Body()
+    body: {
+      items?: Array<{ id: string; orderIdx: number }>;
+      topicIds?: string[];
+      categoryIds?: string[];
+    },
+  ) {
+    const items =
+      body.items ??
+      (body.topicIds ?? body.categoryIds ?? []).map((id, orderIdx) => ({
+        id,
+        orderIdx,
+      }));
+
+    return this.catalogService.reorderWorkspaceCategories(
+      user.id,
+      user.role,
+      workspaceId,
+      { items },
+    );
+  }
+
   @Get('categories')
   @UseGuards(OptionalAuthGuard)
   listCategories(@CurrentUser() user?: { id: string; role: string }) {
@@ -130,6 +185,24 @@ export class CatalogController {
     return this.catalogService.reorderCategories(user.id, categoryIds);
   }
 
+  @Get('topics')
+  @UseGuards(OptionalAuthGuard)
+  listTopics(@CurrentUser() user?: { id: string; role: string }) {
+    return this.catalogService.listCategories(
+      user?.id ?? '',
+      user?.role ?? 'guest',
+    );
+  }
+
+  @Post('topics/reorder')
+  @UseGuards(AuthGuard)
+  reorderTopics(
+    @CurrentUser() user: { id: string },
+    @Body('topicIds') topicIds: string[],
+  ) {
+    return this.catalogService.reorderCategories(user.id, topicIds);
+  }
+
   @Get('categories/:categoryId')
   @UseGuards(OptionalAuthGuard)
   getCategory(
@@ -143,9 +216,31 @@ export class CatalogController {
     );
   }
 
+  @Get('topics/:topicId')
+  @UseGuards(OptionalAuthGuard)
+  getTopic(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('topicId') topicId: string,
+  ) {
+    return this.catalogService.getCategory(
+      user?.id ?? '',
+      user?.role ?? 'guest',
+      topicId,
+    );
+  }
+
   @Post('categories')
   @UseGuards(AuthGuard)
   createCategory(
+    @CurrentUser() user: { id: string; role: string },
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.createCategory(user.id, user.role, body);
+  }
+
+  @Post('topics')
+  @UseGuards(AuthGuard)
+  createTopic(
     @CurrentUser() user: { id: string; role: string },
     @Body() body: unknown,
   ) {
@@ -167,6 +262,16 @@ export class CatalogController {
     );
   }
 
+  @Patch('topics/:topicId')
+  @UseGuards(AuthGuard)
+  updateTopic(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('topicId') topicId: string,
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.updateCategory(user.id, user.role, topicId, body);
+  }
+
   @Delete('categories/:categoryId')
   @UseGuards(AuthGuard)
   deleteCategory(
@@ -174,6 +279,15 @@ export class CatalogController {
     @Param('categoryId') categoryId: string,
   ) {
     return this.catalogService.deleteCategory(user.id, user.role, categoryId);
+  }
+
+  @Delete('topics/:topicId')
+  @UseGuards(AuthGuard)
+  deleteTopic(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('topicId') topicId: string,
+  ) {
+    return this.catalogService.deleteCategory(user.id, user.role, topicId);
   }
 
   @Get('categories/:categoryId/prototypes')
@@ -191,6 +305,21 @@ export class CatalogController {
     );
   }
 
+  @Get('topics/:topicId/prototypes')
+  @UseGuards(OptionalAuthGuard)
+  listTopicPrototypes(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('topicId') topicId: string,
+    @Query() query: Record<string, unknown>,
+  ) {
+    return this.catalogService.listCategoryPrototypes(
+      user?.id ?? '',
+      user?.role ?? 'guest',
+      topicId,
+      query,
+    );
+  }
+
   @Post('categories/:categoryId/prototypes')
   @UseGuards(AuthGuard)
   createPrototype(
@@ -202,6 +331,21 @@ export class CatalogController {
       user.id,
       user.role,
       categoryId,
+      body,
+    );
+  }
+
+  @Post('topics/:topicId/prototypes')
+  @UseGuards(AuthGuard)
+  createTopicPrototype(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('topicId') topicId: string,
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.createPrototype(
+      user.id,
+      user.role,
+      topicId,
       body,
     );
   }
@@ -223,6 +367,23 @@ export class CatalogController {
     );
   }
 
+  @Patch('topics/:topicId/prototypes/:prototypeId')
+  @UseGuards(AuthGuard)
+  updateTopicPrototype(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('topicId') topicId: string,
+    @Param('prototypeId') prototypeId: string,
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.updatePrototype(
+      user.id,
+      user.role,
+      topicId,
+      prototypeId,
+      body,
+    );
+  }
+
   @Delete('categories/:categoryId/prototypes/:prototypeId')
   @UseGuards(AuthGuard)
   deletePrototype(
@@ -235,6 +396,77 @@ export class CatalogController {
       user.role,
       categoryId,
       prototypeId,
+    );
+  }
+
+  @Delete('topics/:topicId/prototypes/:prototypeId')
+  @UseGuards(AuthGuard)
+  deleteTopicPrototype(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('topicId') topicId: string,
+    @Param('prototypeId') prototypeId: string,
+  ) {
+    return this.catalogService.deletePrototype(
+      user.id,
+      user.role,
+      topicId,
+      prototypeId,
+    );
+  }
+
+  @Get('prototypes/:prototypeId/note')
+  @UseGuards(OptionalAuthGuard)
+  getPrototypeNote(
+    @CurrentUser() user: { id: string; role: string } | undefined,
+    @Param('prototypeId') prototypeId: string,
+  ) {
+    return this.catalogService.getPrototypeNote(
+      user?.id ?? '',
+      user?.role ?? 'guest',
+      prototypeId,
+    );
+  }
+
+  @Post('prototypes/:prototypeId/note/sections')
+  @UseGuards(AuthGuard)
+  createPrototypeNoteSection(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('prototypeId') prototypeId: string,
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.createPrototypeNoteSection(
+      user.id,
+      user.role,
+      prototypeId,
+      body,
+    );
+  }
+
+  @Patch('prototype-note-sections/:sectionId')
+  @UseGuards(AuthGuard)
+  updatePrototypeNoteSection(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('sectionId') sectionId: string,
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.updatePrototypeNoteSection(
+      user.id,
+      user.role,
+      sectionId,
+      body,
+    );
+  }
+
+  @Delete('prototype-note-sections/:sectionId')
+  @UseGuards(AuthGuard)
+  deletePrototypeNoteSection(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('sectionId') sectionId: string,
+  ) {
+    return this.catalogService.deletePrototypeNoteSection(
+      user.id,
+      user.role,
+      sectionId,
     );
   }
 }
