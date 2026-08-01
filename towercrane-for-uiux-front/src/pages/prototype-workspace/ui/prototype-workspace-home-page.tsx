@@ -173,7 +173,7 @@ function PrototypeWorkspaceCard({ workspace, onOpen }: PrototypeWorkspaceCardPro
       >
         <div className="rounded-md border border-surface-border-soft bg-surface-raised px-4 py-3 transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">
-            Categories
+            주제
           </div>
           <div className="mt-1 text-2xl font-black text-text-primary">
             {workspace.categoryCount}
@@ -350,7 +350,7 @@ function DeleteWorkspaceDialog({ workspace }: { workspace: PrototypeWorkspace })
           </p>
           {hasCategories ? (
             <p className="mt-3 rounded-md border border-surface-border-soft bg-surface-muted px-3 py-2 text-sm font-semibold text-text-secondary">
-              카테고리가 있는 워크스페이스는 먼저 비워야 삭제할 수 있습니다.
+              주제가 있는 워크스페이스는 먼저 비워야 삭제할 수 있습니다.
             </p>
           ) : null}
           {error ? (

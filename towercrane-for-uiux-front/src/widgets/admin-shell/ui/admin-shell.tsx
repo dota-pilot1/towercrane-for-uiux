@@ -81,7 +81,7 @@ export function AdminShell({ workspaceId, categoryId, prototypeId }: AdminShellP
             <p className="text-xs ui-text-secondary">
               {selectedWorkspace
                 ? `${selectedWorkspace.name} 워크스페이스의 프로토타입과 설계 문서를 관리합니다.`
-                : '카테고리별 프로토타입과 설계 문서를 관리합니다.'}
+                : '주제별 프로토타입과 설계 문서를 관리합니다.'}
             </p>
           </div>
         </div>
@@ -100,7 +100,7 @@ export function AdminShell({ workspaceId, categoryId, prototypeId }: AdminShellP
         <div className="flex flex-col min-w-0 min-h-0">
           {isError ? (
             <Card className="mb-1.5 rounded-sm border border-danger-border bg-danger-glass p-2 text-xs text-danger-500">
-              카테고리 데이터를 불러오지 못했습니다. 서버(`:3000`) 상태를 확인하세요.
+              주제 데이터를 불러오지 못했습니다. 서버(`:3000`) 상태를 확인하세요.
             </Card>
           ) : null}
 

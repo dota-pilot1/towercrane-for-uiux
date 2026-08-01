@@ -63,11 +63,11 @@ export function EditCategoryDialog({
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         {asIcon ? (
-          <ActionIconButton icon={Pencil} title="카테고리 수정" size={size} />
+          <ActionIconButton icon={Pencil} title="주제 수정" size={size} />
         ) : (
           <Button variant="secondary">
             <Pencil className="mr-2 size-4" />
-            카테고리 수정
+            주제 수정
           </Button>
         )}
       </Dialog.Trigger>
@@ -75,11 +75,11 @@ export function EditCategoryDialog({
         <Dialog.Overlay className="fixed inset-0 ui-overlay" />
         <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-6 shadow-2xl border border-surface-border-soft">
           <Dialog.Title className="text-xl font-semibold text-text-primary">
-            카테고리 수정
+            주제 수정
           </Dialog.Title>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <label className="block space-y-2">
-              <span className="text-sm text-text-secondary">카테고리 이름</span>
+              <span className="text-sm text-text-secondary">주제 이름</span>
               <Input {...register('title')} />
               {errors.title ? <span className="text-xs text-rose-300">{errors.title.message}</span> : null}
             </label>

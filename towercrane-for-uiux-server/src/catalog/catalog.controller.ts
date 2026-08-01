@@ -457,6 +457,21 @@ export class CatalogController {
     );
   }
 
+  @Post('prototype-note-sections/:sectionId/notes')
+  @UseGuards(AuthGuard)
+  createPrototypeNoteEntry(
+    @CurrentUser() user: { id: string; role: string },
+    @Param('sectionId') sectionId: string,
+    @Body() body: unknown,
+  ) {
+    return this.catalogService.createPrototypeNoteEntry(
+      user.id,
+      user.role,
+      sectionId,
+      body,
+    );
+  }
+
   @Delete('prototype-note-sections/:sectionId')
   @UseGuards(AuthGuard)
   deletePrototypeNoteSection(

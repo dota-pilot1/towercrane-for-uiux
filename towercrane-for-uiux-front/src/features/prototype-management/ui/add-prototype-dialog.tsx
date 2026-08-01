@@ -8,6 +8,7 @@ import { useCreatePrototype } from '../../../shared/api/catalog'
 import { Button } from '../../../shared/ui/button'
 import { AddIconButton } from '../../../shared/ui/add-icon-button'
 import { Input } from '../../../shared/ui/input'
+import { Textarea } from '../../../shared/ui/textarea'
 import { Switch } from '../../../shared/ui/switch'
 import { ToggleGroup } from '../../../shared/ui/toggle-group'
 import { uploadFile } from '../../../shared/api/upload'
@@ -17,6 +18,7 @@ const schema = z.object({
   repoUrl: z.string().max(2048).optional().or(z.literal('')),
   demoUrl: z.string().max(2048).optional().or(z.literal('')),
   figmaUrl: z.string().max(2048).optional().or(z.literal('')),
+  notes: z.string().max(2000).optional().or(z.literal('')),
   summary: z.string().min(2).max(160),
   status: z.enum(['draft', 'building', 'ready']),
   visibility: z.enum(['public', 'private']),
@@ -57,6 +59,7 @@ export function AddPrototypeDialog({
       repoUrl: '',
       demoUrl: '',
       figmaUrl: '',
+      notes: '',
       summary: '',
       status: 'draft',
       visibility: 'public',
@@ -142,7 +145,7 @@ export function AddPrototypeDialog({
               <Dialog.Title className="text-xl font-bold text-text-primary">
                 새 프로토타입 작성
               </Dialog.Title>
-              <p className="text-sm text-text-secondary mt-1">{categoryTitle} 카테고리</p>
+              <p className="text-sm text-text-secondary mt-1">{categoryTitle} 주제</p>
             </div>
             <div className="flex items-center gap-3">
               <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="text-text-secondary hover:text-text-primary">
@@ -207,6 +210,19 @@ export function AddPrototypeDialog({
                     <Input {...register('summary')} placeholder="이 프로토타입에서 다루는 범위를 적습니다" className="h-11" />
                     {errors.summary ? (
                       <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.summary.message}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className="text-[13px] font-medium text-text-secondary ml-1">노트 정리 (선택)</span>
+                    <Textarea
+                      {...register('notes')}
+                      placeholder="참고 맥락, 구현 포인트, 링크 설명을 정리합니다"
+                      rows={5}
+                      className="resize-none"
+                    />
+                    {errors.notes ? (
+                      <p className="text-[11px] text-danger-500 font-medium ml-1">{errors.notes.message}</p>
                     ) : null}
                   </div>
                 </div>

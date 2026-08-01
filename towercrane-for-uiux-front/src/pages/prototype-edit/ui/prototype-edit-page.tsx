@@ -48,6 +48,7 @@ import { Button } from '../../../shared/ui/button'
 import { Card } from '../../../shared/ui/card'
 import { Input } from '../../../shared/ui/input'
 import { Switch } from '../../../shared/ui/switch'
+import { Textarea } from '../../../shared/ui/textarea'
 import { ToggleGroup } from '../../../shared/ui/toggle-group'
 
 const schema = z.object({
@@ -55,6 +56,7 @@ const schema = z.object({
   repoUrl: z.string().max(2048).optional().or(z.literal('')),
   demoUrl: z.string().max(2048).optional().or(z.literal('')),
   figmaUrl: z.string().max(2048).optional().or(z.literal('')),
+  notes: z.string().max(2000).optional().or(z.literal('')),
   summary: z.string().min(2).max(160),
   status: z.enum(['draft', 'building', 'ready']),
   visibility: z.enum(['public', 'private']),
@@ -70,6 +72,7 @@ const emptyDefaults: FormValues = {
   repoUrl: '',
   demoUrl: '',
   figmaUrl: '',
+  notes: '',
   summary: '',
   status: 'draft',
   visibility: 'public',
@@ -225,7 +228,7 @@ export function PrototypeEditPage() {
       <Card className="mx-auto mt-16 max-w-xl rounded-sm border border-surface-border bg-surface-raised p-8 text-center">
         <h1 className="text-lg font-bold text-text-primary">프로토타입을 찾을 수 없습니다</h1>
         <p className="mt-2 text-sm text-text-secondary">
-          카테고리 또는 프로토타입이 삭제되었는지 확인해주세요.
+          주제 또는 프로토타입이 삭제되었는지 확인해주세요.
         </p>
         <Button type="button" variant="secondary" className="mt-6" onClick={() => navigate({ to: '/prototype' })}>
           <ArrowLeft className="size-4" />
@@ -314,6 +317,15 @@ export function PrototypeEditPage() {
 
               <Field label="설명" error={errors.summary?.message}>
                 <Input {...register('summary')} placeholder="핵심 기능을 한 줄로 설명해주세요" className="h-11" />
+              </Field>
+
+              <Field label="노트 정리 (선택)" error={errors.notes?.message}>
+                <Textarea
+                  {...register('notes')}
+                  placeholder="참고 맥락, 구현 포인트, URL 설명을 정리합니다"
+                  rows={6}
+                  className="resize-none"
+                />
               </Field>
             </div>
           </div>
@@ -555,6 +567,7 @@ function toFormValues(prototype: PrototypeItem): FormValues {
     repoUrl: prototype.repoUrl ?? '',
     demoUrl: prototype.demoUrl ?? prototype.figmaUrl ?? '',
     figmaUrl: '',
+    notes: prototype.notes ?? '',
     images: prototype.images ?? [],
     checklist: prototype.checklist ?? [],
   }

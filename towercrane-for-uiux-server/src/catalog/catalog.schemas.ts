@@ -55,6 +55,11 @@ export const createPrototypeNoteSectionSchema = z.object({
   content: z.string().max(20000).optional().or(z.literal('')),
 });
 
+export const createPrototypeNoteEntrySchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  content: z.string().max(50000).optional().or(z.literal('')),
+});
+
 export const updatePrototypeNoteSectionSchema =
   createPrototypeNoteSectionSchema.partial().refine(
     (value) => Object.keys(value).length > 0,
@@ -89,6 +94,9 @@ export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type UpdatePrototypeInput = z.infer<typeof updatePrototypeSchema>;
 export type CreatePrototypeNoteSectionInput = z.infer<
   typeof createPrototypeNoteSectionSchema
+>;
+export type CreatePrototypeNoteEntryInput = z.infer<
+  typeof createPrototypeNoteEntrySchema
 >;
 export type UpdatePrototypeNoteSectionInput = z.infer<
   typeof updatePrototypeNoteSectionSchema

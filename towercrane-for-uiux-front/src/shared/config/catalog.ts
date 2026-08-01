@@ -7,12 +7,36 @@ export type PrototypeItem = {
   repoUrl?: string
   demoUrl?: string
   figmaUrl?: string
+  notes?: string | null
   summary: string
   status: PrototypeStatus
   visibility: PrototypeVisibility
   updatedAt: string
   images?: string[]
   checklist?: string[]
+  noteTopic?: PrototypeNoteTopic | null
+}
+
+export type PrototypeNoteSection = {
+  id: string
+  topicId: string
+  title: string
+  summary: string
+  content: string
+  orderIdx: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type PrototypeNoteTopic = {
+  id: string
+  prototypeId: string
+  title: string
+  summary: string
+  orderIdx: number
+  createdAt: string
+  updatedAt: string
+  sections: PrototypeNoteSection[]
 }
 
 export type ScenarioIconKey =
@@ -127,7 +151,7 @@ export const seedScenarioCategories: ScenarioCategory[] = [
         id: 'proto-prototype-table',
         title: 'Prototype Registry Table',
         repoUrl: `${repoTree}/towercrane-for-uiux-front/src/widgets/order-table`,
-        summary: '카테고리별 GitHub 프로토타입 리스트를 렌더링하는 보드',
+        summary: '주제별 GitHub 프로토타입 리스트를 렌더링하는 보드',
         status: 'building',
         visibility: 'public',
         updatedAt: '2026-04-16',
@@ -157,7 +181,7 @@ export const seedScenarioCategories: ScenarioCategory[] = [
         id: 'proto-catalog-filter',
         title: 'Catalog Filter Panel',
         repoUrl: `${repoTree}/towercrane-for-uiux-front/src/features/workbench-filter`,
-        summary: '카테고리별 프로토타입을 검색하고 공유하기 위한 폼 패턴',
+        summary: '주제별 프로토타입을 검색하고 공유하기 위한 폼 패턴',
         status: 'ready',
         visibility: 'public',
         updatedAt: '2026-04-16',

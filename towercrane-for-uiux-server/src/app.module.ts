@@ -41,9 +41,11 @@ import { DevManagementModule } from './dev-management/dev-management.module';
 import { DevMeetingMinutesModule } from './dev-meeting-minutes/dev-meeting-minutes.module';
 import { CodeReviewsModule } from './code-reviews/code-reviews.module';
 import { FeaturePlansModule } from './feature-plans/feature-plans.module';
+import { DesignTemplatesModule } from './design-templates/design-templates.module';
 import { TaskIngestModule } from './task-ingest/task-ingest.module';
 import { TaskChatModule } from './task-chat/task-chat.module';
 import { PointsModule } from './points/points.module';
+import { CommonComponentTemplatesModule } from './common-component-templates/common-component-templates.module';
 
 @Module({
   imports: [
@@ -87,9 +89,11 @@ import { PointsModule } from './points/points.module';
     DevMeetingMinutesModule,
     CodeReviewsModule,
     FeaturePlansModule,
+    DesignTemplatesModule,
     TaskIngestModule,
     TaskChatModule,
     PointsModule,
+    CommonComponentTemplatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

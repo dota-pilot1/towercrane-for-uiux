@@ -12,7 +12,7 @@ type DeleteCategoryButtonProps = {
   size?: 'icon' | 'sm-icon'
 }
 
-const CONFIRM_MESSAGE = '이 카테고리를 삭제할까요? 연결된 프로토타입도 함께 삭제됩니다.'
+const CONFIRM_MESSAGE = '이 주제를 삭제할까요? 연결된 프로토타입도 함께 삭제됩니다.'
 
 export function DeleteCategoryButton({
   categoryId,

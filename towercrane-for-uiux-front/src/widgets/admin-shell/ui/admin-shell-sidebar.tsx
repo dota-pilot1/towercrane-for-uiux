@@ -126,7 +126,7 @@ export function AdminShellSidebar({
       toast.error('순서 저장에 실패했어요. 다시 시도해 주세요.')
     }
     const onSuccess = () => {
-      toast.success('카테고리 순서가 저장됐어요')
+      toast.success('주제 순서가 저장됐어요')
     }
 
     if (workspaceId) {
@@ -142,7 +142,7 @@ export function AdminShellSidebar({
 
     reorderCategories.mutate(nextCategories.map((category) => category.id), {
       onSuccess: () => {
-        toast.success('카테고리 순서가 저장됐어요')
+        toast.success('주제 순서가 저장됐어요')
       },
       onError: () => {
         onCategoriesReorder(prevCategories)
@@ -160,10 +160,10 @@ export function AdminShellSidebar({
               <div className="mb-2 flex items-center justify-between px-1">
                 <div className="min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-primary">
-                    Library
+                    Topics
                   </div>
                   <div className="mt-0.5 truncate text-sm font-black text-text-primary">
-                    카테고리
+                    주제 목록
                   </div>
                 </div>
                 <div className="rounded-sm border border-surface-border-soft bg-surface-raised px-2 py-1 text-[10px] font-black text-text-muted">
@@ -178,7 +178,7 @@ export function AdminShellSidebar({
                       type="button"
                       className="flex h-9 w-full items-center justify-between rounded-md border border-surface-border-soft bg-surface-raised/70 px-3 text-xs font-bold text-text-secondary shadow-sm transition-all hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary"
                     >
-                      <span>새 카테고리</span>
+                      <span>새 주제</span>
                       <Plus className="size-4" />
                     </button>
                   </AddCategoryDialog>
@@ -351,7 +351,7 @@ function SortableCategoryItem({
           className={`flex size-6 items-center justify-center rounded-sm border border-surface-border-soft bg-surface-raised ui-text-secondary shadow-sm transition-all hover:border-surface-border hover:bg-surface-muted hover:ui-text-primary ${
             actionsOpen || isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}
-          aria-label={`${item.title} 카테고리 작업`}
+          aria-label={`${item.title} 주제 작업`}
           aria-expanded={actionsOpen}
           onClick={() => setActionsOpen((open) => !open)}
         >

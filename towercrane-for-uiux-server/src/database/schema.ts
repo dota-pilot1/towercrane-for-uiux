@@ -790,6 +790,18 @@ export const prototypeNoteSectionsTable = sqliteTable('prototype_note_sections',
   updatedAt: text('updated_at').notNull(),
 });
 
+export const prototypeNoteEntriesTable = sqliteTable('prototype_note_entries', {
+  id: text('id').primaryKey(),
+  sectionId: text('section_id')
+    .notNull()
+    .references(() => prototypeNoteSectionsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const docSectionsTable = sqliteTable('doc_sections', {
   id: text('id').primaryKey(),
   prototypeId: text('prototype_id')
@@ -1736,6 +1748,104 @@ export const featurePlansTable = sqliteTable('feature_plans', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
+
+export type DesignTemplateFile = {
+  id: string;
+  name: string;
+  url: string;
+  fileType: string;
+  fileSize: number;
+  purpose?: 'source' | 'convention' | 'asset';
+};
+
+export const designTemplatesTable = sqliteTable('design_templates', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  category: text('category').notNull(),
+  tags: text('tags', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  coverImageUrl: text('cover_image_url'),
+  previewImageUrls: text('preview_image_urls', { mode: 'json' })
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+  files: text('files', { mode: 'json' })
+    .$type<DesignTemplateFile[]>()
+    .notNull()
+    .default([]),
+  conventionFiles: text('convention_files', { mode: 'json' })
+    .$type<DesignTemplateFile[]>()
+    .notNull()
+    .default([]),
+  designRules: text('design_rules').notNull().default(''),
+  aiPrompt: text('ai_prompt').notNull().default(''),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'cascade',
+  }),
+  createdByName: text('created_by_name').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const designReferencesTable = sqliteTable('design_references', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  category: text('category').notNull(),
+  description: text('description').notNull().default(''),
+  url: text('url').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdBy: text('created_by').references(() => usersTable.id, {
+    onDelete: 'cascade',
+  }),
+  createdByName: text('created_by_name').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type CommonComponentPreviewKind =
+  | 'input'
+  | 'button'
+  | 'card'
+  | 'filter-tabs';
+
+export type CommonComponentProps = Record<string, unknown>;
+
+export type CommonComponentExample = {
+  id: string;
+  title: string;
+  summary: string;
+  previewKind: CommonComponentPreviewKind;
+  previewVariant: string;
+  code: string;
+  props?: CommonComponentProps;
+  orderIdx: number;
+};
+
+export const commonComponentTemplatesTable = sqliteTable(
+  'common_component_templates',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    summary: text('summary').notNull(),
+    category: text('category').notNull(),
+    style: text('style').notNull(),
+    previewKind: text('preview_kind').$type<CommonComponentPreviewKind>().notNull(),
+    componentName: text('component_name').notNull(),
+    tags: text('tags', { mode: 'json' }).$type<string[]>().notNull().default([]),
+    examples: text('examples', { mode: 'json' })
+      .$type<CommonComponentExample[]>()
+      .notNull()
+      .default([]),
+    code: text('code').notNull(),
+    notes: text('notes').notNull().default(''),
+    createdBy: text('created_by').references(() => usersTable.id, {
+      onDelete: 'cascade',
+    }),
+    createdByName: text('created_by_name').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
 
 export const devManagementBotSettingsTable = sqliteTable(
   'dev_management_bot_settings',
@@ -2726,6 +2836,9 @@ export const schema = {
   devMeetingMinutesTable,
   codeReviewsTable,
   featurePlansTable,
+  designTemplatesTable,
+  designReferencesTable,
+  commonComponentTemplatesTable,
   devManagementBotSettingsTable,
   devManagementDmPairsTable,
   issuesTable,
@@ -2798,6 +2911,10 @@ export type PrototypeNoteSectionRow =
   typeof prototypeNoteSectionsTable.$inferSelect;
 export type PrototypeNoteSectionInsert =
   typeof prototypeNoteSectionsTable.$inferInsert;
+export type PrototypeNoteEntryRow =
+  typeof prototypeNoteEntriesTable.$inferSelect;
+export type PrototypeNoteEntryInsert =
+  typeof prototypeNoteEntriesTable.$inferInsert;
 export type PrototypeImageRow = typeof prototypeImagesTable.$inferSelect;
 export type PrototypeImageInsert = typeof prototypeImagesTable.$inferInsert;
 export type DocSectionRow = typeof docSectionsTable.$inferSelect;
@@ -2894,6 +3011,12 @@ export type CodeReviewRow = typeof codeReviewsTable.$inferSelect;
 export type CodeReviewInsert = typeof codeReviewsTable.$inferInsert;
 export type FeaturePlanRow = typeof featurePlansTable.$inferSelect;
 export type FeaturePlanInsert = typeof featurePlansTable.$inferInsert;
+export type DesignTemplateRow = typeof designTemplatesTable.$inferSelect;
+export type DesignTemplateInsert = typeof designTemplatesTable.$inferInsert;
+export type DesignReferenceRow = typeof designReferencesTable.$inferSelect;
+export type DesignReferenceInsert = typeof designReferencesTable.$inferInsert;
+export type CommonComponentTemplateRow = typeof commonComponentTemplatesTable.$inferSelect;
+export type CommonComponentTemplateInsert = typeof commonComponentTemplatesTable.$inferInsert;
 export type DevManagementBotSettingsRow =
   typeof devManagementBotSettingsTable.$inferSelect;
 export type DevManagementBotSettingsInsert =

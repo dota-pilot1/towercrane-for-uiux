@@ -784,6 +784,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_prototype_note_sections_topic
         ON prototype_note_sections(topic_id, order_idx);
 
+      CREATE TABLE IF NOT EXISTS prototype_note_entries (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES prototype_note_sections(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_prototype_note_entries_section
+        ON prototype_note_entries(section_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS doc_sections (
         id TEXT PRIMARY KEY,
         prototype_id TEXT NOT NULL,
@@ -1487,6 +1501,73 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_feature_plans_linked_task
         ON feature_plans(linked_task_id);
+
+      CREATE TABLE IF NOT EXISTS design_templates (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        category TEXT NOT NULL,
+        tags TEXT NOT NULL DEFAULT '[]',
+        cover_image_url TEXT,
+        preview_image_urls TEXT NOT NULL DEFAULT '[]',
+        files TEXT NOT NULL DEFAULT '[]',
+        convention_files TEXT NOT NULL DEFAULT '[]',
+        design_rules TEXT NOT NULL DEFAULT '',
+        ai_prompt TEXT NOT NULL DEFAULT '',
+        created_by TEXT,
+        created_by_name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_design_templates_category
+        ON design_templates(category, updated_at);
+
+      CREATE INDEX IF NOT EXISTS idx_design_templates_created
+        ON design_templates(created_at);
+
+      CREATE TABLE IF NOT EXISTS design_references (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        category TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        url TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_by_name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_design_references_sort
+        ON design_references(sort_order, created_at);
+
+      CREATE TABLE IF NOT EXISTS common_component_templates (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        category TEXT NOT NULL,
+        style TEXT NOT NULL,
+        preview_kind TEXT NOT NULL,
+        component_name TEXT NOT NULL,
+        tags TEXT NOT NULL DEFAULT '[]',
+        examples TEXT NOT NULL DEFAULT '[]',
+        code TEXT NOT NULL,
+        notes TEXT NOT NULL DEFAULT '',
+        created_by TEXT,
+        created_by_name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_common_component_templates_category
+        ON common_component_templates(category, updated_at);
+
+      CREATE INDEX IF NOT EXISTS idx_common_component_templates_style
+        ON common_component_templates(style, updated_at);
 
       CREATE TABLE IF NOT EXISTS dev_management_bot_settings (
         room_id TEXT PRIMARY KEY,
@@ -3567,6 +3648,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'discussion_note_comments',
       'kind',
       "ALTER TABLE discussion_note_comments ADD COLUMN kind TEXT NOT NULL DEFAULT 'OPINION'",
+    );
+    this.ensureColumn(
+      'design_templates',
+      'convention_files',
+      "ALTER TABLE design_templates ADD COLUMN convention_files TEXT NOT NULL DEFAULT '[]'",
+    );
+    this.ensureColumn(
+      'common_component_templates',
+      'examples',
+      "ALTER TABLE common_component_templates ADD COLUMN examples TEXT NOT NULL DEFAULT '[]'",
     );
     this.sqlite.exec(`
       DROP INDEX IF EXISTS idx_study_diaries_user;

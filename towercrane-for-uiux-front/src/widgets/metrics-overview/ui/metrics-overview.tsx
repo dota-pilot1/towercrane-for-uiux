@@ -3,10 +3,10 @@ import type { ScenarioCategory } from '../../../shared/config/catalog'
 import { Card } from '../../../shared/ui/card'
 
 const metricMeta = [
-  { key: 'categoryCount', label: '사이드바 카테고리', icon: PanelLeftOpen },
+  { key: 'categoryCount', label: '프로토타입 주제', icon: PanelLeftOpen },
   { key: 'prototypeCount', label: 'GitHub 프로토타입', icon: GitBranch },
   { key: 'readyCount', label: 'Ready 상태', icon: SquareActivity },
-  { key: 'customCount', label: '사용자 추가 카테고리', icon: FolderKanban },
+  { key: 'customCount', label: '사용자 추가 주제', icon: FolderKanban },
 ] as const
 
 type MetricsOverviewProps = {

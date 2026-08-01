@@ -70,7 +70,7 @@ export function AddCategoryDialog({ children, workspaceId }: AddCategoryDialogPr
         {children ?? (
           <Button variant="secondary" className="w-full h-9 border border-dashed border-surface-border bg-surface-muted/10 text-text-muted transition-all duration-200 hover:border-brand-border hover:bg-brand-glass hover:text-brand-primary active:scale-[0.98] shadow-none text-xs">
             <Plus className="mr-1.5 size-3.5" />
-            카테고리 추가
+            주제 추가
           </Button>
         )}
       </Dialog.Trigger>
@@ -78,15 +78,15 @@ export function AddCategoryDialog({ children, workspaceId }: AddCategoryDialogPr
         <Dialog.Overlay className="fixed inset-0 ui-overlay" />
         <Dialog.Content className="glass-panel fixed left-1/2 top-1/2 w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[32px] p-6 shadow-2xl border border-surface-border-soft">
           <Dialog.Title className="text-xl font-semibold text-text-primary">
-            사이드바 카테고리 추가
+            프로토타입 주제 추가
           </Dialog.Title>
           <Dialog.Description className="mt-2 text-sm text-text-secondary">
-            20개 기본 시나리오는 시드일 뿐이고, 필요한 패턴 카테고리를 계속 붙일 수 있습니다.
+            20개 기본 시나리오는 시드일 뿐이고, 필요한 프로토타입 주제를 계속 붙일 수 있습니다.
           </Dialog.Description>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <label className="block space-y-2">
-              <span className="text-sm text-text-secondary">카테고리 이름</span>
+              <span className="text-sm text-text-secondary">주제 이름</span>
               <Input {...register('title')} placeholder="예: 승인 플로우 UI" />
               {errors.title ? <span className="text-xs text-rose-300">{errors.title.message}</span> : null}
             </label>
@@ -95,7 +95,7 @@ export function AddCategoryDialog({ children, workspaceId }: AddCategoryDialogPr
               <span className="text-sm text-text-secondary">요약</span>
               <Input
                 {...register('summary')}
-                placeholder="이 카테고리에서 다루는 핵심 시나리오를 짧게 적습니다"
+                placeholder="이 주제에서 다루는 핵심 시나리오를 짧게 적습니다"
               />
               {errors.summary ? (
                 <span className="text-xs text-rose-300">{errors.summary.message}</span>

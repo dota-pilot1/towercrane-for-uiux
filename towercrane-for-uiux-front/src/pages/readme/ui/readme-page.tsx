@@ -185,8 +185,8 @@ function OverviewPanel() {
     {
       name: 'towercrane-for-uiux-front',
       bullets: [
-        '왼쪽 사이드바에 카테고리를 추가할 수 있는 패턴 허브',
-        '본문 영역에서 선택한 카테고리의 GitHub 프로토타입 링크를 관리',
+        '왼쪽 사이드바에 프로토타입 주제를 추가할 수 있는 패턴 허브',
+        '본문 영역에서 선택한 주제의 GitHub 프로토타입 링크를 관리',
         '프로토타입별 문서 페이지 (섹션/문서 2단 + 6종 블록 + Lexical 에디터 + Mermaid)',
       ],
       stack: ['Vite', 'React', 'TypeScript', 'Tailwind CSS', 'Radix UI', 'Zustand', 'React Query', 'TanStack Table'],
@@ -194,7 +194,7 @@ function OverviewPanel() {
     {
       name: 'towercrane-for-uiux-server',
       bullets: [
-        '카테고리 / 프로토타입 / 문서 / 블록 저장 API',
+        '주제 / 프로토타입 / 문서 / 블록 저장 API',
         'S3 Presigned URL 발급 (Lexical 이미지 업로드용)',
         'DB 파일 교체형 운영 구조',
       ],

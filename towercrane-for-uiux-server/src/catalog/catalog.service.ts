@@ -5,10 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, like, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import {
   categoriesTable,
+  prototypeNoteEntriesTable,
   prototypeNoteSectionsTable,
   prototypeNoteTopicsTable,
   prototypeImagesTable,
@@ -21,6 +22,7 @@ import {
 import { ReviewService } from '../review/review.service';
 import {
   createCategorySchema,
+  createPrototypeNoteEntrySchema,
   createPrototypeNoteSectionSchema,
   createPrototypeSchema,
   createWorkspaceSchema,
@@ -32,6 +34,16 @@ import {
   updateWorkspaceSchema,
 } from './catalog.schemas';
 
+type PrototypeNoteEntryDto = {
+  id: string;
+  sectionId: string;
+  title: string;
+  content: string;
+  orderIdx: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type PrototypeNoteSectionDto = {
   id: string;
   topicId: string;
@@ -41,6 +53,7 @@ type PrototypeNoteSectionDto = {
   orderIdx: number;
   createdAt: string;
   updatedAt: string;
+  notes: PrototypeNoteEntryDto[];
 };
 
 type PrototypeNoteTopicDto = {
@@ -773,6 +786,46 @@ export class CatalogService {
     return this.getPrototypeNote(userId, userRole, prototypeId);
   }
 
+  createPrototypeNoteEntry(
+    userId: string,
+    userRole: string,
+    sectionId: string,
+    payload: unknown,
+  ) {
+    const section = this.ensurePrototypeNoteSection(sectionId);
+    const topic = this.ensurePrototypeNoteTopic(section.topicId);
+    const { category } = this.ensurePrototypeById(
+      userId,
+      userRole,
+      topic.prototypeId,
+    );
+    this.ensureCanEditCategoryPrototype(userId, userRole, category);
+    const input = createPrototypeNoteEntrySchema.parse(payload);
+    const now = new Date().toISOString();
+    const maxOrderRow = this.databaseService.db
+      .select({
+        maxIdx: sql<number>`max(${prototypeNoteEntriesTable.orderIdx})`,
+      })
+      .from(prototypeNoteEntriesTable)
+      .where(eq(prototypeNoteEntriesTable.sectionId, sectionId))
+      .get();
+
+    this.databaseService.db
+      .insert(prototypeNoteEntriesTable)
+      .values({
+        id: `prototype-note-entry-${randomUUID().slice(0, 12)}`,
+        sectionId,
+        title: input.title,
+        content: input.content || '',
+        orderIdx: Number(maxOrderRow?.maxIdx ?? 0) + 1,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.getPrototypeNote(userId, userRole, topic.prototypeId);
+  }
+
   updatePrototypeNoteSection(
     userId: string,
     userRole: string,
@@ -992,11 +1045,45 @@ export class CatalogService {
             .orderBy(asc(prototypeNoteSectionsTable.orderIdx))
             .all()
         : [];
+    const sectionIds = sections.map((section) => section.id);
+    const entries =
+      sectionIds.length > 0
+        ? this.databaseService.db
+            .select()
+            .from(prototypeNoteEntriesTable)
+            .where(inArray(prototypeNoteEntriesTable.sectionId, sectionIds))
+            .orderBy(asc(prototypeNoteEntriesTable.orderIdx))
+            .all()
+        : [];
 
     for (const topic of topics) {
       map.set(topic.prototypeId, {
         ...topic,
-        sections: sections.filter((section) => section.topicId === topic.id),
+        sections: sections
+          .filter((section) => section.topicId === topic.id)
+          .map((section) => {
+            const sectionEntries = entries.filter(
+              (entry) => entry.sectionId === section.id,
+            );
+            const legacyContent = section.content.trim();
+            return {
+              ...section,
+              notes:
+                sectionEntries.length > 0 || !legacyContent
+                  ? sectionEntries
+                  : [
+                      {
+                        id: `${section.id}-legacy-note`,
+                        sectionId: section.id,
+                        title: section.title,
+                        content: section.content,
+                        orderIdx: 0,
+                        createdAt: section.createdAt,
+                        updatedAt: section.updatedAt,
+                      },
+                    ],
+            };
+          }),
       });
     }
 

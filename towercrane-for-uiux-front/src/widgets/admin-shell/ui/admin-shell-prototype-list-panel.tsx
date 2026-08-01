@@ -1,4 +1,16 @@
-import { ChevronLeft, ChevronRight, ExternalLink, FileText, MoreVertical, Star } from 'lucide-react'
+import * as Dialog from '@radix-ui/react-dialog'
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  GitBranch,
+  MoreVertical,
+  Star,
+  StickyNote,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { EditPrototypeDialog } from '../../../features/prototype-management/ui/edit-prototype-dialog'
@@ -60,6 +72,8 @@ export function AdminShellPrototypeListPanel({
   onPrevPage,
   onNextPage,
 }: AdminShellPrototypeListPanelProps) {
+  const [notePrototype, setNotePrototype] = useState<PrototypeListItem | null>(null)
+
   return (
     <div className="ui-panel flex-1 min-h-0 overflow-y-auto border-brand-border/20 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--primary)_4%,var(--card))_0%,var(--card)_9rem)]">
       <div className={`flex items-center gap-3 border-b border-brand-border/20 bg-brand-glass/40 ${insetClassName} pb-4 pt-5`}>
@@ -163,13 +177,14 @@ export function AdminShellPrototypeListPanel({
                       ))}
                     </div>
                   </div>
-                  <PrototypeActionsMenu
-                    categoryId={selectedCategory.id}
-                    prototype={proto}
-                    isAuthenticated={isAuthenticated}
-                    canManagePrototype={canManagePrototype}
-                    onOpenDoc={onOpenDoc}
-                  />
+	                  <PrototypeActionsMenu
+	                    categoryId={selectedCategory.id}
+	                    prototype={proto}
+	                    isAuthenticated={isAuthenticated}
+	                    canManagePrototype={canManagePrototype}
+	                    onOpenDoc={onOpenDoc}
+	                    onOpenNotes={setNotePrototype}
+	                  />
                 </div>
               </div>
             )
@@ -185,7 +200,7 @@ export function AdminShellPrototypeListPanel({
         )}
       </div>
 
-      {totalCount > 0 ? (
+	      {totalCount > 0 ? (
         <div
           className={`mt-5 flex items-center justify-between gap-3 border-t border-surface-border ${insetClassName} pb-5 pt-5`}
         >
@@ -211,10 +226,14 @@ export function AdminShellPrototypeListPanel({
             </button>
           </div>
         </div>
-      ) : null}
-    </div>
-  )
-}
+	      ) : null}
+	      <PrototypeNoteDialog
+	        prototype={notePrototype}
+	        onClose={() => setNotePrototype(null)}
+	      />
+	    </div>
+	  )
+	}
 
 type PrototypeActionsMenuProps = {
   categoryId: string
@@ -222,6 +241,7 @@ type PrototypeActionsMenuProps = {
   isAuthenticated: boolean
   canManagePrototype: boolean
   onOpenDoc: (prototypeId: string) => void
+  onOpenNotes: (prototype: PrototypeListItem) => void
 }
 
 function PrototypeActionsMenu({
@@ -230,9 +250,11 @@ function PrototypeActionsMenu({
   isAuthenticated,
   canManagePrototype,
   onOpenDoc,
+  onOpenNotes,
 }: PrototypeActionsMenuProps) {
   const [actionsOpen, setActionsOpen] = useState(false)
   const actionsRef = useRef<HTMLDivElement | null>(null)
+  const siteUrl = prototype.demoUrl || prototype.figmaUrl
 
   useEffect(() => {
     if (!actionsOpen) return
@@ -252,19 +274,24 @@ function PrototypeActionsMenu({
       className="relative ml-auto flex shrink-0 items-center gap-1.5"
       onClick={(event) => event.stopPropagation()}
     >
-      {prototype.demoUrl && (
-        <a
-          href={prototype.demoUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 rounded-sm border border-surface-border bg-surface-muted px-2.5 py-1.5 text-[11px] font-medium ui-text-secondary shadow-sm transition-all hover:border-brand-border hover:bg-surface-strong hover:ui-text-primary"
-          aria-label="데모 사이트 열기"
-          title="데모 사이트 열기"
-        >
-          <ExternalLink className="size-3.5" />
-          <span>데모</span>
-        </a>
-      )}
+      <PrototypeReferenceAction
+        icon={StickyNote}
+        label="노트"
+        title={prototype.notes?.trim() ? '노트 정리 보기' : '연관 노트 없음'}
+        onClick={() => onOpenNotes(prototype)}
+      />
+      <PrototypeReferenceAction
+        icon={GitBranch}
+        label="GitHub"
+        href={prototype.repoUrl}
+        title={prototype.repoUrl ? 'GitHub 주소 열기' : 'GitHub 주소 없음'}
+      />
+      <PrototypeReferenceAction
+        icon={ExternalLink}
+        label="URL"
+        href={siteUrl ?? undefined}
+        title={siteUrl ? '사이트 주소 열기' : '사이트 주소 없음'}
+      />
       <button
         type="button"
         className="flex size-8 items-center justify-center rounded-sm border border-surface-border bg-surface-muted ui-text-secondary shadow-sm transition-all hover:border-brand-border hover:bg-surface-strong hover:ui-text-primary"
@@ -304,5 +331,100 @@ function PrototypeActionsMenu({
         </div>
       ) : null}
     </div>
+  )
+}
+
+function PrototypeReferenceAction({
+  icon: Icon,
+  label,
+  href,
+  disabled,
+  title,
+  onClick,
+}: {
+  icon: LucideIcon
+  label: string
+  href?: string
+  disabled?: boolean
+  title: string
+  onClick?: () => void
+}) {
+  const inactive = disabled || !href && !onClick
+  const className =
+    'flex h-8 items-center gap-1.5 rounded-sm border px-2.5 text-[11px] font-bold shadow-sm transition-all ' +
+    (inactive
+      ? 'cursor-not-allowed border-surface-border-soft bg-surface-muted text-text-muted opacity-55'
+      : 'border-brand-border bg-brand-glass text-brand-primary hover:bg-surface-strong')
+
+  if (href && !disabled) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        aria-label={title}
+        title={title}
+      >
+        <Icon className="size-3.5" />
+        {label}
+      </a>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={inactive}
+      onClick={onClick}
+      className={className}
+      aria-label={title}
+      title={title}
+    >
+      <Icon className="size-3.5" />
+      {label}
+    </button>
+  )
+}
+
+function PrototypeNoteDialog({
+  prototype,
+  onClose,
+}: {
+  prototype: PrototypeListItem | null
+  onClose: () => void
+}) {
+  return (
+    <Dialog.Root open={Boolean(prototype)} onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[220] ui-overlay" />
+        <Dialog.Content className="fixed right-4 top-4 bottom-4 z-[221] flex w-[min(520px,calc(100vw-2rem))] flex-col overflow-hidden rounded-md border border-surface-border bg-surface-raised shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-surface-border px-5 py-4">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-widest text-brand-primary">
+                Prototype Note
+              </p>
+              <Dialog.Title className="mt-1 truncate text-lg font-black text-text-primary">
+                {prototype?.title ?? '노트'}
+              </Dialog.Title>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="grid size-9 shrink-0 place-items-center rounded-md border border-surface-border bg-surface-muted text-text-secondary hover:text-text-primary"
+                aria-label="노트 닫기"
+              >
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-5">
+            <div className="whitespace-pre-wrap rounded-md border border-surface-border-soft bg-surface-muted p-4 text-sm font-semibold leading-7 text-text-primary">
+              {prototype?.notes?.trim()}
+            </div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

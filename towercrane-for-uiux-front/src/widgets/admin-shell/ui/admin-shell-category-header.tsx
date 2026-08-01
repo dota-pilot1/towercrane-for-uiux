@@ -120,7 +120,7 @@ function CategoryHeaderActionsMenu({
       <button
         type="button"
         className="flex size-8 items-center justify-center rounded-sm border border-surface-border bg-surface-muted ui-text-secondary shadow-sm transition-all hover:border-brand-border hover:bg-surface-strong hover:ui-text-primary"
-        aria-label={`${selectedCategory.title} 카테고리 작업`}
+        aria-label={`${selectedCategory.title} 주제 작업`}
         aria-expanded={actionsOpen}
         onClick={() => setActionsOpen((open) => !open)}
       >

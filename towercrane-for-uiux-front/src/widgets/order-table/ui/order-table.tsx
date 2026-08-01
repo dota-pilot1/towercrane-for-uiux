@@ -5,7 +5,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ArrowUpRight, DatabaseZap, LayoutTemplate } from 'lucide-react'
+import { ArrowUpRight, DatabaseZap, FileText, GitBranch, LayoutTemplate, type LucideIcon } from 'lucide-react'
 import { useMemo } from 'react'
 import { DeletePrototypeButton } from '../../../features/prototype-management/ui/delete-prototype-button'
 import { EditPrototypeDialog } from '../../../features/prototype-management/ui/edit-prototype-dialog'
@@ -39,22 +39,72 @@ const basePrototypeColumns = [
   }),
   columnHelper.display({
     id: 'link',
-    header: '링크',
-    cell: ({ row }) => row.original.repoUrl ? (
-      <a
-        href={row.original.repoUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex items-center gap-2 text-brand-primary hover:text-brand-primary"
-      >
-        열기
-        <ArrowUpRight className="size-4" />
-      </a>
-    ) : (
-      <span className="text-xs text-text-muted">없음</span>
-    ),
+    header: '참조',
+    cell: ({ row }) => {
+      const prototype = row.original
+      const siteUrl = prototype.demoUrl || prototype.figmaUrl
+
+      return (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <ReferenceChip
+            icon={FileText}
+            label="노트"
+            title={prototype.notes?.trim() || '연관 노트 없음'}
+          />
+          <ReferenceChip
+            icon={GitBranch}
+            label="GitHub"
+            href={prototype.repoUrl}
+            title={prototype.repoUrl ? 'GitHub 주소 열기' : 'GitHub 주소 없음'}
+          />
+          <ReferenceChip
+            icon={ArrowUpRight}
+            label="URL"
+            href={siteUrl}
+            title={siteUrl ? '사이트 주소 열기' : '사이트 주소 없음'}
+          />
+        </div>
+      )
+    },
   }),
 ]
+
+function ReferenceChip({
+  icon: Icon,
+  label,
+  href,
+  title,
+  disabled,
+}: {
+  icon: LucideIcon
+  label: string
+  href?: string
+  title: string
+  disabled?: boolean
+}) {
+  const inactive = disabled || !href
+  const className =
+    'inline-flex min-h-7 items-center gap-1.5 rounded-md border px-2 text-[11px] font-bold ' +
+    (inactive
+      ? 'cursor-not-allowed border-surface-border-soft bg-surface-muted text-text-muted'
+      : 'border-brand-border bg-brand-glass text-brand-primary hover:bg-surface-raised')
+
+  if (href && !disabled) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className={className} title={title}>
+        <Icon className="size-3.5" />
+        {label}
+      </a>
+    )
+  }
+
+  return (
+    <span className={className} title={title}>
+      <Icon className="size-3.5" />
+      {label}
+    </span>
+  )
+}
 
 type OrderTableProps = {
   categories: ScenarioCategory[]
