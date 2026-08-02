@@ -789,6 +789,41 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_db_playbook_documents_topic
         ON db_playbook_documents(topic_id, order_idx);
 
+      CREATE TABLE IF NOT EXISTS sql_playbook_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_sql_playbook_categories_user
+        ON sql_playbook_categories(user_id, order_idx);
+      CREATE TABLE IF NOT EXISTS sql_playbook_topics (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES sql_playbook_categories(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_sql_playbook_topics_category
+        ON sql_playbook_topics(category_id, order_idx);
+      CREATE TABLE IF NOT EXISTS sql_playbook_documents (
+        id TEXT PRIMARY KEY,
+        topic_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(topic_id) REFERENCES sql_playbook_topics(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_sql_playbook_documents_topic
+        ON sql_playbook_documents(topic_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS ax_study_workspaces (
 
         id TEXT PRIMARY KEY,
@@ -2439,6 +2474,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_dev_challenge_submissions_assignment_user
         ON dev_challenge_submissions(assignment_id, user_id);
 
+      CREATE TABLE IF NOT EXISTS dev_challenge_submission_comments (
+        id TEXT PRIMARY KEY,
+        submission_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(submission_id) REFERENCES dev_challenge_submissions(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_dev_challenge_submission_comments_submission
+        ON dev_challenge_submission_comments(submission_id, created_at);
+
       CREATE TABLE IF NOT EXISTS chat_sessions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -2722,7 +2771,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         },
         {
           id: randomUUID(),
-          name: 'Challenge',
+          name: 'Challenge Playbook',
           sectionId: 'dev_challenge',
           icon: 'Trophy',
           displayOrder: 8,
@@ -4336,8 +4385,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         )
         .run(
           defaultWorkspaceId,
-          'Dev Challenge',
-          '기존 개발 챌린지를 담는 기본 워크스페이스',
+          'Challenge Playbook',
+          '실전 과제 문서와 참가자 제출을 관리하는 기본 워크스페이스',
           'Trophy',
           null,
           0,
@@ -4347,6 +4396,18 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           now,
         );
     }
+
+    this.sqlite
+      .prepare(
+        `
+          UPDATE dev_challenge_workspaces
+          SET name = 'Challenge Playbook',
+              description = '실전 과제 문서와 참가자 제출을 관리하는 기본 워크스페이스',
+              updated_at = ?
+          WHERE id = ? AND name = 'Dev Challenge'
+        `,
+      )
+      .run(now, defaultWorkspaceId);
 
     this.sqlite
       .prepare(
@@ -4557,7 +4618,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .insert(menusTable)
         .values({
           id: randomUUID(),
-          name: 'Challenge',
+          name: 'Challenge Playbook',
           sectionId: 'dev_challenge',
           icon: 'Trophy',
           displayOrder,
@@ -4573,7 +4634,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         .prepare(
           `
             UPDATE menus
-            SET name = 'Challenge',
+            SET name = 'Challenge Playbook',
                 icon = 'Trophy',
                 is_visible = 1,
                 updated_at = ?

@@ -715,6 +715,39 @@ export type DbPlaybookCategoryRow = typeof dbPlaybookCategoriesTable.$inferSelec
 export type DbPlaybookTopicRow = typeof dbPlaybookTopicsTable.$inferSelect;
 export type DbPlaybookDocumentRow = typeof dbPlaybookDocumentsTable.$inferSelect;
 
+// ── SQL Playbook ─────────────────────────────────────────────
+export const sqlPlaybookCategoriesTable = sqliteTable('sql_playbook_categories', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const sqlPlaybookTopicsTable = sqliteTable('sql_playbook_topics', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id').notNull().references(() => sqlPlaybookCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const sqlPlaybookDocumentsTable = sqliteTable('sql_playbook_documents', {
+  id: text('id').primaryKey(),
+  topicId: text('topic_id').notNull().references(() => sqlPlaybookTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type SqlPlaybookCategoryRow = typeof sqlPlaybookCategoriesTable.$inferSelect;
+export type SqlPlaybookTopicRow = typeof sqlPlaybookTopicsTable.$inferSelect;
+export type SqlPlaybookDocumentRow = typeof sqlPlaybookDocumentsTable.$inferSelect;
+
 // ── AX Study (towercrane-axtrainer-tauri 전용 모듈) ──────────────────
 
 // study-diary와 별개의 워크스페이스→노트 2단 구조. AX 학습 자료 정리/공유용.
@@ -3006,6 +3039,24 @@ export const devChallengeSubmissionsTable = sqliteTable(
   },
 );
 
+export const devChallengeSubmissionCommentsTable = sqliteTable(
+  'dev_challenge_submission_comments',
+  {
+    id: text('id').primaryKey(),
+    submissionId: text('submission_id')
+      .notNull()
+      .references(() => devChallengeSubmissionsTable.id, {
+        onDelete: 'cascade',
+      }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => usersTable.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+);
+
 export const chatSessionsTable = sqliteTable('chat_sessions', {
   id: text('id').primaryKey(),
   userId: text('user_id')
@@ -3146,6 +3197,7 @@ export const schema = {
   devChallengeAssignmentsTable,
   devChallengeAssignmentBlocksTable,
   devChallengeSubmissionsTable,
+  devChallengeSubmissionCommentsTable,
   chatSessionsTable,
   chatMessagesTable,
 };
@@ -3431,6 +3483,10 @@ export type DevChallengeSubmissionRow =
   typeof devChallengeSubmissionsTable.$inferSelect;
 export type DevChallengeSubmissionInsert =
   typeof devChallengeSubmissionsTable.$inferInsert;
+export type DevChallengeSubmissionCommentRow =
+  typeof devChallengeSubmissionCommentsTable.$inferSelect;
+export type DevChallengeSubmissionCommentInsert =
+  typeof devChallengeSubmissionCommentsTable.$inferInsert;
 
 // ─── AI 사용량 로그 ───────────────────────────────────────────────────────────
 

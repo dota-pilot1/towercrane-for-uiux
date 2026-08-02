@@ -53,6 +53,7 @@ import { DevopsPlaybookModule } from './devops-playbook/devops-playbook.module';
 import { ArchitecturePlaybookModule } from './architecture-playbook/architecture-playbook.module';
 import { CommercePlaybookModule } from './commerce-playbook/commerce-playbook.module';
 import { DbPlaybookModule } from './db-playbook/db-playbook.module';
+import { SqlPlaybookModule } from './sql-playbook/sql-playbook.module';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { DbPlaybookModule } from './db-playbook/db-playbook.module';
     ArchitecturePlaybookModule,
     CommercePlaybookModule,
     DbPlaybookModule,
+    SqlPlaybookModule,
   ],
   controllers: [AppController],
   providers: [AppService],
