@@ -3294,8 +3294,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       archiveRetiredRoom.run(now, roomId);
     }
 
-    // 채널 샘플 메시지 시드 — 처음 켰을 때 빈 화면 대신 맥락이 보이게.
-    // id 고정 + ON CONFLICT DO NOTHING 이라 재부팅해도 중복 안 됨. 사용자가 지우면 다시 안 생김.
+    // 채널 샘플 메시지 시드 — 실제 대화처럼 보이는 더미 대화는 만들지 않고,
+    // 첫 진입 안내 한 줄만 남긴다. 기존에 넣었던 샘플 대화도 초기화 시 정리한다.
+    this.sqlite
+      .prepare(
+        `DELETE FROM meeting_messages WHERE id IN (?, ?, ?, ?, ?)`,
+      )
+      .run(
+        'seed-msg-notice-1',
+        'seed-msg-notice-2',
+        'seed-msg-notice-3',
+        'seed-msg-dev-1',
+        'seed-msg-dev-2',
+      );
+
     const seedMeetingMessages: Array<{
       id: string;
       roomId: string;
@@ -3303,39 +3315,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       offsetMin: number; // now 기준 과거로 얼마나(분)
     }> = [
       {
-        id: 'seed-msg-notice-1',
-        roomId: 'meeting-notice',
-        content:
-          'Towercrane 메신저에 오신 걸 환영합니다 🎉 공지 채널에서는 배포·일정·서버 점검 안내를 공유합니다.',
-        offsetMin: 180,
-      },
-      {
-        id: 'seed-msg-notice-2',
-        roomId: 'meeting-notice',
-        content:
-          '이번 주 스프린트 목표: 채팅 기능 1차 마감 + QA. 데일리 스크럼은 매일 오전 10시입니다.',
-        offsetMin: 120,
-      },
-      {
-        id: 'seed-msg-notice-3',
-        roomId: 'meeting-notice',
-        content:
-          '운영 서버 정기 점검은 매주 금요일 자정에 진행됩니다. 배포는 점검 전까지 머지 부탁드려요.',
-        offsetMin: 60,
-      },
-      {
-        id: 'seed-msg-dev-1',
+        id: 'seed-msg-welcome-1',
         roomId: 'meeting-internal',
         content:
-          'PR 올리면 이 채널에 링크 공유 부탁드려요. 리뷰어 2명 승인 후 머지합니다. 🙌',
-        offsetMin: 90,
-      },
-      {
-        id: 'seed-msg-dev-2',
-        roomId: 'meeting-internal',
-        content:
-          '로컬 개발은 서버 `npm run start:dev` + 앱 `npm run tauri dev` 로 띄우면 됩니다.',
-        offsetMin: 30,
+          `${demoUser.name}님이 입장하셨습니다.`,
+        offsetMin: 1,
       },
     ];
 
