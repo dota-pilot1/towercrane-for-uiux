@@ -3308,6 +3308,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         'seed-msg-dev-2',
       );
 
+    // 초기 개발 중 직접 입력했던 테스트 문구도 기본 개발 채널에서만 정리한다.
+    this.sqlite
+      .prepare(
+        `DELETE FROM meeting_messages
+         WHERE room_id = ? AND content IN (?, ?)`,
+      )
+      .run('meeting-internal', '안녕하세요 강프로트님!', '하이');
+
     const seedMeetingMessages: Array<{
       id: string;
       roomId: string;
