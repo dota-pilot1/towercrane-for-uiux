@@ -748,6 +748,32 @@ export type SqlPlaybookCategoryRow = typeof sqlPlaybookCategoriesTable.$inferSel
 export type SqlPlaybookTopicRow = typeof sqlPlaybookTopicsTable.$inferSelect;
 export type SqlPlaybookDocumentRow = typeof sqlPlaybookDocumentsTable.$inferSelect;
 
+// ── Debugging History / Technical Debt ───────────────────────
+export const debuggingHistoryCategoriesTable = sqliteTable('debugging_history_categories', {
+  id: text('id').primaryKey(), userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(), orderIdx: integer('order_idx').notNull().default(0), createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
+});
+export const debuggingHistoryTopicsTable = sqliteTable('debugging_history_topics', {
+  id: text('id').primaryKey(), categoryId: text('category_id').notNull().references(() => debuggingHistoryCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(), orderIdx: integer('order_idx').notNull().default(0), createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
+});
+export const debuggingHistoryDocumentsTable = sqliteTable('debugging_history_documents', {
+  id: text('id').primaryKey(), topicId: text('topic_id').notNull().references(() => debuggingHistoryTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(), content: text('content').notNull().default(''), orderIdx: integer('order_idx').notNull().default(0), createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
+});
+export const technicalDebtCategoriesTable = sqliteTable('technical_debt_categories', {
+  id: text('id').primaryKey(), userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(), orderIdx: integer('order_idx').notNull().default(0), createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
+});
+export const technicalDebtTopicsTable = sqliteTable('technical_debt_topics', {
+  id: text('id').primaryKey(), categoryId: text('category_id').notNull().references(() => technicalDebtCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(), orderIdx: integer('order_idx').notNull().default(0), createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
+});
+export const technicalDebtDocumentsTable = sqliteTable('technical_debt_documents', {
+  id: text('id').primaryKey(), topicId: text('topic_id').notNull().references(() => technicalDebtTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(), content: text('content').notNull().default(''), orderIdx: integer('order_idx').notNull().default(0), createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
+});
+
 // ── AX Study (towercrane-axtrainer-tauri 전용 모듈) ──────────────────
 
 // study-diary와 별개의 워크스페이스→노트 2단 구조. AX 학습 자료 정리/공유용.

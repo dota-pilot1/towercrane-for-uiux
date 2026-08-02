@@ -1,0 +1,35 @@
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { asc, eq, sql } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { DatabaseService } from '../database/database.service';
+import { debuggingHistoryCategoriesTable as debuggingPlaybookCategoriesTable, debuggingHistoryDocumentsTable as debuggingPlaybookDocumentsTable, debuggingHistoryTopicsTable as debuggingPlaybookTopicsTable } from '../database/schema';
+import type { DocumentInput, DocumentPatchInput, TitleInput } from './debugging-history.schemas';
+
+@Injectable()
+export class DebuggingPlaybookService {
+  constructor(private readonly databaseService: DatabaseService) {}
+  private get db() { return this.databaseService.db; }
+  private now() { return new Date().toISOString(); }
+
+  list(userId: string) {
+    const categories = this.db.select().from(debuggingPlaybookCategoriesTable).where(eq(debuggingPlaybookCategoriesTable.userId, userId)).orderBy(asc(debuggingPlaybookCategoriesTable.orderIdx), asc(debuggingPlaybookCategoriesTable.createdAt)).all();
+    const topics = this.db.select().from(debuggingPlaybookTopicsTable).orderBy(asc(debuggingPlaybookTopicsTable.orderIdx), asc(debuggingPlaybookTopicsTable.createdAt)).all();
+    const documents = this.db.select().from(debuggingPlaybookDocumentsTable).orderBy(asc(debuggingPlaybookDocumentsTable.orderIdx), asc(debuggingPlaybookDocumentsTable.createdAt)).all();
+    return categories.map((category) => ({ ...category, topics: topics.filter((topic) => topic.categoryId === category.id).map((topic) => ({ ...topic, documents: documents.filter((document) => document.topicId === topic.id) })) }));
+  }
+
+  createCategory(userId: string, input: TitleInput) { const id = `debugging-cat-${randomUUID().slice(0, 12)}`; const now = this.now(); const max = this.db.select({ max: sql<number>`coalesce(max(${debuggingPlaybookCategoriesTable.orderIdx}), -1)` }).from(debuggingPlaybookCategoriesTable).where(eq(debuggingPlaybookCategoriesTable.userId, userId)).get(); this.db.insert(debuggingPlaybookCategoriesTable).values({ id, userId, title: input.title, orderIdx: Number(max?.max ?? -1) + 1, createdAt: now, updatedAt: now }).run(); return this.list(userId).find((item) => item.id === id); }
+  updateCategory(userId: string, id: string, input: TitleInput) { this.ensureCategory(userId, id); this.db.update(debuggingPlaybookCategoriesTable).set({ title: input.title, updatedAt: this.now() }).where(eq(debuggingPlaybookCategoriesTable.id, id)).run(); return this.list(userId).find((item) => item.id === id); }
+  deleteCategory(userId: string, id: string) { this.ensureCategory(userId, id); this.db.delete(debuggingPlaybookCategoriesTable).where(eq(debuggingPlaybookCategoriesTable.id, id)).run(); return { success: true }; }
+  createTopic(userId: string, categoryId: string, input: TitleInput) { this.ensureCategory(userId, categoryId); const id = `debugging-topic-${randomUUID().slice(0, 12)}`; const now = this.now(); const max = this.db.select({ max: sql<number>`coalesce(max(${debuggingPlaybookTopicsTable.orderIdx}), -1)` }).from(debuggingPlaybookTopicsTable).where(eq(debuggingPlaybookTopicsTable.categoryId, categoryId)).get(); this.db.insert(debuggingPlaybookTopicsTable).values({ id, categoryId, title: input.title, orderIdx: Number(max?.max ?? -1) + 1, createdAt: now, updatedAt: now }).run(); return this.list(userId).find((item) => item.id === categoryId); }
+  updateTopic(userId: string, id: string, input: TitleInput) { const topic = this.ensureTopic(userId, id); this.db.update(debuggingPlaybookTopicsTable).set({ title: input.title, updatedAt: this.now() }).where(eq(debuggingPlaybookTopicsTable.id, id)).run(); return this.list(userId).find((item) => item.id === topic.categoryId); }
+  deleteTopic(userId: string, id: string) { this.ensureTopic(userId, id); this.db.delete(debuggingPlaybookTopicsTable).where(eq(debuggingPlaybookTopicsTable.id, id)).run(); return { success: true }; }
+  createDocument(userId: string, topicId: string, input: DocumentInput) { const topic = this.ensureTopic(userId, topicId); const id = `debugging-doc-${randomUUID().slice(0, 12)}`; const now = this.now(); const max = this.db.select({ max: sql<number>`coalesce(max(${debuggingPlaybookDocumentsTable.orderIdx}), -1)` }).from(debuggingPlaybookDocumentsTable).where(eq(debuggingPlaybookDocumentsTable.topicId, topicId)).get(); this.db.insert(debuggingPlaybookDocumentsTable).values({ id, topicId, title: input.title, content: input.content, orderIdx: Number(max?.max ?? -1) + 1, createdAt: now, updatedAt: now }).run(); return this.list(userId).find((item) => item.id === topic.categoryId); }
+  updateDocument(userId: string, id: string, input: DocumentPatchInput) { const document = this.ensureDocument(userId, id); this.db.update(debuggingPlaybookDocumentsTable).set({ ...(input.title !== undefined ? { title: input.title } : {}), ...(input.content !== undefined ? { content: input.content } : {}), updatedAt: this.now() }).where(eq(debuggingPlaybookDocumentsTable.id, id)).run(); return this.list(userId).find((item) => item.topics.some((topic) => topic.id === document.topicId)); }
+  deleteDocument(userId: string, id: string) { this.ensureDocument(userId, id); this.db.delete(debuggingPlaybookDocumentsTable).where(eq(debuggingPlaybookDocumentsTable.id, id)).run(); return { success: true }; }
+  reorderDocument(userId: string, id: string, direction: 'up' | 'down') { const document = this.ensureDocument(userId, id); const siblings = this.db.select().from(debuggingPlaybookDocumentsTable).where(eq(debuggingPlaybookDocumentsTable.topicId, document.topicId)).orderBy(asc(debuggingPlaybookDocumentsTable.orderIdx)).all(); const index = siblings.findIndex((item) => item.id === id); const adjacent = siblings[direction === 'up' ? index - 1 : index + 1]; if (!adjacent) return this.list(userId); this.db.update(debuggingPlaybookDocumentsTable).set({ orderIdx: adjacent.orderIdx, updatedAt: this.now() }).where(eq(debuggingPlaybookDocumentsTable.id, document.id)).run(); this.db.update(debuggingPlaybookDocumentsTable).set({ orderIdx: document.orderIdx, updatedAt: this.now() }).where(eq(debuggingPlaybookDocumentsTable.id, adjacent.id)).run(); return this.list(userId); }
+
+  private ensureCategory(userId: string, id: string) { const row = this.db.select().from(debuggingPlaybookCategoriesTable).where(eq(debuggingPlaybookCategoriesTable.id, id)).get(); if (!row) throw new NotFoundException('디버깅 영역을 찾을 수 없습니다.'); if (row.userId !== userId) throw new ForbiddenException('접근 권한이 없습니다.'); return row; }
+  private ensureTopic(userId: string, id: string) { const row = this.db.select().from(debuggingPlaybookTopicsTable).where(eq(debuggingPlaybookTopicsTable.id, id)).get(); if (!row) throw new NotFoundException('디버깅 주제를 찾을 수 없습니다.'); this.ensureCategory(userId, row.categoryId); return row; }
+  private ensureDocument(userId: string, id: string) { const row = this.db.select().from(debuggingPlaybookDocumentsTable).where(eq(debuggingPlaybookDocumentsTable.id, id)).get(); if (!row) throw new NotFoundException('디버깅 문서를 찾을 수 없습니다.'); this.ensureTopic(userId, row.topicId); return row; }
+}

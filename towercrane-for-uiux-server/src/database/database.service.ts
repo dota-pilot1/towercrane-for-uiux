@@ -823,6 +823,38 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       );
       CREATE INDEX IF NOT EXISTS idx_sql_playbook_documents_topic
         ON sql_playbook_documents(topic_id, order_idx);
+      CREATE TABLE IF NOT EXISTS debugging_history_categories (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT NOT NULL, order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_debugging_history_categories_user ON debugging_history_categories(user_id, order_idx);
+      CREATE TABLE IF NOT EXISTS debugging_history_topics (
+        id TEXT PRIMARY KEY, category_id TEXT NOT NULL, title TEXT NOT NULL, order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(category_id) REFERENCES debugging_history_categories(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_debugging_history_topics_category ON debugging_history_topics(category_id, order_idx);
+      CREATE TABLE IF NOT EXISTS debugging_history_documents (
+        id TEXT PRIMARY KEY, topic_id TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL DEFAULT '', order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(topic_id) REFERENCES debugging_history_topics(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_debugging_history_documents_topic ON debugging_history_documents(topic_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS technical_debt_categories (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT NOT NULL, order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_technical_debt_categories_user ON technical_debt_categories(user_id, order_idx);
+      CREATE TABLE IF NOT EXISTS technical_debt_topics (
+        id TEXT PRIMARY KEY, category_id TEXT NOT NULL, title TEXT NOT NULL, order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(category_id) REFERENCES technical_debt_categories(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_technical_debt_topics_category ON technical_debt_topics(category_id, order_idx);
+      CREATE TABLE IF NOT EXISTS technical_debt_documents (
+        id TEXT PRIMARY KEY, topic_id TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL DEFAULT '', order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY(topic_id) REFERENCES technical_debt_topics(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_technical_debt_documents_topic ON technical_debt_documents(topic_id, order_idx);
+
 
       CREATE TABLE IF NOT EXISTS ax_study_workspaces (
 

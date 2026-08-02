@@ -54,6 +54,8 @@ import { ArchitecturePlaybookModule } from './architecture-playbook/architecture
 import { CommercePlaybookModule } from './commerce-playbook/commerce-playbook.module';
 import { DbPlaybookModule } from './db-playbook/db-playbook.module';
 import { SqlPlaybookModule } from './sql-playbook/sql-playbook.module';
+import { DebuggingPlaybookModule } from './debugging-history/debugging-history.module';
+import { TechnicalDebtPlaybookModule } from './technical-debt/technical-debt.module';
 
 @Module({
   imports: [
@@ -110,6 +112,8 @@ import { SqlPlaybookModule } from './sql-playbook/sql-playbook.module';
     CommercePlaybookModule,
     DbPlaybookModule,
     SqlPlaybookModule,
+    DebuggingPlaybookModule,
+    TechnicalDebtPlaybookModule,
   ],
   controllers: [AppController],
   providers: [AppService],
