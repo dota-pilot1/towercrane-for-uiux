@@ -3294,11 +3294,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       archiveRetiredRoom.run(now, roomId);
     }
 
-    // 채널 샘플 메시지 시드 — 실제 대화처럼 보이는 더미 대화는 만들지 않고,
-    // 첫 진입 안내 한 줄만 남긴다. 기존에 넣었던 샘플 대화도 초기화 시 정리한다.
+    // 채널 샘플 메시지 정리 — 입장 안내는 채팅에 저장하지 않고 실시간 토스트로 표시한다.
     this.sqlite
       .prepare(
-        `DELETE FROM meeting_messages WHERE id IN (?, ?, ?, ?, ?)`,
+        `DELETE FROM meeting_messages WHERE id IN (?, ?, ?, ?, ?, ?)`,
       )
       .run(
         'seed-msg-notice-1',
@@ -3306,52 +3305,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         'seed-msg-notice-3',
         'seed-msg-dev-1',
         'seed-msg-dev-2',
+        'seed-msg-welcome-1',
       );
 
     // 초기 개발 중 직접 입력했던 테스트 문구도 기본 개발 채널에서만 정리한다.
     this.sqlite
       .prepare(
         `DELETE FROM meeting_messages
-         WHERE room_id = ? AND content IN (?, ?)`,
+         WHERE room_id = ? AND content IN (?, ?, ?)`,
       )
-      .run('meeting-internal', '안녕하세요 강프로트님!', '하이');
-
-    const seedMeetingMessages: Array<{
-      id: string;
-      roomId: string;
-      content: string;
-      offsetMin: number; // now 기준 과거로 얼마나(분)
-    }> = [
-      {
-        id: 'seed-msg-welcome-1',
-        roomId: 'meeting-internal',
-        content:
-          `${demoUser.name}님이 입장하셨습니다.`,
-        offsetMin: 1,
-      },
-    ];
-
-    const insertSeedMessage = this.sqlite.prepare(`
-      INSERT INTO meeting_messages (
-        id, room_id, sender_id, sender_name, sender_role, content, message_type, payload, created_at
-      ) VALUES (
-        @id, @roomId, @senderId, @senderName, @senderRole, @content, 'TEXT', NULL, @createdAt
-      )
-      ON CONFLICT(id) DO NOTHING
-    `);
-    for (const msg of seedMeetingMessages) {
-      insertSeedMessage.run({
-        id: msg.id,
-        roomId: msg.roomId,
-        senderId: demoUser.id,
-        senderName: demoUser.name,
-        senderRole: demoUser.role,
-        content: msg.content,
-        createdAt: new Date(
-          Date.now() - msg.offsetMin * 60 * 1000,
-        ).toISOString(),
-      });
-    }
+      .run(
+        'meeting-internal',
+        '안녕하세요 강프로트님!',
+        '하이',
+        `${demoUser.name}님이 입장하셨습니다.`,
+      );
 
     const defaultDevManagementRooms = [
       {
