@@ -542,7 +542,181 @@ export type ProjectCodeReviewSectionRow =
 export type ProjectCodeReviewNoteRow =
   typeof projectCodeReviewNotesTable.$inferSelect;
 
+// ── AX Playbook ────────────────────────────────────────────────────
+// 1차 영역 → 2차 주제 → 여러 Lexical 문서.
+export const axPlaybookCategoriesTable = sqliteTable('ax_playbook_categories', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const axPlaybookTopicsTable = sqliteTable('ax_playbook_topics', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id').notNull().references(() => axPlaybookCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const axPlaybookDocumentsTable = sqliteTable('ax_playbook_documents', {
+  id: text('id').primaryKey(),
+  topicId: text('topic_id').notNull().references(() => axPlaybookTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type AxPlaybookCategoryRow = typeof axPlaybookCategoriesTable.$inferSelect;
+export type AxPlaybookTopicRow = typeof axPlaybookTopicsTable.$inferSelect;
+export type AxPlaybookDocumentRow = typeof axPlaybookDocumentsTable.$inferSelect;
+
+// ── DevOps Playbook ───────────────────────────────────────────────
+// 1차 영역 → 2차 주제 → 여러 Lexical 문서.
+export const devopsPlaybookCategoriesTable = sqliteTable('devops_playbook_categories', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const devopsPlaybookTopicsTable = sqliteTable('devops_playbook_topics', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id').notNull().references(() => devopsPlaybookCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const devopsPlaybookDocumentsTable = sqliteTable('devops_playbook_documents', {
+  id: text('id').primaryKey(),
+  topicId: text('topic_id').notNull().references(() => devopsPlaybookTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type DevopsPlaybookCategoryRow = typeof devopsPlaybookCategoriesTable.$inferSelect;
+export type DevopsPlaybookTopicRow = typeof devopsPlaybookTopicsTable.$inferSelect;
+export type DevopsPlaybookDocumentRow = typeof devopsPlaybookDocumentsTable.$inferSelect;
+
 // ── AX Study (towercrane-axtrainer-tauri 전용 모듈) ──────────────────
+// ── Architecture Playbook ───────────────────────────────────────────────
+// 1차 영역 → 2차 주제 → 여러 Lexical 문서.
+export const architecturePlaybookCategoriesTable = sqliteTable('architecture_playbook_categories', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const architecturePlaybookTopicsTable = sqliteTable('architecture_playbook_topics', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id').notNull().references(() => architecturePlaybookCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const architecturePlaybookDocumentsTable = sqliteTable('architecture_playbook_documents', {
+  id: text('id').primaryKey(),
+  topicId: text('topic_id').notNull().references(() => architecturePlaybookTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type ArchitecturePlaybookCategoryRow = typeof architecturePlaybookCategoriesTable.$inferSelect;
+export type ArchitecturePlaybookTopicRow = typeof architecturePlaybookTopicsTable.$inferSelect;
+export type ArchitecturePlaybookDocumentRow = typeof architecturePlaybookDocumentsTable.$inferSelect;
+
+// ── AX Study (towercrane-axtrainer-tauri 전용 모듈) ──────────────────
+// ── Commerce Playbook ───────────────────────────────────────────────
+// 1차 영역 → 2차 주제 → 여러 Lexical 문서.
+export const commercePlaybookCategoriesTable = sqliteTable('commerce_playbook_categories', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const commercePlaybookTopicsTable = sqliteTable('commerce_playbook_topics', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id').notNull().references(() => commercePlaybookCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const commercePlaybookDocumentsTable = sqliteTable('commerce_playbook_documents', {
+  id: text('id').primaryKey(),
+  topicId: text('topic_id').notNull().references(() => commercePlaybookTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type CommercePlaybookCategoryRow = typeof commercePlaybookCategoriesTable.$inferSelect;
+export type CommercePlaybookTopicRow = typeof commercePlaybookTopicsTable.$inferSelect;
+export type CommercePlaybookDocumentRow = typeof commercePlaybookDocumentsTable.$inferSelect;
+
+// ── AX Study (towercrane-axtrainer-tauri 전용 모듈) ──────────────────
+// ── DB Playbook ───────────────────────────────────────────────
+// 1차 영역 → 2차 주제 → 여러 Lexical 문서.
+export const dbPlaybookCategoriesTable = sqliteTable('db_playbook_categories', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const dbPlaybookTopicsTable = sqliteTable('db_playbook_topics', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id').notNull().references(() => dbPlaybookCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const dbPlaybookDocumentsTable = sqliteTable('db_playbook_documents', {
+  id: text('id').primaryKey(),
+  topicId: text('topic_id').notNull().references(() => dbPlaybookTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type DbPlaybookCategoryRow = typeof dbPlaybookCategoriesTable.$inferSelect;
+export type DbPlaybookTopicRow = typeof dbPlaybookTopicsTable.$inferSelect;
+export type DbPlaybookDocumentRow = typeof dbPlaybookDocumentsTable.$inferSelect;
+
+// ── AX Study (towercrane-axtrainer-tauri 전용 모듈) ──────────────────
+
 // study-diary와 별개의 워크스페이스→노트 2단 구조. AX 학습 자료 정리/공유용.
 export const axStudyWorkspacesTable = sqliteTable('ax_study_workspaces', {
   id: text('id').primaryKey(),
@@ -795,6 +969,97 @@ export const prototypeNoteEntriesTable = sqliteTable('prototype_note_entries', {
   sectionId: text('section_id')
     .notNull()
     .references(() => prototypeNoteSectionsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// ── Tutorial (튜토리얼 — 1차 카테고리→2차 주제→본문) ────────────────
+export const tutorialCategoriesTable = sqliteTable('tutorial_categories', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const tutorialSectionsTable = sqliteTable('tutorial_sections', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id')
+    .notNull()
+    .references(() => tutorialCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const tutorialLessonsTable = sqliteTable('tutorial_lessons', {
+  id: text('id').primaryKey(),
+  sectionId: text('section_id')
+    .notNull()
+    .references(() => tutorialSectionsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary').notNull().default(''),
+  content: text('content').notNull().default(''),
+  videoUrl: text('video_url').notNull().default(''),
+  videoTitle: text('video_title').notNull().default(''),
+  documentUrl: text('document_url').notNull().default(''),
+  documentTitle: text('document_title').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const tutorialContentsTable = sqliteTable('tutorial_contents', {
+  id: text('id').primaryKey(),
+  lessonId: text('lesson_id')
+    .notNull()
+    .references(() => tutorialLessonsTable.id, { onDelete: 'cascade' }),
+  type: text('type').$type<'lexical' | 'youtube' | 'document'>().notNull(),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  url: text('url').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// ── Test Playbook (테스트 실행 과정·리뷰·원천 모듈 링크) ─────────────
+export const testPlaybookCategoriesTable = sqliteTable('test_playbook_categories', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const testPlaybookDocumentsTable = sqliteTable('test_playbook_documents', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id').notNull().references(() => testPlaybookCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary').notNull().default(''),
+  content: text('content').notNull().default(''),
+  stepsJson: text('steps_json').notNull().default('[]'),
+  githubUrl: text('github_url').notNull().default(''),
+  reviewNotes: text('review_notes').notNull().default(''),
+  status: text('status').$type<'draft' | 'running' | 'review' | 'approved'>().notNull().default('draft'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const testPlaybookContentsTable = sqliteTable('test_playbook_contents', {
+  id: text('id').primaryKey(),
+  documentId: text('document_id').notNull().references(() => testPlaybookDocumentsTable.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   content: text('content').notNull().default(''),
   orderIdx: integer('order_idx').notNull().default(0),
@@ -2798,6 +3063,13 @@ export const schema = {
   prototypesTable,
   prototypeReviewsTable,
   prototypeImagesTable,
+  tutorialCategoriesTable,
+  tutorialSectionsTable,
+  tutorialLessonsTable,
+  tutorialContentsTable,
+  testPlaybookCategoriesTable,
+  testPlaybookDocumentsTable,
+  testPlaybookContentsTable,
   docSectionsTable,
   documentsTable,
   documentBlocksTable,
@@ -2917,6 +3189,20 @@ export type PrototypeNoteEntryInsert =
   typeof prototypeNoteEntriesTable.$inferInsert;
 export type PrototypeImageRow = typeof prototypeImagesTable.$inferSelect;
 export type PrototypeImageInsert = typeof prototypeImagesTable.$inferInsert;
+export type TutorialCategoryRow = typeof tutorialCategoriesTable.$inferSelect;
+export type TutorialCategoryInsert = typeof tutorialCategoriesTable.$inferInsert;
+export type TutorialSectionRow = typeof tutorialSectionsTable.$inferSelect;
+export type TutorialSectionInsert = typeof tutorialSectionsTable.$inferInsert;
+export type TutorialLessonRow = typeof tutorialLessonsTable.$inferSelect;
+export type TutorialLessonInsert = typeof tutorialLessonsTable.$inferInsert;
+export type TutorialContentRow = typeof tutorialContentsTable.$inferSelect;
+export type TutorialContentInsert = typeof tutorialContentsTable.$inferInsert;
+export type TestPlaybookCategoryRow = typeof testPlaybookCategoriesTable.$inferSelect;
+export type TestPlaybookCategoryInsert = typeof testPlaybookCategoriesTable.$inferInsert;
+export type TestPlaybookDocumentRow = typeof testPlaybookDocumentsTable.$inferSelect;
+export type TestPlaybookDocumentInsert = typeof testPlaybookDocumentsTable.$inferInsert;
+export type TestPlaybookContentRow = typeof testPlaybookContentsTable.$inferSelect;
+export type TestPlaybookContentInsert = typeof testPlaybookContentsTable.$inferInsert;
 export type DocSectionRow = typeof docSectionsTable.$inferSelect;
 export type DocSectionInsert = typeof docSectionsTable.$inferInsert;
 export type DocumentRow = typeof documentsTable.$inferSelect;

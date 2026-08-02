@@ -46,6 +46,13 @@ import { TaskIngestModule } from './task-ingest/task-ingest.module';
 import { TaskChatModule } from './task-chat/task-chat.module';
 import { PointsModule } from './points/points.module';
 import { CommonComponentTemplatesModule } from './common-component-templates/common-component-templates.module';
+import { TutorialModule } from './tutorial/tutorial.module';
+import { TestPlaybookModule } from './test-playbook/test-playbook.module';
+import { AxPlaybookModule } from './ax-playbook/ax-playbook.module';
+import { DevopsPlaybookModule } from './devops-playbook/devops-playbook.module';
+import { ArchitecturePlaybookModule } from './architecture-playbook/architecture-playbook.module';
+import { CommercePlaybookModule } from './commerce-playbook/commerce-playbook.module';
+import { DbPlaybookModule } from './db-playbook/db-playbook.module';
 
 @Module({
   imports: [
@@ -94,6 +101,13 @@ import { CommonComponentTemplatesModule } from './common-component-templates/com
     TaskChatModule,
     PointsModule,
     CommonComponentTemplatesModule,
+    TutorialModule,
+    TestPlaybookModule,
+    AxPlaybookModule,
+    DevopsPlaybookModule,
+    ArchitecturePlaybookModule,
+    CommercePlaybookModule,
+    DbPlaybookModule,
   ],
   controllers: [AppController],
   providers: [AppService],

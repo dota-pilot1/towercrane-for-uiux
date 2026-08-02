@@ -589,7 +589,208 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_project_code_review_notes_section
         ON project_code_review_notes(section_id, order_idx);
 
+      CREATE TABLE IF NOT EXISTS ax_playbook_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ax_playbook_categories_user
+        ON ax_playbook_categories(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS ax_playbook_topics (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES ax_playbook_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ax_playbook_topics_category
+        ON ax_playbook_topics(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS ax_playbook_documents (
+        id TEXT PRIMARY KEY,
+        topic_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(topic_id) REFERENCES ax_playbook_topics(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ax_playbook_documents_topic
+        ON ax_playbook_documents(topic_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS devops_playbook_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_devops_playbook_categories_user
+        ON devops_playbook_categories(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS devops_playbook_topics (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES devops_playbook_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_devops_playbook_topics_category
+        ON devops_playbook_topics(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS devops_playbook_documents (
+        id TEXT PRIMARY KEY,
+        topic_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(topic_id) REFERENCES devops_playbook_topics(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_devops_playbook_documents_topic
+        ON devops_playbook_documents(topic_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS architecture_playbook_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_architecture_playbook_categories_user
+        ON architecture_playbook_categories(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS architecture_playbook_topics (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES architecture_playbook_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_architecture_playbook_topics_category
+        ON architecture_playbook_topics(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS architecture_playbook_documents (
+        id TEXT PRIMARY KEY,
+        topic_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(topic_id) REFERENCES architecture_playbook_topics(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_architecture_playbook_documents_topic
+        ON architecture_playbook_documents(topic_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS commerce_playbook_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_commerce_playbook_categories_user
+        ON commerce_playbook_categories(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS commerce_playbook_topics (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES commerce_playbook_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_commerce_playbook_topics_category
+        ON commerce_playbook_topics(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS commerce_playbook_documents (
+        id TEXT PRIMARY KEY,
+        topic_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(topic_id) REFERENCES commerce_playbook_topics(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_commerce_playbook_documents_topic
+        ON commerce_playbook_documents(topic_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS db_playbook_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_db_playbook_categories_user
+        ON db_playbook_categories(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS db_playbook_topics (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES db_playbook_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_db_playbook_topics_category
+        ON db_playbook_topics(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS db_playbook_documents (
+        id TEXT PRIMARY KEY,
+        topic_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(topic_id) REFERENCES db_playbook_topics(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_db_playbook_documents_topic
+        ON db_playbook_documents(topic_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS ax_study_workspaces (
+
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         title TEXT NOT NULL,
@@ -797,6 +998,115 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS idx_prototype_note_entries_section
         ON prototype_note_entries(section_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS tutorial_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_tutorial_categories_user
+        ON tutorial_categories(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS tutorial_sections (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES tutorial_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_tutorial_sections_category
+        ON tutorial_sections(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS tutorial_lessons (
+        id TEXT PRIMARY KEY,
+        section_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        video_url TEXT NOT NULL DEFAULT '',
+        video_title TEXT NOT NULL DEFAULT '',
+        document_url TEXT NOT NULL DEFAULT '',
+        document_title TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(section_id) REFERENCES tutorial_sections(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_tutorial_lessons_section
+        ON tutorial_lessons(section_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS tutorial_contents (
+        id TEXT PRIMARY KEY,
+        lesson_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        url TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(lesson_id) REFERENCES tutorial_lessons(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_tutorial_contents_lesson
+        ON tutorial_contents(lesson_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS test_playbook_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_test_playbook_categories_user
+        ON test_playbook_categories(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS test_playbook_documents (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        steps_json TEXT NOT NULL DEFAULT '[]',
+        github_url TEXT NOT NULL DEFAULT '',
+        review_notes TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'draft',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES test_playbook_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_test_playbook_documents_category
+        ON test_playbook_documents(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS test_playbook_contents (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(document_id) REFERENCES test_playbook_documents(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_test_playbook_contents_document
+        ON test_playbook_contents(document_id, order_idx);
 
       CREATE TABLE IF NOT EXISTS doc_sections (
         id TEXT PRIMARY KEY,
