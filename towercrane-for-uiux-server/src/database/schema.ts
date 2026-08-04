@@ -1340,6 +1340,54 @@ export const apiDocBlocksTable = sqliteTable('api_doc_blocks', {
   updatedAt: text('updated_at').notNull(),
 });
 
+// Excel API 원본 문서 관리: 프로젝트 → 분류 → Excel 파일
+export const apiExcelProjectsTable = sqliteTable('api_excel_projects', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const apiExcelCategoriesTable = sqliteTable('api_excel_categories', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => apiExcelProjectsTable.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const apiExcelFilesTable = sqliteTable('api_excel_files', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id')
+    .notNull()
+    .references(() => apiExcelCategoriesTable.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  storageKey: text('storage_key').notNull(),
+  publicUrl: text('public_url').notNull(),
+  mimeType: text('mime_type').notNull(),
+  sizeBytes: integer('size_bytes').notNull().default(0),
+  sheetCount: integer('sheet_count').notNull().default(0),
+  apiCount: integer('api_count').notNull().default(0),
+  version: integer('version').notNull().default(1),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export type TaskWorkspaceRole = 'owner' | 'editor' | 'member' | 'viewer';
 
 export const taskWorkspacesTable = sqliteTable('task_workspaces', {
@@ -3158,6 +3206,9 @@ export const schema = {
   apiDocCategoriesTable,
   apiDocEndpointsTable,
   apiDocBlocksTable,
+  apiExcelProjectsTable,
+  apiExcelCategoriesTable,
+  apiExcelFilesTable,
   taskWorkspacesTable,
   taskWorkspaceMembersTable,
   tasksTable,
@@ -3305,6 +3356,12 @@ export type ApiDocEndpointRow = typeof apiDocEndpointsTable.$inferSelect;
 export type ApiDocEndpointInsert = typeof apiDocEndpointsTable.$inferInsert;
 export type ApiDocBlockRow = typeof apiDocBlocksTable.$inferSelect;
 export type ApiDocBlockInsert = typeof apiDocBlocksTable.$inferInsert;
+export type ApiExcelProjectRow = typeof apiExcelProjectsTable.$inferSelect;
+export type ApiExcelProjectInsert = typeof apiExcelProjectsTable.$inferInsert;
+export type ApiExcelCategoryRow = typeof apiExcelCategoriesTable.$inferSelect;
+export type ApiExcelCategoryInsert = typeof apiExcelCategoriesTable.$inferInsert;
+export type ApiExcelFileRow = typeof apiExcelFilesTable.$inferSelect;
+export type ApiExcelFileInsert = typeof apiExcelFilesTable.$inferInsert;
 export type TaskWorkspaceRow = typeof taskWorkspacesTable.$inferSelect;
 export type TaskWorkspaceInsert = typeof taskWorkspacesTable.$inferInsert;
 export type TaskWorkspaceMemberRow =

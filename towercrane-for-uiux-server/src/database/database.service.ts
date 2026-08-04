@@ -1384,6 +1384,57 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_api_doc_blocks_endpoint_order
         ON api_doc_blocks(endpoint_id, order_idx);
 
+      CREATE TABLE IF NOT EXISTS api_excel_projects (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_api_excel_projects_order
+        ON api_excel_projects(order_idx);
+
+      CREATE TABLE IF NOT EXISTS api_excel_categories (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(project_id) REFERENCES api_excel_projects(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_api_excel_categories_project_order
+        ON api_excel_categories(project_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS api_excel_files (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        storage_key TEXT NOT NULL,
+        public_url TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL DEFAULT 0,
+        sheet_count INTEGER NOT NULL DEFAULT 0,
+        api_count INTEGER NOT NULL DEFAULT 0,
+        version INTEGER NOT NULL DEFAULT 1,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES api_excel_categories(id) ON DELETE CASCADE,
+        FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_api_excel_files_category_order
+        ON api_excel_files(category_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS meeting_workspaces (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,

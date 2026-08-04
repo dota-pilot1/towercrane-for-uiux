@@ -18,6 +18,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { ProjectIssuesModule } from './project-issues/project-issues.module';
 import { TeamDocsModule } from './team-docs/team-docs.module';
 import { ApiDocModule } from './api-doc/api-doc.module';
+import { ApiExcelModule } from './api-excel/api-excel.module';
 import { IssuesModule } from './issues/issues.module';
 import { ChallengeModule } from './challenge/challenge.module';
 import { SqlPracticeModule } from './sql-practice/sql-practice.module';
@@ -76,6 +77,7 @@ import { TechnicalDebtPlaybookModule } from './technical-debt/technical-debt.mod
     ProjectIssuesModule,
     TeamDocsModule,
     ApiDocModule,
+    ApiExcelModule,
     IssuesModule,
     ChallengeModule,
     StudyDiaryModule,
