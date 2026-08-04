@@ -52,6 +52,7 @@ import { TestPlaybookModule } from './test-playbook/test-playbook.module';
 import { AxPlaybookModule } from './ax-playbook/ax-playbook.module';
 import { DevopsPlaybookModule } from './devops-playbook/devops-playbook.module';
 import { ArchitecturePlaybookModule } from './architecture-playbook/architecture-playbook.module';
+import { CicdPlaybookModule } from './cicd-playbook/cicd-playbook.module';
 import { CommercePlaybookModule } from './commerce-playbook/commerce-playbook.module';
 import { DbPlaybookModule } from './db-playbook/db-playbook.module';
 import { SqlPlaybookModule } from './sql-playbook/sql-playbook.module';
@@ -111,6 +112,7 @@ import { TechnicalDebtPlaybookModule } from './technical-debt/technical-debt.mod
     AxPlaybookModule,
     DevopsPlaybookModule,
     ArchitecturePlaybookModule,
+    CicdPlaybookModule,
     CommercePlaybookModule,
     DbPlaybookModule,
     SqlPlaybookModule,

@@ -645,6 +645,40 @@ export type ArchitecturePlaybookCategoryRow = typeof architecturePlaybookCategor
 export type ArchitecturePlaybookTopicRow = typeof architecturePlaybookTopicsTable.$inferSelect;
 export type ArchitecturePlaybookDocumentRow = typeof architecturePlaybookDocumentsTable.$inferSelect;
 
+// ── CI/CD Playbook ─────────────────────────────────────────────────
+// 1차 영역 → 2차 주제 → 여러 Lexical 문서.
+export const cicdPlaybookCategoriesTable = sqliteTable('cicd_playbook_categories', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const cicdPlaybookTopicsTable = sqliteTable('cicd_playbook_topics', {
+  id: text('id').primaryKey(),
+  categoryId: text('category_id').notNull().references(() => cicdPlaybookCategoriesTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const cicdPlaybookDocumentsTable = sqliteTable('cicd_playbook_documents', {
+  id: text('id').primaryKey(),
+  topicId: text('topic_id').notNull().references(() => cicdPlaybookTopicsTable.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  orderIdx: integer('order_idx').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export type CicdPlaybookCategoryRow = typeof cicdPlaybookCategoriesTable.$inferSelect;
+export type CicdPlaybookTopicRow = typeof cicdPlaybookTopicsTable.$inferSelect;
+export type CicdPlaybookDocumentRow = typeof cicdPlaybookDocumentsTable.$inferSelect;
+
 // ── AX Study (towercrane-axtrainer-tauri 전용 모듈) ──────────────────
 // ── Commerce Playbook ───────────────────────────────────────────────
 // 1차 영역 → 2차 주제 → 여러 Lexical 문서.

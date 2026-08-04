@@ -709,6 +709,46 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_architecture_playbook_documents_topic
         ON architecture_playbook_documents(topic_id, order_idx);
 
+      CREATE TABLE IF NOT EXISTS cicd_playbook_categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_cicd_playbook_categories_user
+        ON cicd_playbook_categories(user_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS cicd_playbook_topics (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(category_id) REFERENCES cicd_playbook_categories(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_cicd_playbook_topics_category
+        ON cicd_playbook_topics(category_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS cicd_playbook_documents (
+        id TEXT PRIMARY KEY,
+        topic_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        order_idx INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(topic_id) REFERENCES cicd_playbook_topics(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_cicd_playbook_documents_topic
+        ON cicd_playbook_documents(topic_id, order_idx);
+
       CREATE TABLE IF NOT EXISTS commerce_playbook_categories (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
