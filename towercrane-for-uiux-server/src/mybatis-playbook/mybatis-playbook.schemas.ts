@@ -1,10 +1,21 @@
 import { z } from 'zod';
 
 export const titleSchema = z.object({ title: z.string().trim().min(1).max(255) });
-export const documentSchema = z.object({ title: z.string().trim().min(1).max(255), content: z.string().max(200_000).default('') });
+export const documentSchema = z.object({ title: z.string().trim().min(1).max(255), content: z.string().max(200_000).default(''), parentId: z.string().trim().min(1).nullable().optional() });
 export const documentPatchSchema = documentSchema.partial();
+export const commentSchema = z.object({
+  title: z.string().trim().min(1).max(255).default('댓글'),
+  content: z.string().trim().min(1).max(200_000),
+  parentId: z.string().trim().min(1).nullable().optional(),
+});
+export const commentPatchSchema = z.object({
+  title: z.string().trim().min(1).max(255).optional(),
+  content: z.string().trim().min(1).max(200_000),
+});
 export const reorderSchema = z.object({ direction: z.enum(['up', 'down']) });
 
 export type TitleInput = z.infer<typeof titleSchema>;
 export type DocumentInput = z.infer<typeof documentSchema>;
 export type DocumentPatchInput = z.infer<typeof documentPatchSchema>;
+export type CommentInput = z.infer<typeof commentSchema>;
+export type CommentPatchInput = z.infer<typeof commentPatchSchema>;

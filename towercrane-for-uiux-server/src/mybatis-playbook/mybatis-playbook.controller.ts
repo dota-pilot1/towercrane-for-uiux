@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { SessionGuard } from '../auth/guard/session.guard';
 import type { SessionRequest } from '../auth/types';
-import { documentPatchSchema, documentSchema, reorderSchema, titleSchema } from './mybatis-playbook.schemas';
+import { commentPatchSchema, commentSchema, documentPatchSchema, documentSchema, reorderSchema, titleSchema } from './mybatis-playbook.schemas';
 import { MybatisPlaybookService } from './mybatis-playbook.service';
 
 @Controller('mybatis-playbook')
@@ -19,4 +19,8 @@ export class MybatisPlaybookController {
   @Patch('documents/:id') updateDocument(@Req() req: SessionRequest, @Param('id') id: string, @Body() body: unknown) { return this.service.updateDocument(req.user.id, id, documentPatchSchema.parse(body)); }
   @Delete('documents/:id') deleteDocument(@Req() req: SessionRequest, @Param('id') id: string) { return this.service.deleteDocument(req.user.id, id); }
   @Post('documents/:id/reorder') reorderDocument(@Req() req: SessionRequest, @Param('id') id: string, @Body() body: unknown) { return this.service.reorderDocument(req.user.id, id, reorderSchema.parse(body).direction); }
+  @Get('documents/:documentId/comments') listComments(@Req() req: SessionRequest, @Param('documentId') documentId: string) { return this.service.listComments(req.user.id, documentId); }
+  @Post('documents/:documentId/comments') createComment(@Req() req: SessionRequest, @Param('documentId') documentId: string, @Body() body: unknown) { return this.service.createComment(req.user.id, documentId, commentSchema.parse(body)); }
+  @Patch('comments/:id') updateComment(@Req() req: SessionRequest, @Param('id') id: string, @Body() body: unknown) { return this.service.updateComment(req.user.id, id, commentPatchSchema.parse(body)); }
+  @Delete('comments/:id') deleteComment(@Req() req: SessionRequest, @Param('id') id: string) { return this.service.deleteComment(req.user.id, id); }
 }
