@@ -667,6 +667,10 @@ export const mybatisPlaybookTopicsTable = sqliteTable('mybatis_playbook_topics',
 export const mybatisPlaybookDocumentsTable = sqliteTable('mybatis_playbook_documents', {
   id: text('id').primaryKey(),
   topicId: text('topic_id').notNull().references(() => mybatisPlaybookTopicsTable.id, { onDelete: 'cascade' }),
+  parentId: text('parent_id').references(
+    (): AnySQLiteColumn => mybatisPlaybookDocumentsTable.id,
+    { onDelete: 'cascade' },
+  ),
   title: text('title').notNull(),
   content: text('content').notNull().default(''),
   orderIdx: integer('order_idx').notNull().default(0),
@@ -674,9 +678,24 @@ export const mybatisPlaybookDocumentsTable = sqliteTable('mybatis_playbook_docum
   updatedAt: text('updated_at').notNull(),
 });
 
+export const mybatisPlaybookDocumentCommentsTable = sqliteTable('mybatis_playbook_document_comments', {
+  id: text('id').primaryKey(),
+  documentId: text('document_id').notNull().references(() => mybatisPlaybookDocumentsTable.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  parentId: text('parent_id').references(
+    (): AnySQLiteColumn => mybatisPlaybookDocumentCommentsTable.id,
+    { onDelete: 'cascade' },
+  ),
+  title: text('title').notNull().default('댓글'),
+  content: text('content').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export type MybatisPlaybookCategoryRow = typeof mybatisPlaybookCategoriesTable.$inferSelect;
 export type MybatisPlaybookTopicRow = typeof mybatisPlaybookTopicsTable.$inferSelect;
 export type MybatisPlaybookDocumentRow = typeof mybatisPlaybookDocumentsTable.$inferSelect;
+export type MybatisPlaybookDocumentCommentRow = typeof mybatisPlaybookDocumentCommentsTable.$inferSelect;
 
 // ── CI/CD Playbook ─────────────────────────────────────────────────
 // 1차 영역 → 2차 주제 → 여러 Lexical 문서.
@@ -3262,6 +3281,10 @@ export const schema = {
   testPlaybookCategoriesTable,
   testPlaybookDocumentsTable,
   testPlaybookContentsTable,
+  mybatisPlaybookCategoriesTable,
+  mybatisPlaybookTopicsTable,
+  mybatisPlaybookDocumentsTable,
+  mybatisPlaybookDocumentCommentsTable,
   docSectionsTable,
   documentsTable,
   documentBlocksTable,

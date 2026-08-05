@@ -738,16 +738,35 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE TABLE IF NOT EXISTS mybatis_playbook_documents (
         id TEXT PRIMARY KEY,
         topic_id TEXT NOT NULL,
+        parent_id TEXT,
         title TEXT NOT NULL,
         content TEXT NOT NULL DEFAULT '',
         order_idx INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        FOREIGN KEY(topic_id) REFERENCES mybatis_playbook_topics(id) ON DELETE CASCADE
+        FOREIGN KEY(topic_id) REFERENCES mybatis_playbook_topics(id) ON DELETE CASCADE,
+        FOREIGN KEY(parent_id) REFERENCES mybatis_playbook_documents(id) ON DELETE CASCADE
       );
 
       CREATE INDEX IF NOT EXISTS idx_mybatis_playbook_documents_topic
         ON mybatis_playbook_documents(topic_id, order_idx);
+
+      CREATE TABLE IF NOT EXISTS mybatis_playbook_document_comments (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        parent_id TEXT,
+        title TEXT NOT NULL DEFAULT '댓글',
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(document_id) REFERENCES mybatis_playbook_documents(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(parent_id) REFERENCES mybatis_playbook_document_comments(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_mybatis_playbook_document_comments_document
+        ON mybatis_playbook_document_comments(document_id, created_at);
 
       -- 기존 Architecture Playbook 데이터를 MyBatis 전용 영역으로 1회 이관한다.
       INSERT OR IGNORE INTO mybatis_playbook_categories (id, user_id, title, order_idx, created_at, updated_at)
@@ -4153,6 +4172,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       'common_component_templates',
       'examples',
       "ALTER TABLE common_component_templates ADD COLUMN examples TEXT NOT NULL DEFAULT '[]'",
+    );
+    this.ensureColumn(
+      'mybatis_playbook_documents',
+      'parent_id',
+      'ALTER TABLE mybatis_playbook_documents ADD COLUMN parent_id TEXT',
+    );
+    this.ensureColumn(
+      'mybatis_playbook_document_comments',
+      'title',
+      "ALTER TABLE mybatis_playbook_document_comments ADD COLUMN title TEXT NOT NULL DEFAULT '댓글'",
     );
     this.sqlite.exec(`
       DROP INDEX IF EXISTS idx_study_diaries_user;
