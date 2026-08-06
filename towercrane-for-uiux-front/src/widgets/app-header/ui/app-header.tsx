@@ -425,6 +425,7 @@ export function AppHeader() {
   const userRole = useSessionStore((state) => state.userRole)
   const clearSession = useSessionStore((state) => state.clearSession)
   const logoutMutation = useLogout()
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const { data: flatMenus = [] } = useMenus()
 
@@ -450,6 +451,13 @@ export function AppHeader() {
       clearSession()
     }
     navigate({ to: '/login' })
+  }
+
+  const handleRefresh = () => {
+    if (isRefreshing) return
+
+    setIsRefreshing(true)
+    window.setTimeout(() => window.location.reload(), 520)
   }
 
   return (
@@ -505,6 +513,18 @@ export function AppHeader() {
             onNavigate={handleNavigation}
           />
           <ThemeSwitcher />
+          <button
+            type="button"
+            className="ui-icon-button size-8 shrink-0"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            aria-label="페이지 새로고침"
+            title="페이지 새로고침"
+          >
+            <LucideIcons.RefreshCw
+              className={clsx('size-4', isRefreshing && 'animate-[spin_520ms_ease-in-out]')}
+            />
+          </button>
           {isAuthenticated ? (
             <>
               <HeaderPill
