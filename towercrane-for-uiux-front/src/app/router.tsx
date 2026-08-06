@@ -324,11 +324,11 @@ const studyDiaryPublicWorkspaceRoute = createRoute({
   component: StudyDiaryPublicPage,
 })
 
-// ─── /dev-challenge ──────────────────────────────────────────────────────────
+// ─── /challenge-playbook ─────────────────────────────────────────────────────
 
 const devChallengeRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
-  path: '/dev-challenge',
+  path: '/challenge-playbook',
   validateSearch: (search: Record<string, unknown>) => ({
     cat: typeof search.cat === 'string' ? search.cat : undefined,
     sec: typeof search.sec === 'string' ? search.sec : undefined,
@@ -348,7 +348,7 @@ function DevChallengeIndexRoute() {
   useEffect(() => {
     if (!search.cat && !search.sec && !search.asgn) return
     navigate({
-      to: '/dev-challenge/workspaces/$workspaceId',
+      to: '/challenge-playbook/workspaces/$workspaceId',
       params: { workspaceId: 'dev-challenge-workspace-default' },
       search,
       replace: true,
@@ -361,7 +361,7 @@ function DevChallengeIndexRoute() {
 
 const devChallengeWorkspaceRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
-  path: '/dev-challenge/workspaces/$workspaceId',
+  path: '/challenge-playbook/workspaces/$workspaceId',
   validateSearch: (search: Record<string, unknown>) => ({
     cat: typeof search.cat === 'string' ? search.cat : undefined,
     sec: typeof search.sec === 'string' ? search.sec : undefined,
@@ -375,12 +375,24 @@ function DevChallengeWorkspaceRoute() {
   return <DevChallengePage workspaceId={workspaceId} />
 }
 
-// ─── Legacy redirects → /study-diary ─────────────────────────────────────────
+// ─── Legacy redirects → /challenge-playbook ──────────────────────────────────
 
 const legacyChallengeRedirectRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/challenge',
-  component: StudyDiaryRedirect,
+  component: ChallengePlaybookRedirect,
+})
+
+const legacyDevChallengeRedirectRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-challenge',
+  component: ChallengePlaybookRedirect,
+})
+
+const legacyDevChallengeWorkspaceRedirectRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/dev-challenge/workspaces/$workspaceId',
+  component: LegacyDevChallengeWorkspaceRedirect,
 })
 
 // ─── /chatbot/* ──────────────────────────────────────────────────────────────
@@ -463,12 +475,33 @@ const chatbotRealtimeGuideRoute = createRoute({
   component: ChatbotRealtimeGuidePage,
 })
 
-function StudyDiaryRedirect() {
+function ChallengePlaybookRedirect() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    navigate({ to: '/study-diary', replace: true })
+    navigate({ to: '/challenge-playbook', replace: true })
   }, [navigate])
+
+  return null
+}
+
+function LegacyDevChallengeWorkspaceRedirect() {
+  const navigate = useNavigate()
+  const { workspaceId } = legacyDevChallengeWorkspaceRedirectRoute.useParams()
+  const search = useSearch({ strict: false }) as {
+    cat?: string
+    sec?: string
+    asgn?: string
+  }
+
+  useEffect(() => {
+    navigate({
+      to: '/challenge-playbook/workspaces/$workspaceId',
+      params: { workspaceId },
+      search,
+      replace: true,
+    })
+  }, [navigate, search, workspaceId])
 
   return null
 }
@@ -1057,6 +1090,8 @@ export const router = createRouter({
       devChallengeRoute,
       devChallengeWorkspaceRoute,
       legacyChallengeRedirectRoute,
+      legacyDevChallengeRedirectRoute,
+      legacyDevChallengeWorkspaceRedirectRoute,
       chatbotRoute,
       chatbotStreamingRoute,
       chatbotHistoryRoute,

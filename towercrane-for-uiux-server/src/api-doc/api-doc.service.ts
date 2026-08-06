@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import {
   apiDocBlocksTable,
@@ -131,14 +131,45 @@ export class ApiDocService {
   deleteTeam(user: ApiDocUser, teamId: string) {
     this.ensureAdmin(user);
     this.ensureTeam(teamId);
-    this.db
-      .delete(apiDocCategoriesTable)
-      .where(eq(apiDocCategoriesTable.teamId, teamId))
-      .run();
-    this.db
-      .delete(apiDocTeamsTable)
-      .where(eq(apiDocTeamsTable.id, teamId))
-      .run();
+
+    // Delete children explicitly as well as relying on SQLite cascade rules.
+    // This keeps old databases (created before foreign_keys was enabled)
+    // consistent and makes the operation atomic if any statement fails.
+    this.db.transaction((tx) => {
+      const categoryIds = tx
+        .select({ id: apiDocCategoriesTable.id })
+        .from(apiDocCategoriesTable)
+        .where(eq(apiDocCategoriesTable.teamId, teamId))
+        .all()
+        .map((category) => category.id);
+
+      if (categoryIds.length > 0) {
+        const endpointIds = tx
+          .select({ id: apiDocEndpointsTable.id })
+          .from(apiDocEndpointsTable)
+          .where(inArray(apiDocEndpointsTable.categoryId, categoryIds))
+          .all()
+          .map((endpoint) => endpoint.id);
+
+        if (endpointIds.length > 0) {
+          tx.delete(apiDocBlocksTable)
+            .where(inArray(apiDocBlocksTable.endpointId, endpointIds))
+            .run();
+          tx.delete(apiDocEndpointsTable)
+            .where(inArray(apiDocEndpointsTable.id, endpointIds))
+            .run();
+        }
+
+        tx.delete(apiDocCategoriesTable)
+          .where(inArray(apiDocCategoriesTable.id, categoryIds))
+          .run();
+      }
+
+      tx.delete(apiDocTeamsTable)
+        .where(eq(apiDocTeamsTable.id, teamId))
+        .run();
+    });
+
     return { success: true };
   }
 

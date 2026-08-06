@@ -30,10 +30,10 @@ export function DevChallengeWorkspaceHomePage() {
           </div>
           <div className="min-w-0 space-y-0.5">
             <h1 className="text-lg font-bold tracking-tight text-text-primary">
-              Challenge Workspaces
+              Challenge Playbook
             </h1>
             <p className="text-xs ui-text-secondary">
-              팀과 코스별 개발 챌린지를 워크스페이스로 관리합니다.
+              실전 과제를 3단 문서 구조와 참가자 제출로 관리합니다.
             </p>
           </div>
         </div>
@@ -54,7 +54,7 @@ export function DevChallengeWorkspaceHomePage() {
                 workspace={workspace}
                 onOpen={() =>
                   navigate({
-                    to: '/dev-challenge/workspaces/$workspaceId',
+                    to: '/challenge-playbook/workspaces/$workspaceId',
                     params: { workspaceId: workspace.id },
                   })
                 }

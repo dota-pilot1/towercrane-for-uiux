@@ -11,6 +11,7 @@ import {
   devChallengeAssignmentsTable,
   devChallengeCategoriesTable,
   devChallengeSectionsTable,
+  devChallengeSubmissionCommentsTable,
   devChallengeSubmissionsTable,
   devChallengeWorkspaceMembersTable,
   devChallengeWorkspacesTable,
@@ -25,6 +26,7 @@ import type {
   CreateCategoryInput,
   CreateSectionInput,
   CreateSubmissionInput,
+  CreateSubmissionCommentInput,
   CreateWorkspaceInput,
   ReviewSubmissionInput,
   UpdateWorkspaceInput,
@@ -33,6 +35,7 @@ import type {
   UpdateCategoryInput,
   UpdateSectionInput,
   UpdateSubmissionInput,
+  UpdateSubmissionCommentInput,
   UpsertWorkspaceMemberInput,
 } from './dto/dev-challenge.schema';
 
@@ -763,6 +766,113 @@ export class DevChallengeService {
       .run();
 
     return this.getSubmissionById(id);
+  }
+
+  getSubmissionComments(submissionId: string, user: DevChallengeUser) {
+    this.ensureCanAccessSubmissionComments(submissionId, user);
+
+    const rows = this.db.db
+      .select({
+        comment: devChallengeSubmissionCommentsTable,
+        authorName: usersTable.name,
+        authorImageUrl: usersTable.profileImageUrl,
+      })
+      .from(devChallengeSubmissionCommentsTable)
+      .leftJoin(
+        usersTable,
+        eq(devChallengeSubmissionCommentsTable.userId, usersTable.id),
+      )
+      .where(eq(devChallengeSubmissionCommentsTable.submissionId, submissionId))
+      .orderBy(asc(devChallengeSubmissionCommentsTable.createdAt))
+      .all();
+
+    return rows.map((row) => ({
+      ...row.comment,
+      authorName: row.authorName ?? '알 수 없음',
+      authorImageUrl: row.authorImageUrl ?? null,
+    }));
+  }
+
+  createSubmissionComment(
+    submissionId: string,
+    input: CreateSubmissionCommentInput,
+    user: DevChallengeUser,
+  ) {
+    this.ensureCanAccessSubmissionComments(submissionId, user);
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    this.db.db
+      .insert(devChallengeSubmissionCommentsTable)
+      .values({
+        id,
+        submissionId,
+        userId: user.id,
+        content: input.content,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return this.getSubmissionCommentById(id);
+  }
+
+  updateSubmissionComment(
+    id: string,
+    input: UpdateSubmissionCommentInput,
+    user: DevChallengeUser,
+  ) {
+    const comment = this.getSubmissionCommentById(id);
+    if (!comment) throw new NotFoundException('Submission comment not found');
+    if (comment.userId !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException('Not authorized');
+    }
+
+    this.db.db
+      .update(devChallengeSubmissionCommentsTable)
+      .set({
+        content: input.content,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(devChallengeSubmissionCommentsTable.id, id))
+      .run();
+
+    return this.getSubmissionCommentById(id);
+  }
+
+  deleteSubmissionComment(id: string, user: DevChallengeUser) {
+    const comment = this.getSubmissionCommentById(id);
+    if (!comment) throw new NotFoundException('Submission comment not found');
+    if (comment.userId !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException('Not authorized');
+    }
+
+    this.db.db
+      .delete(devChallengeSubmissionCommentsTable)
+      .where(eq(devChallengeSubmissionCommentsTable.id, id))
+      .run();
+
+    return { success: true, id, submissionId: comment.submissionId };
+  }
+
+  private getSubmissionCommentById(id: string) {
+    return this.db.db
+      .select()
+      .from(devChallengeSubmissionCommentsTable)
+      .where(eq(devChallengeSubmissionCommentsTable.id, id))
+      .get();
+  }
+
+  private ensureCanAccessSubmissionComments(
+    submissionId: string,
+    user: DevChallengeUser,
+  ) {
+    const submission = this.getSubmissionById(submissionId);
+    if (!submission) throw new NotFoundException('Submission not found');
+    if (submission.userId !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException('Not authorized');
+    }
+    return submission;
   }
 
   private ensureWorkspace(workspaceId: string) {

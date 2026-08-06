@@ -17,10 +17,10 @@ function sectionIdToPath(sectionId: string): string {
   const map: Record<string, string> = {
     prototype: '/prototype',
     readme: '/readme',
-    dev_study: '/dev-challenge',
+    dev_study: '/challenge-playbook',
     challenge: '/study-diary',
     study_diary: '/study-diary',
-    dev_challenge: '/dev-challenge',
+    dev_challenge: '/challenge-playbook',
     meeting: '/meeting',
     dev_management: '/dev-management',
     dev_management_chat: '/dev-management',
@@ -81,9 +81,10 @@ function sectionIdToPath(sectionId: string): string {
 function getSectionIdFromPath(pathname: string): string {
   if (pathname.startsWith('/prototype')) return 'prototype'
   if (pathname.startsWith('/readme')) return 'readme'
+  if (pathname.startsWith('/challenge-playbook')) return 'dev_challenge'
   if (pathname.startsWith('/dev-challenge')) return 'dev_challenge'
   if (pathname.startsWith('/study-diary')) return 'study_diary'
-  if (pathname.startsWith('/challenge')) return 'study_diary'
+  if (pathname.startsWith('/challenge')) return 'dev_challenge'
   if (pathname.startsWith('/meeting')) return 'meeting'
   if (pathname.startsWith('/dev-meeting-minutes')) return 'dev_meeting_minutes'
   if (pathname.startsWith('/code-reviews')) return 'code_reviews'

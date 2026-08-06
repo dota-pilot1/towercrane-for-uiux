@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { BookOpen, Check, CheckSquare, ChevronDown, ClipboardCheck, Copy, GripVertical, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { BookOpen, Check, CheckSquare, ChevronDown, ClipboardCheck, Copy, GripVertical, Loader2, MessageCircle, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
 import { Card } from '../../../shared/ui/card'
 import { Select } from '../../../shared/ui/select'
 import { useSessionStore } from '../../../shared/store/session-store'
@@ -33,16 +33,20 @@ import {
   useCreateDevChallengeAssignment,
   useCreateDevChallengeAssignmentBlock,
   useCreateDevChallengeSubmission,
+  useCreateDevChallengeSubmissionComment,
   useDeleteDevChallengeAssignment,
   useDeleteDevChallengeSubmission,
+  useDeleteDevChallengeSubmissionComment,
   useDevChallengeAssignment,
   useDevChallengeAssignments,
   useDevChallengeSubmissions,
+  useDevChallengeSubmissionComments,
   useMyDevChallengeSubmission,
   useReorderDevChallengeAssignments,
   useUpdateDevChallengeAssignment,
   useUpdateDevChallengeAssignmentBlock,
   useUpdateDevChallengeSubmission,
+  useUpdateDevChallengeSubmissionComment,
 } from '../lib/hooks'
 
 type DevChallengeMainPanelProps = {
@@ -620,6 +624,155 @@ function formatSubmittedAt(value: string) {
   })
 }
 
+function SubmissionComments({ submissionId }: { submissionId: string }) {
+  const userId = useSessionStore((state) => state.userId)
+  const userRole = useSessionStore((state) => state.userRole)
+  const { data: comments = [], isLoading } = useDevChallengeSubmissionComments(submissionId)
+  const createComment = useCreateDevChallengeSubmissionComment()
+  const updateComment = useUpdateDevChallengeSubmissionComment()
+  const deleteComment = useDeleteDevChallengeSubmissionComment()
+  const [draft, setDraft] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingContent, setEditingContent] = useState('')
+
+  const handleCreate = async () => {
+    const content = draft.trim()
+    if (!content || createComment.isPending) return
+    await createComment.mutateAsync({ submissionId, content })
+    setDraft('')
+  }
+
+  const handleUpdate = async () => {
+    const content = editingContent.trim()
+    if (!editingId || !content || updateComment.isPending) return
+    await updateComment.mutateAsync({ id: editingId, submissionId, content })
+    setEditingId(null)
+    setEditingContent('')
+  }
+
+  return (
+    <div className="mt-3 border-t border-surface-border-soft pt-3">
+      <div className="mb-2 flex items-center gap-1.5">
+        <MessageCircle className="size-3.5 text-brand-primary" />
+        <p className="text-[11px] font-bold ui-text-secondary">제출 댓글</p>
+        <span className="text-[10px] ui-text-muted">{comments.length}</span>
+      </div>
+
+      {isLoading ? (
+        <Loader2 className="my-3 size-3.5 animate-spin ui-text-muted" />
+      ) : comments.length > 0 ? (
+        <div className="mb-2 space-y-2">
+          {comments.map((comment) => {
+            const canManage = comment.userId === userId || userRole === 'admin'
+            const isEditing = editingId === comment.id
+            return (
+              <div key={comment.id} className="rounded-md bg-surface-muted px-2.5 py-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-[11px] font-bold ui-text-primary">{comment.authorName}</span>
+                      <span className="text-[10px] ui-text-muted">{formatSubmittedAt(comment.createdAt)}</span>
+                    </div>
+                    {isEditing ? (
+                      <textarea
+                        value={editingContent}
+                        onChange={(event) => setEditingContent(event.target.value)}
+                        className="ui-input mt-1 min-h-16 py-1.5 text-xs"
+                        maxLength={2000}
+                        autoFocus
+                      />
+                    ) : (
+                      <p className="mt-0.5 whitespace-pre-wrap text-xs leading-relaxed ui-text-secondary">{comment.content}</p>
+                    )}
+                  </div>
+                  {canManage ? (
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      {isEditing ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleUpdate}
+                            disabled={!editingContent.trim() || updateComment.isPending}
+                            className="ui-icon-button-brand disabled:opacity-50"
+                            title="댓글 저장"
+                          >
+                            <Check className="size-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="ui-icon-button"
+                            title="수정 취소"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingId(comment.id)
+                              setEditingContent(comment.content)
+                            }}
+                            className="ui-icon-button"
+                            title="댓글 수정"
+                          >
+                            <Pencil className="size-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm('이 댓글을 삭제할까요?')) {
+                                deleteComment.mutate({ id: comment.id, submissionId })
+                              }
+                            }}
+                            disabled={deleteComment.isPending}
+                            className="ui-icon-button-danger disabled:opacity-50"
+                            title="댓글 삭제"
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
+
+      <div className="flex items-end gap-2">
+        <textarea
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault()
+              void handleCreate()
+            }
+          }}
+          placeholder="제출에 대한 댓글을 남겨주세요."
+          className="ui-input min-h-9 flex-1 py-2 text-xs"
+          rows={1}
+          maxLength={2000}
+        />
+        <button
+          type="button"
+          onClick={() => void handleCreate()}
+          disabled={!draft.trim() || createComment.isPending}
+          className="ui-icon-button-brand size-9 disabled:opacity-50"
+          title="댓글 등록"
+        >
+          {createComment.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function SubmissionCard({ submission }: { submission: DevChallengeSubmissionWithAuthor }) {
   const initial = submission.authorName.trim().charAt(0) || '?'
   const userId = useSessionStore((state) => state.userId)
@@ -691,6 +844,8 @@ function SubmissionCard({ submission }: { submission: DevChallengeSubmissionWith
           <p className="mt-0.5 whitespace-pre-wrap text-xs ui-text-secondary">{submission.adminFeedback}</p>
         </div>
       ) : null}
+
+      <SubmissionComments submissionId={submission.id} />
     </div>
   )
 }
@@ -727,6 +882,7 @@ function SubmissionsList({ assignmentId }: { assignmentId: string }) {
 }
 
 function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
+  const userRole = useSessionStore((state) => state.userRole)
   const { data: assignment, isLoading: assignmentLoading } = useDevChallengeAssignment(assignmentId ?? '')
   const { data: submission, isLoading: submissionLoading } = useMyDevChallengeSubmission(assignmentId ?? '')
   const createSubmission = useCreateDevChallengeSubmission()
@@ -913,7 +1069,13 @@ function SubmissionPanel({ assignmentId }: { assignmentId: string | null }) {
         </div>
           </div>
 
-          <SubmissionsList assignmentId={assignmentId} />
+          {userRole === 'admin' ? (
+            <SubmissionsList assignmentId={assignmentId} />
+          ) : submission ? (
+            <div className="ui-panel-soft p-3">
+              <SubmissionComments submissionId={submission.id} />
+            </div>
+          ) : null}
         </div>
       ) : null}
       </div>

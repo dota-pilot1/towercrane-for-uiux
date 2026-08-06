@@ -23,6 +23,8 @@ export const DEV_CHALLENGE_KEYS = {
   assignment: (assignmentId: string) => [...DEV_CHALLENGE_KEYS.all, 'assignment', assignmentId] as const,
   mySubmission: (assignmentId: string) => [...DEV_CHALLENGE_KEYS.all, 'my-submission', assignmentId] as const,
   submissions: (assignmentId: string) => [...DEV_CHALLENGE_KEYS.all, 'submissions', assignmentId] as const,
+  submissionComments: (submissionId: string) =>
+    [...DEV_CHALLENGE_KEYS.all, 'submission-comments', submissionId] as const,
 }
 
 // 레거시 categories() 키와 워크스페이스별 workspaceCategories() 키를 모두 매칭
@@ -403,15 +405,11 @@ export function useCreateDevChallengeSubmission() {
 export function useUpdateDevChallengeSubmission() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      id,
-      assignmentId,
-      data,
-    }: {
+    mutationFn: (variables: {
       id: string
       assignmentId: string
       data: { comment: string; githubUrl?: string; checkedItems: string[] }
-    }) => devChallengeApi.updateSubmission(id, data),
+    }) => devChallengeApi.updateSubmission(variables.id, variables.data),
     onSuccess: (submission, variables) => {
       queryClient.setQueryData(DEV_CHALLENGE_KEYS.mySubmission(variables.assignmentId), submission)
       queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.mySubmission(variables.assignmentId) })
@@ -429,6 +427,56 @@ export function useDeleteDevChallengeSubmission() {
       queryClient.setQueryData(DEV_CHALLENGE_KEYS.mySubmission(variables.assignmentId), null)
       queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.mySubmission(variables.assignmentId) })
       queryClient.invalidateQueries({ queryKey: DEV_CHALLENGE_KEYS.submissions(variables.assignmentId) })
+    },
+  })
+}
+
+export function useDevChallengeSubmissionComments(submissionId: string) {
+  return useQuery({
+    queryKey: DEV_CHALLENGE_KEYS.submissionComments(submissionId),
+    queryFn: () => devChallengeApi.getSubmissionComments(submissionId),
+    enabled: !!submissionId,
+  })
+}
+
+export function useCreateDevChallengeSubmissionComment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ submissionId, content }: { submissionId: string; content: string }) =>
+      devChallengeApi.createSubmissionComment(submissionId, content),
+    onSuccess: (_comment, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: DEV_CHALLENGE_KEYS.submissionComments(variables.submissionId),
+      })
+    },
+  })
+}
+
+export function useUpdateDevChallengeSubmissionComment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (variables: {
+      id: string
+      submissionId: string
+      content: string
+    }) => devChallengeApi.updateSubmissionComment(variables.id, variables.content),
+    onSuccess: (_comment, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: DEV_CHALLENGE_KEYS.submissionComments(variables.submissionId),
+      })
+    },
+  })
+}
+
+export function useDeleteDevChallengeSubmissionComment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: string; submissionId: string }) =>
+      devChallengeApi.deleteSubmissionComment(id),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: DEV_CHALLENGE_KEYS.submissionComments(variables.submissionId),
+      })
     },
   })
 }

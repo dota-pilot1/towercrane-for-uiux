@@ -37,14 +37,14 @@ export function DevChallengePage({ workspaceId }: DevChallengePageProps) {
     <section className="space-y-4 ui-page-bg pb-4">
       <PageHeader
         icon={Trophy}
-        title={workspace?.name ?? 'Dev Challenge'}
-        description={workspace?.description || '개발 챌린지를 출제하고 제출을 관리합니다.'}
+        title={workspace?.name ?? 'Challenge Playbook'}
+        description={workspace?.description || '실전 과제를 문서화하고 참가자 제출을 함께 관리합니다.'}
         actions={
           workspaceId ? (
             <button
               type="button"
               className="inline-flex h-8 items-center justify-center rounded-sm border border-background bg-background px-3 text-sm font-semibold text-text-primary transition hover:bg-surface-raised"
-              onClick={() => navigate({ to: '/dev-challenge' })}
+              onClick={() => navigate({ to: '/challenge-playbook' })}
             >
               <ChevronLeft className="mr-1.5 size-4" />
               워크스페이스

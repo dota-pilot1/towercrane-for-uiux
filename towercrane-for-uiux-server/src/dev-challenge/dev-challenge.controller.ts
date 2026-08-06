@@ -20,6 +20,7 @@ import {
   createWorkspaceSchema,
   createSectionSchema,
   createSubmissionSchema,
+  createSubmissionCommentSchema,
   reorderWorkspacesSchema,
   reviewSubmissionSchema,
   updateAssignmentBlockSchema,
@@ -27,12 +28,13 @@ import {
   updateCategorySchema,
   updateSectionSchema,
   updateSubmissionSchema,
+  updateSubmissionCommentSchema,
   updateWorkspaceSchema,
   upsertWorkspaceMemberSchema,
 } from './dto/dev-challenge.schema';
 import { DevChallengeService } from './dev-challenge.service';
 
-@Controller('dev-challenge')
+@Controller(['challenge-playbook', 'dev-challenge'])
 @UseGuards(SessionGuard)
 export class DevChallengeController {
   constructor(private readonly devChallengeService: DevChallengeService) {}
@@ -346,5 +348,49 @@ export class DevChallengeController {
   ) {
     const input = reviewSubmissionSchema.parse(body);
     return this.devChallengeService.reviewSubmission(id, input, req.user.id);
+  }
+
+  @Get('submissions/:submissionId/comments')
+  getSubmissionComments(
+    @Param('submissionId') submissionId: string,
+    @Req() req: SessionRequest,
+  ) {
+    return this.devChallengeService.getSubmissionComments(
+      submissionId,
+      req.user,
+    );
+  }
+
+  @Post('submissions/:submissionId/comments')
+  createSubmissionComment(
+    @Param('submissionId') submissionId: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = createSubmissionCommentSchema.parse(body);
+    return this.devChallengeService.createSubmissionComment(
+      submissionId,
+      input,
+      req.user,
+    );
+  }
+
+  @Patch('submission-comments/:id')
+  updateSubmissionComment(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: SessionRequest,
+  ) {
+    const input = updateSubmissionCommentSchema.parse(body);
+    return this.devChallengeService.updateSubmissionComment(
+      id,
+      input,
+      req.user,
+    );
+  }
+
+  @Delete('submission-comments/:id')
+  deleteSubmissionComment(@Param('id') id: string, @Req() req: SessionRequest) {
+    return this.devChallengeService.deleteSubmissionComment(id, req.user);
   }
 }

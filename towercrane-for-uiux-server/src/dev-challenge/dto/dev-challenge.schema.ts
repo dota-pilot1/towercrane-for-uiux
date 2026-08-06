@@ -134,6 +134,12 @@ export const reviewSubmissionSchema = z.object({
   adminFeedback: z.string().max(2000).optional(),
 });
 
+export const createSubmissionCommentSchema = z.object({
+  content: z.string().trim().min(1).max(2000),
+});
+
+export const updateSubmissionCommentSchema = createSubmissionCommentSchema;
+
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
@@ -154,3 +160,9 @@ export type UpdateAssignmentBlockInput = z.infer<
 export type CreateSubmissionInput = z.infer<typeof createSubmissionSchema>;
 export type UpdateSubmissionInput = z.infer<typeof updateSubmissionSchema>;
 export type ReviewSubmissionInput = z.infer<typeof reviewSubmissionSchema>;
+export type CreateSubmissionCommentInput = z.infer<
+  typeof createSubmissionCommentSchema
+>;
+export type UpdateSubmissionCommentInput = z.infer<
+  typeof updateSubmissionCommentSchema
+>;
