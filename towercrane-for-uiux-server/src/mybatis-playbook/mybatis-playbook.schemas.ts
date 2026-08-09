@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const titleSchema = z.object({ title: z.string().trim().min(1).max(255) });
-export const documentSchema = z.object({ title: z.string().trim().min(1).max(255), content: z.string().max(200_000).default(''), parentId: z.string().trim().min(1).nullable().optional() });
+export const documentSchema = z.object({ title: z.string().trim().min(1).max(255), content: z.string().max(500_000).default(''), parentId: z.string().trim().min(1).nullable().optional() });
 export const documentPatchSchema = documentSchema.partial();
 export const commentSchema = z.object({
   title: z.string().trim().min(1).max(255).default('댓글'),
