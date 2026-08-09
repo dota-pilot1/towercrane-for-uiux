@@ -59,6 +59,7 @@ import { DbPlaybookModule } from './db-playbook/db-playbook.module';
 import { SqlPlaybookModule } from './sql-playbook/sql-playbook.module';
 import { DebuggingPlaybookModule } from './debugging-history/debugging-history.module';
 import { TechnicalDebtPlaybookModule } from './technical-debt/technical-debt.module';
+import { DatabaseBackupModule } from './database-backup/database-backup.module';
 
 @Module({
   imports: [
@@ -120,6 +121,7 @@ import { TechnicalDebtPlaybookModule } from './technical-debt/technical-debt.mod
     SqlPlaybookModule,
     DebuggingPlaybookModule,
     TechnicalDebtPlaybookModule,
+    DatabaseBackupModule,
   ],
   controllers: [AppController],
   providers: [AppService],

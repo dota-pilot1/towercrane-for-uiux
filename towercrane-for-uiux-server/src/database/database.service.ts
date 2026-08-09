@@ -8,7 +8,9 @@ import {
 import Database from 'better-sqlite3';
 import { randomUUID, scryptSync } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
+import { readFile, rm } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { catalogSeed } from '../catalog/catalog.seed';
 import { eq } from 'drizzle-orm';
 import {
@@ -34,6 +36,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   db!: BetterSQLite3Database<typeof schema>;
 
   constructor(private readonly configService: ConfigService) {}
+
+  async createBackup(): Promise<Buffer> {
+    const backupFile = join(tmpdir(), `towercrane-db-backup-${randomUUID()}.sqlite`);
+
+    try {
+      await this.sqlite.backup(backupFile);
+      return await readFile(backupFile);
+    } finally {
+      await rm(backupFile, { force: true });
+    }
+  }
 
   // study-plan → ai-study-note rename: 기존 데이터를 새 이름 테이블로 보존/이관.
   // 신 테이블이 이미 만들어졌더라도 비어있으면 버리고 데이터가 든 구 테이블로 교체한다. (멱등)
