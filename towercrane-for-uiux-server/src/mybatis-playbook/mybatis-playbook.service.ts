@@ -78,6 +78,8 @@ export class MybatisPlaybookService {
             'Use a Lexical CodeNode for multiline commands, source code, URLs, configuration, or other code-like blocks. A CodeNode is a root child with type "code" and code-highlight children; never represent a whole paragraph or section as inline code text formatting.',
             'Use inline code formatting only for short identifiers or words inside a normal sentence. Never apply inline code formatting to an entire document, paragraph, heading, URL, or specification section.',
             'When creating a CodeNode, preserve or set its language when it is known (for example java, bash, yaml, json, or plaintext), and keep each code block separate from its surrounding explanation.',
+            'Correct existing formatting mistakes: lines such as Project, Language, Spring Boot, Packaging, Java, Group, Artifact, and similar specification fields are normal prose or a list, not inline code. Remove inline-code formatting from those full lines unless the user explicitly asks to keep it.',
+            'Keep meaningful paragraph and section breaks. Do not merge separate explanations or specification lines into one paragraph, and leave a visible paragraph break between a heading, its code block, and the following section.',
             'Do not return Markdown, explanations, or code fences. Do not invent facts that are not supported by the document or instruction.',
           ].join(' '),
         },
