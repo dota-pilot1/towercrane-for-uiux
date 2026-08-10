@@ -62,13 +62,13 @@ export class UserAiKeysService {
       .get();
     if (row) {
       try {
-        return new OpenAI({ apiKey: decryptAiKey(row), timeout: 60_000 });
+        return new OpenAI({ apiKey: decryptAiKey(row), timeout: 180_000 });
       } catch {
         throw new ServiceUnavailableException('사용자 API 키를 복호화할 수 없습니다. 서버 암호화 설정을 확인해 주세요.');
       }
     }
     const fallback = provider === 'openai' ? this.configService.get<string>('OPENAI_API_KEY') : undefined;
-    return fallback ? new OpenAI({ apiKey: fallback, timeout: 60_000 }) : null;
+    return fallback ? new OpenAI({ apiKey: fallback, timeout: 180_000 }) : null;
   }
 
   private makeKeyHint(value: string) {
