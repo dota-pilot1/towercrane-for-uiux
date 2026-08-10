@@ -1,7 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
+import { UserAiKeysService } from '../ai-keys/user-ai-keys.service';
 import {
   mybatisPlaybookCategoriesTable,
   mybatisPlaybookDocumentCommentsTable,
@@ -9,11 +11,15 @@ import {
   mybatisPlaybookTopicsTable,
   usersTable,
 } from '../database/schema';
-import type { CommentInput, CommentPatchInput, DocumentInput, DocumentPatchInput, TitleInput } from './mybatis-playbook.schemas';
+import type { CommentInput, CommentPatchInput, DocumentAiEditInput, DocumentInput, DocumentPatchInput, TitleInput } from './mybatis-playbook.schemas';
 
 @Injectable()
 export class MybatisPlaybookService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly configService: ConfigService,
+    private readonly userAiKeys: UserAiKeysService,
+  ) {}
   private get db() { return this.database.db; }
   private now() { return new Date().toISOString(); }
 
@@ -50,6 +56,45 @@ export class MybatisPlaybookService {
   }
   createDocument(userId: string, topicId: string, input: DocumentInput) { const topic = this.ensureTopic(userId, topicId); const parentId = this.ensureParent(userId, topicId, input.parentId); const id = `mybatis-document-${randomUUID().slice(0, 12)}`; const now = this.now(); const max = this.db.select({ max: sql<number>`coalesce(max(${mybatisPlaybookDocumentsTable.orderIdx}), -1)` }).from(mybatisPlaybookDocumentsTable).where(and(eq(mybatisPlaybookDocumentsTable.topicId, topicId), parentId ? eq(mybatisPlaybookDocumentsTable.parentId, parentId) : isNull(mybatisPlaybookDocumentsTable.parentId))).get(); this.db.insert(mybatisPlaybookDocumentsTable).values({ id, topicId, parentId, title: input.title, content: input.content, orderIdx: Number(max?.max ?? -1) + 1, createdAt: now, updatedAt: now }).run(); return this.list(userId).find((item) => item.id === topic.categoryId); }
   updateDocument(userId: string, id: string, input: DocumentPatchInput) { const document = this.ensureDocument(userId, id); const parentId = input.parentId === undefined ? document.parentId : this.ensureParent(userId, document.topicId, input.parentId, id); this.db.update(mybatisPlaybookDocumentsTable).set({ ...(input.title !== undefined ? { title: input.title } : {}), ...(input.content !== undefined ? { content: input.content } : {}), ...(input.parentId !== undefined ? { parentId } : {}), updatedAt: this.now() }).where(eq(mybatisPlaybookDocumentsTable.id, id)).run(); return this.list(userId).find((item) => item.topics.some((topic) => topic.id === document.topicId)); }
+  async aiEditDocument(userId: string, id: string, input: DocumentAiEditInput) {
+    this.ensureDocument(userId, id);
+    const openai = this.userAiKeys.getClient(userId, 'openai');
+    if (!openai) {
+      throw new ServiceUnavailableException('AI 편집을 사용할 수 없습니다. 서버 OpenAI 설정을 확인해 주세요.');
+    }
+
+    const model = this.configService.get<string>('OPENAI_DEFAULT_MODEL') ?? 'gpt-4o-mini';
+    const response = await openai.chat.completions.create({
+      model,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: [
+            'You edit a Lexical editor document for a Korean developer playbook.',
+            'Return only a valid Lexical serialized editor state JSON object with a root property.',
+            'Preserve the existing meaning, useful technical details, code blocks, links, tables, images, Mermaid nodes, and formatting unless the instruction asks to change them.',
+            'Do not return Markdown, explanations, or code fences. Do not invent facts that are not supported by the document or instruction.',
+          ].join(' '),
+        },
+        {
+          role: 'user',
+          content: `편집 요구사항:\n${input.instruction}\n\n현재 Lexical 문서 JSON:\n${input.content}`,
+        },
+      ],
+    });
+
+    const text = response.choices[0]?.message.content?.trim();
+    if (!text) throw new InternalServerErrorException('AI가 편집 결과를 반환하지 않았습니다.');
+    try {
+      const parsed = JSON.parse(text) as { root?: unknown };
+      if (!parsed.root) throw new Error('Invalid Lexical state');
+      return { content: JSON.stringify(parsed) };
+    } catch {
+      throw new InternalServerErrorException('AI 편집 결과가 올바른 Lexical 문서 형식이 아닙니다.');
+    }
+  }
   deleteDocument(userId: string, id: string) { this.ensureDocument(userId, id); this.db.delete(mybatisPlaybookDocumentsTable).where(eq(mybatisPlaybookDocumentsTable.id, id)).run(); return { success: true }; }
   reorderDocuments(userId: string, topicId: string, documentIds: string[], parentId: string | null) {
     const topic = this.ensureTopic(userId, topicId);

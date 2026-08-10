@@ -40,6 +40,18 @@ export const usersTable = sqliteTable('users', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export const userAiKeysTable = sqliteTable('user_ai_keys', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  provider: text('provider').$type<'openai'>().notNull(),
+  encryptedKey: text('encrypted_key').notNull(),
+  iv: text('iv').notNull(),
+  authTag: text('auth_tag').notNull(),
+  keyHint: text('key_hint').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export type DepartmentRow = typeof departmentsTable.$inferSelect;
 export type DepartmentInsert = typeof departmentsTable.$inferInsert;
 

@@ -12,6 +12,26 @@
 
 배포 중 오류가 나면 `/Users/terecal/towercrane-for-uiux/docs-for-배포`의 관련 배포 문서와 `scripts/README.md`를 먼저 확인한다.
 
+### 커밋·푸시와 CI/CD 트리거 확인
+
+커밋·푸시가 곧 배포를 뜻하지 않으므로, 작업 전에 대상 저장소와 트리거를 구분한다.
+
+- 백엔드 저장소 `towercrane-for-uiux-server`: 현재 GitHub Actions 자동 배포 없음. 원격 `main` 반영 후 `scripts/deploy-backend.sh`로 EC2 배포한다.
+- 백엔드가 새 환경변수를 요구하면 먼저 서버 환경변수 설정과 PM2 재시작까지 확인한다. 사용자 AI 키 기능은 `AI_KEYS_ENCRYPTION_KEY`가 필수다.
+- Tauri 앱 `tc-dx-mybatis`: 일반 브랜치 push는 릴리즈를 실행하지 않는다. `v*` 태그 push 또는 `tauri-release.yml` 수동 실행이 필요하다.
+- 웹 프론트 `tc-dx-mybatis`: `main` push 시 `web-deploy.yml`이 S3/CloudFront 배포를 실행한다. 기능 개발 브랜치 push는 웹 운영 배포가 아니다.
+- 새 프론트 API 호출 기능은 백엔드 배포 및 API 확인 후 앱/웹을 배포한다.
+
+배포 요청을 받으면 아래 순서로 확인한다.
+
+1. 변경 저장소와 현재 브랜치 확인
+2. 관련 workflow의 `on.push` 조건 확인
+3. 필요한 환경변수/Secret 확인
+4. 백엔드 API 및 DB 변경이면 백엔드를 먼저 배포
+5. Tauri는 버전 bump 후 `vX.Y.Z` 태그로 릴리즈
+
+상세 명령과 체크리스트는 `docs-for-배포/CI_CD_트리거_및_릴리즈_규칙.md`를 참고한다.
+
 ## 메뉴 추가 / 변경 지침
 
 헤더 메뉴 추가 또는 변경 작업을 할 때는 먼저 아래 문서를 참고한다.

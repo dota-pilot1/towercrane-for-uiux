@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { SessionGuard } from '../auth/guard/session.guard';
 import type { SessionRequest } from '../auth/types';
-import { commentPatchSchema, commentSchema, documentPatchSchema, documentSchema, reorderCategoriesSchema, reorderDocumentsSchema, reorderSchema, reorderTopicsSchema, titleSchema } from './mybatis-playbook.schemas';
+import { commentPatchSchema, commentSchema, documentAiEditSchema, documentPatchSchema, documentSchema, reorderCategoriesSchema, reorderDocumentsSchema, reorderSchema, reorderTopicsSchema, titleSchema } from './mybatis-playbook.schemas';
 import { MybatisPlaybookService } from './mybatis-playbook.service';
 
 @Controller('mybatis-playbook')
@@ -20,6 +20,7 @@ export class MybatisPlaybookController {
   @Post('topics/:topicId/documents') createDocument(@Req() req: SessionRequest, @Param('topicId') topicId: string, @Body() body: unknown) { return this.service.createDocument(req.user.id, topicId, documentSchema.parse(body)); }
   @Post('topics/:topicId/documents/reorder') reorderDocuments(@Req() req: SessionRequest, @Param('topicId') topicId: string, @Body() body: unknown) { const input = reorderDocumentsSchema.parse(body); return this.service.reorderDocuments(req.user.id, topicId, input.documentIds, input.parentId); }
   @Patch('documents/:id') updateDocument(@Req() req: SessionRequest, @Param('id') id: string, @Body() body: unknown) { return this.service.updateDocument(req.user.id, id, documentPatchSchema.parse(body)); }
+  @Post('documents/:id/ai-edit') aiEditDocument(@Req() req: SessionRequest, @Param('id') id: string, @Body() body: unknown) { return this.service.aiEditDocument(req.user.id, id, documentAiEditSchema.parse(body)); }
   @Delete('documents/:id') deleteDocument(@Req() req: SessionRequest, @Param('id') id: string) { return this.service.deleteDocument(req.user.id, id); }
   @Post('documents/:id/reorder') reorderDocument(@Req() req: SessionRequest, @Param('id') id: string, @Body() body: unknown) { return this.service.reorderDocument(req.user.id, id, reorderSchema.parse(body).direction); }
   @Get('documents/:documentId/comments') listComments(@Req() req: SessionRequest, @Param('documentId') documentId: string) { return this.service.listComments(req.user.id, documentId); }
