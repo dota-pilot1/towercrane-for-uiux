@@ -64,12 +64,14 @@ export class MybatisPlaybookService {
     }
 
     const model = this.configService.get<string>('OPENAI_DEFAULT_MODEL') ?? 'gpt-4o-mini';
-    const response = await openai.chat.completions.create({
-      model,
-      temperature: 0.2,
-      max_tokens: 12000,
-      response_format: { type: 'json_object' },
-      messages: [
+    let response;
+    try {
+      response = await openai.chat.completions.create({
+        model,
+        temperature: 0.2,
+        max_tokens: 12000,
+        response_format: { type: 'json_object' },
+        messages: [
         {
           role: 'system',
           content: [
@@ -88,8 +90,12 @@ export class MybatisPlaybookService {
           role: 'user',
           content: `편집 요구사항:\n${input.instruction}\n\n현재 Lexical 문서 JSON:\n${input.content}`,
         },
-      ],
-    });
+        ],
+      });
+    } catch (error) {
+      console.error('[mybatis-ai-edit] OpenAI request failed', error);
+      throw new ServiceUnavailableException('AI 요청에 실패했습니다. OpenAI API 키와 모델 설정을 확인해 주세요.');
+    }
 
     const text = response.choices[0]?.message.content?.trim();
     if (!text) throw new InternalServerErrorException('AI가 편집 결과를 반환하지 않았습니다.');
