@@ -79,6 +79,7 @@ export class MybatisPlaybookService {
             'Return only a valid Lexical serialized editor state JSON object with a root property.',
             'Preserve the existing meaning, useful technical details, code blocks, links, tables, images, Mermaid nodes, and formatting unless the instruction asks to change them.',
             'Use a Lexical CodeNode for multiline commands, source code, URLs, configuration, or other code-like blocks. A CodeNode is a root child with type "code" and code-highlight children; never represent a whole paragraph or section as inline code text formatting.',
+            'Never omit, summarize, or replace existing source code. When the instruction only asks for formatting, preserve every code statement and literal exactly; only change its Lexical block structure, line breaks, and indentation.',
             'Use inline code formatting only for short identifiers or words inside a normal sentence. Never apply inline code formatting to an entire document, paragraph, heading, URL, or specification section.',
             'When creating a CodeNode, preserve or set its language when it is known (for example java, bash, yaml, json, or plaintext), and keep each code block separate from its surrounding explanation.',
             'Correct existing formatting mistakes: lines such as Project, Language, Spring Boot, Packaging, Java, Group, Artifact, and similar specification fields are normal prose or a list, not inline code. Remove inline-code formatting from those full lines unless the user explicitly asks to keep it.',
